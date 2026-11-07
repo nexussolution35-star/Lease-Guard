@@ -29,6 +29,6 @@ so there are 267 unique components.
 
 - shadcn/ui primitives (35) in `src/components/ui`, fetched from the official registry.
 - Enum labels and status tones in `src/lib/labels.ts`.
-- Conventions in `docs/components.md`.
+- Conventions in `docs/development/frontend-components.md`.
 - Application routes for every PRD screen in `src/routes`, rendering inside `AppLayout`.
   Detail routes look records up through services and show "not found in this workspace" for other companies.

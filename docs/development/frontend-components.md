@@ -1,7 +1,7 @@
 # LeaseGuard component conventions
 
 These rules apply to every component in the repository. Read `CLAUDE.md` and
-`docs/architecture.md` first.
+`docs/architecture/frontend-data-layer.md` first.
 
 ## Directory layout (single component architecture)
 
