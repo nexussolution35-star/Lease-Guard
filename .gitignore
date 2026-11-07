@@ -26,7 +26,23 @@ dist-ssr
 .tanstack
 
 # TanStack Router generated
-src/routeTree.gen.ts
+frontend/src/app/router/routeTree.gen.ts
 .DS_Store
 
 CLAUDE.md
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Coverage and build info
+coverage/
+*.tsbuildinfo

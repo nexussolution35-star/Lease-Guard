@@ -1,0 +1,28 @@
+{
+  "name": "@leaseguard/domain",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Framework-independent LeaseGuard domain model and business rules shared by the backend and the frontend demo mode.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@leaseguard/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "oxlint src",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "date-fns": "^4.4.0"
+  },
+  "devDependencies": {
+    "oxlint": "^1.90.0",
+    "typescript": "~7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

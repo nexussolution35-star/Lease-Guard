@@ -1,0 +1,113 @@
+import type { User } from '@leaseguard/domain'
+import { COMPANY_IDS, USER_IDS } from './ids'
+import { ts } from './common'
+
+export const users: readonly User[] = [
+  {
+    id: USER_IDS.thandiAdmin,
+    createdAt: ts('2025-01-15T09:05'),
+    updatedAt: ts('2026-09-01T08:00'),
+    fullName: 'Thandi Mokoena',
+    email: 'thandi.mokoena@nexussolution.co.za',
+    phone: '+27 82 441 7730',
+    jobTitle: 'Managing Director',
+    status: 'active',
+    memberships: [
+      { companyId: COMPANY_IDS.nexus, role: 'company_admin', isDefault: true, joinedAt: ts('2025-01-15T09:05') },
+    ],
+    lastLoginAt: ts('2026-11-05T17:42'),
+  },
+  {
+    id: USER_IDS.siphoPm,
+    createdAt: ts('2025-01-20T10:00'),
+    updatedAt: ts('2026-10-15T09:30'),
+    fullName: 'Sipho Dlamini',
+    email: 'sipho.dlamini@nexussolution.co.za',
+    phone: '+27 83 207 5541',
+    jobTitle: 'Senior Property Manager',
+    status: 'active',
+    memberships: [
+      { companyId: COMPANY_IDS.nexus, role: 'property_manager', isDefault: true, joinedAt: ts('2025-01-20T10:00') },
+      {
+        companyId: COMPANY_IDS.kgalagadi,
+        role: 'property_manager',
+        isDefault: false,
+        joinedAt: ts('2026-08-22T09:15'),
+      },
+    ],
+    lastLoginAt: ts('2026-11-06T07:55'),
+  },
+  {
+    id: USER_IDS.nalediPm,
+    createdAt: ts('2025-02-03T08:30'),
+    updatedAt: ts('2026-06-10T12:00'),
+    fullName: 'Naledi van der Merwe',
+    email: 'naledi.vdmerwe@nexussolution.co.za',
+    phone: '+27 72 913 6628',
+    jobTitle: 'Property Manager',
+    status: 'active',
+    memberships: [
+      { companyId: COMPANY_IDS.nexus, role: 'property_manager', isDefault: true, joinedAt: ts('2025-02-03T08:30') },
+    ],
+    lastLoginAt: ts('2026-11-05T16:10'),
+  },
+  {
+    id: USER_IDS.pieterOwner,
+    createdAt: ts('2025-03-11T14:00'),
+    updatedAt: ts('2026-04-02T10:45'),
+    fullName: 'Pieter Botha',
+    email: 'pieter@bothafamilytrust.co.za',
+    phone: '+27 82 550 1194',
+    whatsappNumber: '+27825501194',
+    jobTitle: 'Trustee, Botha Family Property Trust',
+    status: 'active',
+    memberships: [
+      { companyId: COMPANY_IDS.nexus, role: 'property_owner', isDefault: true, joinedAt: ts('2025-03-11T14:00') },
+    ],
+    lastLoginAt: ts('2026-11-02T19:20'),
+  },
+  {
+    id: USER_IDS.zaneleOwner,
+    createdAt: ts('2025-03-11T14:10'),
+    updatedAt: ts('2026-07-18T09:00'),
+    fullName: 'Zanele Khumalo',
+    email: 'zanele.khumalo@khumaloinvest.co.za',
+    phone: '+27 83 676 2208',
+    whatsappNumber: '+27836762208',
+    jobTitle: 'Director, Khumalo Investment Holdings',
+    status: 'active',
+    memberships: [
+      { companyId: COMPANY_IDS.nexus, role: 'property_owner', isDefault: true, joinedAt: ts('2025-03-11T14:10') },
+    ],
+    lastLoginAt: ts('2026-11-03T08:05'),
+  },
+  {
+    id: USER_IDS.kabeloReadOnly,
+    createdAt: ts('2026-02-01T09:00'),
+    updatedAt: ts('2026-02-01T09:00'),
+    fullName: 'Kabelo Molefe',
+    email: 'kabelo.molefe@nexussolution.co.za',
+    phone: '+27 71 338 9045',
+    jobTitle: 'Finance Intern',
+    status: 'active',
+    memberships: [
+      { companyId: COMPANY_IDS.nexus, role: 'read_only', isDefault: true, joinedAt: ts('2026-02-01T09:00') },
+    ],
+    lastLoginAt: ts('2026-11-04T11:30'),
+  },
+  {
+    id: USER_IDS.leratoOwner,
+    createdAt: ts('2026-08-21T11:00'),
+    updatedAt: ts('2026-08-21T11:00'),
+    fullName: 'Lerato Sebego',
+    email: 'lerato@kgalagadiproperty.co.za',
+    phone: '+27 82 764 3310',
+    whatsappNumber: '+27827643310',
+    jobTitle: 'Owner',
+    status: 'active',
+    memberships: [
+      { companyId: COMPANY_IDS.kgalagadi, role: 'property_owner', isDefault: true, joinedAt: ts('2026-08-21T11:00') },
+    ],
+    lastLoginAt: ts('2026-10-30T18:00'),
+  },
+]
