@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>You have been invited to LeaseGuard</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:8px;padding:32px;">
+            <tr><td style="font-size:20px;font-weight:bold;color:#111827;padding-bottom:24px;">LeaseGuard</td></tr>
+            <tr><td style="font-size:15px;line-height:1.6;padding-bottom:16px;">Hello{{ if .Data.full_name }} {{ .Data.full_name }}{{ end }},</td></tr>
+            <tr><td style="font-size:15px;line-height:1.6;padding-bottom:16px;">You have been invited to join a workspace on LeaseGuard, the lease monitoring and tenant communication platform. Use the button below to set your password and review the invitation. You can accept or decline it once you are signed in.</td></tr>
+            <tr>
+              <td style="padding:8px 0 24px;">
+                <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:6px;">Set your password</a>
+              </td>
+            </tr>
+            <tr><td style="font-size:13px;color:#6b7280;padding-bottom:16px;">If the button does not work, copy this link into your browser:<br /><span style="word-break:break-all;">{{ .ConfirmationURL }}</span></td></tr>
+            <tr><td style="font-size:13px;color:#6b7280;padding-bottom:8px;">This link can be used once and expires after 3 minutes. If it has expired, ask your company administrator to resend the invitation. If you were not expecting this invitation, you can ignore this email.</td></tr>
+            <tr><td style="font-size:12px;color:#6b7280;padding-top:24px;border-top:1px solid #e5e7eb;">This is an automated message from LeaseGuard. Replies to this address are not monitored.</td></tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

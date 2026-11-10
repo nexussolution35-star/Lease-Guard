@@ -1,0 +1,188 @@
+-- Shared pgTAP fixture: two companies with every company-owned table populated for both.
+--
+-- Included by test files with `\ir fixtures/two_companies.psql` AFTER their `begin;`, so every row is
+-- created inside the test's transaction and removed by its `rollback;`. The database itself holds no
+-- data. Runs as the database owner (postgres), like the backend's service role, so the
+-- signed-in-user guards do not apply to the setup.
+--
+-- Companies: Nexus Solution (initials NS) and Kgalagadi Property Holdings (KP).
+-- Users (all active, password-less; tests impersonate them with request.jwt.claims):
+--   thandi.mokoena@nexussolution.co.za   NS company_admin
+--   sipho.dlamini@nexussolution.co.za    NS property_manager and KP property_manager
+--   naledi.vdmerwe@nexussolution.co.za   NS property_manager
+--   kabelo.molefe@nexussolution.co.za    NS read_only
+--   pieter@bothafamilytrust.co.za        NS property_owner
+--   zanele.khumalo@khumaloinvest.co.za   NS property_owner
+--   lerato@kgalagadiproperty.co.za       KP property_owner
+-- Notable rows: NS leases WIP-L003 and DVC-L003 are unverified; NS has exactly one pending_review
+-- statement extraction (on a review_required statement); each company has exactly one tenant message
+-- awaiting approval (status pending_approval with a pending approval request).
+
+\set QUIET on
+
+insert into auth.users (instance_id, id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+values
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-4000-8000-000000000001', 'authenticated', 'authenticated', 'thandi.mokoena@nexussolution.co.za', now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Thandi Mokoena"}', now(), now()),
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-4000-8000-000000000002', 'authenticated', 'authenticated', 'sipho.dlamini@nexussolution.co.za', now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Sipho Dlamini"}', now(), now()),
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-4000-8000-000000000003', 'authenticated', 'authenticated', 'naledi.vdmerwe@nexussolution.co.za', now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Naledi van der Merwe"}', now(), now()),
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-4000-8000-000000000004', 'authenticated', 'authenticated', 'kabelo.molefe@nexussolution.co.za', now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Kabelo Molefe"}', now(), now()),
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-4000-8000-000000000005', 'authenticated', 'authenticated', 'pieter@bothafamilytrust.co.za', now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Pieter Botha"}', now(), now()),
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-4000-8000-000000000006', 'authenticated', 'authenticated', 'zanele.khumalo@khumaloinvest.co.za', now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Zanele Khumalo"}', now(), now()),
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-4000-8000-000000000007', 'authenticated', 'authenticated', 'lerato@kgalagadiproperty.co.za', now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Lerato Sebego"}', now(), now());
+
+-- on_auth_user_created created the profiles (status 'invited'); activate them and add contact details.
+update public.profiles set status = 'active', phone = '+27 82 000 0000'
+where id::text like '10000000-0000-4000-8000-%';
+update public.profiles set whatsapp_number = '+27825501194' where email = 'pieter@bothafamilytrust.co.za';
+update public.profiles set whatsapp_number = '+27836762208' where email = 'zanele.khumalo@khumaloinvest.co.za';
+update public.profiles set whatsapp_number = '+27827643310' where email = 'lerato@kgalagadiproperty.co.za';
+
+insert into public.companies (id, name, address_line1, suburb, city, province, postal_code, contact_email, contact_phone, initials)
+values
+  ('20000000-0000-4000-8000-000000000001', 'Nexus Solution', '1 Rivonia Road', 'Sandton', 'Johannesburg', 'Gauteng', '2196', 'info@nexussolution.co.za', '+27 11 555 0100', 'NS'),
+  ('20000000-0000-4000-8000-000000000002', 'Kgalagadi Property Holdings', '5 Pretorius Street', 'Arcadia', 'Pretoria', 'Gauteng', '0083', 'info@kgalagadiproperty.co.za', '+27 12 555 0200', 'KP');
+
+insert into public.company_users (company_id, user_id, role, is_default)
+values
+  ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', 'company_admin', true),
+  ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000002', 'property_manager', true),
+  ('20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000002', 'property_manager', false),
+  ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000003', 'property_manager', true),
+  ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000004', 'read_only', true),
+  ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000005', 'property_owner', true),
+  ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000006', 'property_owner', true),
+  ('20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000007', 'property_owner', true);
+
+insert into public.whatsapp_accounts (company_id, business_account_id, phone_number_id, display_name, display_number, access_token_reference, webhook_configured, connection_status, last_verified_at)
+values
+  ('20000000-0000-4000-8000-000000000001', 'waba-ns', 'phone-ns', 'Nexus Solution', '+27 11 555 0100', 'secret://env/WHATSAPP_ACCESS_TOKEN_20000000000040008000000000000001', true, 'connected', now()),
+  ('20000000-0000-4000-8000-000000000002', 'waba-kp', 'phone-kp', 'Kgalagadi Property', '+27 12 555 0200', 'secret://env/WHATSAPP_ACCESS_TOKEN_20000000000040008000000000000002', false, 'pending_verification', null);
+
+-- ------------------------------------------------------------------ portfolio
+insert into public.properties (id, company_id, name, code, type, address_line1, suburb, city, province, postal_code, gross_lettable_area_sqm, manager_user_id, owner_user_id, accounting_system)
+values
+  ('30000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', 'Maponya Square', 'MSQ', 'shopping_centre', '2 Chris Hani Road', 'Soweto', 'Johannesburg', 'Gauteng', '1804', 12000, '10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000005', 'MRI'),
+  ('30000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002', 'Kgalagadi Park', 'KGP', 'retail', '9 Church Street', 'Arcadia', 'Pretoria', 'Gauteng', '0083', 5000, '10000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000007', 'Sage');
+
+insert into public.units (id, company_id, property_id, unit_number, type, floor_area_sqm, occupancy_status)
+values
+  ('40000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001', 'S01', 'line_shop', 120, 'occupied'),
+  ('40000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001', 'S02', 'line_shop', 90, 'occupied'),
+  ('40000000-0000-4000-8000-000000000003', '20000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001', 'S03', 'restaurant', 200, 'occupied'),
+  ('40000000-0000-4000-8000-000000000004', '20000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000002', 'K01', 'line_shop', 150, 'occupied');
+
+insert into public.tenants (id, company_id, legal_name, trading_name, business_type, contact_full_name, contact_role, contact_phone, whatsapp_number, whatsapp_verified, status, industry)
+values
+  ('50000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', 'Dlamini Cellular (Pty) Ltd', 'Dlamini Cellular', 'pty_ltd', 'Bongani Dlamini', 'Owner', '+27 82 111 0001', '+27821110001', true, 'active', 'Telecoms'),
+  ('50000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000001', 'Kasi Flame Grill CC', 'Kasi Flame Grill', 'close_corporation', 'Thabo Nkosi', 'Owner', '+27 82 111 0002', '+27821110002', true, 'active', 'Food'),
+  ('50000000-0000-4000-8000-000000000003', '20000000-0000-4000-8000-000000000001', 'Fresh Mart (Pty) Ltd', 'Fresh Mart', 'pty_ltd', 'Anna Smit', 'Manager', '+27 82 111 0003', '+27821110003', false, 'active', 'Grocery'),
+  ('50000000-0000-4000-8000-000000000004', '20000000-0000-4000-8000-000000000002', 'Arcadia Books CC', 'Arcadia Books', 'close_corporation', 'Lindiwe Mokoena', 'Owner', '+27 82 111 0004', '+27821110004', true, 'active', 'Retail');
+
+insert into public.leases (id, company_id, reference, property_id, unit_id, tenant_id, commencement_date, expiry_date, initial_monthly_rental, current_monthly_rental, payment_due_day, escalation_type, escalation_percentage, escalation_frequency, first_escalation_date, status, verified, verified_by_user_id, verified_at)
+values
+  ('60000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', 'MSQ-L001', '30000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000001', '50000000-0000-4000-8000-000000000001', '2024-01-01', '2028-12-31', 12000, 12960, 1, 'percentage', 8, 'annual', '2025-01-01', 'active', true, '10000000-0000-4000-8000-000000000003', now()),
+  ('60000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000001', 'WIP-L003', '30000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000002', '50000000-0000-4000-8000-000000000002', '2025-03-01', '2030-02-28', 9000, 9000, 1, 'percentage', 7, 'annual', '2026-03-01', 'pending_verification', false, null, null),
+  ('60000000-0000-4000-8000-000000000003', '20000000-0000-4000-8000-000000000001', 'DVC-L003', '30000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000003', '50000000-0000-4000-8000-000000000003', '2025-06-01', '2030-05-31', 25000, 25000, 1, 'percentage', 7, 'annual', '2026-06-01', 'pending_verification', false, null, null),
+  ('60000000-0000-4000-8000-000000000004', '20000000-0000-4000-8000-000000000002', 'KGP-L001', '30000000-0000-4000-8000-000000000002', '40000000-0000-4000-8000-000000000004', '50000000-0000-4000-8000-000000000004', '2024-07-01', '2029-06-30', 15000, 15000, 1, 'percentage', 6, 'annual', '2025-07-01', 'active', true, '10000000-0000-4000-8000-000000000002', now());
+
+update public.units u set current_tenant_id = l.tenant_id, current_lease_id = l.id
+from public.leases l where l.unit_id = u.id and l.id::text like '60000000-0000-4000-8000-%';
+
+insert into public.lease_bank_guarantees (company_id, lease_id, bank, reference_number, amount, basis_months, issued_on, expires_on)
+values
+  ('20000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000001', 'Standard Bank', 'GTE-NS-1', 36000, 3, '2024-01-01', '2029-03-31'),
+  ('20000000-0000-4000-8000-000000000002', '60000000-0000-4000-8000-000000000004', 'Absa', 'GTE-KP-1', 45000, 3, '2024-07-01', '2029-09-30');
+
+insert into public.lease_documents (id, company_id, lease_id, document_type, title, file_name, storage_path, mime_type, size_bytes, sha256, uploaded_by_user_id)
+values
+  ('61000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000001', 'signed_lease', 'Signed lease', 'lease.pdf', '20000000-0000-4000-8000-000000000001/61000000-0000-4000-8000-000000000001/lease.pdf', 'application/pdf', 2048, repeat('a', 64), '10000000-0000-4000-8000-000000000003'),
+  ('61000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002', '60000000-0000-4000-8000-000000000004', 'signed_lease', 'Signed lease', 'lease.pdf', '20000000-0000-4000-8000-000000000002/61000000-0000-4000-8000-000000000002/lease.pdf', 'application/pdf', 2048, repeat('b', 64), '10000000-0000-4000-8000-000000000002');
+
+-- ------------------------------------------------------------------ statements
+insert into public.statements (id, company_id, property_id, tenant_id, unit_id, lease_id, file_name, storage_path, mime_type, size_bytes, file_sha256, source_system, statement_date, period_start, period_end, status, uploaded_by_user_id, opening_balance, rental_charged, additional_charges, payments_received, closing_balance, total_due, verified_by_user_id, verified_at)
+values
+  ('70000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001', '50000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000001', 'MSQ-2026-09.pdf', '20000000-0000-4000-8000-000000000001/70000000-0000-4000-8000-000000000001/MSQ-2026-09.pdf', 'application/pdf', 4096, repeat('1', 64), 'MRI', '2026-09-30', '2026-09-01', '2026-09-30', 'verified', '10000000-0000-4000-8000-000000000003', 0, 12960, 0, 12960, 0, 0, '10000000-0000-4000-8000-000000000003', now()),
+  ('70000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001', '50000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000001', 'MSQ-2026-10.pdf', '20000000-0000-4000-8000-000000000001/70000000-0000-4000-8000-000000000002/MSQ-2026-10.pdf', 'application/pdf', 4096, repeat('2', 64), 'MRI', '2026-10-31', '2026-10-01', '2026-10-31', 'review_required', '10000000-0000-4000-8000-000000000003', null, null, null, null, null, null, null, null),
+  ('70000000-0000-4000-8000-000000000003', '20000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000002', '50000000-0000-4000-8000-000000000004', '40000000-0000-4000-8000-000000000004', '60000000-0000-4000-8000-000000000004', 'KGP-2026-10.pdf', '20000000-0000-4000-8000-000000000002/70000000-0000-4000-8000-000000000003/KGP-2026-10.pdf', 'application/pdf', 4096, repeat('3', 64), 'Sage', '2026-10-31', '2026-10-01', '2026-10-31', 'verified', '10000000-0000-4000-8000-000000000002', 0, 15000, 0, 0, 15000, 15000, '10000000-0000-4000-8000-000000000002', now());
+
+insert into public.statement_line_items (company_id, statement_id, line_number, date, description, category, kind, amount)
+values
+  ('20000000-0000-4000-8000-000000000001', '70000000-0000-4000-8000-000000000001', 1, '2026-09-01', 'Rental', 'rental', 'charge', 12960),
+  ('20000000-0000-4000-8000-000000000002', '70000000-0000-4000-8000-000000000003', 1, '2026-10-01', 'Rental', 'rental', 'charge', 15000);
+
+insert into public.statement_extractions (id, company_id, statement_id, engine, overall_confidence, matched_tenant_id, matched_unit_id, match_confidence, status, reviewed_by_user_id, reviewed_at)
+values
+  ('71000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', '70000000-0000-4000-8000-000000000002', 'fixture', 0.62, '50000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000001', 0.9, 'pending_review', null, null),
+  ('71000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000001', '70000000-0000-4000-8000-000000000001', 'fixture', 0.97, '50000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000001', 0.95, 'confirmed', '10000000-0000-4000-8000-000000000003', now()),
+  ('71000000-0000-4000-8000-000000000003', '20000000-0000-4000-8000-000000000002', '70000000-0000-4000-8000-000000000003', 'fixture', 0.95, '50000000-0000-4000-8000-000000000004', '40000000-0000-4000-8000-000000000004', 0.95, 'confirmed', '10000000-0000-4000-8000-000000000002', now());
+
+insert into public.statement_extraction_fields (company_id, extraction_id, name, raw_text, value, confidence, flagged)
+values
+  ('20000000-0000-4000-8000-000000000001', '71000000-0000-4000-8000-000000000001', 'rental_charged', 'R 12 000,00', '12000', 0.55, true),
+  ('20000000-0000-4000-8000-000000000001', '71000000-0000-4000-8000-000000000001', 'tenant_name', 'Dlamini Cellular', '"Dlamini Cellular"', 0.95, false),
+  ('20000000-0000-4000-8000-000000000001', '71000000-0000-4000-8000-000000000002', 'tenant_name', 'Dlamini Cellular', '"Dlamini Cellular"', 0.99, false),
+  ('20000000-0000-4000-8000-000000000002', '71000000-0000-4000-8000-000000000003', 'tenant_name', 'Arcadia Books', '"Arcadia Books"', 0.99, false);
+
+-- ------------------------------------------------------------------ monitoring and arrangements
+insert into public.monitoring_rules (company_id, event_type, name, description, default_priority, config)
+values
+  ('20000000-0000-4000-8000-000000000001', 'lease_expiry', 'Lease expiry', 'Lease expiry notices', 'medium', '{"kind":"lease_expiry","noticeDays":[180,90,30]}'),
+  ('20000000-0000-4000-8000-000000000002', 'lease_expiry', 'Lease expiry', 'Lease expiry notices', 'medium', '{"kind":"lease_expiry","noticeDays":[180,90,30]}');
+
+insert into public.monitoring_events (company_id, type, property_id, unit_id, tenant_id, lease_id, lease_reference, title, description, identified_on, due_date, priority, recommended_action, status)
+values
+  ('20000000-0000-4000-8000-000000000001', 'lease_expiry', '30000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000001', '50000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000001', 'MSQ-L001', 'Lease MSQ-L001 expires within 180 days', 'Expiry approaching', '2026-11-01', '2028-12-31', 'medium', 'Discuss renewal', 'new'),
+  ('20000000-0000-4000-8000-000000000002', 'lease_expiry', '30000000-0000-4000-8000-000000000002', '40000000-0000-4000-8000-000000000004', '50000000-0000-4000-8000-000000000004', '60000000-0000-4000-8000-000000000004', 'KGP-L001', 'Lease KGP-L001 expires within 180 days', 'Expiry approaching', '2026-11-01', '2029-06-30', 'medium', 'Discuss renewal', 'new');
+
+insert into public.payment_arrangements (id, company_id, tenant_id, property_id, unit_id, lease_id, outstanding_balance, installment_amount, frequency, first_installment_date, final_installment_date, status, agreed_by_user_id, agreed_on)
+values
+  ('80000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', '50000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000001', 6000, 2000, 'monthly', '2026-11-15', '2027-01-15', 'active', '10000000-0000-4000-8000-000000000003', '2026-11-01'),
+  ('80000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002', '50000000-0000-4000-8000-000000000004', '30000000-0000-4000-8000-000000000002', '40000000-0000-4000-8000-000000000004', '60000000-0000-4000-8000-000000000004', 15000, 5000, 'monthly', '2026-11-15', '2027-01-15', 'active', '10000000-0000-4000-8000-000000000002', '2026-11-01');
+
+insert into public.arrangement_installments (company_id, arrangement_id, sequence, due_date, amount)
+values
+  ('20000000-0000-4000-8000-000000000001', '80000000-0000-4000-8000-000000000001', 1, '2026-11-15', 2000),
+  ('20000000-0000-4000-8000-000000000002', '80000000-0000-4000-8000-000000000002', 1, '2026-11-15', 5000);
+
+-- ------------------------------------------------------------------ messaging
+insert into public.message_templates (company_id, name, message_type, audience, meta_template_name, language, category, body, supports_document_attachment)
+values
+  ('20000000-0000-4000-8000-000000000001', 'Monthly statement', 'monthly_statement', 'tenant', 'monthly_statement_v1', 'en', 'utility', 'Good day. Your {{1}} statement is attached.', true),
+  ('20000000-0000-4000-8000-000000000002', 'Monthly statement', 'monthly_statement', 'tenant', 'monthly_statement_v1', 'en', 'utility', 'Good day. Your {{1}} statement is attached.', true);
+
+insert into public.communications (id, company_id, channel, direction, message_type, recipient_type, tenant_id, owner_user_id, statement_id, counterparty_number, company_number, body, attachment_file_name, attachment_storage_path, attachment_mime_type, status, external_message_id, sent_at, delivered_at)
+values
+  -- NS: awaiting approval
+  ('90000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', 'whatsapp', 'outbound', 'overdue_payment_reminder', 'tenant', '50000000-0000-4000-8000-000000000001', null, null, '+27821110001', '+27115550100', 'Good day. Your account is overdue.', null, null, null, 'pending_approval', null, null, null),
+  -- NS: approved and delivered statement, with the statement's own file
+  ('90000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000001', 'whatsapp', 'outbound', 'monthly_statement', 'tenant', '50000000-0000-4000-8000-000000000001', null, '70000000-0000-4000-8000-000000000001', '+27821110001', '+27115550100', 'Good day. Your September statement is attached.', 'MSQ-2026-09.pdf', '20000000-0000-4000-8000-000000000001/70000000-0000-4000-8000-000000000001/MSQ-2026-09.pdf', 'application/pdf', 'delivered', 'wamid.fixture-ns-1', now(), now()),
+  -- NS: owner summary (no approval needed) and an inbound tenant reply
+  ('90000000-0000-4000-8000-000000000003', '20000000-0000-4000-8000-000000000001', 'whatsapp', 'outbound', 'owner_weekly_summary', 'property_owner', null, '10000000-0000-4000-8000-000000000005', null, '+27825501194', '+27115550100', 'Weekly summary for Maponya Square.', null, null, null, 'sent', 'wamid.fixture-ns-2', now(), null),
+  ('90000000-0000-4000-8000-000000000004', '20000000-0000-4000-8000-000000000001', 'whatsapp', 'inbound', 'inbound_reply', 'tenant', '50000000-0000-4000-8000-000000000001', null, null, '+27821110001', '+27115550100', 'Thank you.', null, null, null, 'received', 'wamid.fixture-ns-3', null, null),
+  -- KP: awaiting approval
+  ('90000000-0000-4000-8000-000000000005', '20000000-0000-4000-8000-000000000002', 'whatsapp', 'outbound', 'monthly_statement', 'tenant', '50000000-0000-4000-8000-000000000004', null, null, '+27821110004', '+27125550200', 'Good day. Your October statement is ready.', null, null, null, 'pending_approval', null, null, null);
+
+insert into public.message_approvals (company_id, communication_id, requested_by_user_id, requested_at, decision, decided_by_user_id, decided_at)
+values
+  ('20000000-0000-4000-8000-000000000001', '90000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000003', now(), 'pending', null, null),
+  ('20000000-0000-4000-8000-000000000001', '90000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000003', now() - interval '30 days', 'approved', '10000000-0000-4000-8000-000000000003', now() - interval '30 days'),
+  ('20000000-0000-4000-8000-000000000002', '90000000-0000-4000-8000-000000000005', '10000000-0000-4000-8000-000000000002', now(), 'pending', null, null);
+
+insert into public.notifications (company_id, user_id, type, severity, title, body)
+values
+  ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000003', 'approval_request', 'info', 'Approval requested', 'A message awaits approval'),
+  ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', 'system', 'info', 'Welcome', 'Welcome to LeaseGuard'),
+  ('20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000002', 'approval_request', 'info', 'Approval requested', 'A message awaits approval'),
+  ('20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000007', 'system', 'info', 'Welcome', 'Welcome to LeaseGuard');
+
+insert into public.audit_logs (company_id, actor_user_id, action, entity_type, entity_id, summary)
+values
+  ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', 'login', 'user', '10000000-0000-4000-8000-000000000001', 'Thandi Mokoena signed in'),
+  ('20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000002', 'workspace_switch', 'company', '20000000-0000-4000-8000-000000000002', 'Sipho Dlamini switched to Kgalagadi Property Holdings');
+
+insert into public.company_invitations (company_id, email, full_name, role, invited_by_user_id)
+values
+  ('20000000-0000-4000-8000-000000000001', 'new.manager@nexussolution.co.za', 'New Manager', 'property_manager', '10000000-0000-4000-8000-000000000001'),
+  ('20000000-0000-4000-8000-000000000002', 'first.admin@kgalagadiproperty.co.za', 'First Admin', 'company_admin', null);
+
+\set QUIET off
