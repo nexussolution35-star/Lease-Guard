@@ -1,0 +1,10 @@
+.venv
+tests
+scripts
+openapi.json
+README.md
+**/__pycache__
+*.egg-info
+build
+.pytest_cache
+.ruff_cache

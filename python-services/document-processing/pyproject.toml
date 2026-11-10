@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "leaseguard-document-processing"
+version = "0.1.0"
+description = "Extracts and validates tenant statement data from PDFs for the LeaseGuard backend."
+requires-python = ">=3.14"
+# Direct runtime dependencies, pinned. This is the single source of truth: requirements.txt is
+# the fully resolved lock generated from it by scripts/lock_requirements.py, run inside the
+# Dockerfile's base image (see README.md, "Relocking requirements").
+dependencies = [
+    "fastapi==0.162.2",
+    "uvicorn==0.54.0",
+    "pydantic==2.14.3",
+    "pydantic-settings==2.16.2",
+    "python-multipart==0.0.33",
+    "pymupdf==1.28.2",
+    "pdfplumber==0.11.10",
+    "pytesseract==0.3.13",
+    "pillow==13.0.0",
+]
+
+[project.optional-dependencies]
+# Test and lint tools for local development and CI: `pip install -e '.[dev]'`. Never installed
+# in the Docker image. httpx2 is the HTTP client Starlette's TestClient uses.
+dev = [
+    "pytest==9.2.0",
+    "httpx2==2.16.0",
+    "ruff==0.17.4",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+# PyMuPDF's SWIG bindings trigger this on Python 3.14; it is not actionable here.
+filterwarnings = ["ignore:builtin type .* has no __module__ attribute:DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF", "S", "BLE"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106"]
+# Table extraction is best effort: any pdfplumber failure falls back to text lines and is logged.
+"app/extractors/pdf.py" = ["BLE001"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "conftest"]

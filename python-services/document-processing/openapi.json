@@ -1,0 +1,650 @@
+{
+  "components": {
+    "schemas": {
+      "Body_createExtraction": {
+        "properties": {
+          "companyId": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Company ID",
+            "type": "string"
+          },
+          "expectedTenantNames": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tenant names expected for this property; repeat the field per name.",
+            "title": "Expected Tenant Names"
+          },
+          "expectedUnitNumbers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Unit numbers expected for this property; repeat the field per unit.",
+            "title": "Expected Unit Numbers"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "Statement PDF",
+            "title": "File",
+            "type": "string"
+          },
+          "sourceSystem": {
+            "description": "Hint only; parsing is the same for every source.",
+            "enum": [
+              "MRI",
+              "MDA",
+              "PropSys",
+              "Sage",
+              "other"
+            ],
+            "title": "Source System",
+            "type": "string"
+          },
+          "statementId": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Statement ID",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "companyId",
+          "statementId",
+          "sourceSystem"
+        ],
+        "title": "Body_createExtraction",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "code": {
+            "enum": [
+              "invalid_request",
+              "missing_token",
+              "invalid_token",
+              "auth_not_configured",
+              "file_too_large",
+              "unsupported_media_type",
+              "encrypted_pdf",
+              "corrupt_pdf",
+              "empty_pdf",
+              "not_found",
+              "method_not_allowed",
+              "internal_error"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "errors": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Per-field details for `invalid_request`; otherwise `null`.",
+            "title": "Errors"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "errors"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "ExtractedField": {
+        "properties": {
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "flagged": {
+            "description": "True when a person must check this value.",
+            "title": "Flagged",
+            "type": "boolean"
+          },
+          "name": {
+            "enum": [
+              "tenant_name",
+              "unit_number",
+              "statement_date",
+              "period_start",
+              "period_end",
+              "rental_charged",
+              "additional_charges",
+              "payments_received",
+              "outstanding_balance",
+              "total_due"
+            ],
+            "title": "Name",
+            "type": "string"
+          },
+          "rawText": {
+            "description": "The document text the value was read from; empty if none.",
+            "title": "Raw Text",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why the value is flagged or derived.",
+            "title": "Reason"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "pattern": "^-?\\d{1,13}\\.\\d{2}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Names and unit numbers as text, dates as ISO `YYYY-MM-DD`, money as a 2-decimal string. `null` when the value was not found; it is never guessed.",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "name",
+          "rawText",
+          "value",
+          "confidence",
+          "flagged",
+          "reason"
+        ],
+        "title": "ExtractedField",
+        "type": "object"
+      },
+      "ExtractionResult": {
+        "properties": {
+          "engine": {
+            "title": "Engine",
+            "type": "string"
+          },
+          "engineVersion": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "fields": {
+            "description": "Exactly one entry per extraction field.",
+            "items": {
+              "$ref": "#/components/schemas/ExtractedField"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "lineItems": {
+            "items": {
+              "$ref": "#/components/schemas/LineItem"
+            },
+            "title": "Line Items",
+            "type": "array"
+          },
+          "ocrUsed": {
+            "title": "Ocr Used",
+            "type": "boolean"
+          },
+          "openingBalance": {
+            "anyOf": [
+              {
+                "pattern": "^-?\\d{1,13}\\.\\d{2}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Balance brought forward, used to reconcile totals. `null` if not found.",
+            "title": "Opening Balance"
+          },
+          "overallConfidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Overall Confidence",
+            "type": "number"
+          },
+          "pageCount": {
+            "minimum": 1.0,
+            "title": "Page Count",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "extracted",
+              "needs_review",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "textLayer": {
+            "description": "True when every page has a text layer.",
+            "title": "Text Layer",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "engine",
+          "engineVersion",
+          "pageCount",
+          "textLayer",
+          "ocrUsed",
+          "openingBalance",
+          "fields",
+          "lineItems",
+          "overallConfidence",
+          "issues",
+          "status"
+        ],
+        "title": "ExtractionResult",
+        "type": "object"
+      },
+      "Health": {
+        "properties": {
+          "status": {
+            "const": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "Health",
+        "type": "object"
+      },
+      "Issue": {
+        "properties": {
+          "code": {
+            "enum": [
+              "missing_field",
+              "low_confidence",
+              "totals_do_not_reconcile",
+              "cannot_reconcile",
+              "invalid_period",
+              "statement_date_out_of_range",
+              "negative_amount",
+              "duplicate_line_item",
+              "conflicting_values",
+              "unparsed_row",
+              "hint_mismatch",
+              "unsupported_layout",
+              "scanned_without_ocr",
+              "ocr_used"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "enum": [
+                  "tenant_name",
+                  "unit_number",
+                  "statement_date",
+                  "period_start",
+                  "period_end",
+                  "rental_charged",
+                  "additional_charges",
+                  "payments_received",
+                  "outstanding_balance",
+                  "total_due"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "error",
+              "warning"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "message",
+          "field"
+        ],
+        "title": "Issue",
+        "type": "object"
+      },
+      "LineItem": {
+        "properties": {
+          "amount": {
+            "description": "Always positive; `kind` gives the direction.",
+            "pattern": "^-?\\d{1,13}\\.\\d{2}$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "category": {
+            "enum": [
+              "rental",
+              "operating_costs",
+              "rates_and_taxes",
+              "utilities",
+              "parking",
+              "marketing_levy",
+              "interest",
+              "other_charge",
+              "payment",
+              "credit"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "flagged": {
+            "title": "Flagged",
+            "type": "boolean"
+          },
+          "kind": {
+            "enum": [
+              "charge",
+              "payment",
+              "credit"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "description",
+          "category",
+          "kind",
+          "amount",
+          "confidence",
+          "flagged"
+        ],
+        "title": "LineItem",
+        "type": "object"
+      },
+      "Readiness": {
+        "properties": {
+          "authConfigured": {
+            "title": "Auth Configured",
+            "type": "boolean"
+          },
+          "ocrAvailable": {
+            "title": "Ocr Available",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "ready",
+              "not_ready"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "tesseractVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tesseract Version"
+          }
+        },
+        "required": [
+          "status",
+          "authConfigured",
+          "ocrAvailable",
+          "tesseractVersion"
+        ],
+        "title": "Readiness",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "description": "DOCUMENT_PROCESSING_TOKEN from the root .env",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "summary": "Extracts and validates tenant statement data from PDF files.",
+    "title": "LeaseGuard document processing",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Liveness: the process is up and serving HTTP",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "getReadiness",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness"
+                }
+              }
+            },
+            "description": "No access token configured"
+          }
+        },
+        "summary": "Readiness: an access token is configured; also reports whether OCR is available",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/v1/extractions": {
+      "post": {
+        "operationId": "createExtraction",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_createExtraction"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Malformed multipart body"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Missing or invalid bearer token"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "File larger than the configured limit"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The file is not a PDF"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request, or unreadable PDF"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No access token configured"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Extract and validate a tenant statement PDF",
+        "tags": [
+          "extractions"
+        ]
+      }
+    }
+  }
+}
