@@ -244,4 +244,46 @@ describe('message approvals', () => {
     expect(error.status).toBe(409)
     expect(await decisionState(fresh.communicationId)).toEqual({ status: 'approved', approvals: [{ decision: 'approved' }] })
   })
+  it("lists a company's pending tenant messages to every member, read_only included, and to no other company", async () => {
+    const pending = await createPendingTenantMessage(world().users.manager.id)
+    const queueIds = async (user: 'manager' | 'readOnly', company: 'a' | 'b') => {
+      const page = await unwrap(apiAs(user, company).GET('/api/v1/communications/approvals', { params: { query: { pageSize: 100 } } }))
+      return page.items.map((item) => item.communication.id)
+    }
+    expect(await queueIds('manager', 'a')).toContain(pending.communicationId)
+    expect(await queueIds('readOnly', 'a')).toContain(pending.communicationId)
+    // The manager also works for company B: B's queue never shows A's messages.
+    expect(await queueIds('manager', 'b')).not.toContain(pending.communicationId)
+  })
+
+  it('refuses rejection by a read_only member (403) and leaves the message pending', async () => {
+    const pending = await createPendingTenantMessage(world().users.manager.id)
+    const error = await apiErrorOf(
+      unwrap(apiAs('readOnly', 'a').POST(rejectPath, { params: { path: { communicationId: pending.communicationId } }, body: { note: 'Not mine to decide' } })),
+    )
+    expect(error.status).toBe(403)
+    expect(await decisionState(pending.communicationId)).toEqual({ status: 'pending_approval', approvals: [{ decision: 'pending' }] })
+  })
+
+  it('requires a reason to reject (400), then records the reason and the rejecter, and never queues delivery', async () => {
+    const pending = await createPendingTenantMessage(world().users.manager.id)
+    const blank = await apiErrorOf(
+      unwrap(apiAs('admin', 'a').POST(rejectPath, { params: { path: { communicationId: pending.communicationId } }, body: { note: '   ' } })),
+    )
+    expect(blank.status).toBe(400)
+    expect(await decisionState(pending.communicationId)).toEqual({ status: 'pending_approval', approvals: [{ decision: 'pending' }] })
+
+    const result = await unwrap(
+      apiAs('admin', 'a').POST(rejectPath, {
+        params: { path: { communicationId: pending.communicationId } },
+        body: { note: '  Wrong statement month  ' },
+      }),
+    )
+    expect(result.approval).toMatchObject({ id: pending.approvalId, decision: 'rejected', reason: 'Wrong statement month', decidedByUserId: world().users.admin.id })
+    expect(result.communication).toMatchObject({ id: pending.communicationId, status: 'rejected' })
+    expect(await deliveryJobKeys(pending.communicationId)).toEqual([])
+    // It no longer waits for a decision.
+    const page = await unwrap(apiAs('admin', 'a').GET('/api/v1/communications/approvals', { params: { query: { pageSize: 100 } } }))
+    expect(page.items.map((item) => item.communication.id)).not.toContain(pending.communicationId)
+  })
 })

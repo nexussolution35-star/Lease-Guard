@@ -4,11 +4,12 @@ import type { Communication } from '@leaseguard/domain'
 import { isUuid } from '@/lib/data/ids'
 import { listSearchTerm } from '@/lib/data/listParams'
 
-import type { CommunicationSource } from './source'
+import type { ApprovalDecisionResult, CommunicationSource, PendingApproval } from './source'
 
 /**
  * Communications from the LeaseGuard API (`GET /api/v1/communications`,
- * `GET /api/v1/communications/{communicationId}`).
+ * `GET /api/v1/communications/{communicationId}`) and the approval queue (`GET /api/v1/communications/approvals`,
+ * `POST …/{communicationId}/approve`, `POST …/{communicationId}/reject`).
  */
 export function createApiCommunicationSource(api: ApiClient): CommunicationSource {
   return {
@@ -50,6 +51,38 @@ export function createApiCommunicationSource(api: ApiClient): CommunicationSourc
         if (isApiError(error) && error.isNotFound) return null
         throw error
       }
+    },
+
+    async listPendingApprovals(companyId, params) {
+      const page = await unwrap(
+        api.GET('/api/v1/communications/approvals', {
+          params: { query: compactQuery({ page: params.page, pageSize: params.pageSize }) },
+          headers: { [COMPANY_ID_HEADER]: companyId },
+        }),
+      )
+      return { ...page, items: page.items satisfies PendingApproval[] }
+    },
+
+    async approve(companyId, communicationId, note) {
+      const result: ApprovalDecisionResult = await unwrap(
+        api.POST('/api/v1/communications/{communicationId}/approve', {
+          params: { path: { communicationId } },
+          body: note ? { note } : {},
+          headers: { [COMPANY_ID_HEADER]: companyId },
+        }),
+      )
+      return result
+    },
+
+    async reject(companyId, communicationId, reason) {
+      const result: ApprovalDecisionResult = await unwrap(
+        api.POST('/api/v1/communications/{communicationId}/reject', {
+          params: { path: { communicationId } },
+          body: { note: reason },
+          headers: { [COMPANY_ID_HEADER]: companyId },
+        }),
+      )
+      return result
     },
   }
 }

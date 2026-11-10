@@ -1,9 +1,14 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, stripSearchParams } from '@tanstack/react-router'
 
-import { ScreenPlaceholder } from '@/components/layout'
+import { approvalsSearchSchema, APPROVALS_DEFAULTS } from '@/features/communications/approvalsSearch'
+import { ApprovalsQueue } from '@/features/communications/components/ApprovalsQueue'
 
 export const Route = createFileRoute('/communications/approvals')({
+  validateSearch: approvalsSearchSchema,
+  search: { middlewares: [stripSearchParams(APPROVALS_DEFAULTS)] },
   component: function ApprovalsScreen() {
-    return <ScreenPlaceholder title="Message approvals" description="Tenant messages awaiting property-manager approval before sending." />
+    const { page, pageSize } = Route.useSearch()
+    const navigate = Route.useNavigate()
+    return <ApprovalsQueue page={page} pageSize={pageSize} onPageChange={(next) => void navigate({ search: { page: next, pageSize }, replace: true })} />
   },
 })

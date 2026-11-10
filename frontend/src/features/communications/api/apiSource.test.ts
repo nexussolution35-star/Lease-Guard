@@ -66,4 +66,40 @@ describe('createApiCommunicationSource', () => {
     const listError = await sourceWith(forbiddenFetch()).list(TEST_COMPANY_ID, { page: 1, pageSize: 25 }).catch((e: unknown) => e)
     expect((listError as ApiError).status).toBe(403)
   })
+
+  it('lists pending approvals for the active company, oldest request first unless asked otherwise', async () => {
+    const pending = { approval: { id: TEST_FILTER_ID }, communication }
+    const fetch = fakeFetch(200, { items: [pending], total: 1, page: 2, pageSize: 10 })
+    await expect(sourceWith(fetch).listPendingApprovals(TEST_COMPANY_ID, { page: 2, pageSize: 10 })).resolves.toEqual({ items: [pending], total: 1, page: 2, pageSize: 10 })
+    expect(urlOf(fetch)).toEqual({ pathname: '/api/v1/communications/approvals', query: { page: '2', pageSize: '10' } })
+    expect(requestAt(fetch).headers.get('x-company-id')).toBe(TEST_COMPANY_ID)
+  })
+
+  it('approves with an optional note and rejects with a reason, for the active company', async () => {
+    const decided = { approval: { id: TEST_FILTER_ID, decision: 'approved' }, communication }
+    const approve = fakeFetch(200, decided)
+    await expect(sourceWith(approve).approve(TEST_COMPANY_ID, TEST_RECORD_ID)).resolves.toEqual(decided)
+    expect(urlOf(approve).pathname).toBe(`/api/v1/communications/${TEST_RECORD_ID}/approve`)
+    expect(requestAt(approve).method).toBe('POST')
+    expect(requestAt(approve).headers.get('x-company-id')).toBe(TEST_COMPANY_ID)
+    expect(await requestAt(approve).json()).toEqual({})
+
+    const approveWithNote = fakeFetch(200, decided)
+    await sourceWith(approveWithNote).approve(TEST_COMPANY_ID, TEST_RECORD_ID, 'Checked against the statement')
+    expect(await requestAt(approveWithNote).json()).toEqual({ note: 'Checked against the statement' })
+
+    const reject = fakeFetch(200, { ...decided, approval: { id: TEST_FILTER_ID, decision: 'rejected' } })
+    await sourceWith(reject).reject(TEST_COMPANY_ID, TEST_RECORD_ID, 'Wrong statement month')
+    expect(urlOf(reject).pathname).toBe(`/api/v1/communications/${TEST_RECORD_ID}/reject`)
+    expect(requestAt(reject).headers.get('x-company-id')).toBe(TEST_COMPANY_ID)
+    expect(await requestAt(reject).json()).toEqual({ note: 'Wrong statement month' })
+  })
+
+  it('rethrows a refused approval with every deliverability blocker', async () => {
+    const fetch = fakeFetch(422, { statusCode: 422, error: 'Unprocessable Entity', message: ['The company WhatsApp account is not connected', 'WhatsApp template "statement" is not approved by Meta'], requestId: null })
+    await expect(sourceWith(fetch).approve(TEST_COMPANY_ID, TEST_RECORD_ID)).rejects.toMatchObject({
+      status: 422,
+      messages: ['The company WhatsApp account is not connected', 'WhatsApp template "statement" is not approved by Meta'],
+    })
+  })
 })
