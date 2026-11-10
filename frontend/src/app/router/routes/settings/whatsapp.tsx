@@ -1,9 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
-import { ScreenPlaceholder } from '@/components/layout'
-
+// Moved to Settings → Integrations → WhatsApp; old links keep working.
 export const Route = createFileRoute('/settings/whatsapp')({
-  component: function WhatsAppSettingsScreen() {
-    return <ScreenPlaceholder title="WhatsApp" description="Simulated WhatsApp Business connection for this company." />
+  beforeLoad: () => {
+    throw redirect({ to: '/settings/integrations/whatsapp', replace: true })
   },
 })

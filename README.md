@@ -285,9 +285,14 @@ if any are missing or invalid:
   schema declares, so the API never holds this key, and no service-role key is ever exposed to the browser.
 - `VITE_SUPABASE_ANON_KEY` (the public anon or publishable key) is the only Supabase key the browser receives.
 - WhatsApp access tokens are never stored in plain columns or in `.env.example`. Each company's
-  `whatsapp_accounts.access_token_reference` points to a secret the worker resolves: a variable in its own
+  `whatsapp_phone_numbers.access_token_reference` (one row per business number) points to a secret the worker resolves: a variable in its own
   environment (`secret://env/WHATSAPP_ACCESS_TOKEN_<COMPANY_ID_HEX_UPPERCASE>`) or a Supabase Vault secret
   (`secret://vault/<secret id>`). See `docs/security/README.md`.
+- Meta app settings (`WHATSAPP_APP_ID`, `WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID`, `WHATSAPP_APP_SECRET`,
+  `WHATSAPP_WEBHOOK_VERIFY_TOKEN`) are read by the API only and are optional; `ANTHROPIC_API_KEY` is read by the
+  worker only. The app secret, the verify token and the Anthropic key are secrets; the app id and Embedded
+  Signup configuration id are public and reach the browser through `GET /api/v1/integrations/whatsapp/capabilities`.
+  See `docs/integrations/whatsapp.md`.
 - `SMTP_*` and `SUPABASE_ACCESS_TOKEN` are operator-only: read by `pnpm auth:configure:remote`, never by the API,
   worker or browser. Auth emails go to each user's own address from `noreply@leaseguard.com`.
 - Never commit `.env`.

@@ -4,7 +4,7 @@ import type { Tables } from '../database/database.types'
 import type { ServiceRoleClientFactory } from '../database/service-role-client.factory'
 import { type AccessTokenReference, parseAccessTokenReference } from './access-token-reference'
 import { type AccessTokenAdapter, EnvAccessTokens, VaultAccessTokens } from './access-tokens'
-import { accountUnavailability, NOT_CONFIGURED } from './channel-readiness'
+import { accountUnavailability, defaultNumber, NOT_CONFIGURED } from './channel-readiness'
 import { WhatsAppClient, type WhatsAppClientOptions } from './whatsapp.client'
 import {
   type ChannelLookup,
@@ -16,14 +16,17 @@ import {
   WhatsAppChannels,
 } from './whatsapp-channels'
 
-type AccountRow = Pick<Tables<'whatsapp_accounts'>, 'id' | 'company_id' | 'phone_number_id' | 'access_token_reference' | 'connection_status'>
-const ACCOUNT_COLUMNS = 'id, company_id, phone_number_id, access_token_reference, connection_status'
+type AccountRow = Pick<
+  Tables<'whatsapp_phone_numbers'>,
+  'id' | 'company_id' | 'phone_number_id' | 'access_token_reference' | 'connection_status' | 'created_at'
+>
+const ACCOUNT_COLUMNS = 'id, company_id, phone_number_id, access_token_reference, connection_status, created_at'
 
 /** One credential adapter per reference kind: adding a kind fails to compile until it has one. */
 export type AccessTokenAdapters = Readonly<Record<AccessTokenReference['kind'], AccessTokenAdapter>>
 
 /**
- * WhatsAppChannels backed by `whatsapp_accounts` (read with the service role, so every query filters
+ * WhatsAppChannels backed by `whatsapp_phone_numbers` (read with the service role, so every query filters
  * by company or by the receiving number explicitly), the credential adapters and the Graph client.
  * Worker process only: it needs the service-role key.
  */
@@ -37,12 +40,13 @@ export class DatabaseWhatsAppChannels extends WhatsAppChannels {
   }
 
   async forCompany(companyId: EntityId, options: ChannelOptions = {}): Promise<ChannelLookup> {
-    let query = this.clients.get().from('whatsapp_accounts').select(ACCOUNT_COLUMNS).eq('company_id', companyId)
+    let query = this.clients.get().from('whatsapp_phone_numbers').select(ACCOUNT_COLUMNS).eq('company_id', companyId)
+    // A company holds a phone_number_id at most once, so naming one selects at most one row.
     if (options.phoneNumberId !== undefined) query = query.eq('phone_number_id', options.phoneNumberId)
-    // One account per company today (company_id is unique). A company with several numbers will need
-    // a default-number rule here; callers that name a number are unaffected.
-    const { data, error } = await query.maybeSingle()
+    const { data: rows, error } = await query
     if (error) throw new ChannelLookupError('Load WhatsApp account', error.code, error.message)
+    // Without a named number, the company's default number (channelReadiness applies the same rule).
+    const data = defaultNumber(rows ?? [])
     if (!data) {
       return options.phoneNumberId === undefined
         ? NOT_CONFIGURED
@@ -57,7 +61,7 @@ export class DatabaseWhatsAppChannels extends WhatsAppChannels {
     // number (migration 20261110100100). Pending rows for the same number are ignored.
     const { data, error } = await this.clients
       .get()
-      .from('whatsapp_accounts')
+      .from('whatsapp_phone_numbers')
       .select(ACCOUNT_COLUMNS)
       .eq('phone_number_id', phoneNumberId)
       .eq('connection_status', 'connected')

@@ -96,7 +96,7 @@ image.
   without dashes, in uppercase (for company `3ab0fc4a-eadb-50b8-bc4d-5673ada1519e`:
   `WHATSAPP_ACCESS_TOKEN_3AB0FC4AEADB50B8BC4D5673ADA1519E`; see
   `backend/src/infrastructure/whatsapp/access-token-reference.ts`). An env-form
-  `whatsapp_accounts.access_token_reference` must be exactly
+  `whatsapp_phone_numbers.access_token_reference` must be exactly
   `secret://env/WHATSAPP_ACCESS_TOKEN_<COMPANY ID>` for that same company. The other accepted form,
   `secret://vault/<secret id>`, names a Supabase Vault secret called
   `whatsapp_access_token:<company id>[:<suffix>]` and needs no worker variable or restart (see

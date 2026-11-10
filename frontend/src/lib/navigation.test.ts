@@ -49,6 +49,11 @@ describe('breadcrumbsFor', () => {
       { label: 'Settings', to: '/settings' },
       { label: 'Audit log' },
     ])
+    expect(breadcrumbsFor('/settings/integrations/whatsapp')).toEqual([
+      { label: 'Settings', to: '/settings' },
+      { label: 'Integrations', to: '/settings/integrations' },
+      { label: 'WhatsApp' },
+    ])
   })
 
   it('resolves record labels through resolvers keyed by parent segment', () => {

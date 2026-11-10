@@ -16,8 +16,8 @@ language sql security definer set search_path = '' as $$
   from auth.users where email = p_email
 $$;
 create table tests.ids as select
-  (select id from public.whatsapp_accounts where company_id = '20000000-0000-4000-8000-000000000001') as ns_account,
-  (select id from public.whatsapp_accounts where company_id = '20000000-0000-4000-8000-000000000002') as kp_account;
+  (select id from public.whatsapp_phone_numbers where company_id = '20000000-0000-4000-8000-000000000001') as ns_account,
+  (select id from public.whatsapp_phone_numbers where company_id = '20000000-0000-4000-8000-000000000002') as kp_account;
 create table tests.secrets (name text primary key, id uuid not null);
 insert into tests.secrets values
   ('ns', vault.create_secret('ns-token', 'whatsapp_access_token:20000000-0000-4000-8000-000000000001', '')),
@@ -30,7 +30,7 @@ grant select on tests.ids, tests.secrets to authenticated, service_role, anon;
 -- Points an account at a reference as the database owner (like the service role).
 create function tests.point(p_account uuid, p_reference text) returns void
 language sql as $$
-  update public.whatsapp_accounts set access_token_reference = p_reference where id = p_account
+  update public.whatsapp_phone_numbers set access_token_reference = p_reference where id = p_account
 $$;
 create function tests.vault_ref(p_secret text) returns text
 language sql as $$ select 'secret://vault/' || id from tests.secrets where name = p_secret $$;
@@ -73,7 +73,7 @@ select lives_ok(
   $$select tests.point((select ns_account from tests.ids), tests.vault_ref('ns'))$$,
   'the service role can point an account at a vault secret');
 select is(
-  (select access_token_reference from public.whatsapp_accounts where id = (select ns_account from tests.ids)),
+  (select access_token_reference from public.whatsapp_phone_numbers where id = (select ns_account from tests.ids)),
   tests.vault_ref('ns'), 'a vault reference is stored as given');
 select throws_ok(
   $$select tests.point((select ns_account from tests.ids), 'secret://vault/not-a-uuid')$$,
@@ -82,7 +82,7 @@ select lives_ok(
   $$select tests.point((select ns_account from tests.ids), 'secret://env/WHATSAPP_ACCESS_TOKEN_20000000000040008000000000000002')$$,
   'an env reference to another company is accepted but rewritten');
 select is(
-  (select access_token_reference from public.whatsapp_accounts where id = (select ns_account from tests.ids)),
+  (select access_token_reference from public.whatsapp_phone_numbers where id = (select ns_account from tests.ids)),
   'secret://env/WHATSAPP_ACCESS_TOKEN_20000000000040008000000000000001',
   'the env form is always the account''s own company''s variable');
 
@@ -91,18 +91,18 @@ select tests.point((select ns_account from tests.ids), tests.vault_ref('ns'));
 select set_config('request.jwt.claims', tests.claims('thandi.mokoena@nexussolution.co.za'), true);
 set local role authenticated;
 select lives_ok(
-  $$update public.whatsapp_accounts set display_name = 'Nexus Solution (Pty) Ltd' where id = (select ns_account from tests.ids)$$,
+  $$update public.whatsapp_phone_numbers set display_name = 'Nexus Solution (Pty) Ltd' where id = (select ns_account from tests.ids)$$,
   'an admin can edit display details of a vault-backed account');
 select throws_ok(
-  $$update public.whatsapp_accounts set access_token_reference = 'secret://vault/3f0c1a52-8d4e-4b7a-9c61-2e5d7f9a0b13'
+  $$update public.whatsapp_phone_numbers set access_token_reference = 'secret://vault/3f0c1a52-8d4e-4b7a-9c61-2e5d7f9a0b13'
     where id = (select ns_account from tests.ids)$$,
   '42501', null, 'an admin cannot point the account at a secret');
 select lives_ok(
-  $$update public.whatsapp_accounts set phone_number_id = 'phone-ns-2' where id = (select ns_account from tests.ids)$$,
+  $$update public.whatsapp_phone_numbers set phone_number_id = 'phone-ns-2' where id = (select ns_account from tests.ids)$$,
   'an admin can change the Meta identifiers');
 reset role;
 select is(
-  (select row(access_token_reference, connection_status::text)::text from public.whatsapp_accounts where id = (select ns_account from tests.ids)),
+  (select row(access_token_reference, connection_status::text)::text from public.whatsapp_phone_numbers where id = (select ns_account from tests.ids)),
   row(tests.vault_ref('ns'), 'pending_verification')::text,
   'admin edits keep the vault reference; new identifiers need verifying again');
 
@@ -171,29 +171,29 @@ insert into public.company_users (company_id, user_id, role, is_default)
 select set_config('request.jwt.claims', tests.claims('thandi.mokoena@nexussolution.co.za'), true);
 set local role authenticated;
 select lives_ok(
-  $$update public.whatsapp_accounts set phone_number_id = '109876543210987' where id = (select ns_account from tests.ids)$$,
+  $$update public.whatsapp_phone_numbers set phone_number_id = '109876543210987' where id = (select ns_account from tests.ids)$$,
   'an admin may enter any number; it stays an unverified claim');
 select lives_ok(
-  $$update public.whatsapp_accounts set phone_number_id = '109876543210987' where id = (select kp_account from tests.ids)$$,
+  $$update public.whatsapp_phone_numbers set phone_number_id = '109876543210987' where id = (select kp_account from tests.ids)$$,
   'another company can still configure that number while the claim is pending');
 reset role;
 set local role service_role;
 select lives_ok(
-  $$update public.whatsapp_accounts set connection_status = 'connected' where id = (select kp_account from tests.ids)$$,
+  $$update public.whatsapp_phone_numbers set connection_status = 'connected' where id = (select kp_account from tests.ids)$$,
   'the service role can verify the real owner despite the pending claim');
 select throws_ok(
-  $$update public.whatsapp_accounts set connection_status = 'connected' where id = (select ns_account from tests.ids)$$,
+  $$update public.whatsapp_phone_numbers set connection_status = 'connected' where id = (select ns_account from tests.ids)$$,
   '23505', null, 'two connected accounts can never hold the same receiving number');
 -- The webhook's lookup (DatabaseWhatsAppChannels.forReceivingNumber) trusts connected rows only.
 select is(
-  (select array_agg(company_id) from public.whatsapp_accounts
+  (select array_agg(company_id) from public.whatsapp_phone_numbers
    where phone_number_id = '109876543210987' and connection_status = 'connected'),
   array['20000000-0000-4000-8000-000000000002'::uuid],
   'the receiving number resolves to the verified owner only, never to the pending claimant');
 reset role;
 select is(
-  (select count(*) from pg_indexes where schemaname = 'public' and tablename = 'whatsapp_accounts'
-   and indexdef like 'CREATE UNIQUE INDEX % ON public.whatsapp_accounts USING btree (phone_number_id) WHERE (connection_status = ''connected''::%'),
+  (select count(*) from pg_indexes where schemaname = 'public' and tablename = 'whatsapp_phone_numbers'
+   and indexdef like 'CREATE UNIQUE INDEX % ON public.whatsapp_phone_numbers USING btree (phone_number_id) WHERE (connection_status = ''connected''::%'),
   1::bigint, 'connected receiving numbers are unique, and the index serves the webhook''s lookup');
 
 select * from finish();

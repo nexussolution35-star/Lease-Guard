@@ -86,7 +86,7 @@ function check(world: World = {}, options: OutboundCheckOptions = {}): Promise<O
       message_approvals: world.approvals ?? [approved],
       tenants: [...(world.tenant === null ? [] : [{ ...tenant, ...world.tenant }]), { ...tenant, company_id: OTHER_COMPANY, whatsapp_opted_out: true }],
       payment_arrangements: [...(world.arrangements ?? []), { ...activeArrangement, id: 'arr-other', company_id: OTHER_COMPANY }],
-      whatsapp_accounts: [...(world.account === null ? [] : [{ ...connected, ...world.account }]), { company_id: OTHER_COMPANY, connection_status: 'disconnected' }],
+      whatsapp_phone_numbers: [...(world.account === null ? [] : [{ ...connected, ...world.account }]), { company_id: OTHER_COMPANY, connection_status: 'disconnected' }],
       message_templates: world.templates ?? [template, { ...template, company_id: OTHER_COMPANY, approval_status: 'rejected' }],
       profiles: world.profile === null ? [] : [{ ...ownerProfile, ...world.profile }],
       company_users: world.memberships ?? [ownerMembership, { ...ownerMembership, company_id: OTHER_COMPANY, role: 'read_only' }],
@@ -289,7 +289,7 @@ describe('checkOutbound: blockers', () => {
 })
 
 describe('checkOutbound: failed reads', () => {
-  it.each(['communications', 'tenants', 'payment_arrangements', 'whatsapp_accounts'])('throws MessagingReadError when %s cannot be read', async (table) => {
+  it.each(['communications', 'tenants', 'payment_arrangements', 'whatsapp_phone_numbers'])('throws MessagingReadError when %s cannot be read', async (table) => {
     const failure = check({ failing: { [table]: { code: 'PGRST000', message: 'connection refused' } } })
     await expect(failure).rejects.toBeInstanceOf(MessagingReadError)
     await expect(failure).rejects.toMatchObject({ databaseError: { code: 'PGRST000' } })

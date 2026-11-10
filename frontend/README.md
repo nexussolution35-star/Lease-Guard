@@ -116,7 +116,10 @@ Vite reads the single repository-root `.env` (`envDir` is the repository root; s
 | `VITE_SUPABASE_ANON_KEY` | yes | Public anon key (RLS applies) |
 
 An invalid configuration renders a startup error screen listing the problems; nothing else loads. A
-`VITE_*` variable holding a Supabase secret or service-role key stops both the build and startup. Other
+`VITE_*` variable holding a server-only secret stops both the build and startup: a Supabase secret or
+service-role key, a `VITE_` copy of a server-only setting (`WHATSAPP_APP_SECRET`,
+`WHATSAPP_WEBHOOK_VERIFY_TOKEN`, `ANTHROPIC_API_KEY`, `WHATSAPP_ACCESS_TOKEN*`), an Anthropic-shaped key, or
+(at build time) a value equal to one of those server settings. Other
 `VITE_*` variables (for example a leftover `VITE_DATA_SOURCE`) are ignored. Unit tests use fixed,
 unreachable endpoints (`test.env` in `vite.config.ts`) and fake the API client; they never read `.env`.
 

@@ -9,7 +9,7 @@ import {
   type SAProvince,
   type CompanySettings,
   type CompanyStatus,
-  type WhatsAppAccountConfig,
+  type WhatsAppSummary,
   type WhatsAppConnectionStatus,
   type Weekday,
 } from '@leaseguard/domain'
@@ -22,18 +22,18 @@ import { assertSchemaMatchesDto } from '../../../common/pipes/zod-validation.pip
 import type { CompanySummary } from '../companies.mapper'
 import type { configureWhatsAppBodySchema, updateCompanyBodySchema } from '../companies.schemas'
 
-/** Non-secret WhatsApp Business references. Same shape as the domain `WhatsAppAccountConfig`. */
-export class WhatsAppAccountConfigDto implements WhatsAppAccountConfig {
-  @ApiProperty({ description: 'Empty when WhatsApp is not configured' }) businessAccountId!: string
-  @ApiProperty({ description: 'Empty when WhatsApp is not configured' }) phoneNumberId!: string
-  @ApiProperty() displayName!: string
-  @ApiProperty({ description: 'Number shown to tenants, e.g. +27 11 555 0100' }) displayNumber!: string
-  @ApiProperty({ description: 'Opaque reference to the server-side secret; never the token itself' })
-  accessTokenReference!: string
-  @ApiProperty() webhookConfigured!: boolean
-  @ApiProperty({ enum: WHATSAPP_CONNECTION_STATUSES, enumName: 'WhatsAppConnectionStatus' })
+/** The company's WhatsApp numbers at a glance. Same shape as the domain `WhatsAppSummary`. */
+export class WhatsAppSummaryDto implements WhatsAppSummary {
+  @ApiProperty({
+    enum: WHATSAPP_CONNECTION_STATUSES,
+    enumName: 'WhatsAppConnectionStatus',
+    description:
+      'connected when the company has a connected number to send from; otherwise the status of its earliest number; ' +
+      'not_configured without numbers. Details: GET /integrations/whatsapp/business-accounts',
+  })
   connectionStatus!: WhatsAppConnectionStatus
-  @ApiPropertyOptional({ format: 'date-time' }) lastVerifiedAt?: string
+  @ApiProperty({ minimum: 0 }) numberCount!: number
+  @ApiProperty({ minimum: 0 }) connectedNumberCount!: number
 }
 
 type PaymentReminderOffsets = CompanySettings['paymentReminderOffsetsDays']
@@ -74,7 +74,7 @@ export class CompanyDto implements Company {
   @ApiProperty() contactPhone!: string
   @ApiProperty({ enum: COMPANY_STATUSES, enumName: 'CompanyStatus' }) status!: CompanyStatus
   @ApiProperty({ pattern: '^[A-Z]{2}$', description: 'Initials shown in the workspace switcher' }) initials!: string
-  @ApiProperty({ type: WhatsAppAccountConfigDto }) whatsapp!: WhatsAppAccountConfigDto
+  @ApiProperty({ type: WhatsAppSummaryDto }) whatsapp!: WhatsAppSummaryDto
   @ApiProperty({ type: CompanySettingsDto }) settings!: CompanySettingsDto
   @ApiProperty({ format: 'date-time' }) createdAt!: string
   @ApiProperty({ format: 'date-time' }) updatedAt!: string
@@ -132,6 +132,11 @@ export class UpdateCompanyDto {
 
 /** Body of PUT /companies/:companyId/whatsapp. */
 export class ConfigureWhatsAppDto {
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: "LeaseGuard id of the company's number to correct (e.g. a mistyped phone number id). Omit to add a number.",
+  })
+  numberId?: string
   @ApiProperty({ pattern: '^[0-9]{5,32}$', description: 'WhatsApp Business Account id (Meta)' }) businessAccountId!: string
   @ApiProperty({ pattern: '^[0-9]{5,32}$', description: 'Phone number id (Meta)' }) phoneNumberId!: string
   @ApiProperty({ minLength: 1, maxLength: 100 }) displayName!: string
@@ -142,8 +147,8 @@ export class ConfigureWhatsAppDto {
 export class OnboardingChecklistDto implements OnboardingChecklist {
   @ApiProperty({ format: 'uuid' }) companyId!: string
   @ApiProperty({ description: 'Name, address and contact details are filled in (required)' }) companyDetails!: boolean
-  @ApiProperty({ description: 'WhatsApp Business identifiers are configured (required)' }) whatsappConfigured!: boolean
-  @ApiProperty({ description: 'Nexus verified the WhatsApp connection (required)' }) whatsappConnected!: boolean
+  @ApiProperty({ description: 'The company has at least one WhatsApp number (required)' }) whatsappConfigured!: boolean
+  @ApiProperty({ description: 'At least one WhatsApp number is verified and connected (required)' }) whatsappConnected!: boolean
   @ApiProperty({ description: 'More than one member, or any invitation (recommended, not required)' }) teamInvited!: boolean
   @ApiProperty({ description: 'At least one property exists (required)' }) propertyAdded!: boolean
   @ApiProperty({ description: 'At least one lease is verified (required)' }) leaseVerified!: boolean

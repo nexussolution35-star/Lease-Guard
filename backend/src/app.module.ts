@@ -23,6 +23,7 @@ import { StatementsModule } from './modules/statements/statements.module'
 import { TenantsModule } from './modules/tenants/tenants.module'
 import { UnitsModule } from './modules/units/units.module'
 import { UsersModule } from './modules/users/users.module'
+import { WhatsAppIntegrationModule } from './modules/whatsapp-integration/whatsapp-integration.module'
 
 /** Root module of the HTTP API process. */
 @Module({})
@@ -49,6 +50,7 @@ export class AppModule {
         MonitoringModule,
         ArrangementsModule,
         CommunicationsModule,
+        WhatsAppIntegrationModule,
         NotificationsModule,
         AuditModule,
       ],

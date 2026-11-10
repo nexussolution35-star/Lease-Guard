@@ -75,9 +75,14 @@ export const updateCompanyBodySchema = z
   )
 export type UpdateCompanyBody = z.infer<typeof updateCompanyBodySchema>
 
-/** Body of PUT /companies/:companyId/whatsapp: the Meta identifiers and display fields. */
+/**
+ * Body of PUT /companies/:companyId/whatsapp: the Meta identifiers and display fields. With `numberId`
+ * (a number's LeaseGuard id) it corrects that number, including its phone number or business account
+ * id; without it, it adds a number or updates the company's number with the same phone number id.
+ */
 export const configureWhatsAppBodySchema = z
   .object({
+    numberId: z.uuid().optional(),
     businessAccountId: z.string().trim().regex(/^[0-9]{5,32}$/, 'must be the numeric WhatsApp Business Account id'),
     phoneNumberId: z.string().trim().regex(/^[0-9]{5,32}$/, 'must be the numeric phone number id'),
     displayName: requiredText(100),

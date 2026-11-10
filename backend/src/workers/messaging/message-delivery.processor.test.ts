@@ -58,7 +58,7 @@ interface Options {
   tenant?: Record<string, unknown>
   approvals?: unknown[]
   arrangements?: unknown[]
-  /** The company's whatsapp_accounts row as the outbound gate reads it; defaults to connected. */
+  /** The company's whatsapp_phone_numbers row as the outbound gate reads it; defaults to connected. */
   account?: Record<string, unknown>
   /** The company's channel, when it is not the default available one. */
   channel?: Pick<FakeChannelOptions, 'unavailable' | 'lookupError'>
@@ -105,7 +105,7 @@ function harness(options: Options = {}) {
         tenants: [{ ...tenantRow, ...options.tenant }],
         payment_arrangements: options.arrangements ?? [],
         properties: [{ manager_user_id: MANAGER }],
-        whatsapp_accounts: [options.account ?? { connection_status: 'connected' }],
+        whatsapp_phone_numbers: [options.account ?? { connection_status: 'connected' }],
       },
     }),
   )

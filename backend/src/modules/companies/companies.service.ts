@@ -5,24 +5,25 @@ import {
   type Company,
   type EntityId,
   type OnboardingChecklist,
-  type WhatsAppAccountConfig,
+  type WhatsAppPhoneNumber,
 } from '@leaseguard/domain'
 
 import { httpErrorFromDatabase, unwrapDatabase, type DatabaseErrorLike } from '../../common/http/database-errors'
 import type { CompanyContext } from '../../common/request-context'
 import type { TablesInsert, TablesUpdate } from '../../infrastructure/database/database.types'
 import type { DbClient } from '../../infrastructure/database/rls-client.factory'
-import { toCompany, toWhatsAppAccountConfig, type CompanyRow, type WhatsAppAccountRow } from './companies.mapper'
+import { NUMBER_COLUMNS, toWhatsAppPhoneNumber } from '../whatsapp-integration/whatsapp-numbers.mapper'
+import { toCompany, WHATSAPP_SUMMARY_COLUMNS, type CompanyRow, type WhatsAppSummaryRow } from './companies.mapper'
 import type { ConfigureWhatsAppBody, UpdateCompanyBody } from './companies.schemas'
 
 /**
- * Company columns, its WhatsApp account (one-to-one, may be absent) and the caller's membership row.
- * The inner join on `company_users` restricts results to companies the caller belongs to explicitly,
- * in addition to Row Level Security (which also requires an active profile).
+ * Company columns, the summary columns of its WhatsApp numbers (never the credential reference) and the
+ * caller's membership row. The inner join on `company_users` restricts results to companies the caller
+ * belongs to explicitly, in addition to Row Level Security (which also requires an active profile).
  */
-const COMPANY_SELECT = '*, whatsapp_accounts(*), company_users!inner(user_id)'
+const COMPANY_SELECT = `*, whatsapp_phone_numbers(${WHATSAPP_SUMMARY_COLUMNS}), company_users!inner(user_id)`
 
-type CompanyQueryRow = CompanyRow & { whatsapp_accounts: WhatsAppAccountRow | null }
+type CompanyQueryRow = CompanyRow & { whatsapp_phone_numbers: WhatsAppSummaryRow[] | null }
 
 /** The companies columns a company_admin may update (the database's column grants). */
 type CompanyProfilePatch = Pick<
@@ -49,14 +50,14 @@ type CompanyProfilePatch = Pick<
   | 'owner_summary_weekday'
 >
 
-/** The whatsapp_accounts columns a company_admin may write (the database's column grants). */
-type WhatsAppAccountInput = Pick<
-  TablesInsert<'whatsapp_accounts'>,
+/** The whatsapp_phone_numbers columns a company_admin may write (the database's column grants). */
+type WhatsAppNumberInput = Pick<
+  TablesInsert<'whatsapp_phone_numbers'>,
   'company_id' | 'business_account_id' | 'phone_number_id' | 'display_name' | 'display_number'
 >
 
-function fromQueryRow({ whatsapp_accounts, ...row }: CompanyQueryRow & { company_users: unknown }): Company {
-  return toCompany(row, whatsapp_accounts)
+function fromQueryRow({ whatsapp_phone_numbers, ...row }: CompanyQueryRow & { company_users: unknown }): Company {
+  return toCompany(row, whatsapp_phone_numbers ?? [])
 }
 
 /** Request body (only the fields given) → the granted company columns. */
@@ -151,33 +152,50 @@ export class CompaniesService {
   }
 
   /**
-   * Creates or replaces the company's WhatsApp Business identifiers (company admins). The database sets
-   * the access-token reference, and a new account or changed Meta ids start at `pending_verification`
-   * until the worker verifies the connection.
+   * Adds a number by its Meta identifiers, or updates the company's number with that phone number id
+   * (company admins). With `numberId` it corrects that number of the company instead (e.g. a mistyped
+   * phone number or business account id), so a typo never leaves a second number behind; 404 when the
+   * company has no such number. The database records its WhatsApp Business Account (and removes an
+   * account the correction emptied), sets the access-token reference, and starts a new number (or
+   * changed Meta ids) at `pending_verification` until the worker verifies it. Returns the number without
+   * the credential reference.
    */
-  async configureWhatsApp(db: DbClient, companyId: EntityId, body: ConfigureWhatsAppBody): Promise<WhatsAppAccountConfig> {
-    const account: WhatsAppAccountInput = {
-      company_id: companyId,
+  async configureWhatsApp(db: DbClient, companyId: EntityId, body: ConfigureWhatsAppBody): Promise<WhatsAppPhoneNumber> {
+    const fields: Omit<WhatsAppNumberInput, 'company_id'> = {
       business_account_id: body.businessAccountId,
       phone_number_id: body.phoneNumberId,
       display_name: body.displayName,
       display_number: body.displayNumber,
     }
+    if (body.numberId !== undefined) {
+      const corrected = unwrapDatabase(
+        await db
+          .from('whatsapp_phone_numbers')
+          .update(fields)
+          .eq('id', body.numberId)
+          .eq('company_id', companyId)
+          .select(NUMBER_COLUMNS)
+          .maybeSingle(),
+        'Correct WhatsApp number',
+      )
+      return toWhatsAppPhoneNumber(corrected)
+    }
+    const number: WhatsAppNumberInput = { company_id: companyId, ...fields }
     const row = unwrapDatabase(
       await db
-        .from('whatsapp_accounts')
+        .from('whatsapp_phone_numbers')
         // access_token_reference is NOT NULL without a default, so the generated Insert type requires it,
         // but signed-in users have no grant on it: the prepare_account trigger always sets it.
-        .upsert(account as TablesInsert<'whatsapp_accounts'>, { onConflict: 'company_id' })
-        .select('*')
+        .upsert(number as TablesInsert<'whatsapp_phone_numbers'>, { onConflict: 'company_id,phone_number_id' })
+        .select(NUMBER_COLUMNS)
         .single(),
       'Configure WhatsApp',
-      // No receiving-number conflict can reach an admin: only connected accounts must hold distinct
-      // numbers (migration 20261110100100), and an admin's write either keeps the account's verified
-      // number or sends it back to pending verification. So configuring never reveals which numbers
-      // other companies hold.
+      // No receiving-number conflict can reach an admin: only connected numbers must be distinct across
+      // companies (migration 20261110100100), and an admin's write either keeps the number's verified
+      // identifiers or sends it back to pending verification. So configuring never reveals which
+      // numbers other companies hold.
     )
-    return toWhatsAppAccountConfig(row)
+    return toWhatsAppPhoneNumber(row)
   }
 
   /**
@@ -188,7 +206,7 @@ export class CompaniesService {
     const count = { count: 'exact', head: true } as const
     const [company, whatsapp, members, invitations, properties, verifiedLeases, statements] = await Promise.all([
       db.from('companies').select('*').eq('id', companyId).maybeSingle(),
-      db.from('whatsapp_accounts').select('connection_status').eq('company_id', companyId).maybeSingle(),
+      db.from('whatsapp_phone_numbers').select('connection_status').eq('company_id', companyId),
       db.from('company_users').select('user_id', count).eq('company_id', companyId),
       db.from('company_invitations').select('id', count).eq('company_id', companyId),
       db.from('properties').select('id', count).eq('company_id', companyId),
@@ -200,9 +218,9 @@ export class CompaniesService {
     if (whatsapp.error) throw httpErrorFromDatabase(whatsapp.error, 'Get WhatsApp account for onboarding')
 
     return onboardingChecklist(companyId, {
-      companyDetails: hasCompanyDetails(toCompany(company.data, null)),
-      whatsappConfigured: whatsapp.data !== null,
-      whatsappConnected: whatsapp.data?.connection_status === 'connected',
+      companyDetails: hasCompanyDetails(toCompany(company.data, [])),
+      whatsappConfigured: (whatsapp.data ?? []).length > 0,
+      whatsappConnected: (whatsapp.data ?? []).some((number) => number.connection_status === 'connected'),
       teamInvited: countOf(members, 'Count members') > 1 || countOf(invitations, 'Count invitations') > 0,
       propertyAdded: countOf(properties, 'Count properties') > 0,
       leaseVerified: countOf(verifiedLeases, 'Count verified leases') > 0,

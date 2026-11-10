@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import path from 'node:path'
 
-import { exposedSecretsMessage, findExposedSecrets } from './src/services/api/exposedSecrets.ts'
+import { exposedSecretsMessage, findExposedSecrets, SERVER_ONLY_SETTINGS } from './src/services/api/exposedSecrets.ts'
 
 // Workspace packages publish TypeScript source under this export condition,
 // so the frontend compiles them directly without a separate build step.
@@ -17,8 +17,10 @@ const ENV_DIR = path.resolve(import.meta.dirname, '..')
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  // Refuse to serve or build when a VITE_* variable holds a Supabase secret: it would be bundled.
-  const exposed = findExposedSecrets(loadEnv(mode, ENV_DIR, 'VITE_'))
+  // Refuse to serve or build when a VITE_* variable holds a server-only secret: it would be bundled. The
+  // server-only settings are loaded here only to compare values; they never reach the bundle.
+  const serverSecrets = loadEnv(mode, ENV_DIR, [...SERVER_ONLY_SETTINGS])
+  const exposed = findExposedSecrets(loadEnv(mode, ENV_DIR, 'VITE_'), serverSecrets)
   if (exposed.length > 0) throw new Error(`Refusing to start: ${exposedSecretsMessage(exposed)}`)
 
   return {

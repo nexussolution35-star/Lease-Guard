@@ -16,6 +16,13 @@ const queuePrefix = z.string().regex(/^[a-z0-9_-]+$/i, 'letters, digits, "-" and
 // Storage bucket ids as created by supabase/migrations/*_storage.sql.
 const bucketId = z.string().regex(/^[a-z0-9][a-z0-9-]{1,62}$/, 'lowercase letters, digits and "-"')
 
+/** An optional setting: unset, empty and blank all mean "not configured" (.env.example ships them empty). */
+const optionalSetting = <T extends z.ZodType<string | undefined>>(schema: T) =>
+  z.preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), schema.optional())
+const optionalText = optionalSetting(z.string())
+/** Meta object ids (app, configuration) are numeric. */
+const optionalMetaId = optionalSetting(z.string().trim().regex(/^[0-9]{1,32}$/, 'a numeric Meta id'))
+
 const sharedSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']),
   LOG_LEVEL: z.enum(LOG_LEVELS),
@@ -36,6 +43,16 @@ const apiEnvSchema = sharedSchema.extend({
     .pipe(z.array(z.url()).min(1)),
   /** May be empty until the local Supabase stack is started; the API then reports itself not ready. */
   SUPABASE_ANON_KEY: z.string(),
+  /**
+   * Meta app (WhatsApp Tech Provider) settings. All optional, so local development works without Meta:
+   * GET /integrations/whatsapp/capabilities reports which are missing. The app id and the Embedded
+   * Signup configuration id are public (the browser passes them to the Facebook SDK); the app secret
+   * (code exchange, webhook signatures) and the webhook verify token stay on the API.
+   */
+  WHATSAPP_APP_ID: optionalMetaId,
+  WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID: optionalMetaId,
+  WHATSAPP_APP_SECRET: optionalText,
+  WHATSAPP_WEBHOOK_VERIFY_TOKEN: optionalText,
 })
 
 const workerEnvSchema = sharedSchema
@@ -48,6 +65,8 @@ const workerEnvSchema = sharedSchema
     /** Meta Graph API base URL and version used to send WhatsApp messages. */
     WHATSAPP_GRAPH_API_URL: z.url({ protocol: /^https$/ }),
     WHATSAPP_GRAPH_API_VERSION: z.string().regex(/^v\d+\.\d+$/, 'a Graph API version such as v23.0'),
+    /** Anthropic API key for the AI agent runtime. Optional; worker only (the API never loads it). */
+    ANTHROPIC_API_KEY: optionalText,
     /**
      * Public URL of the web app (origin plus optional base path, no trailing slash needed). Invitation
      * emails link to `${WEB_APP_URL}/auth/accept?invitation=<id>`, which the Supabase Auth redirect allow-list must

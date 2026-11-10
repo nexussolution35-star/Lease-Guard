@@ -55,9 +55,42 @@ describe('loadApiEnv', () => {
     expect(load).toThrow(/SUPABASE_ANON_KEY: missing/)
     expect(load).toThrow(/REDIS_URL: /)
   })
+
+  const api = { ...shared, API_PORT: '3000', API_CORS_ORIGINS: 'http://localhost:5173', SUPABASE_ANON_KEY: '' }
+
+  it('starts without Meta settings: each one is optional, and blank means unset', () => {
+    const env = loadApiEnv({ ...api, WHATSAPP_APP_ID: '', WHATSAPP_APP_SECRET: '  ', WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID: '' })
+    expect(env.WHATSAPP_APP_ID).toBeUndefined()
+    expect(env.WHATSAPP_APP_SECRET).toBeUndefined()
+    expect(env.WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID).toBeUndefined()
+    expect(env.WHATSAPP_WEBHOOK_VERIFY_TOKEN).toBeUndefined()
+  })
+
+  it('reads the Meta app settings the API needs, requiring numeric Meta ids', () => {
+    const env = loadApiEnv({
+      ...api,
+      WHATSAPP_APP_ID: ' 1234567890123456 ',
+      WHATSAPP_APP_SECRET: 'app-secret',
+      WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID: '987654321098765',
+      WHATSAPP_WEBHOOK_VERIFY_TOKEN: 'verify-token',
+    })
+    expect(env).toMatchObject({
+      WHATSAPP_APP_ID: '1234567890123456',
+      WHATSAPP_APP_SECRET: 'app-secret',
+      WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID: '987654321098765',
+      WHATSAPP_WEBHOOK_VERIFY_TOKEN: 'verify-token',
+    })
+    expect(() => loadApiEnv({ ...api, WHATSAPP_APP_ID: 'my-app' })).toThrow(/WHATSAPP_APP_ID: /)
+    expect(() => loadApiEnv({ ...api, WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID: 'abc' })).toThrow(/WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID: /)
+  })
 })
 
 describe('loadWorkerEnv', () => {
+  it('reads the optional Anthropic API key; blank means unset', () => {
+    expect(loadWorkerEnv({ ...worker, ANTHROPIC_API_KEY: ' ' }).ANTHROPIC_API_KEY).toBeUndefined()
+    expect(loadWorkerEnv({ ...worker, ANTHROPIC_API_KEY: 'sk-ant-test' }).ANTHROPIC_API_KEY).toBe('sk-ant-test')
+  })
+
   it('does not require API-only variables', () => {
     const env = loadWorkerEnv(worker)
     expect(env.QUEUE_PREFIX).toBe('leaseguard')
@@ -132,6 +165,15 @@ describe('loadEnvFileKeys', () => {
     const api: NodeJS.ProcessEnv = {}
     loadEnvFileKeys(tokens, API_ENV_KEYS, api)
     expect(api).toEqual({})
+  })
+
+  it('loads the Meta app secret and verify token into the API only, and the Anthropic key into the worker only', () => {
+    for (const key of ['WHATSAPP_APP_ID', 'WHATSAPP_APP_SECRET', 'WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID', 'WHATSAPP_WEBHOOK_VERIFY_TOKEN']) {
+      expect(API_ENV_KEYS).toContain(key)
+      expect(WORKER_ENV_KEYS).not.toContain(key)
+    }
+    expect(WORKER_ENV_KEYS).toContain('ANTHROPIC_API_KEY')
+    expect(API_ENV_KEYS).not.toContain('ANTHROPIC_API_KEY')
   })
 
   it('ignores a missing file', () => {

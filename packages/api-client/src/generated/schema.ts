@@ -276,8 +276,8 @@ export interface paths {
         };
         get?: never;
         /**
-         * Set the company's WhatsApp Business identifiers (company admins)
-         * @description Creates or replaces the configuration. The access token is never sent through the API: the reference is set by the server, and a new account or changed Meta ids are pending verification until Nexus verifies the connection. The path must name the active company (X-Company-Id).
+         * Add a WhatsApp number by its Meta identifiers, or update it (company admins)
+         * @description Adds the number, or updates the company's number with the same phone number id; its WhatsApp Business Account is recorded with it. With numberId it corrects that number of the company instead (e.g. a mistyped phone number or business account id; 404 when the company has no such number), and a business account the correction leaves without numbers is removed. The access token is never sent through the API: the reference is set by the server, and a new number or changed Meta ids are pending verification until LeaseGuard verifies them. The response never includes the credential reference. The path must name the active company (X-Company-Id).
          */
         put: operations["configureWhatsApp"];
         post?: never;
@@ -746,6 +746,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/whatsapp/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whether Embedded Signup, the webhook and the AI agent runtime are configured
+         * @description Public-safe: flags, the public Meta app and Embedded Signup configuration ids, and the names (never values) of missing settings with the process that reads each. Configured here does not mean Meta has approved the app; Meta Business Verification, App Review and Advanced Access are outside LeaseGuard and not reported.
+         */
+        get: operations["getWhatsAppCapabilities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/whatsapp/business-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The active company's WhatsApp Business Accounts with their numbers and status
+         * @description Every member of the company may read them. Statuses are recorded by LeaseGuard after verifying with Meta.
+         */
+        get: operations["listWhatsAppBusinessAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/notifications": {
         parameters: {
             query?: never;
@@ -1033,22 +1073,16 @@ export interface components {
             /** @enum {string} */
             country: "South Africa";
         };
-        /** @enum {string} */
+        /**
+         * @description connected when the company has a connected number to send from; otherwise the status of its earliest number; not_configured without numbers. Details: GET /integrations/whatsapp/business-accounts
+         * @enum {string}
+         */
         WhatsAppConnectionStatus: "not_configured" | "pending_verification" | "connected" | "disconnected" | "error";
-        WhatsAppAccountConfigDto: {
-            /** @description Empty when WhatsApp is not configured */
-            businessAccountId: string;
-            /** @description Empty when WhatsApp is not configured */
-            phoneNumberId: string;
-            displayName: string;
-            /** @description Number shown to tenants, e.g. +27 11 555 0100 */
-            displayNumber: string;
-            /** @description Opaque reference to the server-side secret; never the token itself */
-            accessTokenReference: string;
-            webhookConfigured: boolean;
+        WhatsAppSummaryDto: {
+            /** @description connected when the company has a connected number to send from; otherwise the status of its earliest number; not_configured without numbers. Details: GET /integrations/whatsapp/business-accounts */
             connectionStatus: components["schemas"]["WhatsAppConnectionStatus"];
-            /** Format: date-time */
-            lastVerifiedAt?: string;
+            numberCount: number;
+            connectedNumberCount: number;
         };
         PaymentReminderOffsetsDto: {
             /** @description Days after the statement date */
@@ -1088,7 +1122,7 @@ export interface components {
             status: components["schemas"]["CompanyStatus"];
             /** @description Initials shown in the workspace switcher */
             initials: string;
-            whatsapp: components["schemas"]["WhatsAppAccountConfigDto"];
+            whatsapp: components["schemas"]["WhatsAppSummaryDto"];
             settings: components["schemas"]["CompanySettingsDto"];
             /** Format: date-time */
             createdAt: string;
@@ -1128,6 +1162,11 @@ export interface components {
             settings?: components["schemas"]["UpdateCompanySettingsDto"];
         };
         ConfigureWhatsAppDto: {
+            /**
+             * Format: uuid
+             * @description LeaseGuard id of the company's number to correct (e.g. a mistyped phone number id). Omit to add a number.
+             */
+            numberId?: string;
             /** @description WhatsApp Business Account id (Meta) */
             businessAccountId: string;
             /** @description Phone number id (Meta) */
@@ -1136,14 +1175,42 @@ export interface components {
             /** @description Number shown to tenants, e.g. +27 11 555 0100 */
             displayNumber: string;
         };
+        WhatsAppPhoneNumberDto: {
+            /** Format: uuid */
+            id: string;
+            /** @description Meta id of the WhatsApp Business Account the number belongs to */
+            businessAccountId: string;
+            /** @description Meta phone number id (the receiving number of inbound messages) */
+            phoneNumberId: string;
+            displayName: string;
+            /** @description International number, e.g. +27 11 555 0100 */
+            displayNumber: string;
+            /** @description Meta's verified display name */
+            verifiedName?: string;
+            /** @description Meta's quality rating, e.g. GREEN */
+            qualityRating?: string;
+            /** @description Meta's code verification status, e.g. VERIFIED */
+            codeVerificationStatus?: string;
+            /** @description Meta's display-name review status, e.g. APPROVED */
+            nameStatus?: string;
+            /** @description Meta's own status of the number, e.g. CONNECTED */
+            metaStatus?: string;
+            webhookConfigured: boolean;
+            /** @description connected only after LeaseGuard verified the number with Meta */
+            connectionStatus: components["schemas"]["WhatsAppConnectionStatus"];
+            /** Format: date-time */
+            lastVerifiedAt?: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
         OnboardingChecklistDto: {
             /** Format: uuid */
             companyId: string;
             /** @description Name, address and contact details are filled in (required) */
             companyDetails: boolean;
-            /** @description WhatsApp Business identifiers are configured (required) */
+            /** @description The company has at least one WhatsApp number (required) */
             whatsappConfigured: boolean;
-            /** @description Nexus verified the WhatsApp connection (required) */
+            /** @description At least one WhatsApp number is verified and connected (required) */
             whatsappConnected: boolean;
             /** @description More than one member, or any invitation (recommended, not required) */
             teamInvited: boolean;
@@ -1931,6 +1998,56 @@ export interface components {
             note: string;
         };
         /** @enum {string} */
+        WhatsAppCapability: "embedded_signup" | "webhook" | "agent_runtime";
+        /**
+         * @description The LeaseGuard process that reads the setting
+         * @enum {string}
+         */
+        SettingProcess: "api" | "worker";
+        MissingSettingDto: {
+            capability: components["schemas"]["WhatsAppCapability"];
+            /**
+             * @description Name of the environment setting (never its value)
+             * @example WHATSAPP_APP_SECRET
+             */
+            setting: string;
+            /** @description The LeaseGuard process that reads the setting */
+            process: components["schemas"]["SettingProcess"];
+        };
+        WhatsAppCapabilitiesDto: {
+            /** @description The API has the Meta app id, Embedded Signup configuration id and app secret */
+            embeddedSignupConfigured: boolean;
+            /** @description The API has the Meta app secret and the webhook verify token */
+            webhookConfigured: boolean;
+            /** @description The worker reported an Anthropic API key for the AI agent runtime (false while no worker is reporting) */
+            agentRuntimeConfigured: boolean;
+            /** @description A worker reported within the last few minutes. When false the agent runtime status is unknown and ANTHROPIC_API_KEY is not listed as missing */
+            workerReporting: boolean;
+            /** @description Public Meta app id, for the Facebook JavaScript SDK */
+            appId?: string;
+            /** @description Public Embedded Signup (Facebook Login for Business) configuration id */
+            embeddedSignupConfigId?: string;
+            /**
+             * Format: date-time
+             * @description When the worker last reported; absent when no worker has reported recently
+             */
+            workerReportedAt?: string;
+            /** @description Settings still needed, by capability */
+            missing: components["schemas"]["MissingSettingDto"][];
+        };
+        WhatsAppBusinessAccountDto: {
+            /** Format: uuid */
+            id: string;
+            /** @description Meta id of the WhatsApp Business Account */
+            businessAccountId: string;
+            /** @description Name Meta reports for the account */
+            name?: string;
+            /** @description Oldest first */
+            numbers: components["schemas"]["WhatsAppPhoneNumberDto"][];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        /** @enum {string} */
         NotificationSortField: "createdAt";
         /** @enum {string} */
         NotificationType: "monitoring_event" | "statement_review" | "approval_request" | "arrangement" | "message_failed" | "system";
@@ -2052,7 +2169,7 @@ export type AcceptedInvitationDto = components['schemas']['AcceptedInvitationDto
 export type SaProvince = components['schemas']['SAProvince'];
 export type AddressDto = components['schemas']['AddressDto'];
 export type WhatsAppConnectionStatus = components['schemas']['WhatsAppConnectionStatus'];
-export type WhatsAppAccountConfigDto = components['schemas']['WhatsAppAccountConfigDto'];
+export type WhatsAppSummaryDto = components['schemas']['WhatsAppSummaryDto'];
 export type PaymentReminderOffsetsDto = components['schemas']['PaymentReminderOffsetsDto'];
 export type Weekday = components['schemas']['Weekday'];
 export type CompanySettingsDto = components['schemas']['CompanySettingsDto'];
@@ -2061,6 +2178,7 @@ export type UpdateCompanyAddressDto = components['schemas']['UpdateCompanyAddres
 export type UpdateCompanySettingsDto = components['schemas']['UpdateCompanySettingsDto'];
 export type UpdateCompanyDto = components['schemas']['UpdateCompanyDto'];
 export type ConfigureWhatsAppDto = components['schemas']['ConfigureWhatsAppDto'];
+export type WhatsAppPhoneNumberDto = components['schemas']['WhatsAppPhoneNumberDto'];
 export type OnboardingChecklistDto = components['schemas']['OnboardingChecklistDto'];
 export type PropertySortField = components['schemas']['PropertySortField'];
 export type PropertyStatus = components['schemas']['PropertyStatus'];
@@ -2152,6 +2270,11 @@ export type PendingApprovalPage = components['schemas']['PendingApprovalPage'];
 export type ApproveCommunicationBodyDto = components['schemas']['ApproveCommunicationBodyDto'];
 export type ApprovalDecisionResultDto = components['schemas']['ApprovalDecisionResultDto'];
 export type RejectCommunicationBodyDto = components['schemas']['RejectCommunicationBodyDto'];
+export type WhatsAppCapability = components['schemas']['WhatsAppCapability'];
+export type SettingProcess = components['schemas']['SettingProcess'];
+export type MissingSettingDto = components['schemas']['MissingSettingDto'];
+export type WhatsAppCapabilitiesDto = components['schemas']['WhatsAppCapabilitiesDto'];
+export type WhatsAppBusinessAccountDto = components['schemas']['WhatsAppBusinessAccountDto'];
 export type NotificationSortField = components['schemas']['NotificationSortField'];
 export type NotificationType = components['schemas']['NotificationType'];
 export type NotificationSeverity = components['schemas']['NotificationSeverity'];
@@ -3110,7 +3233,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WhatsAppAccountConfigDto"];
+                    "application/json": components["schemas"]["WhatsAppPhoneNumberDto"];
                 };
             };
             /** @description Invalid request or missing X-Company-Id header */
@@ -3133,6 +3256,15 @@ export interface operations {
             };
             /** @description Not a member of the company, or role not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description numberId is not one of the company's numbers */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4921,6 +5053,98 @@ export interface operations {
             };
             /** @description Already decided or not awaiting approval */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getWhatsAppCapabilities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppCapabilitiesDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    listWhatsAppBusinessAccounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppBusinessAccountDto"][];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

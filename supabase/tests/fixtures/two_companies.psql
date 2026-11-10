@@ -53,7 +53,7 @@ values
   ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000006', 'property_owner', true),
   ('20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000007', 'property_owner', true);
 
-insert into public.whatsapp_accounts (company_id, business_account_id, phone_number_id, display_name, display_number, access_token_reference, webhook_configured, connection_status, last_verified_at)
+insert into public.whatsapp_phone_numbers (company_id, business_account_id, phone_number_id, display_name, display_number, access_token_reference, webhook_configured, connection_status, last_verified_at)
 values
   ('20000000-0000-4000-8000-000000000001', 'waba-ns', 'phone-ns', 'Nexus Solution', '+27 11 555 0100', 'secret://env/WHATSAPP_ACCESS_TOKEN_20000000000040008000000000000001', true, 'connected', now()),
   ('20000000-0000-4000-8000-000000000002', 'waba-kp', 'phone-kp', 'Kgalagadi Property', '+27 12 555 0200', 'secret://env/WHATSAPP_ACCESS_TOKEN_20000000000040008000000000000002', false, 'pending_verification', null);

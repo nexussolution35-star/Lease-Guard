@@ -86,8 +86,15 @@ Images contain no `.env` file (root `.dockerignore`) and run as non-root users (
   service compares it in constant time (`hmac.compare_digest`) and refuses every extraction with 503
   while no token is configured. The worker refuses to start in production with a token shorter than
   32 characters. The service is meant to be reachable by the worker only.
+- **Meta app and AI settings.** `WHATSAPP_APP_SECRET` and `WHATSAPP_WEBHOOK_VERIFY_TOKEN` are loaded by
+  the API only, `ANTHROPIC_API_KEY` by the worker only (each process loads only its own schema's keys).
+  `GET /api/v1/integrations/whatsapp/capabilities` returns flags, the public app and Embedded Signup
+  configuration ids and the names of missing settings, never a secret value; the worker reports whether
+  it has an Anthropic key as a boolean through Redis. The Vite build and the web app refuse to start when
+  a `VITE_*` variable names a server-only setting, holds an Anthropic-shaped key, or equals the Meta app
+  secret, the verify token or the Anthropic key (`frontend/src/services/api/exposedSecrets.ts`).
 - **WhatsApp access tokens** are never stored in plain columns or in `.env.example`.
-  `whatsapp_accounts.access_token_reference` takes one of two forms (formats:
+  `whatsapp_phone_numbers.access_token_reference` takes one of two forms (formats:
   `backend/src/infrastructure/whatsapp/access-token-reference.ts`; the database CHECK
   `private.is_whatsapp_token_reference` accepts the same set, checked by a parity test):
   - `secret://env/WHATSAPP_ACCESS_TOKEN_<company uuid without dashes, uppercase>`: a worker
@@ -96,11 +103,12 @@ Images contain no `.env` file (root `.dockerignore`) and run as non-root users (
     name-based variables are not accepted.
   - `secret://vault/<vault secret uuid>`: a Supabase Vault secret named
     `whatsapp_access_token:<company id>` (optionally followed by `:<suffix>`). The worker reads it with
-    `public.whatsapp_account_access_token(account id)`, executable by the service role only, which
-    returns nothing unless the secret is named for the account's own company.
+    `public.whatsapp_account_access_token(number id)`, executable by the service role only, which
+    returns nothing unless the secret is named for the number's own company.
 
-  Signed-in users cannot set the reference (no column grant; the trigger derives the env form on insert
-  and keeps the stored reference on update). Only the WhatsApp channel module
+  Signed-in users can neither set nor read the reference (no column grants since
+  `20261110100400`; the trigger derives the env form on insert and keeps the stored reference on
+  update), and the API selects number columns explicitly, so no response carries it. Only the WhatsApp channel module
   (`backend/src/infrastructure/whatsapp/whatsapp-channels.ts`) resolves tokens; an unusable reference
   fails the message permanently.
 
@@ -163,7 +171,7 @@ Verified against the code in this change set:
 
 - **No rate limiting** on the API. Only Supabase Auth's own limits apply to sign-in.
 - **No WhatsApp webhooks.** Delivery statuses, inbound replies and opt-outs from Meta are not received
-  yet (`whatsapp_accounts.webhook_configured` exists, but there is no webhook endpoint).
+  yet (`whatsapp_phone_numbers.webhook_configured` exists, but there is no webhook endpoint).
 - **Swagger UI** at `/api/docs` is served without authentication; restrict it at the edge in
   production if the API description should not be public.
 - **No Content-Security-Policy or HSTS** on the frontend image; add them at the edge, where the API and

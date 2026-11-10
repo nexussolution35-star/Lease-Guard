@@ -104,58 +104,61 @@ select is((select count(*) from public.company_invitations), 0::bigint, 'a prope
 reset role;
 
 -- ================================================================== WhatsApp configuration
-delete from public.whatsapp_accounts where company_id = '20000000-0000-4000-8000-000000000001';
+delete from public.whatsapp_phone_numbers where company_id = '20000000-0000-4000-8000-000000000001';
 select set_config('request.jwt.claims', tests.claims('thandi.mokoena@nexussolution.co.za'), true);
 set local role authenticated;
 select lives_ok(
-  $$insert into public.whatsapp_accounts (company_id, business_account_id, phone_number_id, display_name, display_number)
+  $$insert into public.whatsapp_phone_numbers (company_id, business_account_id, phone_number_id, display_name, display_number)
     values ('20000000-0000-4000-8000-000000000001', 'waba-1', 'phone-1', 'Nexus', '+27 11 555 0100')$$,
   'a company admin can configure WhatsApp');
+-- Members cannot read the credential reference (20261110100400), so the owner checks it.
+reset role;
 select is(
-  (select row(connection_status, webhook_configured, access_token_reference)::text from public.whatsapp_accounts
+  (select row(connection_status, webhook_configured, access_token_reference)::text from public.whatsapp_phone_numbers
    where company_id = '20000000-0000-4000-8000-000000000001'),
   row('pending_verification'::public.whatsapp_connection_status, false,
       'secret://env/WHATSAPP_ACCESS_TOKEN_20000000000040008000000000000001')::text,
   'a new account starts pending verification with the company-bound token reference');
+set local role authenticated;
 select throws_ok(
-  $$insert into public.whatsapp_accounts (company_id, business_account_id, phone_number_id, display_name, display_number, access_token_reference)
+  $$insert into public.whatsapp_phone_numbers (company_id, business_account_id, phone_number_id, display_name, display_number, access_token_reference)
     values ('20000000-0000-4000-8000-000000000001', 'waba-1', 'phone-1', 'Nexus', '+27 11 555 0100', 'secret://env/OTHER')$$,
   '42501', null, 'an admin cannot supply the token reference');
 reset role;
-update public.whatsapp_accounts set connection_status = 'connected', webhook_configured = true, last_verified_at = now()
+update public.whatsapp_phone_numbers set connection_status = 'connected', webhook_configured = true, last_verified_at = now()
   where company_id = '20000000-0000-4000-8000-000000000001';
 set local role authenticated;
 select lives_ok(
-  $$update public.whatsapp_accounts set display_name = 'Nexus Solution' where company_id = '20000000-0000-4000-8000-000000000001'$$,
+  $$update public.whatsapp_phone_numbers set display_name = 'Nexus Solution' where company_id = '20000000-0000-4000-8000-000000000001'$$,
   'an admin can change display details');
 select is(
-  (select connection_status::text from public.whatsapp_accounts where company_id = '20000000-0000-4000-8000-000000000001'),
+  (select connection_status::text from public.whatsapp_phone_numbers where company_id = '20000000-0000-4000-8000-000000000001'),
   'connected', 'changing display details keeps the verified connection');
 select lives_ok(
-  $$insert into public.whatsapp_accounts (company_id, business_account_id, phone_number_id, display_name, display_number)
-    values ('20000000-0000-4000-8000-000000000001', 'waba-2', 'phone-2', 'Nexus Solution', '+27 11 555 0100')
-    on conflict (company_id) do update set company_id = excluded.company_id, business_account_id = excluded.business_account_id,
+  $$insert into public.whatsapp_phone_numbers (company_id, business_account_id, phone_number_id, display_name, display_number)
+    values ('20000000-0000-4000-8000-000000000001', 'waba-2', 'phone-1', 'Nexus Solution', '+27 11 555 0100')
+    on conflict (company_id, phone_number_id) do update set company_id = excluded.company_id, business_account_id = excluded.business_account_id,
       phone_number_id = excluded.phone_number_id, display_name = excluded.display_name, display_number = excluded.display_number$$,
   'an admin can upsert the configuration (PostgREST upsert shape)');
 select is(
-  (select connection_status::text from public.whatsapp_accounts where company_id = '20000000-0000-4000-8000-000000000001'),
+  (select connection_status::text from public.whatsapp_phone_numbers where company_id = '20000000-0000-4000-8000-000000000001'),
   'pending_verification', 'new Meta identifiers need verifying again');
 select throws_ok(
-  $$update public.whatsapp_accounts set connection_status = 'connected' where company_id = '20000000-0000-4000-8000-000000000001'$$,
+  $$update public.whatsapp_phone_numbers set connection_status = 'connected' where company_id = '20000000-0000-4000-8000-000000000001'$$,
   '42501', null, 'connection status is recorded by the service role only');
 select throws_ok(
-  $$update public.whatsapp_accounts set webhook_configured = true where company_id = '20000000-0000-4000-8000-000000000001'$$,
+  $$update public.whatsapp_phone_numbers set webhook_configured = true where company_id = '20000000-0000-4000-8000-000000000001'$$,
   '42501', null, 'webhook state is recorded by the service role only');
 select throws_ok(
-  $$update public.whatsapp_accounts set last_verified_at = now() where company_id = '20000000-0000-4000-8000-000000000001'$$,
+  $$update public.whatsapp_phone_numbers set last_verified_at = now() where company_id = '20000000-0000-4000-8000-000000000001'$$,
   '42501', null, 'verification time is recorded by the service role only');
 select throws_ok(
-  $$delete from public.whatsapp_accounts where company_id = '20000000-0000-4000-8000-000000000001'$$,
+  $$delete from public.whatsapp_phone_numbers where company_id = '20000000-0000-4000-8000-000000000001'$$,
   '42501', null, 'a signed-in admin cannot delete the configuration');
 reset role;
 set local role service_role;
 select lives_ok(
-  $$update public.whatsapp_accounts set connection_status = 'connected', webhook_configured = true, last_verified_at = now()
+  $$update public.whatsapp_phone_numbers set connection_status = 'connected', webhook_configured = true, last_verified_at = now()
     where company_id = '20000000-0000-4000-8000-000000000001'$$,
   'the service role records a verified connection');
 reset role;

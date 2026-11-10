@@ -13,20 +13,55 @@ export const WHATSAPP_CONNECTION_STATUSES = [
 export type WhatsAppConnectionStatus = (typeof WHATSAPP_CONNECTION_STATUSES)[number]
 
 /**
- * Company-specific WhatsApp Business configuration.
- * Only non-secret references live in the frontend; the access token itself never does.
+ * One of a company's WhatsApp business numbers. Only non-secret fields: the credential reference and the
+ * token never leave the server. Meta's view of the number (verified name, quality rating, code
+ * verification, display-name status, Meta status) is recorded by LeaseGuard's worker, never typed in.
  */
-export interface WhatsAppAccountConfig {
+export interface WhatsAppPhoneNumber {
+  id: EntityId
+  /** Meta id of the WhatsApp Business Account the number belongs to. */
   businessAccountId: string
+  /** Meta phone number id; the receiving number that routes inbound messages to the company. */
   phoneNumberId: string
   displayName: string
-  /** E.164 number shown to tenants, e.g. `+27 11 555 0100`. */
+  /** International number, e.g. `+27 11 555 0100`. */
   displayNumber: string
-  /** Opaque reference to the server-side secret (never the token). */
-  accessTokenReference: string
+  verifiedName?: string
+  /** Meta quality rating, e.g. `GREEN`. */
+  qualityRating?: string
+  /** Meta code verification status, e.g. `VERIFIED`. */
+  codeVerificationStatus?: string
+  /** Meta display-name review status, e.g. `APPROVED`. */
+  nameStatus?: string
+  /** Meta's own status of the number, e.g. `CONNECTED`. */
+  metaStatus?: string
   webhookConfigured: boolean
+  /** LeaseGuard's verified connection status; `connected` only after the worker verified it. */
   connectionStatus: WhatsAppConnectionStatus
   lastVerifiedAt?: ISODateTime
+  createdAt: ISODateTime
+}
+
+/** A company's WhatsApp Business Account (Meta WABA) with its numbers. A company may hold several. */
+export interface WhatsAppBusinessAccount {
+  id: EntityId
+  /** Meta id of the WhatsApp Business Account. */
+  businessAccountId: string
+  /** Name Meta reports for the account, once LeaseGuard has read it. */
+  name?: string
+  numbers: WhatsAppPhoneNumber[]
+  createdAt: ISODateTime
+}
+
+/**
+ * A company's WhatsApp numbers at a glance. `connectionStatus` is `connected` when the company can send
+ * (one of its numbers is connected), otherwise the status of its earliest number, and `not_configured`
+ * without numbers. Details are on the WhatsApp integration endpoints.
+ */
+export interface WhatsAppSummary {
+  connectionStatus: WhatsAppConnectionStatus
+  numberCount: number
+  connectedNumberCount: number
 }
 
 export const WEEKDAYS = [
@@ -70,7 +105,7 @@ export interface Company extends BaseEntity {
   status: CompanyStatus
   /** Two-letter initials used in the workspace switcher avatar. */
   initials: string
-  whatsapp: WhatsAppAccountConfig
+  whatsapp: WhatsAppSummary
   settings: CompanySettings
 }
 

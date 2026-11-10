@@ -7,7 +7,7 @@ const SETTINGS_LINKS = [
   { to: '/settings/users', label: 'Users' },
   { to: '/settings/roles', label: 'Roles' },
   { to: '/settings/notifications', label: 'Notifications' },
-  { to: '/settings/whatsapp', label: 'WhatsApp' },
+  { to: '/settings/integrations/whatsapp', label: 'Integrations' },
   { to: '/settings/templates', label: 'Templates' },
   { to: '/settings/audit', label: 'Audit log' },
   { to: '/settings/preferences', label: 'Preferences' },

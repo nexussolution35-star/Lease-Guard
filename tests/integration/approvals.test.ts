@@ -102,7 +102,7 @@ let fresh: { communicationId: string; approvalId: string }
 async function connectCompanyWhatsApp(): Promise<void> {
   expectOk(
     await serviceRole()
-      .from('whatsapp_accounts')
+      .from('whatsapp_phone_numbers')
       .insert({
         company_id: world().companies.a.id,
         business_account_id: `waba-${integration().runId}`,
@@ -118,7 +118,7 @@ async function connectCompanyWhatsApp(): Promise<void> {
 
 async function setWhatsAppConnection(status: 'connected' | 'disconnected'): Promise<void> {
   expectOk(
-    await serviceRole().from('whatsapp_accounts').update({ connection_status: status }).eq('company_id', world().companies.a.id),
+    await serviceRole().from('whatsapp_phone_numbers').update({ connection_status: status }).eq('company_id', world().companies.a.id),
     `Mark company A's WhatsApp account ${status}`,
   )
 }

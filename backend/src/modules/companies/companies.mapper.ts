@@ -1,49 +1,35 @@
-import type { Company, WhatsAppAccountConfig } from '@leaseguard/domain'
+import type { Company, WhatsAppSummary } from '@leaseguard/domain'
 
 import type { Tables } from '../../infrastructure/database/database.types'
+import { defaultNumber } from '../../infrastructure/whatsapp/channel-readiness'
 
 export type CompanyRow = Tables<'companies'>
-export type WhatsAppAccountRow = Tables<'whatsapp_accounts'>
+/** The number columns the company summary needs; never the credential reference. */
+export type WhatsAppSummaryRow = Pick<Tables<'whatsapp_phone_numbers'>, 'id' | 'connection_status' | 'created_at'>
+export const WHATSAPP_SUMMARY_COLUMNS = 'id, connection_status, created_at'
 
 /** The company fields shown in the workspace switcher. */
 export type CompanySummary = Pick<Company, 'id' | 'name' | 'tradingName' | 'initials' | 'status'>
 export type CompanySummaryRow = Pick<CompanyRow, 'id' | 'name' | 'trading_name' | 'initials' | 'status'>
 
 /**
- * A company without a `whatsapp_accounts` row has not set up WhatsApp Business. The domain models that
- * as connection status `not_configured`; the account identifiers are empty because none exist.
+ * The company's numbers at a glance. The status is that of the number the company sends from by default
+ * (the WhatsApp channel module's rule), so "connected" here means the outbound gate finds a channel.
  */
-export const NOT_CONFIGURED_WHATSAPP: WhatsAppAccountConfig = {
-  businessAccountId: '',
-  phoneNumberId: '',
-  displayName: '',
-  displayNumber: '',
-  accessTokenReference: '',
-  webhookConfigured: false,
-  connectionStatus: 'not_configured',
-}
-
-/** `whatsapp_accounts` row → domain `WhatsAppAccountConfig` (non-secret references only). */
-export function toWhatsAppAccountConfig(row: WhatsAppAccountRow | null): WhatsAppAccountConfig {
-  if (!row) return NOT_CONFIGURED_WHATSAPP
+export function toWhatsAppSummary(numbers: readonly WhatsAppSummaryRow[]): WhatsAppSummary {
   return {
-    businessAccountId: row.business_account_id,
-    phoneNumberId: row.phone_number_id,
-    displayName: row.display_name,
-    displayNumber: row.display_number,
-    accessTokenReference: row.access_token_reference,
-    webhookConfigured: row.webhook_configured,
-    connectionStatus: row.connection_status,
-    ...(row.last_verified_at ? { lastVerifiedAt: row.last_verified_at } : {}),
+    connectionStatus: defaultNumber(numbers)?.connection_status ?? 'not_configured',
+    numberCount: numbers.length,
+    connectedNumberCount: numbers.filter((number) => number.connection_status === 'connected').length,
   }
 }
 
 /**
- * Database row (settings stored as typed columns) plus its WhatsApp account → domain `Company`.
+ * Database row (settings stored as typed columns) plus its WhatsApp numbers → domain `Company`.
  * Nullable columns become absent optional fields. `country` and `timezone` are fixed by CHECK
  * constraints, so they map to the domain's literal values.
  */
-export function toCompany(row: CompanyRow, whatsapp: WhatsAppAccountRow | null): Company {
+export function toCompany(row: CompanyRow, whatsappNumbers: readonly WhatsAppSummaryRow[]): Company {
   return {
     id: row.id,
     name: row.name,
@@ -63,7 +49,7 @@ export function toCompany(row: CompanyRow, whatsapp: WhatsAppAccountRow | null):
     contactPhone: row.contact_phone,
     status: row.status,
     initials: row.initials,
-    whatsapp: toWhatsAppAccountConfig(whatsapp),
+    whatsapp: toWhatsAppSummary(whatsappNumbers),
     settings: {
       leaseExpiryNoticeDays: row.lease_expiry_notice_days,
       renewalDeadlineWarningDays: row.renewal_deadline_warning_days,

@@ -43,6 +43,8 @@ const accountRow = {
 
 interface Options {
   account?: Partial<typeof accountRow> | null
+  /** Every number of the company, in place of `account`. */
+  numbers?: Partial<typeof accountRow & { created_at: string }>[]
   accountResult?: FakeResult
   rpc?: FakeResult
   graph?: () => Promise<Response>
@@ -53,8 +55,12 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 function harness(options: Options = {}) {
+  const rows = options.numbers?.map((number) => ({ ...accountRow, ...number })) ?? (options.account === null ? [] : [{ ...accountRow, ...options.account }])
+  // A lookup by receiving number reads one row (maybeSingle); a company lookup reads all its numbers.
   const db = fakeDb(
-    () => options.accountResult ?? { data: options.account === null ? null : { ...accountRow, ...options.account }, error: null },
+    (query) =>
+      options.accountResult ??
+      (query.calls.some(([method]) => method === 'maybeSingle') ? { data: rows[0] ?? null, error: null } : { data: rows, error: null }),
   )
   const rpc = vi.fn(async () => options.rpc ?? { data: 'vault-token', error: null })
   const clients = { get: () => ({ ...(db.client as object), rpc }) } as unknown as ServiceRoleClientFactory
@@ -97,7 +103,7 @@ describe('WhatsAppChannels.forCompany', () => {
     ])
     expect(graphCalls.map(bearer)).toEqual(['Bearer nexus-token', 'Bearer nexus-token'])
     expect(queries).toHaveLength(1)
-    expect(queries[0]?.table).toBe('whatsapp_accounts')
+    expect(queries[0]?.table).toBe('whatsapp_phone_numbers')
     expect(eqCalls(queries[0])).toEqual([['company_id', NEXUS]])
   })
 
@@ -108,6 +114,28 @@ describe('WhatsAppChannels.forCompany', () => {
       ['company_id', NEXUS],
       ['phone_number_id', '1234567890'],
     ])
+  })
+
+  it("sends from the company's earliest connected number when it has several and none is named", async () => {
+    const { channels, graphCalls } = harness({
+      numbers: [
+        { id: 'n-new', phone_number_id: '333', connection_status: 'connected', created_at: '2026-11-03T08:00:00Z' },
+        { id: 'n-pending', phone_number_id: '111', connection_status: 'pending_verification', created_at: '2026-11-01T08:00:00Z' },
+        { id: 'n-old', phone_number_id: '222', connection_status: 'connected', created_at: '2026-11-02T08:00:00Z' },
+      ],
+    })
+    await connected(await channels.forCompany(NEXUS)).send('+27821234567', text)
+    expect(graphCalls[0]?.url).toBe('https://graph.facebook.com/v23.0/222/messages')
+  })
+
+  it("reports the earliest number's status when none of several numbers is connected", async () => {
+    const { channels } = harness({
+      numbers: [
+        { phone_number_id: '222', connection_status: 'disconnected', created_at: '2026-11-02T08:00:00Z' },
+        { phone_number_id: '111', connection_status: 'pending_verification', created_at: '2026-11-01T08:00:00Z' },
+      ],
+    })
+    await expect(channels.forCompany(NEXUS)).resolves.toMatchObject({ reason: 'not_connected', message: 'The company WhatsApp account is pending verification' })
   })
 
   it('is unavailable, with a reason, when the company has no account or it is not connected', async () => {

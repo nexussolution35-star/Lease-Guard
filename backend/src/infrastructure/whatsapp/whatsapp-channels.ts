@@ -1,6 +1,6 @@
 /**
  * Interface of the WhatsApp channel module: "send as company C" and "which company owns this receiving
- * number". Everything else (the whatsapp_accounts row, the connection check, the credential seam with
+ * number". Everything else (the whatsapp_phone_numbers rows, the connection check, the credential seam with
  * its env and vault adapters, the Graph API client) is implementation behind it, so callers never see
  * an access token and a new credential store changes one module.
  *

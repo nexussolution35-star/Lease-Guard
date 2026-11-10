@@ -884,24 +884,50 @@ isOneToOne: false
       referencedColumns: ["company_id","id"]
     }
                   ]
-                },"whatsapp_accounts": {
+                },"whatsapp_business_accounts": {
                   Row: {
-                    "access_token_reference": string,"business_account_id": string,"company_id": string,"connection_status": Database["public"]['Enums']["whatsapp_connection_status"],"created_at": string,"display_name": string,"display_number": string,"id": string,"last_verified_at": string | null,"phone_number_id": string,"updated_at": string,"webhook_configured": boolean
+                    "business_account_id": string,"company_id": string,"created_at": string,"id": string,"name": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "access_token_reference": string,"business_account_id": string,"company_id": string,"connection_status"?: Database["public"]['Enums']["whatsapp_connection_status"],"created_at"?: string,"display_name": string,"display_number": string,"id"?: string,"last_verified_at"?: string | null,"phone_number_id": string,"updated_at"?: string,"webhook_configured"?: boolean
+                    "business_account_id": string,"company_id": string,"created_at"?: string,"id"?: string,"name"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "access_token_reference"?: string,"business_account_id"?: string,"company_id"?: string,"connection_status"?: Database["public"]['Enums']["whatsapp_connection_status"],"created_at"?: string,"display_name"?: string,"display_number"?: string,"id"?: string,"last_verified_at"?: string | null,"phone_number_id"?: string,"updated_at"?: string,"webhook_configured"?: boolean
+                    "business_account_id"?: string,"company_id"?: string,"created_at"?: string,"id"?: string,"name"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "whatsapp_business_accounts_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"whatsapp_phone_numbers": {
+                  Row: {
+                    "access_token_reference": string,"business_account_id": string,"code_verification_status": string | null,"company_id": string,"connection_status": Database["public"]['Enums']["whatsapp_connection_status"],"created_at": string,"display_name": string,"display_number": string,"id": string,"last_verified_at": string | null,"meta_status": string | null,"name_status": string | null,"phone_number_id": string,"quality_rating": string | null,"updated_at": string,"verified_name": string | null,"webhook_configured": boolean
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "access_token_reference": string,"business_account_id": string,"code_verification_status"?: string | null,"company_id": string,"connection_status"?: Database["public"]['Enums']["whatsapp_connection_status"],"created_at"?: string,"display_name": string,"display_number": string,"id"?: string,"last_verified_at"?: string | null,"meta_status"?: string | null,"name_status"?: string | null,"phone_number_id": string,"quality_rating"?: string | null,"updated_at"?: string,"verified_name"?: string | null,"webhook_configured"?: boolean
+                  }
+                  Update: {
+                    "access_token_reference"?: string,"business_account_id"?: string,"code_verification_status"?: string | null,"company_id"?: string,"connection_status"?: Database["public"]['Enums']["whatsapp_connection_status"],"created_at"?: string,"display_name"?: string,"display_number"?: string,"id"?: string,"last_verified_at"?: string | null,"meta_status"?: string | null,"name_status"?: string | null,"phone_number_id"?: string,"quality_rating"?: string | null,"updated_at"?: string,"verified_name"?: string | null,"webhook_configured"?: boolean
                   }
                   Relationships: [
                     {
       foreignKeyName: "whatsapp_accounts_company_id_fkey"
       columns: ["company_id"]
-isOneToOne: true
+isOneToOne: false
       referencedRelation: "companies"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "whatsapp_phone_numbers_business_account_fkey"
+      columns: ["company_id","business_account_id"]
+isOneToOne: false
+      referencedRelation: "whatsapp_business_accounts"
+      referencedColumns: ["company_id","business_account_id"]
     }
                   ]
                 }

@@ -47,25 +47,25 @@ grant select on tests.ids, tests.msgs to authenticated, service_role;
 
 -- ------------------------------------------------------------------ WhatsApp token reference
 select is(
-  (select count(*) from public.whatsapp_accounts
+  (select count(*) from public.whatsapp_phone_numbers
    where access_token_reference <> 'secret://env/WHATSAPP_ACCESS_TOKEN_' || upper(replace(company_id::text, '-', ''))),
   0::bigint, 'every account references its own company''s token');
 -- The reference is now always set by trigger, so a wrong value is replaced instead of rejected.
-update public.whatsapp_accounts
+update public.whatsapp_phone_numbers
   set access_token_reference = 'secret://env/WHATSAPP_ACCESS_TOKEN_' || upper(replace((select kgalagadi from tests.ids)::text, '-', ''))
   where company_id = (select nexus from tests.ids);
-update public.whatsapp_accounts set access_token_reference = 'secret://env/WHATSAPP_ACCESS_TOKEN'
+update public.whatsapp_phone_numbers set access_token_reference = 'secret://env/WHATSAPP_ACCESS_TOKEN'
   where company_id = (select nexus from tests.ids);
 select is(
-  (select access_token_reference from public.whatsapp_accounts where company_id = (select nexus from tests.ids)),
+  (select access_token_reference from public.whatsapp_phone_numbers where company_id = (select nexus from tests.ids)),
   'secret://env/WHATSAPP_ACCESS_TOKEN_' || upper(replace((select nexus from tests.ids)::text, '-', '')),
   'an account cannot reference another company''s token or a shared token variable');
 select throws_ok(
-  $$alter table public.whatsapp_accounts disable trigger prepare_account;
-    update public.whatsapp_accounts set access_token_reference = 'secret://env/WHATSAPP_ACCESS_TOKEN'
+  $$alter table public.whatsapp_phone_numbers disable trigger prepare_account;
+    update public.whatsapp_phone_numbers set access_token_reference = 'secret://env/WHATSAPP_ACCESS_TOKEN'
     where company_id = (select nexus from tests.ids)$$,
   '23514', null, 'the company-bound CHECK still backs the trigger');
-alter table public.whatsapp_accounts enable trigger prepare_account;
+alter table public.whatsapp_phone_numbers enable trigger prepare_account;
 
 -- ------------------------------------------------------------------ approved message content, as a writer
 select set_config('request.jwt.claims', tests.claims('naledi.vdmerwe@nexussolution.co.za'), true);

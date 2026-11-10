@@ -72,8 +72,9 @@ function scenario(input: Scenario) {
         return { data: input.profile ?? null, error: null }
       case 'company_users':
         return { data: input.memberships ?? [], error: null }
-      case 'whatsapp_accounts':
-        return { data: input.account === undefined ? { connection_status: 'connected' } : input.account, error: null }
+      case 'whatsapp_phone_numbers':
+        // The outbound gate reads every number of the company.
+        return { data: input.account === undefined ? [{ connection_status: 'connected' }] : input.account === null ? [] : [input.account], error: null }
       default:
         throw new Error(`unexpected table ${query.table}`)
     }

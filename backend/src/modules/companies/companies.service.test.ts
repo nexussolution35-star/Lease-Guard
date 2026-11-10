@@ -4,18 +4,18 @@ import { describe, expect, it } from 'vitest'
 import { callsTo, fakeDb, type FakeResult, type RecordedQuery } from '../../common/testing/fake-db.test-helpers'
 import { configureWhatsAppBodySchema, updateCompanyBodySchema } from './companies.schemas'
 import { assertActiveCompany, CompaniesService, toCompanyPatch } from './companies.service'
-import { companyRow, whatsappRow } from './companies.test-helpers'
+import { companyRow, numberRow, whatsappRow } from './companies.test-helpers'
 
 const USER = '6f1d2c1e-0000-4000-8000-0000000000b1'
 
 describe('CompaniesService', () => {
   const service = new CompaniesService()
 
-  it("lists only the caller's companies by name, with their WhatsApp configuration", async () => {
+  it("lists only the caller's companies by name, with a summary of their WhatsApp numbers", async () => {
     const { client, queries } = fakeDb(() => ({
       data: [
-        { ...companyRow, whatsapp_accounts: whatsappRow, company_users: [{ user_id: USER }] },
-        { ...companyRow, id: '6f1d2c1e-0000-4000-8000-000000000002', whatsapp_accounts: null, company_users: [{ user_id: USER }] },
+        { ...companyRow, whatsapp_phone_numbers: [whatsappRow], company_users: [{ user_id: USER }] },
+        { ...companyRow, id: '6f1d2c1e-0000-4000-8000-000000000002', whatsapp_phone_numbers: [], company_users: [{ user_id: USER }] },
       ],
       error: null,
     }))
@@ -26,11 +26,12 @@ describe('CompaniesService', () => {
     expect(companies[0]?.whatsapp.connectionStatus).toBe('connected')
     expect(companies[1]?.whatsapp.connectionStatus).toBe('not_configured')
     expect(companies[0]).not.toHaveProperty('company_users')
-    expect(companies[0]).not.toHaveProperty('whatsapp_accounts')
+    expect(companies[0]).not.toHaveProperty('whatsapp_phone_numbers')
 
     const [q] = queries
     expect(q?.table).toBe('companies')
-    expect(callsTo(q!, 'select')).toEqual([['*, whatsapp_accounts(*), company_users!inner(user_id)']])
+    // Explicit number columns: never the credential reference.
+    expect(callsTo(q!, 'select')).toEqual([['*, whatsapp_phone_numbers(id, connection_status, created_at), company_users!inner(user_id)']])
     expect(callsTo(q!, 'eq')).toEqual([['company_users.user_id', USER]])
     expect(callsTo(q!, 'order')).toEqual([
       ['name', { ascending: true }],
@@ -40,7 +41,7 @@ describe('CompaniesService', () => {
 
   it('gets one company only through the caller membership', async () => {
     const { client, queries } = fakeDb(() => ({
-      data: { ...companyRow, whatsapp_accounts: whatsappRow, company_users: [{ user_id: USER }] },
+      data: { ...companyRow, whatsapp_phone_numbers: [whatsappRow], company_users: [{ user_id: USER }] },
       error: null,
     }))
 
@@ -139,7 +140,7 @@ describe('CompaniesService.update', () => {
 
   it('updates the company by id and returns it read through the caller membership', async () => {
     const { client, queries } = fakeDb((query) =>
-      isWrite(query) ? { data: { id: COMPANY }, error: null } : { data: { ...companyRow, name: 'Renamed', whatsapp_accounts: null, company_users: [{ user_id: USER }] }, error: null },
+      isWrite(query) ? { data: { id: COMPANY }, error: null } : { data: { ...companyRow, name: 'Renamed', whatsapp_phone_numbers: [], company_users: [{ user_id: USER }] }, error: null },
     )
 
     const company = await service.update(client, USER, COMPANY, updateCompanyBodySchema.parse({ name: 'Renamed' }))
@@ -181,16 +182,16 @@ describe('CompaniesService.configureWhatsApp', () => {
     displayNumber: '+27 11 555 0100',
   })
 
-  it('upserts only the identifiers and display fields, keyed by company, and returns the configuration', async () => {
-    const created = { ...whatsappRow, connection_status: 'pending_verification' as const, webhook_configured: false, last_verified_at: null }
-    const { client, queries } = fakeDb(() => ({ data: created, error: null }))
+  it("adds the number or updates the company's number with that id, and returns it without the credential reference", async () => {
+    const { client, queries } = fakeDb(() => ({ data: { ...numberRow, access_token_reference: 'secret://vault/x' }, error: null }))
 
-    const config = await service.configureWhatsApp(client, COMPANY, body)
+    const number = await service.configureWhatsApp(client, COMPANY, body)
 
-    expect(config).toMatchObject({ businessAccountId: '102938475610', connectionStatus: 'pending_verification', webhookConfigured: false })
-    expect(config).not.toHaveProperty('lastVerifiedAt')
+    expect(number).toMatchObject({ businessAccountId: '102938475610', phoneNumberId: '564738291045', connectionStatus: 'pending_verification', webhookConfigured: false })
+    expect(number).not.toHaveProperty('lastVerifiedAt')
+    expect(JSON.stringify(number)).not.toContain('secret:')
     const [q] = queries
-    expect(q?.table).toBe('whatsapp_accounts')
+    expect(q?.table).toBe('whatsapp_phone_numbers')
     expect(callsTo(q!, 'upsert')).toEqual([
       [
         {
@@ -200,9 +201,38 @@ describe('CompaniesService.configureWhatsApp', () => {
           display_name: 'Nexus Solution',
           display_number: '+27 11 555 0100',
         },
-        { onConflict: 'company_id' },
+        { onConflict: 'company_id,phone_number_id' },
       ],
     ])
+    expect(String(callsTo(q!, 'select')[0]?.[0])).not.toMatch(/\*|access_token_reference/)
+  })
+
+  it("corrects the company's number named by numberId instead of adding a second one", async () => {
+    const numberId = '6f1d2c1e-0000-4000-8000-0000000000d1'
+    const { client, queries } = fakeDb(() => ({ data: { ...numberRow, id: numberId }, error: null }))
+
+    const number = await service.configureWhatsApp(client, COMPANY, configureWhatsAppBodySchema.parse({ ...body, numberId }))
+
+    expect(number.id).toBe(numberId)
+    const [q] = queries
+    expect(q?.table).toBe('whatsapp_phone_numbers')
+    expect(callsTo(q!, 'upsert')).toEqual([])
+    expect(callsTo(q!, 'update')).toEqual([
+      [{ business_account_id: '102938475610', phone_number_id: '564738291045', display_name: 'Nexus Solution', display_number: '+27 11 555 0100' }],
+    ])
+    expect(callsTo(q!, 'eq')).toEqual([
+      ['id', numberId],
+      ['company_id', COMPANY],
+    ])
+    expect(String(callsTo(q!, 'select')[0]?.[0])).not.toMatch(/\*|access_token_reference/)
+  })
+
+  it("answers 404 when numberId is not one of the company's numbers", async () => {
+    const { client } = fakeDb(() => ({ data: null, error: null }))
+    const numberId = '6f1d2c1e-0000-4000-8000-0000000000d2'
+    await expect(service.configureWhatsApp(client, COMPANY, configureWhatsAppBodySchema.parse({ ...body, numberId }))).rejects.toBeInstanceOf(
+      NotFoundException,
+    )
   })
 
   it('maps a refusal to 403', async () => {
@@ -214,6 +244,7 @@ describe('CompaniesService.configureWhatsApp', () => {
     expect(configureWhatsAppBodySchema.safeParse({ ...body, phoneNumberId: 'abc' }).success).toBe(false)
     expect(configureWhatsAppBodySchema.safeParse({ ...body, displayNumber: '011 555 0100' }).success).toBe(false)
     expect(configureWhatsAppBodySchema.safeParse({ ...body, accessTokenReference: 'secret://x' }).success).toBe(false)
+    expect(configureWhatsAppBodySchema.safeParse({ ...body, numberId: 'not-a-uuid' }).success).toBe(false)
     expect(configureWhatsAppBodySchema.safeParse({ ...body, connectionStatus: 'connected' }).success).toBe(false)
   })
 })
@@ -237,8 +268,8 @@ describe('CompaniesService.onboarding', () => {
       switch (query.table) {
         case 'companies':
           return facts.company ?? { data: companyRow, error: null }
-        case 'whatsapp_accounts':
-          return facts.whatsapp ?? { data: null, error: null }
+        case 'whatsapp_phone_numbers':
+          return facts.whatsapp ?? { data: [], error: null }
         case 'company_users':
           return counted(facts.members ?? 1)
         case 'company_invitations':
@@ -277,7 +308,7 @@ describe('CompaniesService.onboarding', () => {
 
   it('is complete once every required step is done, also without a team', async () => {
     const { client } = onboardingDb({
-      whatsapp: { data: { connection_status: 'connected' }, error: null },
+      whatsapp: { data: [{ connection_status: 'pending_verification' }, { connection_status: 'connected' }], error: null },
       properties: 2,
       verifiedLeases: 1,
       statements: 5,
@@ -293,7 +324,7 @@ describe('CompaniesService.onboarding', () => {
   it('is not complete while WhatsApp awaits verification or details are blank', async () => {
     const pending = onboardingDb({
       company: { data: { ...companyRow, contact_phone: ' ' }, error: null },
-      whatsapp: { data: { connection_status: 'pending_verification' }, error: null },
+      whatsapp: { data: [{ connection_status: 'pending_verification' }], error: null },
       properties: 1,
       verifiedLeases: 1,
       statements: 1,

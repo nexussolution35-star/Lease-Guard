@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { NOT_CONFIGURED_WHATSAPP, toCompany, toCompanySummary } from './companies.mapper'
+import { toCompany, toCompanySummary } from './companies.mapper'
 import { companyRow, whatsappRow } from './companies.test-helpers'
 
 describe('companies mapper', () => {
   it('maps a company row and its WhatsApp account to the domain Company', () => {
-    const company = toCompany(companyRow, whatsappRow)
+    const company = toCompany(companyRow, [whatsappRow])
 
     expect(company).toEqual({
       id: companyRow.id,
@@ -24,16 +24,7 @@ describe('companies mapper', () => {
       contactPhone: '+27 11 555 0100',
       status: 'active',
       initials: 'NS',
-      whatsapp: {
-        businessAccountId: '102938475610',
-        phoneNumberId: '564738291045',
-        displayName: 'Nexus Solution',
-        displayNumber: '+27 11 555 0100',
-        accessTokenReference: 'secret://whatsapp/cmp_nexus/access-token',
-        webhookConfigured: true,
-        connectionStatus: 'connected',
-        lastVerifiedAt: '2026-11-01T09:00:00+00:00',
-      },
+      whatsapp: { connectionStatus: 'connected', numberCount: 1, connectedNumberCount: 1 },
       settings: {
         leaseExpiryNoticeDays: [180, 90, 30],
         renewalDeadlineWarningDays: [90, 60, 30],
@@ -50,16 +41,24 @@ describe('companies mapper', () => {
     expect(company.address).not.toHaveProperty('line2')
   })
 
-  it('reports WhatsApp as not configured when the company has no account row', () => {
-    const company = toCompany(companyRow, null)
-    expect(company.whatsapp).toEqual(NOT_CONFIGURED_WHATSAPP)
-    expect(company.whatsapp.connectionStatus).toBe('not_configured')
+  it('reports WhatsApp as not configured when the company has no number', () => {
+    expect(toCompany(companyRow, []).whatsapp).toEqual({ connectionStatus: 'not_configured', numberCount: 0, connectedNumberCount: 0 })
   })
 
-  it('omits the last verification time of a WhatsApp account that was never verified', () => {
-    const company = toCompany(companyRow, { ...whatsappRow, last_verified_at: null, connection_status: 'pending_verification' })
-    expect(company.whatsapp).not.toHaveProperty('lastVerifiedAt')
-    expect(company.whatsapp.connectionStatus).toBe('pending_verification')
+  it('summarises several numbers: connected when any number is connected, otherwise the earliest number\'s status', () => {
+    const pending = { ...whatsappRow, id: 'n1', connection_status: 'pending_verification' as const, created_at: '2026-01-01T08:00:00+00:00' }
+    const disconnected = { ...whatsappRow, id: 'n2', connection_status: 'disconnected' as const, created_at: '2026-02-01T08:00:00+00:00' }
+    const connected = { ...whatsappRow, id: 'n3', connection_status: 'connected' as const, created_at: '2026-03-01T08:00:00+00:00' }
+    expect(toCompany(companyRow, [disconnected, pending, connected]).whatsapp).toEqual({
+      connectionStatus: 'connected',
+      numberCount: 3,
+      connectedNumberCount: 1,
+    })
+    expect(toCompany(companyRow, [disconnected, pending]).whatsapp).toEqual({
+      connectionStatus: 'pending_verification',
+      numberCount: 2,
+      connectedNumberCount: 0,
+    })
   })
 
   it('maps the workspace-switcher summary', () => {

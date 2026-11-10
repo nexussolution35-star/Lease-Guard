@@ -1,5 +1,5 @@
 /**
- * The one place in TypeScript that knows the `whatsapp_accounts.access_token_reference` formats. The
+ * The one place in TypeScript that knows the `whatsapp_phone_numbers.access_token_reference` formats. The
  * database enforces the same rule (`private.is_whatsapp_token_reference`, migration
  * 20261110100000); access-token-reference.test.ts checks both against the case table in
  * supabase/tests/whatsapp_channel.test.sql.

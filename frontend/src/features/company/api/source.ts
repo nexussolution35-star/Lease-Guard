@@ -3,7 +3,7 @@ import type {
   ConfigureWhatsAppDto,
   OnboardingChecklistDto,
   UpdateCompanyDto,
-  WhatsAppAccountConfigDto,
+  WhatsAppPhoneNumberDto,
 } from '@leaseguard/api-client'
 import type { EntityId } from '@leaseguard/domain'
 
@@ -19,7 +19,8 @@ export type CompanyChanges = UpdateCompanyDto
 /** The Meta identifiers and display fields a company admin sets (`PUT /companies/{id}/whatsapp`). */
 export type WhatsAppConfiguration = ConfigureWhatsAppDto
 
-export type WhatsAppAccount = WhatsAppAccountConfigDto
+/** A number as the API returns it after configuring (never the credential reference). */
+export type WhatsAppAccount = WhatsAppPhoneNumberDto
 
 /** One flag per onboarding step and whether every required step is done. */
 export type OnboardingChecklist = OnboardingChecklistDto

@@ -9,6 +9,7 @@ import { ServiceRoleClientFactory } from '../infrastructure/database/service-rol
 import { DocumentProcessingClient } from '../infrastructure/document-processing/document-processing.client'
 import { createWhatsAppChannels } from '../infrastructure/whatsapp/database-whatsapp-channels'
 import { WhatsAppChannels } from '../infrastructure/whatsapp/whatsapp-channels'
+import { WorkerCapabilitiesReporter } from './capabilities/worker-capabilities.reporter'
 import { UserInvitationProcessor } from './invitations/user-invitation.processor'
 import { JobRunRecorderService } from './jobs/job-run-recorder'
 import { ProcessorRuntime } from './jobs/processor-runtime'
@@ -74,6 +75,7 @@ export class WorkersModule {
         ...clientProviders,
         ...processors,
         MonitoringScheduler,
+        WorkerCapabilitiesReporter,
       ],
     }
   }

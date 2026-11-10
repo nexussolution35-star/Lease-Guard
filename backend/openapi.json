@@ -1304,7 +1304,7 @@
     },
     "/api/v1/companies/{companyId}/whatsapp": {
       "put": {
-        "description": "Creates or replaces the configuration. The access token is never sent through the API: the reference is set by the server, and a new account or changed Meta ids are pending verification until Nexus verifies the connection. The path must name the active company (X-Company-Id).",
+        "description": "Adds the number, or updates the company's number with the same phone number id; its WhatsApp Business Account is recorded with it. With numberId it corrects that number of the company instead (e.g. a mistyped phone number or business account id; 404 when the company has no such number), and a business account the correction leaves without numbers is removed. The access token is never sent through the API: the reference is set by the server, and a new number or changed Meta ids are pending verification until LeaseGuard verifies them. The response never includes the credential reference. The path must name the active company (X-Company-Id).",
         "operationId": "configureWhatsApp",
         "parameters": [
           {
@@ -1332,7 +1332,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WhatsAppAccountConfigDto"
+                  "$ref": "#/components/schemas/WhatsAppPhoneNumberDto"
                 }
               }
             }
@@ -1367,6 +1367,16 @@
               }
             }
           },
+          "404": {
+            "description": "numberId is not one of the company's numbers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
           "503": {
             "description": "Authentication or database unavailable",
             "content": {
@@ -1384,7 +1394,7 @@
             "company": []
           }
         ],
-        "summary": "Set the company's WhatsApp Business identifiers (company admins)",
+        "summary": "Add a WhatsApp number by its Meta identifiers, or update it (company admins)",
         "tags": [
           "companies"
         ]
@@ -4286,6 +4296,126 @@
         ]
       }
     },
+    "/api/v1/integrations/whatsapp/capabilities": {
+      "get": {
+        "description": "Public-safe: flags, the public Meta app and Embedded Signup configuration ids, and the names (never values) of missing settings with the process that reads each. Configured here does not mean Meta has approved the app; Meta Business Verification, App Review and Advanced Access are outside LeaseGuard and not reported.",
+        "operationId": "getWhatsAppCapabilities",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppCapabilitiesDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Whether Embedded Signup, the webhook and the AI agent runtime are configured",
+        "tags": [
+          "whatsapp-integration"
+        ]
+      }
+    },
+    "/api/v1/integrations/whatsapp/business-accounts": {
+      "get": {
+        "description": "Every member of the company may read them. Statuses are recorded by LeaseGuard after verifying with Meta.",
+        "operationId": "listWhatsAppBusinessAccounts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WhatsAppBusinessAccountDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "The active company's WhatsApp Business Accounts with their numbers and status",
+        "tags": [
+          "whatsapp-integration"
+        ]
+      }
+    },
     "/api/v1/notifications": {
       "get": {
         "operationId": "listNotifications",
@@ -5491,53 +5621,33 @@
           "connected",
           "disconnected",
           "error"
-        ]
+        ],
+        "description": "connected when the company has a connected number to send from; otherwise the status of its earliest number; not_configured without numbers. Details: GET /integrations/whatsapp/business-accounts"
       },
-      "WhatsAppAccountConfigDto": {
+      "WhatsAppSummaryDto": {
         "type": "object",
         "properties": {
-          "businessAccountId": {
-            "type": "string",
-            "description": "Empty when WhatsApp is not configured"
-          },
-          "phoneNumberId": {
-            "type": "string",
-            "description": "Empty when WhatsApp is not configured"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "displayNumber": {
-            "type": "string",
-            "description": "Number shown to tenants, e.g. +27 11 555 0100"
-          },
-          "accessTokenReference": {
-            "type": "string",
-            "description": "Opaque reference to the server-side secret; never the token itself"
-          },
-          "webhookConfigured": {
-            "type": "boolean"
-          },
           "connectionStatus": {
+            "description": "connected when the company has a connected number to send from; otherwise the status of its earliest number; not_configured without numbers. Details: GET /integrations/whatsapp/business-accounts",
             "allOf": [
               {
                 "$ref": "#/components/schemas/WhatsAppConnectionStatus"
               }
             ]
           },
-          "lastVerifiedAt": {
-            "type": "string",
-            "format": "date-time"
+          "numberCount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "connectedNumberCount": {
+            "type": "number",
+            "minimum": 0
           }
         },
         "required": [
-          "businessAccountId",
-          "phoneNumberId",
-          "displayName",
-          "displayNumber",
-          "accessTokenReference",
-          "webhookConfigured",
-          "connectionStatus"
+          "connectionStatus",
+          "numberCount",
+          "connectedNumberCount"
         ]
       },
       "PaymentReminderOffsetsDto": {
@@ -5673,7 +5783,7 @@
             "description": "Initials shown in the workspace switcher"
           },
           "whatsapp": {
-            "$ref": "#/components/schemas/WhatsAppAccountConfigDto"
+            "$ref": "#/components/schemas/WhatsAppSummaryDto"
           },
           "settings": {
             "$ref": "#/components/schemas/CompanySettingsDto"
@@ -5832,6 +5942,11 @@
       "ConfigureWhatsAppDto": {
         "type": "object",
         "properties": {
+          "numberId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "LeaseGuard id of the company's number to correct (e.g. a mistyped phone number id). Omit to add a number."
+          },
           "businessAccountId": {
             "type": "string",
             "pattern": "^[0-9]{5,32}$",
@@ -5859,6 +5974,79 @@
           "displayNumber"
         ]
       },
+      "WhatsAppPhoneNumberDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "businessAccountId": {
+            "type": "string",
+            "description": "Meta id of the WhatsApp Business Account the number belongs to"
+          },
+          "phoneNumberId": {
+            "type": "string",
+            "description": "Meta phone number id (the receiving number of inbound messages)"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "displayNumber": {
+            "type": "string",
+            "description": "International number, e.g. +27 11 555 0100"
+          },
+          "verifiedName": {
+            "type": "string",
+            "description": "Meta's verified display name"
+          },
+          "qualityRating": {
+            "type": "string",
+            "description": "Meta's quality rating, e.g. GREEN"
+          },
+          "codeVerificationStatus": {
+            "type": "string",
+            "description": "Meta's code verification status, e.g. VERIFIED"
+          },
+          "nameStatus": {
+            "type": "string",
+            "description": "Meta's display-name review status, e.g. APPROVED"
+          },
+          "metaStatus": {
+            "type": "string",
+            "description": "Meta's own status of the number, e.g. CONNECTED"
+          },
+          "webhookConfigured": {
+            "type": "boolean"
+          },
+          "connectionStatus": {
+            "description": "connected only after LeaseGuard verified the number with Meta",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WhatsAppConnectionStatus"
+              }
+            ]
+          },
+          "lastVerifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "businessAccountId",
+          "phoneNumberId",
+          "displayName",
+          "displayNumber",
+          "webhookConfigured",
+          "connectionStatus",
+          "createdAt"
+        ]
+      },
       "OnboardingChecklistDto": {
         "type": "object",
         "properties": {
@@ -5872,11 +6060,11 @@
           },
           "whatsappConfigured": {
             "type": "boolean",
-            "description": "WhatsApp Business identifiers are configured (required)"
+            "description": "The company has at least one WhatsApp number (required)"
           },
           "whatsappConnected": {
             "type": "boolean",
-            "description": "Nexus verified the WhatsApp connection (required)"
+            "description": "At least one WhatsApp number is verified and connected (required)"
           },
           "teamInvited": {
             "type": "boolean",
@@ -8501,6 +8689,134 @@
         },
         "required": [
           "note"
+        ]
+      },
+      "WhatsAppCapability": {
+        "type": "string",
+        "enum": [
+          "embedded_signup",
+          "webhook",
+          "agent_runtime"
+        ]
+      },
+      "SettingProcess": {
+        "type": "string",
+        "enum": [
+          "api",
+          "worker"
+        ],
+        "description": "The LeaseGuard process that reads the setting"
+      },
+      "MissingSettingDto": {
+        "type": "object",
+        "properties": {
+          "capability": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WhatsAppCapability"
+              }
+            ]
+          },
+          "setting": {
+            "type": "string",
+            "description": "Name of the environment setting (never its value)",
+            "example": "WHATSAPP_APP_SECRET"
+          },
+          "process": {
+            "description": "The LeaseGuard process that reads the setting",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SettingProcess"
+              }
+            ]
+          }
+        },
+        "required": [
+          "capability",
+          "setting",
+          "process"
+        ]
+      },
+      "WhatsAppCapabilitiesDto": {
+        "type": "object",
+        "properties": {
+          "embeddedSignupConfigured": {
+            "type": "boolean",
+            "description": "The API has the Meta app id, Embedded Signup configuration id and app secret"
+          },
+          "webhookConfigured": {
+            "type": "boolean",
+            "description": "The API has the Meta app secret and the webhook verify token"
+          },
+          "agentRuntimeConfigured": {
+            "type": "boolean",
+            "description": "The worker reported an Anthropic API key for the AI agent runtime (false while no worker is reporting)"
+          },
+          "workerReporting": {
+            "type": "boolean",
+            "description": "A worker reported within the last few minutes. When false the agent runtime status is unknown and ANTHROPIC_API_KEY is not listed as missing"
+          },
+          "appId": {
+            "type": "string",
+            "description": "Public Meta app id, for the Facebook JavaScript SDK"
+          },
+          "embeddedSignupConfigId": {
+            "type": "string",
+            "description": "Public Embedded Signup (Facebook Login for Business) configuration id"
+          },
+          "workerReportedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the worker last reported; absent when no worker has reported recently"
+          },
+          "missing": {
+            "description": "Settings still needed, by capability",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MissingSettingDto"
+            }
+          }
+        },
+        "required": [
+          "embeddedSignupConfigured",
+          "webhookConfigured",
+          "agentRuntimeConfigured",
+          "workerReporting",
+          "missing"
+        ]
+      },
+      "WhatsAppBusinessAccountDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "businessAccountId": {
+            "type": "string",
+            "description": "Meta id of the WhatsApp Business Account"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name Meta reports for the account"
+          },
+          "numbers": {
+            "description": "Oldest first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppPhoneNumberDto"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "businessAccountId",
+          "numbers",
+          "createdAt"
         ]
       },
       "NotificationSortField": {

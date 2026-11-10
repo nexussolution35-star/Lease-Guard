@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Put } from '@nestjs/common'
 import { ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger'
-import type { Company, OnboardingChecklist, WhatsAppAccountConfig } from '@leaseguard/domain'
+import type { Company, OnboardingChecklist, WhatsAppPhoneNumber } from '@leaseguard/domain'
 
 import { Authenticated, CompanyScoped } from '../../common/decorators/company-scoped.decorator'
 import { CurrentCompany } from '../../common/decorators/current-company.decorator'
@@ -12,7 +12,8 @@ import type { AuthenticatedUser, CompanyContext } from '../../common/request-con
 import type { DbClient } from '../../infrastructure/database/rls-client.factory'
 import { configureWhatsAppBodySchema, updateCompanyBodySchema } from './companies.schemas'
 import { assertActiveCompany, CompaniesService } from './companies.service'
-import { CompanyDto, ConfigureWhatsAppDto, OnboardingChecklistDto, UpdateCompanyDto, WhatsAppAccountConfigDto } from './dto/company.dto'
+import { WhatsAppPhoneNumberDto } from '../whatsapp-integration/dto/whatsapp-integration.dto'
+import { CompanyDto, ConfigureWhatsAppDto, OnboardingChecklistDto, UpdateCompanyDto } from './dto/company.dto'
 
 /**
  * The caller's companies. Listing and reading are not company-scoped (no X-Company-Id): the client uses
@@ -73,19 +74,23 @@ export class CompaniesController {
   @CompanyScoped({ roles: ['company_admin'] })
   @ApiOperation({
     operationId: 'configureWhatsApp',
-    summary: "Set the company's WhatsApp Business identifiers (company admins)",
+    summary: 'Add a WhatsApp number by its Meta identifiers, or update it (company admins)',
     description:
-      'Creates or replaces the configuration. The access token is never sent through the API: the reference is ' +
-      'set by the server, and a new account or changed Meta ids are pending verification until Nexus verifies ' +
-      'the connection. The path must name the active company (X-Company-Id).',
+      'Adds the number, or updates the company\'s number with the same phone number id; its WhatsApp Business Account ' +
+      'is recorded with it. With numberId it corrects that number of the company instead (e.g. a mistyped phone ' +
+      'number or business account id; 404 when the company has no such number), and a business account the ' +
+      'correction leaves without numbers is removed. The access token is never sent through the API: the reference is set by the server, ' +
+      'and a new number or changed Meta ids are pending verification until LeaseGuard verifies them. The response ' +
+      'never includes the credential reference. The path must name the active company (X-Company-Id).',
   })
-  @ApiOkResponse({ type: WhatsAppAccountConfigDto })
+  @ApiOkResponse({ type: WhatsAppPhoneNumberDto })
+  @ApiNotFoundResponse({ type: ApiErrorDto, description: 'numberId is not one of the company\'s numbers' })
   configureWhatsApp(
     @UserDb() db: DbClient,
     @CurrentCompany() company: CompanyContext,
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Body(new ZodValidationPipe(configureWhatsAppBodySchema)) body: ConfigureWhatsAppDto,
-  ): Promise<WhatsAppAccountConfig> {
+  ): Promise<WhatsAppPhoneNumber> {
     assertActiveCompany(companyId, company)
     return this.companies.configureWhatsApp(db, company.companyId, body)
   }

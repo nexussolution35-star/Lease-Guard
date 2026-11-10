@@ -1,4 +1,5 @@
-import type { CompanyRow, WhatsAppAccountRow } from './companies.mapper'
+import type { NumberRow } from '../whatsapp-integration/whatsapp-numbers.mapper'
+import type { CompanyRow, WhatsAppSummaryRow } from './companies.mapper'
 
 /** Test fixtures shared by the companies and auth tests. */
 export const companyRow: CompanyRow = {
@@ -31,17 +32,28 @@ export const companyRow: CompanyRow = {
   updated_at: '2026-11-01T08:00:00+00:00',
 }
 
-export const whatsappRow: WhatsAppAccountRow = {
+/** A number as the companies queries read it: the summary columns only, never the credential reference. */
+export const whatsappRow: WhatsAppSummaryRow = {
+  id: '6f1d2c1e-0000-4000-8000-0000000000c1',
+  connection_status: 'connected',
+  created_at: '2026-01-01T08:00:00+00:00',
+}
+
+/** A number as the configure endpoint returns it (the explicit member-readable columns). */
+export const numberRow: NumberRow = {
   id: '6f1d2c1e-0000-4000-8000-0000000000c1',
   company_id: companyRow.id,
   business_account_id: '102938475610',
   phone_number_id: '564738291045',
   display_name: 'Nexus Solution',
   display_number: '+27 11 555 0100',
-  access_token_reference: 'secret://whatsapp/cmp_nexus/access-token',
-  webhook_configured: true,
-  connection_status: 'connected',
-  last_verified_at: '2026-11-01T09:00:00+00:00',
-  created_at: '2026-01-01T08:00:00+00:00',
-  updated_at: '2026-11-01T09:00:00+00:00',
+  verified_name: null,
+  quality_rating: null,
+  code_verification_status: null,
+  name_status: null,
+  meta_status: null,
+  webhook_configured: false,
+  connection_status: 'pending_verification',
+  last_verified_at: null,
+  created_at: '2026-11-01T08:00:00+00:00',
 }

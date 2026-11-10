@@ -67,5 +67,13 @@ The state of an outbound communication that passes every rule for sending right 
 A company's connection to WhatsApp through one of its own registered business phone numbers, used to send and receive its communications.
 _Avoid_: WhatsApp integration, WhatsApp account (when the sending capability is meant)
 
+**WhatsApp Business Account**:
+A company's account at Meta that holds its business numbers and message templates; a company may have several.
+_Avoid_: WABA (in user-facing text), business account (on its own, which reads as Company)
+
+**Business number**:
+One of a company's WhatsApp phone numbers, belonging to one of its WhatsApp Business Accounts. A company may have several; a number counts as connected only after LeaseGuard has verified it with Meta.
+_Avoid_: WhatsApp account, line
+
 **Receiving number**:
 The company's business phone number that an inbound WhatsApp message was sent to; it, not the sender's number, identifies which company the message belongs to.
