@@ -4416,6 +4416,183 @@
         ]
       }
     },
+    "/api/v1/integrations/whatsapp/onboarding-sessions": {
+      "post": {
+        "description": "Creates a single-use signup session for the caller and the active company, valid for 15 minutes; an earlier unfinished session of the same admin expires. Returns what the browser passes to Meta's Facebook JavaScript SDK (public app and configuration ids, Graph API version, Embedded Signup v5 extras) and the state to send back. 503 while Embedded Signup is not configured on the API.",
+        "operationId": "startWhatsAppOnboarding",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppOnboardingSessionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Embedded Signup is not configured, or the database is unavailable\n\nAuthentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Start connecting WhatsApp Business through Meta Embedded Signup (company admins)",
+        "tags": [
+          "whatsapp-integration"
+        ]
+      }
+    },
+    "/api/v1/integrations/whatsapp/onboarding-sessions/{sessionId}/complete": {
+      "post": {
+        "description": "Send the WA_EMBEDDED_SIGNUP message's event and data, and the code from FB.login, as soon as the popup returns: the code lives about 30 seconds. A finish with a code is exchanged with Meta server to server; the business token is stored in Supabase Vault for the company and never returned, and the shared number appears pending verification. CANCEL, ERROR and a finish without a code are recorded, and the response explains how to recover. A session is single-use and belongs to the admin and company that started it (404 for anyone else).",
+        "operationId": "completeWhatsAppOnboarding",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteWhatsAppOnboardingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppOnboardingResultDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such session of the caller in the active company, or a wrong state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The session was already used, or expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Embedded Signup is not configured, or the database is unavailable\n\nAuthentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Record Meta Embedded Signup's result and exchange its code (the admin who started the session)",
+        "tags": [
+          "whatsapp-integration"
+        ]
+      }
+    },
     "/api/v1/notifications": {
       "get": {
         "operationId": "listNotifications",
@@ -8817,6 +8994,210 @@
           "businessAccountId",
           "numbers",
           "createdAt"
+        ]
+      },
+      "EmbeddedSignupExtrasDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "enum": [
+              "v5"
+            ],
+            "description": "Embedded Signup version for FB.login extras"
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "WhatsAppOnboardingSessionDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "type": "string",
+            "description": "Single-use state to send back with the result (only its hash is stored)",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The session must be completed before this time (15 minutes)"
+          },
+          "appId": {
+            "type": "string",
+            "description": "Public Meta app id for FB.init"
+          },
+          "configId": {
+            "type": "string",
+            "description": "Embedded Signup (Facebook Login for Business) configuration id for FB.login"
+          },
+          "graphApiVersion": {
+            "type": "string",
+            "example": "v27.0",
+            "description": "Graph API version for FB.init"
+          },
+          "extras": {
+            "$ref": "#/components/schemas/EmbeddedSignupExtrasDto"
+          }
+        },
+        "required": [
+          "sessionId",
+          "state",
+          "expiresAt",
+          "appId",
+          "configId",
+          "graphApiVersion",
+          "extras"
+        ]
+      },
+      "EmbeddedSignupEvent": {
+        "type": "string",
+        "enum": [
+          "FINISH",
+          "FINISH_ONLY_WABA",
+          "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING",
+          "FINISH_GRANT_ONLY_API_ACCESS",
+          "CANCEL",
+          "ERROR"
+        ]
+      },
+      "EmbeddedSignupSessionInfoDto": {
+        "type": "object",
+        "properties": {
+          "phone_number_id": {
+            "type": "string",
+            "pattern": "^[0-9]{1,32}$"
+          },
+          "waba_id": {
+            "type": "string",
+            "pattern": "^[0-9]{1,32}$",
+            "description": "v4: the shared WhatsApp Business (messaging) Account"
+          },
+          "messaging_account_ids": {
+            "maxItems": 20,
+            "description": "v5: the shared messaging accounts",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "business_id": {
+            "type": "string",
+            "pattern": "^[0-9]{1,32}$",
+            "description": "The customer's business portfolio"
+          },
+          "is_on_biz_app": {
+            "type": "boolean"
+          },
+          "current_step": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "CANCEL: the step the customer left at"
+          },
+          "error_message": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "ERROR"
+          },
+          "error_code": {
+            "type": "string",
+            "maxLength": 40,
+            "description": "ERROR (string or number)"
+          },
+          "session_id": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "ERROR"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "ERROR: Unix milliseconds (string or number)"
+          }
+        }
+      },
+      "CompleteWhatsAppOnboardingDto": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "The state returned when the session was started"
+          },
+          "event": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EmbeddedSignupEvent"
+              }
+            ]
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 2048,
+            "description": "The one-time code from FB.login, sent immediately (it lives about 30 seconds)"
+          },
+          "sessionInfo": {
+            "$ref": "#/components/schemas/EmbeddedSignupSessionInfoDto"
+          }
+        },
+        "required": [
+          "state",
+          "event"
+        ]
+      },
+      "WhatsAppOnboardingOutcome": {
+        "type": "string",
+        "enum": [
+          "exchanged",
+          "cancelled",
+          "failed"
+        ],
+        "description": "exchanged: the token is stored and the number is pending verification"
+      },
+      "WhatsAppOnboardingResultDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "description": "exchanged: the token is stored and the number is pending verification",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WhatsAppOnboardingOutcome"
+              }
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "What happened and how to recover, for the admin"
+          },
+          "businessAccountIds": {
+            "description": "Meta ids of the WhatsApp Business Accounts recorded for the company",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "phoneNumberIds": {
+            "description": "Meta ids of the numbers now pending verification",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "sessionId",
+          "status",
+          "message",
+          "businessAccountIds",
+          "phoneNumberIds"
         ]
       },
       "NotificationSortField": {

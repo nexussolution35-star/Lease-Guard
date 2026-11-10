@@ -7,6 +7,12 @@ import { e2eUser } from './support/world.ts'
 // say what is missing and never show a number as connected.
 test.describe('Settings → Integrations → WhatsApp', () => {
   test('shows a company admin what LeaseGuard needs from Meta, and no connected number', async ({ page }) => {
+    // Facebook's SDK loads only when an admin connects; it must never be requested here (and never reach facebook.com).
+    const facebookRequests: string[] = []
+    await page.route(/(^https:\/\/([a-z0-9-]+\.)*(facebook\.com|facebook\.net)\/)/, (route) => {
+      facebookRequests.push(route.request().url())
+      return route.abort()
+    })
     await signIn(page, e2eUser('admin'), '/settings/integrations/whatsapp')
     await expectShell(page)
     await expect(pageHeading(page)).toHaveText('WhatsApp')
@@ -24,6 +30,12 @@ test.describe('Settings → Integrations → WhatsApp', () => {
     await expect(page.getByText('No WhatsApp numbers yet')).toBeVisible()
     await expect(page.getByText('Connected', { exact: true })).toHaveCount(0)
     await expect(page.getByText(/Only company admins can connect/)).toHaveCount(0)
+
+    // Connecting needs Embedded Signup configured on the API: the button is disabled and says why.
+    const connect = page.getByRole('region', { name: 'Connect WhatsApp Business' })
+    await expect(connect.getByText(/Requires Meta configuration/)).toBeVisible()
+    await expect(connect.getByRole('button', { name: 'Connect WhatsApp Business' })).toBeDisabled()
+    expect(facebookRequests).toEqual([])
 
     // The old settings link still leads here.
     await page.goto('/settings/whatsapp')

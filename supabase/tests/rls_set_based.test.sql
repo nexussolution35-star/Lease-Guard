@@ -54,7 +54,7 @@ begin
       when not p_old_rules then 'true'
       when t = 'audit_logs' then 'private.has_company_role(company_id, ''{company_admin,property_manager,read_only}'')'
       when t = 'notifications' then 'user_id = (select auth.uid()) and private.is_company_member(company_id)'
-      when t = 'company_invitations' then 'private.has_company_role(company_id, ''{company_admin}'')'
+      when t in ('company_invitations', 'whatsapp_onboarding_sessions') then 'private.has_company_role(company_id, ''{company_admin}'')'
       else 'private.is_company_member(company_id)'
     end;
     return query execute format(

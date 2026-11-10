@@ -53,6 +53,7 @@ const PAIRS: { readonly [E in DbEnumName]: readonly string[] } = {
   user_status: domain.USER_STATUSES,
   weekday: domain.WEEKDAYS,
   whatsapp_connection_status: domain.WHATSAPP_CONNECTION_STATUSES,
+  whatsapp_onboarding_status: domain.WHATSAPP_ONBOARDING_STATUSES,
 }
 
 /**

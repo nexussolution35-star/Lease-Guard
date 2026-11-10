@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 
 import { useWhatsAppBusinessAccounts, useWhatsAppCapabilities } from '../api/queries'
 import type { WhatsAppBusinessAccount, WhatsAppCapabilities, WhatsAppPhoneNumber } from '../api/source'
+import { ConnectWhatsAppBusiness } from './ConnectWhatsAppBusiness'
 
 const CAPABILITIES: readonly { id: WhatsAppCapability; label: string; description: string }[] = [
   {
@@ -192,8 +193,11 @@ function BusinessAccountCard({ account }: { account: WhatsAppBusinessAccount }) 
                 {account.numbers.map((number) => (
                   <TableRow key={number.id}>
                     <TableCell>
-                      <p className="font-medium tabular-nums">{number.displayNumber}</p>
-                      <p className="text-xs text-muted-foreground">{number.verifiedName ?? number.displayName}</p>
+                      {/* A number from Embedded Signup has no display details until verification reads them from Meta. */}
+                      <p className="font-medium tabular-nums">{number.displayNumber || `Number id ${number.phoneNumberId}`}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {number.verifiedName ?? (number.displayName || 'Details appear after verification')}
+                      </p>
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={number.connectionStatus} />
@@ -241,11 +245,13 @@ function BusinessAccounts() {
 
 /**
  * Settings → Integrations → WhatsApp: the active company's WhatsApp Business Accounts and numbers with the
- * status LeaseGuard verified, and what LeaseGuard still needs from Meta. Read-only; statuses come from
- * the API only, so the page never shows a number as connected that LeaseGuard has not verified.
+ * status LeaseGuard verified, what LeaseGuard still needs from Meta, and (company admins) Connect WhatsApp
+ * Business through Meta Embedded Signup. Statuses come from the API only, so the page never shows a number
+ * as connected that LeaseGuard has not verified.
  */
 export function WhatsAppIntegrationScreen() {
   const isAdmin = useIsCompanyAdmin()
+  const capabilities = useWhatsAppCapabilities()
   return (
     <section className="space-y-6">
       <PageHeader
@@ -260,6 +266,7 @@ export function WhatsAppIntegrationScreen() {
         </p>
       )}
       <MetaSetup />
+      {isAdmin ? <ConnectWhatsAppBusiness capabilities={capabilities.data} /> : null}
       <div className="space-y-3">
         <h2 className="text-lg font-semibold text-foreground">Business accounts and numbers</h2>
         <BusinessAccounts />

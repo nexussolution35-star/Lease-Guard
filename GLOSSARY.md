@@ -75,5 +75,9 @@ _Avoid_: WABA (in user-facing text), business account (on its own, which reads a
 One of a company's WhatsApp phone numbers, belonging to one of its WhatsApp Business Accounts. A company may have several; a number counts as connected only after LeaseGuard has verified it with Meta.
 _Avoid_: WhatsApp account, line
 
+**WhatsApp signup**:
+A company admin's single attempt to connect the company's WhatsApp Business through Meta's Embedded Signup; it expires after a few minutes, can be completed only once, and only by the admin who started it.
+_Avoid_: Onboarding (on its own, which reads as the company's setup checklist), Embedded Signup session (in user-facing text)
+
 **Receiving number**:
 The company's business phone number that an inbound WhatsApp message was sent to; it, not the sender's number, identifies which company the message belongs to.

@@ -20,6 +20,21 @@ describe('createApiWhatsAppIntegrationSource', () => {
     expect(requestAt(fetch).headers.get('X-Company-Id')).toBe(TEST_COMPANY_ID)
   })
 
+  it('starts an onboarding session and completes it for the active company', async () => {
+    const start = fakeFetch(201, { sessionId: 's-1' })
+    await createApiWhatsAppIntegrationSource(fakeApiClient(start)).startOnboarding(TEST_COMPANY_ID)
+    expect(urlOf(start).pathname).toBe('/api/v1/integrations/whatsapp/onboarding-sessions')
+    expect(requestAt(start).method).toBe('POST')
+    expect(requestAt(start).headers.get('X-Company-Id')).toBe(TEST_COMPANY_ID)
+
+    const complete = fakeFetch(200, { status: 'cancelled' })
+    const completion = { state: 'a'.repeat(64), event: 'CANCEL' as const, sessionInfo: { current_step: 'PHONE_NUMBER_SETUP' } }
+    await createApiWhatsAppIntegrationSource(fakeApiClient(complete)).completeOnboarding(TEST_COMPANY_ID, 's-1', completion)
+    expect(urlOf(complete).pathname).toBe('/api/v1/integrations/whatsapp/onboarding-sessions/s-1/complete')
+    expect(requestAt(complete).headers.get('X-Company-Id')).toBe(TEST_COMPANY_ID)
+    expect(await requestAt(complete).json()).toEqual(completion)
+  })
+
   it('rethrows API errors', async () => {
     const fetch = fakeFetch(403, { statusCode: 403, error: 'Forbidden', message: 'Not a member', requestId: null })
     await expect(createApiWhatsAppIntegrationSource(fakeApiClient(fetch)).listBusinessAccounts(TEST_COMPANY_ID)).rejects.toBeInstanceOf(ApiError)

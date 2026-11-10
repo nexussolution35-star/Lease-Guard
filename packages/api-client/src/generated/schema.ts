@@ -786,6 +786,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/whatsapp/onboarding-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start connecting WhatsApp Business through Meta Embedded Signup (company admins)
+         * @description Creates a single-use signup session for the caller and the active company, valid for 15 minutes; an earlier unfinished session of the same admin expires. Returns what the browser passes to Meta's Facebook JavaScript SDK (public app and configuration ids, Graph API version, Embedded Signup v5 extras) and the state to send back. 503 while Embedded Signup is not configured on the API.
+         */
+        post: operations["startWhatsAppOnboarding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/whatsapp/onboarding-sessions/{sessionId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Meta Embedded Signup's result and exchange its code (the admin who started the session)
+         * @description Send the WA_EMBEDDED_SIGNUP message's event and data, and the code from FB.login, as soon as the popup returns: the code lives about 30 seconds. A finish with a code is exchanged with Meta server to server; the business token is stored in Supabase Vault for the company and never returned, and the shared number appears pending verification. CANCEL, ERROR and a finish without a code are recorded, and the response explains how to recover. A session is single-use and belongs to the admin and company that started it (404 for anyone else).
+         */
+        post: operations["completeWhatsAppOnboarding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/notifications": {
         parameters: {
             query?: never;
@@ -2047,6 +2087,81 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        EmbeddedSignupExtrasDto: {
+            /**
+             * @description Embedded Signup version for FB.login extras
+             * @enum {string}
+             */
+            version: "v5";
+        };
+        WhatsAppOnboardingSessionDto: {
+            /** Format: uuid */
+            sessionId: string;
+            /** @description Single-use state to send back with the result (only its hash is stored) */
+            state: string;
+            /**
+             * Format: date-time
+             * @description The session must be completed before this time (15 minutes)
+             */
+            expiresAt: string;
+            /** @description Public Meta app id for FB.init */
+            appId: string;
+            /** @description Embedded Signup (Facebook Login for Business) configuration id for FB.login */
+            configId: string;
+            /**
+             * @description Graph API version for FB.init
+             * @example v27.0
+             */
+            graphApiVersion: string;
+            extras: components["schemas"]["EmbeddedSignupExtrasDto"];
+        };
+        /** @enum {string} */
+        EmbeddedSignupEvent: "FINISH" | "FINISH_ONLY_WABA" | "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" | "FINISH_GRANT_ONLY_API_ACCESS" | "CANCEL" | "ERROR";
+        EmbeddedSignupSessionInfoDto: {
+            phone_number_id?: string;
+            /** @description v4: the shared WhatsApp Business (messaging) Account */
+            waba_id?: string;
+            /** @description v5: the shared messaging accounts */
+            messaging_account_ids?: string[];
+            /** @description The customer's business portfolio */
+            business_id?: string;
+            is_on_biz_app?: boolean;
+            /** @description CANCEL: the step the customer left at */
+            current_step?: string;
+            /** @description ERROR */
+            error_message?: string;
+            /** @description ERROR (string or number) */
+            error_code?: string;
+            /** @description ERROR */
+            session_id?: string;
+            /** @description ERROR: Unix milliseconds (string or number) */
+            timestamp?: string;
+        };
+        CompleteWhatsAppOnboardingDto: {
+            /** @description The state returned when the session was started */
+            state: string;
+            event: components["schemas"]["EmbeddedSignupEvent"];
+            /** @description The one-time code from FB.login, sent immediately (it lives about 30 seconds) */
+            code?: string;
+            sessionInfo?: components["schemas"]["EmbeddedSignupSessionInfoDto"];
+        };
+        /**
+         * @description exchanged: the token is stored and the number is pending verification
+         * @enum {string}
+         */
+        WhatsAppOnboardingOutcome: "exchanged" | "cancelled" | "failed";
+        WhatsAppOnboardingResultDto: {
+            /** Format: uuid */
+            sessionId: string;
+            /** @description exchanged: the token is stored and the number is pending verification */
+            status: components["schemas"]["WhatsAppOnboardingOutcome"];
+            /** @description What happened and how to recover, for the admin */
+            message: string;
+            /** @description Meta ids of the WhatsApp Business Accounts recorded for the company */
+            businessAccountIds: string[];
+            /** @description Meta ids of the numbers now pending verification */
+            phoneNumberIds: string[];
+        };
         /** @enum {string} */
         NotificationSortField: "createdAt";
         /** @enum {string} */
@@ -2275,6 +2390,13 @@ export type SettingProcess = components['schemas']['SettingProcess'];
 export type MissingSettingDto = components['schemas']['MissingSettingDto'];
 export type WhatsAppCapabilitiesDto = components['schemas']['WhatsAppCapabilitiesDto'];
 export type WhatsAppBusinessAccountDto = components['schemas']['WhatsAppBusinessAccountDto'];
+export type EmbeddedSignupExtrasDto = components['schemas']['EmbeddedSignupExtrasDto'];
+export type WhatsAppOnboardingSessionDto = components['schemas']['WhatsAppOnboardingSessionDto'];
+export type EmbeddedSignupEvent = components['schemas']['EmbeddedSignupEvent'];
+export type EmbeddedSignupSessionInfoDto = components['schemas']['EmbeddedSignupSessionInfoDto'];
+export type CompleteWhatsAppOnboardingDto = components['schemas']['CompleteWhatsAppOnboardingDto'];
+export type WhatsAppOnboardingOutcome = components['schemas']['WhatsAppOnboardingOutcome'];
+export type WhatsAppOnboardingResultDto = components['schemas']['WhatsAppOnboardingResultDto'];
 export type NotificationSortField = components['schemas']['NotificationSortField'];
 export type NotificationType = components['schemas']['NotificationType'];
 export type NotificationSeverity = components['schemas']['NotificationSeverity'];
@@ -5153,6 +5275,148 @@ export interface operations {
                 };
             };
             /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    startWhatsAppOnboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppOnboardingSessionDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /**
+             * @description Embedded Signup is not configured, or the database is unavailable
+             *
+             *     Authentication or database unavailable
+             */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    completeWhatsAppOnboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteWhatsAppOnboardingDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppOnboardingResultDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description No such session of the caller in the active company, or a wrong state */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The session was already used, or expired */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /**
+             * @description Embedded Signup is not configured, or the database is unavailable
+             *
+             *     Authentication or database unavailable
+             */
             503: {
                 headers: {
                     [name: string]: unknown;

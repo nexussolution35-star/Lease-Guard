@@ -58,6 +58,12 @@ values
   ('20000000-0000-4000-8000-000000000001', 'waba-ns', 'phone-ns', 'Nexus Solution', '+27 11 555 0100', 'secret://env/WHATSAPP_ACCESS_TOKEN_20000000000040008000000000000001', true, 'connected', now()),
   ('20000000-0000-4000-8000-000000000002', 'waba-kp', 'phone-kp', 'Kgalagadi Property', '+27 12 555 0200', 'secret://env/WHATSAPP_ACCESS_TOKEN_20000000000040008000000000000002', false, 'pending_verification', null);
 
+-- One finished Embedded Signup per company (company admins read them; the state hash is never readable).
+insert into public.whatsapp_onboarding_sessions (company_id, started_by, state_hash, status, event, embedded_signup_version, messaging_account_ids, finished_at)
+values
+  ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', repeat('a', 64), 'cancelled', 'CANCEL', null, '{}', now()),
+  ('20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000007', repeat('b', 64), 'failed', 'FINISH', 'v5', '{100200300}', now());
+
 -- ------------------------------------------------------------------ portfolio
 insert into public.properties (id, company_id, name, code, type, address_line1, suburb, city, province, postal_code, gross_lettable_area_sqm, manager_user_id, owner_user_id, accounting_system)
 values

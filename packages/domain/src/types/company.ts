@@ -64,6 +64,21 @@ export interface WhatsAppSummary {
   connectedNumberCount: number
 }
 
+/**
+ * Where a Meta Embedded Signup attempt (onboarding session) stands. `exchanged`: the business token is
+ * stored and the shared number is pending verification; `completed` is reserved for after verification.
+ */
+export const WHATSAPP_ONBOARDING_STATUSES = [
+  'started',
+  'code_received',
+  'exchanged',
+  'completed',
+  'cancelled',
+  'failed',
+  'expired',
+] as const
+export type WhatsAppOnboardingStatus = (typeof WHATSAPP_ONBOARDING_STATUSES)[number]
+
 export const WEEKDAYS = [
   'monday',
   'tuesday',

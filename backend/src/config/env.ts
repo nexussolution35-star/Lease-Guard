@@ -35,7 +35,7 @@ const sharedSchema = z.object({
   DOCUMENT_PROCESSING_MAX_FILE_MB: z.coerce.number().int().min(1).max(200),
 })
 
-const apiEnvSchema = sharedSchema.extend({
+const apiEnvObject = sharedSchema.extend({
   API_PORT: z.coerce.number().int().min(1).max(65535),
   API_CORS_ORIGINS: z
     .string()
@@ -53,6 +53,28 @@ const apiEnvSchema = sharedSchema.extend({
   WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID: optionalMetaId,
   WHATSAPP_APP_SECRET: optionalText,
   WHATSAPP_WEBHOOK_VERIFY_TOKEN: optionalText,
+  /**
+   * Graph API base URL and version for the Embedded Signup code exchange (server to server). Same names as
+   * the worker's sending settings; default Meta's own URL and the version LeaseGuard is built against. Plain
+   * http is accepted for a loopback host outside production only (a local fake Graph server in tests).
+   */
+  WHATSAPP_GRAPH_API_URL: z
+    .preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), z.url({ protocol: /^https?$/ }).optional())
+    .transform((value) => value ?? 'https://graph.facebook.com'),
+  WHATSAPP_GRAPH_API_VERSION: z
+    .preprocess(
+      (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+      z.string().regex(/^v\d+\.\d+$/, 'a Graph API version such as v27.0').optional(),
+    )
+    .transform((value) => value ?? 'v27.0'),
+})
+const apiEnvShape = apiEnvObject.shape
+const apiEnvSchema = apiEnvObject.superRefine((env, ctx) => {
+  const url = new URL(env.WHATSAPP_GRAPH_API_URL)
+  const loopback = url.hostname === '127.0.0.1' || url.hostname === 'localhost' || url.hostname === '[::1]'
+  if (url.protocol === 'http:' && (env.NODE_ENV === 'production' || !loopback)) {
+    ctx.addIssue({ code: 'custom', path: ['WHATSAPP_GRAPH_API_URL'], message: 'must be an https URL (http only for a loopback host outside production)' })
+  }
 })
 
 const workerEnvSchema = sharedSchema
@@ -149,7 +171,7 @@ export function loadEnvFileKeys(
  */
 export { WHATSAPP_ACCESS_TOKEN_KEY }
 
-export const API_ENV_KEYS: readonly string[] = Object.keys(apiEnvSchema.shape)
+export const API_ENV_KEYS: readonly string[] = Object.keys(apiEnvShape)
 export const WORKER_ENV_KEYS: readonly string[] = Object.keys(workerEnvSchema.shape)
 
 /** API configuration. Throws InvalidEnvironmentError listing every missing or invalid variable. */

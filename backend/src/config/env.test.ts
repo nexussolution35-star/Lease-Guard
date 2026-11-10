@@ -83,6 +83,22 @@ describe('loadApiEnv', () => {
     expect(() => loadApiEnv({ ...api, WHATSAPP_APP_ID: 'my-app' })).toThrow(/WHATSAPP_APP_ID: /)
     expect(() => loadApiEnv({ ...api, WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID: 'abc' })).toThrow(/WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID: /)
   })
+
+  it("exchanges Embedded Signup codes with Meta's Graph API v27.0 unless configured otherwise", () => {
+    const env = loadApiEnv(api)
+    expect([env.WHATSAPP_GRAPH_API_URL, env.WHATSAPP_GRAPH_API_VERSION]).toEqual(['https://graph.facebook.com', 'v27.0'])
+    const custom = loadApiEnv({ ...api, WHATSAPP_GRAPH_API_URL: 'https://graph.example', WHATSAPP_GRAPH_API_VERSION: 'v26.0' })
+    expect([custom.WHATSAPP_GRAPH_API_URL, custom.WHATSAPP_GRAPH_API_VERSION]).toEqual(['https://graph.example', 'v26.0'])
+    expect(() => loadApiEnv({ ...api, WHATSAPP_GRAPH_API_VERSION: '27' })).toThrow(/WHATSAPP_GRAPH_API_VERSION: /)
+  })
+
+  it('accepts a plain-http Graph API URL only for a loopback host outside production', () => {
+    expect(loadApiEnv({ ...api, WHATSAPP_GRAPH_API_URL: 'http://127.0.0.1:4010' }).WHATSAPP_GRAPH_API_URL).toBe('http://127.0.0.1:4010')
+    expect(() => loadApiEnv({ ...api, WHATSAPP_GRAPH_API_URL: 'http://graph.facebook.com' })).toThrow(/WHATSAPP_GRAPH_API_URL: /)
+    expect(() => loadApiEnv({ ...api, NODE_ENV: 'production', WHATSAPP_GRAPH_API_URL: 'http://127.0.0.1:4010' })).toThrow(
+      /WHATSAPP_GRAPH_API_URL: /,
+    )
+  })
 })
 
 describe('loadWorkerEnv', () => {
