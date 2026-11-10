@@ -87,6 +87,13 @@ const workerEnvSchema = sharedSchema
     /** Meta Graph API base URL and version used to send WhatsApp messages. */
     WHATSAPP_GRAPH_API_URL: z.url({ protocol: /^https$/ }),
     WHATSAPP_GRAPH_API_VERSION: z.string().regex(/^v\d+\.\d+$/, 'a Graph API version such as v23.0'),
+    /**
+     * LeaseGuard's Meta app, for number verification: Meta's debug_token (checking that a business token covers
+     * the number's account) is authenticated with the app access token `<app id>|<app secret>`. Optional; without
+     * them a number cannot be verified and the integration page says so. Same values as the API's.
+     */
+    WHATSAPP_APP_ID: optionalMetaId,
+    WHATSAPP_APP_SECRET: optionalText,
     /** Anthropic API key for the AI agent runtime. Optional; worker only (the API never loads it). */
     ANTHROPIC_API_KEY: optionalText,
     /**

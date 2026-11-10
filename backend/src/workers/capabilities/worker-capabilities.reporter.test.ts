@@ -17,7 +17,7 @@ describe('WorkerCapabilitiesReporter', () => {
     await worker.publish()
     expect(set).toHaveBeenCalledWith(
       'lg-test:worker-capabilities',
-      JSON.stringify({ agentRuntimeConfigured: true, reportedAt: '2026-11-10T08:00:00.000Z' }),
+      JSON.stringify({ agentRuntimeConfigured: true, numberVerificationConfigured: false, reportedAt: '2026-11-10T08:00:00.000Z' }),
       'EX',
       300,
     )

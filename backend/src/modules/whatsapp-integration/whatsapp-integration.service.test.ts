@@ -58,6 +58,26 @@ const tables = {
     }),
     number('num-x', OTHER, '9009', '999999', '2026-10-01T09:00:00Z', { connection_status: 'connected' }),
   ],
+  whatsapp_number_verification_steps: [
+    step('num-b', COMPANY, 'registration', 'action_needed', { recovery: 'Click Register number' }),
+    step('num-b', COMPANY, 'token_scopes', 'passed'),
+    step('num-x', OTHER, 'token_scopes', 'failed'),
+  ],
+}
+
+function step(numberId: string, companyId: string, name: string, status: string, extra: Record<string, unknown> = {}) {
+  return {
+    id: `${numberId}-${name}`,
+    company_id: companyId,
+    number_id: numberId,
+    step: name,
+    status,
+    message: `${name} ${status}`,
+    recovery: null,
+    meta_error_code: null,
+    checked_at: '2026-11-05T08:00:00Z',
+    ...extra,
+  }
 }
 
 describe('WhatsAppIntegrationService.listBusinessAccounts', () => {
@@ -91,6 +111,7 @@ describe('WhatsAppIntegrationService.listBusinessAccounts', () => {
       webhookConfigured: true,
       connectionStatus: 'connected',
       lastVerifiedAt: '2026-11-04T10:00:00Z',
+      verificationSteps: [],
       createdAt: '2026-11-01T09:00:00Z',
     })
     expect(first?.numbers[1]).toEqual({
@@ -101,6 +122,16 @@ describe('WhatsAppIntegrationService.listBusinessAccounts', () => {
       displayNumber: '+27 11 555 0100',
       webhookConfigured: false,
       connectionStatus: 'pending_verification',
+      verificationSteps: [
+        { step: 'token_scopes', status: 'passed', message: 'token_scopes passed', checkedAt: '2026-11-05T08:00:00Z' },
+        {
+          step: 'registration',
+          status: 'action_needed',
+          message: 'registration action_needed',
+          recovery: 'Click Register number',
+          checkedAt: '2026-11-05T08:00:00Z',
+        },
+      ],
       createdAt: '2026-11-03T08:00:00Z',
     })
   })

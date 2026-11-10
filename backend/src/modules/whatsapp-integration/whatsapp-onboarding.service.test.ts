@@ -28,6 +28,17 @@ function db(answers: Record<string, FakeResult>) {
 }
 const argsOf = (queries: RecordedQuery[], fn: string) => queries.find((q) => q.table === `rpc:${fn}`)?.calls[0][1][0]
 
+/** Records which numbers the service asked to verify after a signup. */
+const verified: string[] = []
+function verifier(queued = true) {
+  return {
+    verifyAfterSignup: async (_db: unknown, _companyId: string, phoneNumberId: string) => {
+      verified.push(phoneNumberId)
+      return queued
+    },
+  }
+}
+
 const finish = { state: STATE, event: 'FINISH' as const, code: 'AQD-code', sessionInfo: { messaging_account_ids: ['5241'], phone_number_id: '1065', business_id: '2729' } }
 
 describe('WhatsAppOnboardingService.start', () => {
@@ -35,7 +46,7 @@ describe('WhatsAppOnboardingService.start', () => {
     const { client, queries } = db({
       'rpc:start_whatsapp_onboarding': { data: [{ session_id: SESSION, state: STATE, expires_at: '2026-11-10T10:15:00+00:00' }], error: null },
     })
-    const started = await new WhatsAppOnboardingService(SETTINGS, exchanger({ accessToken: TOKEN })).start(client, COMPANY)
+    const started = await new WhatsAppOnboardingService(SETTINGS, exchanger({ accessToken: TOKEN }), verifier()).start(client, COMPANY)
     expect(started).toEqual({
       sessionId: SESSION,
       state: STATE,
@@ -50,7 +61,7 @@ describe('WhatsAppOnboardingService.start', () => {
 
   it('refuses to start while Embedded Signup is not configured', async () => {
     const { client, queries } = db({})
-    await expect(new WhatsAppOnboardingService({ WHATSAPP_GRAPH_API_VERSION: 'v27.0' }, null).start(client, COMPANY)).rejects.toBeInstanceOf(
+    await expect(new WhatsAppOnboardingService({ WHATSAPP_GRAPH_API_VERSION: 'v27.0' }, null, verifier()).start(client, COMPANY)).rejects.toBeInstanceOf(
       ServiceUnavailableException,
     )
     expect(queries).toEqual([])
@@ -64,7 +75,7 @@ describe('WhatsAppOnboardingService.complete', () => {
       'rpc:record_whatsapp_onboarding_result': { data: 'recorded', error: null },
       'rpc:store_whatsapp_onboarding_token': { data: [{ business_account_id: '5241', phone_number_id: '1065' }], error: null },
     })
-    const result = await new WhatsAppOnboardingService(SETTINGS, exchange).complete(client, COMPANY, SESSION, finish)
+    const result = await new WhatsAppOnboardingService(SETTINGS, exchange, verifier()).complete(client, COMPANY, SESSION, finish)
 
     expect(result).toEqual({
       sessionId: SESSION,
@@ -91,10 +102,23 @@ describe('WhatsAppOnboardingService.complete', () => {
     expect(argsOf(queries, 'store_whatsapp_onboarding_token')).toEqual({ p_company_id: COMPANY, p_session_id: SESSION, p_access_token: TOKEN })
   })
 
+  it('starts verifying the stored number, and tells the admin when that could not be queued yet', async () => {
+    const answers = {
+      'rpc:record_whatsapp_onboarding_result': { data: 'recorded', error: null },
+      'rpc:store_whatsapp_onboarding_token': { data: [{ business_account_id: '5241', phone_number_id: '1065' }], error: null },
+    }
+    verified.length = 0
+    const ok = await new WhatsAppOnboardingService(SETTINGS, exchanger({ accessToken: TOKEN }), verifier()).complete(db(answers).client, COMPANY, SESSION, finish)
+    expect(verified).toEqual(['1065'])
+    expect(ok.message).toContain('checking it with Meta now')
+    const later = await new WhatsAppOnboardingService(SETTINGS, exchanger({ accessToken: TOKEN }), verifier(false)).complete(db(answers).client, COMPANY, SESSION, finish)
+    expect(later).toMatchObject({ status: 'exchanged', message: expect.stringContaining('click Verify again') })
+  })
+
   it('records a cancel with recovery steps and exchanges nothing', async () => {
     const exchange = exchanger({ accessToken: TOKEN })
     const { client, queries } = db({ 'rpc:record_whatsapp_onboarding_result': { data: 'recorded', error: null } })
-    const result = await new WhatsAppOnboardingService(SETTINGS, exchange).complete(client, COMPANY, SESSION, {
+    const result = await new WhatsAppOnboardingService(SETTINGS, exchange, verifier()).complete(client, COMPANY, SESSION, {
       state: STATE,
       event: 'CANCEL',
       sessionInfo: { current_step: 'PHONE_NUMBER_SETUP' },
@@ -107,7 +131,7 @@ describe('WhatsAppOnboardingService.complete', () => {
 
   it('records a finish without a code as failed, with what to do', async () => {
     const { client, queries } = db({ 'rpc:record_whatsapp_onboarding_result': { data: 'recorded', error: null } })
-    const result = await new WhatsAppOnboardingService(SETTINGS, exchanger({ accessToken: TOKEN })).complete(client, COMPANY, SESSION, {
+    const result = await new WhatsAppOnboardingService(SETTINGS, exchanger({ accessToken: TOKEN }), verifier()).complete(client, COMPANY, SESSION, {
       ...finish,
       code: undefined,
     })
@@ -121,7 +145,7 @@ describe('WhatsAppOnboardingService.complete', () => {
       'rpc:record_whatsapp_onboarding_result': { data: 'recorded', error: null },
       'rpc:fail_whatsapp_onboarding_exchange': { data: 'recorded', error: null },
     })
-    const result = await new WhatsAppOnboardingService(SETTINGS, exchanger(new EmbeddedSignupExchangeError('code_rejected', { status: 400, graphCode: 100 }))).complete(
+    const result = await new WhatsAppOnboardingService(SETTINGS, exchanger(new EmbeddedSignupExchangeError('code_rejected', { status: 400, graphCode: 100 })), verifier()).complete(
       client,
       COMPANY,
       SESSION,
@@ -140,13 +164,13 @@ describe('WhatsAppOnboardingService.complete', () => {
   ] as const)('answers a session that is %s with an error and never exchanges its code', async (outcome, type) => {
     const exchange = exchanger({ accessToken: TOKEN })
     const { client } = db({ 'rpc:record_whatsapp_onboarding_result': { data: outcome, error: null } })
-    await expect(new WhatsAppOnboardingService(SETTINGS, exchange).complete(client, COMPANY, SESSION, finish)).rejects.toBeInstanceOf(type)
+    await expect(new WhatsAppOnboardingService(SETTINGS, exchange, verifier()).complete(client, COMPANY, SESSION, finish)).rejects.toBeInstanceOf(type)
     expect(exchange.codes).toEqual([])
   })
 
   it('tells the admin that an expired or superseded signup must be started again, not that it was completed', async () => {
     const { client } = db({ 'rpc:record_whatsapp_onboarding_result': { data: 'expired', error: null } })
-    const error: unknown = await new WhatsAppOnboardingService(SETTINGS, exchanger({ accessToken: TOKEN }))
+    const error: unknown = await new WhatsAppOnboardingService(SETTINGS, exchanger({ accessToken: TOKEN }), verifier())
       .complete(client, COMPANY, SESSION, finish)
       .catch((e: unknown) => e)
     expect(error).toBeInstanceOf(ConflictException)

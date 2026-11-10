@@ -35,6 +35,27 @@ describe('createApiWhatsAppIntegrationSource', () => {
     expect(await requestAt(complete).json()).toEqual(completion)
   })
 
+  it('verifies, registers and disconnects a number of the active company, and lists its templates', async () => {
+    const verify = fakeFetch(202, { numberId: 'n-1', status: 'queued', message: 'Verifying' })
+    await createApiWhatsAppIntegrationSource(fakeApiClient(verify)).verifyNumber(TEST_COMPANY_ID, 'n-1')
+    expect([requestAt(verify).method, urlOf(verify).pathname]).toEqual(['POST', '/api/v1/integrations/whatsapp/numbers/n-1/verify'])
+    expect(requestAt(verify).headers.get('X-Company-Id')).toBe(TEST_COMPANY_ID)
+
+    const register = fakeFetch(202, { numberId: 'n-1', status: 'queued', message: 'Registering' })
+    await createApiWhatsAppIntegrationSource(fakeApiClient(register)).registerNumber(TEST_COMPANY_ID, 'n-1', '123456')
+    expect(urlOf(register).pathname).toBe('/api/v1/integrations/whatsapp/numbers/n-1/register')
+    expect(await requestAt(register).json()).toEqual({ pin: '123456' })
+
+    const disconnect = fakeFetch(200, { numberId: 'n-1', status: 'disconnected', tokenRemoved: true, message: 'Done' })
+    await expect(createApiWhatsAppIntegrationSource(fakeApiClient(disconnect)).disconnectNumber(TEST_COMPANY_ID, 'n-1')).resolves.toMatchObject({ tokenRemoved: true })
+    expect(urlOf(disconnect).pathname).toBe('/api/v1/integrations/whatsapp/numbers/n-1/disconnect')
+
+    const templates = fakeFetch(200, [])
+    await createApiWhatsAppIntegrationSource(fakeApiClient(templates)).listMessageTemplates(TEST_COMPANY_ID)
+    expect(urlOf(templates).pathname).toBe('/api/v1/integrations/whatsapp/message-templates')
+    expect(requestAt(templates).headers.get('X-Company-Id')).toBe(TEST_COMPANY_ID)
+  })
+
   it('rethrows API errors', async () => {
     const fetch = fakeFetch(403, { statusCode: 403, error: 'Forbidden', message: 'Not a member', requestId: null })
     await expect(createApiWhatsAppIntegrationSource(fakeApiClient(fetch)).listBusinessAccounts(TEST_COMPANY_ID)).rejects.toBeInstanceOf(ApiError)

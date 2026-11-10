@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { apiEnvironment, freePort, startApi, type ApiBuild, type RunningApi } from '../fixtures/api-server.ts'
 import { localSql } from '../fixtures/local-db.ts'
+import { RedisConnection } from '../fixtures/redis.ts'
 import { TEST_OUTPUT_ROOT } from '../fixtures/paths.ts'
 import { apiAs, apiErrorOf, check, expectOk, integration, serviceRole, world } from './support/clients.ts'
 
@@ -158,6 +159,21 @@ describe('Meta Embedded Signup', () => {
     )) as { name: string; decrypted_secret: string }[]
     expect(secrets).toEqual([{ name: `whatsapp_access_token:${world().companies.a.id}:onboarding:${session.sessionId}`, decrypted_secret: TOKEN }])
     expect((await sessionRow(session.sessionId)).status).toBe('exchanged')
+
+    // Verification (ticket 04) was queued for the worker with the number's ids only.
+    const number = check(await serviceRole().from('whatsapp_phone_numbers').select('id').eq('phone_number_id', metaId(1)).single(), 'Read the number') as { id: string }
+    const redis = await RedisConnection.open(integration().redisUrl)
+    try {
+      const companyId = world().companies.a.id
+      const job = await redis.command(
+        'HGET',
+        `${integration().queuePrefix}:whatsapp-number-verification:whatsapp-number-verification.${companyId}.${number.id}`,
+        'data',
+      )
+      expect(JSON.parse(String(job))).toEqual({ companyId, numberId: number.id })
+    } finally {
+      redis.close()
+    }
 
     const log = readFileSync(BUILD.logFile, 'utf8')
     expect(log).not.toContain(TOKEN)

@@ -79,5 +79,13 @@ _Avoid_: WhatsApp account, line
 A company admin's single attempt to connect the company's WhatsApp Business through Meta's Embedded Signup; it expires after a few minutes, can be completed only once, and only by the admin who started it.
 _Avoid_: Onboarding (on its own, which reads as the company's setup checklist), Embedded Signup session (in user-facing text)
 
+**Number verification**:
+LeaseGuard's checks with Meta before a business number is connected: the business token covers its WhatsApp Business Account, Meta lists the number there, LeaseGuard receives the account's webhooks, the number is registered for the Cloud API, and the account's message templates are synced. The number is connected only when every check passes; otherwise the failed check and how to recover are shown.
+_Avoid_: Health check, onboarding (for this step)
+
+**Registration PIN**:
+The 6-digit two-step verification PIN a company admin enters so LeaseGuard can register a business number with Meta; it is used once and never stored.
+_Avoid_: Password, code (which reads as the Embedded Signup code)
+
 **Receiving number**:
 The company's business phone number that an inbound WhatsApp message was sent to; it, not the sender's number, identifies which company the message belongs to.

@@ -64,6 +64,15 @@ values
   ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', repeat('a', 64), 'cancelled', 'CANCEL', null, '{}', now()),
   ('20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000007', repeat('b', 64), 'failed', 'FINISH', 'v5', '{100200300}', now());
 
+-- One verification step per number and one synced Meta template per company (worker-written; members read).
+insert into public.whatsapp_number_verification_steps (company_id, number_id, step, status, message, checked_at)
+select company_id, id, 'token_scopes', 'passed', 'The business token covers this account.', now() from public.whatsapp_phone_numbers
+where company_id in ('20000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000002');
+insert into public.whatsapp_message_templates (company_id, business_account_id, meta_template_id, name, language, category, status)
+values
+  ('20000000-0000-4000-8000-000000000001', 'waba-ns', '900000000001', 'monthly_statement', 'en_ZA', 'UTILITY', 'APPROVED'),
+  ('20000000-0000-4000-8000-000000000002', 'waba-kp', '900000000002', 'monthly_statement', 'en_ZA', 'UTILITY', 'PENDING');
+
 -- ------------------------------------------------------------------ portfolio
 insert into public.properties (id, company_id, name, code, type, address_line1, suburb, city, province, postal_code, gross_lettable_area_sqm, manager_user_id, owner_user_id, accounting_system)
 values

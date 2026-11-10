@@ -6,7 +6,8 @@ import { WorkerCapabilitiesReader } from '../../infrastructure/capabilities/work
 import { EmbeddedSignupCodeExchange } from '../../infrastructure/whatsapp/embedded-signup-code-exchange'
 import { WhatsAppIntegrationController } from './whatsapp-integration.controller'
 import { WhatsAppIntegrationService } from './whatsapp-integration.service'
-import { EMBEDDED_SIGNUP_CODE_EXCHANGE, WhatsAppOnboardingService } from './whatsapp-onboarding.service'
+import { WhatsAppNumbersService } from './whatsapp-numbers.service'
+import { EMBEDDED_SIGNUP_CODE_EXCHANGE, SIGNUP_VERIFICATION, WhatsAppOnboardingService } from './whatsapp-onboarding.service'
 
 /** The WhatsApp integration status of the deployment and of the active company, and Meta Embedded Signup. */
 @Module({
@@ -14,6 +15,8 @@ import { EMBEDDED_SIGNUP_CODE_EXCHANGE, WhatsAppOnboardingService } from './what
   providers: [
     WhatsAppIntegrationService,
     WhatsAppOnboardingService,
+    WhatsAppNumbersService,
+    { provide: SIGNUP_VERIFICATION, useExisting: WhatsAppNumbersService },
     WorkerCapabilitiesReader,
     {
       provide: EMBEDDED_SIGNUP_CODE_EXCHANGE,

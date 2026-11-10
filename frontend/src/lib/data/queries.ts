@@ -1,4 +1,4 @@
-import { useQuery, type QueryKey, type UseQueryResult } from '@tanstack/react-query'
+import { useQuery, type Query, type QueryKey, type UseQueryResult } from '@tanstack/react-query'
 import type { EntityId } from '@leaseguard/domain'
 
 import { useActiveCompanyId } from './useActiveCompanyId'
@@ -15,7 +15,12 @@ import { useActiveCompanyId } from './useActiveCompanyId'
 export function useCompanyQuery<TData>(
   key: (companyId: EntityId) => QueryKey,
   fetcher: (companyId: EntityId) => Promise<TData>,
-  options: { keepPrevious?: boolean; enabled?: boolean; refetchInterval?: number } = {},
+  options: {
+    keepPrevious?: boolean
+    enabled?: boolean
+    /** Milliseconds, or decided from the latest data (e.g. poll only while something is pending). */
+    refetchInterval?: number | ((query: Query<TData, Error, TData, QueryKey>) => number | false | undefined)
+  } = {},
 ): UseQueryResult<TData> {
   const companyId = useActiveCompanyId()
   return useQuery({

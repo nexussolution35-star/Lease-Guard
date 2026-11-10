@@ -8,6 +8,14 @@ import { EmbeddedSignupExchangeError } from '../../infrastructure/whatsapp/embed
 import { exchangeFailureMessage, interpretEmbeddedSignupResult, type EmbeddedSignupRecord } from './embedded-signup-result'
 import type { CompleteOnboardingBody } from './whatsapp-onboarding.schemas'
 
+/** Starts verifying a number Embedded Signup just stored (WhatsAppNumbersService); never throws. */
+export interface SignupVerification {
+  verifyAfterSignup(db: DbClient, companyId: EntityId, phoneNumberId: string): Promise<boolean>
+}
+
+/** Injection token of the SignupVerification. */
+export const SIGNUP_VERIFICATION = Symbol('SIGNUP_VERIFICATION')
+
 /** Exchanges an Embedded Signup code for the business token (EmbeddedSignupCodeExchange; a fake in tests). */
 export interface CodeExchanger {
   exchange(code: string): Promise<{ accessToken: string }>
@@ -74,6 +82,7 @@ export class WhatsAppOnboardingService {
   constructor(
     @Inject(API_ENV) private readonly settings: OnboardingSettings,
     @Inject(EMBEDDED_SIGNUP_CODE_EXCHANGE) private readonly exchanger: CodeExchanger | null,
+    @Inject(SIGNUP_VERIFICATION) private readonly verification: SignupVerification,
   ) {}
 
   async start(db: DbClient, companyId: EntityId): Promise<OnboardingSessionStart> {
@@ -121,13 +130,17 @@ export class WhatsAppOnboardingService {
     const rows = stored.data ?? []
     const phoneNumberIds = rows.flatMap((row) => (row.phone_number_id ? [row.phone_number_id] : []))
     this.logger.log(`WhatsApp signup ${sessionId} of company ${companyId}: token stored, ${rows.length} account(s), ${phoneNumberIds.length} number(s)`)
+    // Verification runs in the worker; the signup has succeeded whether or not it could be queued now.
+    const queued = await Promise.all(phoneNumberIds.map((id) => this.verification.verifyAfterSignup(db, companyId, id)))
     return {
       sessionId,
       status: 'exchanged',
       message:
-        phoneNumberIds.length > 0
-          ? 'WhatsApp Business is connected to LeaseGuard. The number is pending verification: LeaseGuard checks it with Meta before it can send or receive messages.'
-          : 'Your WhatsApp Business Account is shared with LeaseGuard, but Meta did not share a phone number. Add a number to the account in WhatsApp Manager, then connect again.',
+        phoneNumberIds.length === 0
+          ? 'Your WhatsApp Business Account is shared with LeaseGuard, but Meta did not share a phone number. Add a number to the account in WhatsApp Manager, then connect again.'
+          : queued.every(Boolean)
+            ? 'WhatsApp Business is connected to LeaseGuard. The number is pending verification: LeaseGuard is checking it with Meta now, and it can send and receive messages once every check passes.'
+            : 'WhatsApp Business is connected to LeaseGuard. The number is pending verification, but LeaseGuard could not start checking it with Meta yet: click Verify again on the number.',
       businessAccountIds: rows.map((row) => row.business_account_id),
       phoneNumberIds,
     }

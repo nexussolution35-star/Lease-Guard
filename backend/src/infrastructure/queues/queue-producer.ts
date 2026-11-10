@@ -84,6 +84,26 @@ export class QueueProducer implements OnApplicationShutdown {
     }
   }
 
+  /**
+   * Whether a worker is processing the unit of work right now (BullMQ state `active`). A waiting or delayed job
+   * has not started yet, so it is not running. Throws 503 when Redis cannot be reached.
+   */
+  async isRunning<Q extends QueueName>(queue: Q, payload: JobPayloads[Q]): Promise<boolean> {
+    const jobId = jobIdFor(queue, payload)
+    try {
+      return await withTimeout(
+        (async () => {
+          const job = await this.queue(queue).getJob(jobId)
+          return job ? (await job.getState()) === 'active' : false
+        })(),
+        ENQUEUE_TIMEOUT_MS,
+      )
+    } catch (error) {
+      this.logger.error(`Could not read the state of ${jobId}: ${error instanceof Error ? error.message : String(error)}`)
+      throw new ServiceUnavailableException('Background processing is not available; try again shortly')
+    }
+  }
+
   private async addOrRetry<Q extends QueueName>(
     name: Q,
     payload: JobPayloads[Q],
@@ -129,7 +149,11 @@ export class QueueProducer implements OnApplicationShutdown {
     return { jobId, outcome: 'already_queued' }
   }
 
-  private redis(): Redis {
+  /**
+   * The API's Redis connection, for short-lived keys the worker reads next to a job (e.g. the single-use
+   * registration PIN, infrastructure/whatsapp/registration-pins.ts). Same lazy connection as the queues.
+   */
+  redis(): Redis {
     this.connection ??= createProducerConnection(this.env.REDIS_URL)
     return this.connection
   }

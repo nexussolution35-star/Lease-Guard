@@ -23,5 +23,33 @@ export function createApiWhatsAppIntegrationSource(api: ApiClient): WhatsAppInte
         }),
       )
     },
+    listMessageTemplates(companyId) {
+      return unwrap(api.GET('/api/v1/integrations/whatsapp/message-templates', { headers: { [COMPANY_ID_HEADER]: companyId } }))
+    },
+    verifyNumber(companyId, numberId) {
+      return unwrap(
+        api.POST('/api/v1/integrations/whatsapp/numbers/{numberId}/verify', {
+          params: { path: { numberId } },
+          headers: { [COMPANY_ID_HEADER]: companyId },
+        }),
+      )
+    },
+    registerNumber(companyId, numberId, pin) {
+      return unwrap(
+        api.POST('/api/v1/integrations/whatsapp/numbers/{numberId}/register', {
+          params: { path: { numberId } },
+          headers: { [COMPANY_ID_HEADER]: companyId },
+          body: { pin },
+        }),
+      )
+    },
+    disconnectNumber(companyId, numberId) {
+      return unwrap(
+        api.POST('/api/v1/integrations/whatsapp/numbers/{numberId}/disconnect', {
+          params: { path: { numberId } },
+          headers: { [COMPANY_ID_HEADER]: companyId },
+        }),
+      )
+    },
   }
 }

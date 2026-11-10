@@ -826,6 +826,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/whatsapp/message-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The message templates Meta holds for the active company's WhatsApp Business Accounts
+         * @description As last synced during number verification: name, language, Meta's category and review status. Every member may read them.
+         */
+        get: operations["listWhatsAppMessageTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/whatsapp/numbers/{numberId}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify a number with Meta again (company admins)
+         * @description Queues the verification of the number in the worker: token scopes, the number in its account, the webhook subscription, registration and the template sync. The number is connected only when every step passes; the business accounts list shows each step. Idempotent: a run already waiting or in progress is not duplicated.
+         */
+        post: operations["verifyWhatsAppNumber"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/whatsapp/numbers/{numberId}/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register a number for the WhatsApp Cloud API with a 6-digit PIN (company admins)
+         * @description The PIN becomes (or must match) the number's two-step verification PIN. It is handed to the worker for one attempt and is never stored or logged. Meta allows 10 attempts per 72 hours: after its rate-limit error (133016) further attempts are refused with 429 until the lock ends, so no request reaches Meta.
+         */
+        post: operations["registerWhatsAppNumber"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/whatsapp/numbers/{numberId}/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Disconnect a number (company admins)
+         * @description The number stops sending and receiving at once and is marked disconnected; its stored business token is deleted from Vault unless another number of the company in use still holds it. LeaseGuard stays installed in Meta until the business removes it in Meta Business Settings.
+         */
+        post: operations["disconnectWhatsAppNumber"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/notifications": {
         parameters: {
             query?: never;
@@ -1215,6 +1295,26 @@ export interface components {
             /** @description Number shown to tenants, e.g. +27 11 555 0100 */
             displayNumber: string;
         };
+        /** @enum {string} */
+        WhatsAppVerificationStep: "token_scopes" | "phone_number" | "webhook_subscription" | "registration" | "message_templates";
+        /**
+         * @description action_needed: waiting for the admin (the registration PIN); not_required counts as passed
+         * @enum {string}
+         */
+        WhatsAppVerificationStepStatus: "pending" | "passed" | "failed" | "action_needed" | "not_required";
+        WhatsAppVerificationStepDto: {
+            step: components["schemas"]["WhatsAppVerificationStep"];
+            /** @description action_needed: waiting for the admin (the registration PIN); not_required counts as passed */
+            status: components["schemas"]["WhatsAppVerificationStepStatus"];
+            /** @description What happened */
+            message?: string;
+            /** @description How to recover */
+            recovery?: string;
+            /** @description Meta's error code, when Meta refused */
+            metaErrorCode?: string;
+            /** Format: date-time */
+            checkedAt?: string;
+        };
         WhatsAppPhoneNumberDto: {
             /** Format: uuid */
             id: string;
@@ -1240,6 +1340,13 @@ export interface components {
             connectionStatus: components["schemas"]["WhatsAppConnectionStatus"];
             /** Format: date-time */
             lastVerifiedAt?: string;
+            /**
+             * Format: date-time
+             * @description Meta's registration lock after too many attempts (error 133016)
+             */
+            registrationBlockedUntil?: string;
+            /** @description In step order; empty until verification first ran */
+            verificationSteps: components["schemas"]["WhatsAppVerificationStepDto"][];
             /** Format: date-time */
             createdAt: string;
         };
@@ -2162,6 +2269,49 @@ export interface components {
             /** @description Meta ids of the numbers now pending verification */
             phoneNumberIds: string[];
         };
+        WhatsAppMessageTemplateDto: {
+            /** Format: uuid */
+            id: string;
+            /** @description Meta id of the WhatsApp Business Account */
+            businessAccountId: string;
+            metaTemplateId: string;
+            name: string;
+            /** @description Meta language code, e.g. en_ZA */
+            language: string;
+            /** @description Meta's category, e.g. UTILITY */
+            category: string;
+            /** @description Meta's review status, e.g. APPROVED, PENDING, REJECTED, PAUSED */
+            status: string;
+            rejectedReason?: string;
+            /** Format: date-time */
+            syncedAt: string;
+        };
+        WhatsAppVerificationRequestDto: {
+            /** Format: uuid */
+            numberId: string;
+            /**
+             * @description already_running: a run is waiting or in progress (for register: a waiting run, which reads the PIN)
+             * @enum {string}
+             */
+            status: "queued" | "already_running";
+            message: string;
+        };
+        RegisterWhatsAppNumberDto: {
+            /**
+             * @description 6-digit PIN: the number's two-step verification PIN, or the one it will get. Used once, never stored
+             * @example 123456
+             */
+            pin: string;
+        };
+        WhatsAppDisconnectResultDto: {
+            /** Format: uuid */
+            numberId: string;
+            /** @enum {string} */
+            status: "disconnected";
+            /** @description The stored business token was deleted (false when another number of the company in use still holds it, or the token is held in the worker environment) */
+            tokenRemoved: boolean;
+            message: string;
+        };
         /** @enum {string} */
         NotificationSortField: "createdAt";
         /** @enum {string} */
@@ -2293,6 +2443,9 @@ export type UpdateCompanyAddressDto = components['schemas']['UpdateCompanyAddres
 export type UpdateCompanySettingsDto = components['schemas']['UpdateCompanySettingsDto'];
 export type UpdateCompanyDto = components['schemas']['UpdateCompanyDto'];
 export type ConfigureWhatsAppDto = components['schemas']['ConfigureWhatsAppDto'];
+export type WhatsAppVerificationStep = components['schemas']['WhatsAppVerificationStep'];
+export type WhatsAppVerificationStepStatus = components['schemas']['WhatsAppVerificationStepStatus'];
+export type WhatsAppVerificationStepDto = components['schemas']['WhatsAppVerificationStepDto'];
 export type WhatsAppPhoneNumberDto = components['schemas']['WhatsAppPhoneNumberDto'];
 export type OnboardingChecklistDto = components['schemas']['OnboardingChecklistDto'];
 export type PropertySortField = components['schemas']['PropertySortField'];
@@ -2397,6 +2550,10 @@ export type EmbeddedSignupSessionInfoDto = components['schemas']['EmbeddedSignup
 export type CompleteWhatsAppOnboardingDto = components['schemas']['CompleteWhatsAppOnboardingDto'];
 export type WhatsAppOnboardingOutcome = components['schemas']['WhatsAppOnboardingOutcome'];
 export type WhatsAppOnboardingResultDto = components['schemas']['WhatsAppOnboardingResultDto'];
+export type WhatsAppMessageTemplateDto = components['schemas']['WhatsAppMessageTemplateDto'];
+export type WhatsAppVerificationRequestDto = components['schemas']['WhatsAppVerificationRequestDto'];
+export type RegisterWhatsAppNumberDto = components['schemas']['RegisterWhatsAppNumberDto'];
+export type WhatsAppDisconnectResultDto = components['schemas']['WhatsAppDisconnectResultDto'];
 export type NotificationSortField = components['schemas']['NotificationSortField'];
 export type NotificationType = components['schemas']['NotificationType'];
 export type NotificationSeverity = components['schemas']['NotificationSeverity'];
@@ -5417,6 +5574,298 @@ export interface operations {
              *
              *     Authentication or database unavailable
              */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    listWhatsAppMessageTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppMessageTemplateDto"][];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    verifyWhatsAppNumber: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                numberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppVerificationRequestDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description No such number in the active company */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The number was disconnected */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /**
+             * @description Background processing is unavailable
+             *
+             *     Authentication or database unavailable
+             */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    registerWhatsAppNumber: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                numberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterWhatsAppNumberDto"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppVerificationRequestDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description No such number in the active company */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The number is already connected or was disconnected, or a verification run is in progress (the PIN is not stored) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Meta's registration lock is in effect */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /**
+             * @description Background processing is unavailable
+             *
+             *     Authentication or database unavailable
+             */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    disconnectWhatsAppNumber: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                numberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppDisconnectResultDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description No such number in the active company */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;

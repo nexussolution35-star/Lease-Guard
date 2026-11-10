@@ -4,6 +4,7 @@ import {
   type ChannelLookup,
   type ChannelOptions,
   type ChannelUnavailable,
+  type NumberManagementLookup,
   type ReceivingNumberOwner,
   WhatsAppChannels,
   type WhatsAppMessage,
@@ -18,6 +19,8 @@ export interface FakeChannelOptions {
   upload?: (fileName: string, mimeType: string) => Promise<{ mediaId: string }>
   /** Thrown by every lookup (a transient failure). */
   lookupError?: Error
+  /** Answers manageNumber; default: unavailable (not configured). */
+  manageNumber?: (companyId: EntityId, numberId: EntityId) => Promise<NumberManagementLookup>
 }
 
 /**
@@ -53,5 +56,11 @@ export class FakeWhatsAppChannels extends WhatsAppChannels {
   /** No caller routes inbound traffic yet; extend when the webhook's tests need owners. */
   async forReceivingNumber(): Promise<ReceivingNumberOwner | null> {
     return null
+  }
+
+  async manageNumber(companyId: EntityId, numberId: EntityId): Promise<NumberManagementLookup> {
+    if (this.options.lookupError) throw this.options.lookupError
+    if (this.options.manageNumber) return this.options.manageNumber(companyId, numberId)
+    return { available: false, reason: 'not_configured', message: 'The company has no such WhatsApp number' }
   }
 }

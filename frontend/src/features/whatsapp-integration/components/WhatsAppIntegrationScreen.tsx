@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { Fragment, useId } from 'react'
 import { AlertTriangle, Info, MessageCircle } from 'lucide-react'
 import type { WhatsAppCapability } from '@leaseguard/api-client'
 
@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils'
 import { useWhatsAppBusinessAccounts, useWhatsAppCapabilities } from '../api/queries'
 import type { WhatsAppBusinessAccount, WhatsAppCapabilities, WhatsAppPhoneNumber } from '../api/source'
 import { ConnectWhatsAppBusiness } from './ConnectWhatsAppBusiness'
+import { MessageTemplatesCard } from './MessageTemplatesCard'
+import { NumberActions, VerificationSteps } from './NumberVerification'
 
 const CAPABILITIES: readonly { id: WhatsAppCapability; label: string; description: string }[] = [
   {
@@ -163,7 +165,7 @@ function MetaDetail({ number }: { number: WhatsAppPhoneNumber }) {
   )
 }
 
-function BusinessAccountCard({ account }: { account: WhatsAppBusinessAccount }) {
+function BusinessAccountCard({ account, isAdmin }: { account: WhatsAppBusinessAccount; isAdmin: boolean }) {
   const titleId = useId()
   const title = account.name ?? `WhatsApp Business Account ${account.businessAccountId}`
   return (
@@ -191,7 +193,8 @@ function BusinessAccountCard({ account }: { account: WhatsAppBusinessAccount }) 
               </TableHeader>
               <TableBody>
                 {account.numbers.map((number) => (
-                  <TableRow key={number.id}>
+                  <Fragment key={number.id}>
+                  <TableRow className="border-b-0">
                     <TableCell>
                       {/* A number from Embedded Signup has no display details until verification reads them from Meta. */}
                       <p className="font-medium tabular-nums">{number.displayNumber || `Number id ${number.phoneNumberId}`}</p>
@@ -210,6 +213,13 @@ function BusinessAccountCard({ account }: { account: WhatsAppBusinessAccount }) 
                       <DateDisplay value={number.lastVerifiedAt} />
                     </TableCell>
                   </TableRow>
+                  <TableRow>
+                    <TableCell colSpan={5} className="space-y-3 whitespace-normal pt-0">
+                      <VerificationSteps number={number} />
+                      {isAdmin ? <NumberActions number={number} /> : null}
+                    </TableCell>
+                  </TableRow>
+                  </Fragment>
                 ))}
               </TableBody>
             </Table>
@@ -220,7 +230,7 @@ function BusinessAccountCard({ account }: { account: WhatsAppBusinessAccount }) 
   )
 }
 
-function BusinessAccounts() {
+function BusinessAccounts({ isAdmin }: { isAdmin: boolean }) {
   const query = useWhatsAppBusinessAccounts()
   if (isAwaitingWorkspace(query)) return <NoActiveWorkspace />
   if (query.isPending) return <LoadingState label="Loading WhatsApp numbers…" />
@@ -237,7 +247,7 @@ function BusinessAccounts() {
   return (
     <div className="space-y-4">
       {query.data.map((account) => (
-        <BusinessAccountCard key={account.id} account={account} />
+        <BusinessAccountCard key={account.id} account={account} isAdmin={isAdmin} />
       ))}
     </div>
   )
@@ -269,8 +279,9 @@ export function WhatsAppIntegrationScreen() {
       {isAdmin ? <ConnectWhatsAppBusiness capabilities={capabilities.data} /> : null}
       <div className="space-y-3">
         <h2 className="text-lg font-semibold text-foreground">Business accounts and numbers</h2>
-        <BusinessAccounts />
+        <BusinessAccounts isAdmin={isAdmin} />
       </div>
+      <MessageTemplatesCard />
     </section>
   )
 }

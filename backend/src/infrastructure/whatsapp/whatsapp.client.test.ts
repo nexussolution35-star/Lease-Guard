@@ -107,3 +107,82 @@ describe('WhatsAppClient', () => {
     expect((form.get('file') as File).name).toBe('statement.pdf')
   })
 })
+
+describe('WhatsAppClient management calls (number verification)', () => {
+  it('inspects a business token with the app access token, never putting either in an error', async () => {
+    const { client: wa, calls } = client(async () =>
+      jsonResponse(200, {
+        data: {
+          is_valid: true,
+          app_id: '424242',
+          granular_scopes: [
+            { scope: 'whatsapp_business_management', target_ids: ['771001'] },
+            { scope: 'whatsapp_business_messaging', target_ids: [771001] },
+            { scope: 'business_management' },
+          ],
+        },
+      }),
+    )
+    await expect(wa.debugToken('EAAG-business', '424242|app-secret')).resolves.toEqual({
+      isValid: true,
+      appId: '424242',
+      granularScopes: [
+        { scope: 'whatsapp_business_management', targetIds: ['771001'] },
+        { scope: 'whatsapp_business_messaging', targetIds: ['771001'] },
+        { scope: 'business_management' },
+      ],
+    })
+    expect(calls[0].url).toBe('https://graph.facebook.com/v23.0/debug_token?input_token=EAAG-business')
+    expect(calls[0].init).toMatchObject({ method: 'GET', headers: { Authorization: 'Bearer 424242|app-secret' } })
+
+    const { client: failing } = client(async () => jsonResponse(400, { error: { message: 'Invalid OAuth access token.', code: 190 } }))
+    const error = await failureOf(failing.debugToken('EAAG-business', '424242|app-secret'))
+    expect(error.message).not.toContain('EAAG-business')
+    expect(error.message).not.toContain('app-secret')
+    expect(error).toMatchObject({ graphCode: 190, retryable: false })
+  })
+
+  it("lists an account's numbers page by page with Meta's view of each", async () => {
+    const pages = [
+      { data: [{ id: '660001', display_phone_number: '+27 11 555 0100', verified_name: 'Atlas', quality_rating: 'GREEN', platform_type: 'CLOUD_API' }], paging: { cursors: { after: 'c1' }, next: 'https://graph/next' } },
+      { data: [{ id: '660002', status: 'PENDING' }], paging: { cursors: { after: 'c2' } } },
+    ]
+    const { client: wa, calls } = client(async () => jsonResponse(200, pages[calls.length - 1]))
+    await expect(wa.listPhoneNumbers('771001', 'token-1')).resolves.toEqual([
+      { id: '660001', displayPhoneNumber: '+27 11 555 0100', verifiedName: 'Atlas', qualityRating: 'GREEN', platformType: 'CLOUD_API' },
+      { id: '660002', status: 'PENDING' },
+    ])
+    expect(calls).toHaveLength(2)
+    expect(new URL(calls[0].url).pathname).toBe('/v23.0/771001/phone_numbers')
+    expect(new URL(calls[1].url).searchParams.get('after')).toBe('c1')
+    expect(new URL(calls[0].url).searchParams.get('fields')).toContain('platform_type')
+  })
+
+  it('subscribes the app and registers a number with its PIN', async () => {
+    const { client: wa, calls } = client(async () => jsonResponse(200, { success: true }))
+    await wa.subscribeApp('771001', 'token-1')
+    await wa.registerNumber('660001', 'token-1', '123456')
+    expect(calls.map((c) => [c.init.method, c.url])).toEqual([
+      ['POST', 'https://graph.facebook.com/v23.0/771001/subscribed_apps'],
+      ['POST', 'https://graph.facebook.com/v23.0/660001/register'],
+    ])
+    expect(JSON.parse(String(calls[1].init.body))).toEqual({ messaging_product: 'whatsapp', pin: '123456' })
+    await expect(wa.registerNumber('660001', 'token-1', '12345')).rejects.toBeInstanceOf(WhatsAppApiError)
+    await expect(wa.subscribeApp('not-a-meta-id', 'token-1')).rejects.toBeInstanceOf(WhatsAppApiError)
+    expect(calls).toHaveLength(2)
+  })
+
+  it("reports Meta's registration rate limit with its code, not as retryable", async () => {
+    const { client: wa } = client(async () => jsonResponse(400, { error: { message: 'Too many attempts', code: 133016 } }))
+    expect(await failureOf(wa.registerNumber('660001', 'token-1', '123456'))).toMatchObject({ graphCode: 133016, retryable: false })
+  })
+
+  it("lists an account's message templates", async () => {
+    const { client: wa } = client(async () =>
+      jsonResponse(200, { data: [{ id: '9001', name: 'monthly_statement', language: 'en_ZA', category: 'UTILITY', status: 'APPROVED', rejected_reason: 'NONE' }] }),
+    )
+    await expect(wa.listTemplates('771001', 'token-1')).resolves.toEqual([
+      { id: '9001', name: 'monthly_statement', language: 'en_ZA', category: 'UTILITY', status: 'APPROVED', rejectedReason: 'NONE' },
+    ])
+  })
+})

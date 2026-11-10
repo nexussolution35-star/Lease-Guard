@@ -70,4 +70,14 @@ describe('whatsAppCapabilities', () => {
     expect(silent).not.toHaveProperty('workerReportedAt')
     expect(whatsAppCapabilities({}, null).missing.map((m) => m.setting)).not.toContain('ANTHROPIC_API_KEY')
   })
+
+  it('lists the Meta app settings the worker needs to verify numbers when it reports them missing', () => {
+    const result = whatsAppCapabilities(ALL, { ...WORKER, numberVerificationConfigured: false })
+    expect(result.embeddedSignupConfigured).toBe(false)
+    expect(result.missing).toEqual([
+      { capability: 'embedded_signup', setting: 'WHATSAPP_APP_ID', process: 'worker' },
+      { capability: 'embedded_signup', setting: 'WHATSAPP_APP_SECRET', process: 'worker' },
+    ])
+    expect(whatsAppCapabilities(ALL, { ...WORKER, numberVerificationConfigured: true }).embeddedSignupConfigured).toBe(true)
+  })
 })

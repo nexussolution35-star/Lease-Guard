@@ -12,6 +12,8 @@ import { z } from 'zod'
 export const workerCapabilityReportSchema = z.object({
   /** The worker has an Anthropic API key for the AI agent runtime. */
   agentRuntimeConfigured: z.boolean(),
+  /** The worker has the Meta app id and secret it needs to verify numbers (debug_token). Absent in older reports. */
+  numberVerificationConfigured: z.boolean().optional(),
   /** When the worker wrote this report (ISO 8601). */
   reportedAt: z.iso.datetime({ offset: true }),
 })
@@ -28,8 +30,15 @@ export function workerCapabilitiesKey(queuePrefix: string): string {
 }
 
 /** The worker's report from its settings: booleans only. */
-export function workerCapabilityReport(env: { ANTHROPIC_API_KEY?: string | undefined }, now: Date): WorkerCapabilityReport {
-  return { agentRuntimeConfigured: Boolean(env.ANTHROPIC_API_KEY), reportedAt: now.toISOString() }
+export function workerCapabilityReport(
+  env: { ANTHROPIC_API_KEY?: string | undefined; WHATSAPP_APP_ID?: string | undefined; WHATSAPP_APP_SECRET?: string | undefined },
+  now: Date,
+): WorkerCapabilityReport {
+  return {
+    agentRuntimeConfigured: Boolean(env.ANTHROPIC_API_KEY),
+    numberVerificationConfigured: Boolean(env.WHATSAPP_APP_ID && env.WHATSAPP_APP_SECRET),
+    reportedAt: now.toISOString(),
+  }
 }
 
 /** The stored report, or null when absent or unreadable (a malformed value never counts as configured). */

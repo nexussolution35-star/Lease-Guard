@@ -66,6 +66,13 @@ export function whatsAppCapabilities(settings: WhatsAppApiSettings, worker: Work
   const agentRuntimeConfigured = worker?.agentRuntimeConfigured === true
   // Only a worker's own report can say the key is missing; without one the state is unknown.
   if (worker && !agentRuntimeConfigured) missing.push({ capability: 'agent_runtime', setting: 'ANTHROPIC_API_KEY', process: 'worker' })
+  // Connecting a number needs the worker to verify it with Meta (debug_token with the app access token).
+  if (worker && worker.numberVerificationConfigured === false) {
+    missing.push(
+      { capability: 'embedded_signup', setting: 'WHATSAPP_APP_ID', process: 'worker' },
+      { capability: 'embedded_signup', setting: 'WHATSAPP_APP_SECRET', process: 'worker' },
+    )
+  }
   const configured = (capability: WhatsAppCapability) => !missing.some((m) => m.capability === capability)
   return {
     embeddedSignupConfigured: configured('embedded_signup'),

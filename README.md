@@ -289,8 +289,8 @@ if any are missing or invalid:
   environment (`secret://env/WHATSAPP_ACCESS_TOKEN_<COMPANY_ID_HEX_UPPERCASE>`) or a Supabase Vault secret
   (`secret://vault/<secret id>`). See `docs/security/README.md`.
 - Meta app settings (`WHATSAPP_APP_ID`, `WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID`, `WHATSAPP_APP_SECRET`,
-  `WHATSAPP_WEBHOOK_VERIFY_TOKEN`) are read by the API only and are optional; `ANTHROPIC_API_KEY` is read by the
-  worker only. The app secret, the verify token and the Anthropic key are secrets; the app id and Embedded
+  `WHATSAPP_WEBHOOK_VERIFY_TOKEN`) are read by the API and are optional; the worker also reads `WHATSAPP_APP_ID` and
+  `WHATSAPP_APP_SECRET` to verify numbers with Meta. `ANTHROPIC_API_KEY` is read by the worker only. The app secret, the verify token and the Anthropic key are secrets; the app id and Embedded
   Signup configuration id are public and reach the browser through `GET /api/v1/integrations/whatsapp/capabilities`.
   See `docs/integrations/whatsapp.md`.
 - `SMTP_*` and `SUPABASE_ACCESS_TOKEN` are operator-only: read by `pnpm auth:configure:remote`, never by the API,

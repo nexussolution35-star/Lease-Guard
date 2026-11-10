@@ -183,10 +183,15 @@ describe('loadEnvFileKeys', () => {
     expect(api).toEqual({})
   })
 
-  it('loads the Meta app secret and verify token into the API only, and the Anthropic key into the worker only', () => {
-    for (const key of ['WHATSAPP_APP_ID', 'WHATSAPP_APP_SECRET', 'WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID', 'WHATSAPP_WEBHOOK_VERIFY_TOKEN']) {
+  it('loads the verify token and Embedded Signup configuration into the API only, the Meta app into both, and the Anthropic key into the worker only', () => {
+    for (const key of ['WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID', 'WHATSAPP_WEBHOOK_VERIFY_TOKEN']) {
       expect(API_ENV_KEYS).toContain(key)
       expect(WORKER_ENV_KEYS).not.toContain(key)
+    }
+    // The worker verifies numbers with debug_token, authenticated with the app access token (app id and secret).
+    for (const key of ['WHATSAPP_APP_ID', 'WHATSAPP_APP_SECRET']) {
+      expect(API_ENV_KEYS).toContain(key)
+      expect(WORKER_ENV_KEYS).toContain(key)
     }
     expect(WORKER_ENV_KEYS).toContain('ANTHROPIC_API_KEY')
     expect(API_ENV_KEYS).not.toContain('ANTHROPIC_API_KEY')

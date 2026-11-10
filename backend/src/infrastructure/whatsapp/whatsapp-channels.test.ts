@@ -48,6 +48,7 @@ interface Options {
   accountResult?: FakeResult
   rpc?: FakeResult
   graph?: () => Promise<Response>
+  app?: { appId: string; appSecret: string } | null
 }
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -69,7 +70,12 @@ function harness(options: Options = {}) {
     graphCalls.push({ url, init })
     return (options.graph ?? (async () => jsonResponse(200, { messages: [{ id: 'wamid.OK' }], id: 'media-1' })))()
   }
-  const channels = createWhatsAppChannels(clients, { apiUrl: 'https://graph.facebook.com', apiVersion: 'v23.0', fetch: fetchFn }, SECRETS)
+  const channels = createWhatsAppChannels(
+    clients,
+    { apiUrl: 'https://graph.facebook.com', apiVersion: 'v23.0', fetch: fetchFn },
+    SECRETS,
+    options.app === undefined ? { appId: '424242', appSecret: 'app-secret' } : options.app,
+  )
   return { channels, queries: db.queries, rpc, graphCalls }
 }
 
@@ -262,5 +268,51 @@ describe('WhatsAppChannels.forReceivingNumber', () => {
     const { channels } = harness({ account: { access_token_reference: `secret://vault/${VAULT_SECRET}` }, rpc: { data: null, error: null } })
     const owner = await channels.forReceivingNumber('1234567890')
     await expect(owned(owner).channel()).resolves.toMatchObject({ available: false, reason: 'credentials_unavailable' })
+  })
+})
+
+describe('WhatsAppChannels.manageNumber (verification)', () => {
+  const pending = { connection_status: 'pending_verification', business_account_id: '771001', access_token_reference: `secret://vault/${VAULT_SECRET}` }
+
+  it("manages a pending number of the company with its vault token, never exposing the token", async () => {
+    const { channels, queries, rpc, graphCalls } = harness({
+      account: pending,
+      graph: async () => jsonResponse(200, { success: true, data: { is_valid: true } }),
+    })
+    const lookup = await channels.manageNumber(NEXUS, ACCOUNT)
+    expect(JSON.stringify(lookup)).not.toMatch(ALL_TOKENS)
+    if (!lookup.available) throw new Error(lookup.message)
+    expect(lookup).toMatchObject({ businessAccountId: '771001', phoneNumberId: '1234567890' })
+    await lookup.subscribeApp()
+    await lookup.inspectToken()
+    expect(eqCalls(queries[0])).toEqual([
+      ['company_id', NEXUS],
+      ['id', ACCOUNT],
+    ])
+    expect(rpc).toHaveBeenCalledWith('whatsapp_account_access_token', { p_account_id: ACCOUNT })
+    expect(graphCalls.map((call) => [call.url.split('?')[0], bearer(call)])).toEqual([
+      ['https://graph.facebook.com/v23.0/771001/subscribed_apps', 'Bearer vault-token'],
+      ['https://graph.facebook.com/v23.0/debug_token', 'Bearer 424242|app-secret'],
+    ])
+  })
+
+  it('cannot inspect the token without the Meta app credentials', async () => {
+    const { channels, graphCalls } = harness({ account: pending, app: null })
+    const lookup = await channels.manageNumber(NEXUS, ACCOUNT)
+    if (!lookup.available) throw new Error(lookup.message)
+    await expect(lookup.inspectToken()).resolves.toBeNull()
+    expect(graphCalls).toEqual([])
+  })
+
+  it('refuses a number that is not the company\'s, a disconnected one, and an unresolvable credential', async () => {
+    await expect(harness({ account: null }).channels.manageNumber(NEXUS, ACCOUNT)).resolves.toMatchObject({ available: false, reason: 'not_configured' })
+    await expect(harness({ account: { ...pending, connection_status: 'disconnected' } }).channels.manageNumber(NEXUS, ACCOUNT)).resolves.toMatchObject({
+      available: false,
+      reason: 'not_connected',
+    })
+    await expect(harness({ account: pending, rpc: { data: null, error: null } }).channels.manageNumber(NEXUS, ACCOUNT)).resolves.toMatchObject({
+      available: false,
+      reason: 'credentials_unavailable',
+    })
   })
 })

@@ -12,7 +12,11 @@ import { loadFacebookSdk } from '../embedded-signup/facebookSdk'
 
 import { getWhatsAppIntegrationSource } from './selectSource'
 import type {
+  WhatsAppDisconnectResult,
+  WhatsAppMessageTemplate,
+  WhatsAppVerificationRequest,
   WhatsAppBusinessAccount,
+  WhatsAppPhoneNumber,
   WhatsAppCapabilities,
   WhatsAppOnboardingCompletion,
   WhatsAppOnboardingResult,
@@ -28,12 +32,76 @@ export function useWhatsAppCapabilities(): UseQueryResult<WhatsAppCapabilities> 
   return useQuery({ queryKey: whatsAppCapabilityKeys.all, queryFn: () => getWhatsAppIntegrationSource().getCapabilities() })
 }
 
-/** The active company's WhatsApp Business Accounts with their numbers. */
+export const whatsAppTemplateKeys = createEntityKeys('whatsapp-message-template')
+
+/** How often the numbers are refreshed while a verification may still be running. */
+export const VERIFICATION_POLL_MS = 3000
+
+/**
+ * Whether verification may still change a number: it is pending verification and a step is still pending
+ * (being checked) or none has been recorded yet. A step waiting for the admin's PIN does not count.
+ */
+export function isVerificationRunning(accounts: readonly WhatsAppBusinessAccount[] | undefined): boolean {
+  return (accounts ?? []).some((account) => account.numbers.some(isNumberVerificationRunning))
+}
+
+/** The same, for one number (e.g. the registration PIN is only asked for once its run has finished). */
+export function isNumberVerificationRunning(n: WhatsAppPhoneNumber): boolean {
+  return (
+    n.connectionStatus === 'pending_verification' &&
+    (n.verificationSteps.length === 0 || n.verificationSteps.some((step) => step.status === 'pending'))
+  )
+}
+
+/** The active company's WhatsApp Business Accounts with their numbers; polled while a verification runs. */
 export function useWhatsAppBusinessAccounts(): UseQueryResult<WhatsAppBusinessAccount[]> {
   return useCompanyQuery(
     (companyId) => whatsAppAccountKeys.lists(companyId),
     (companyId) => getWhatsAppIntegrationSource().listBusinessAccounts(companyId),
+    { refetchInterval: (query) => (isVerificationRunning(query.state.data) ? VERIFICATION_POLL_MS : false) },
   )
+}
+
+/** The message templates Meta holds for the active company's accounts. */
+export function useWhatsAppMessageTemplates(): UseQueryResult<WhatsAppMessageTemplate[]> {
+  return useCompanyQuery(
+    (companyId) => whatsAppTemplateKeys.lists(companyId),
+    (companyId) => getWhatsAppIntegrationSource().listMessageTemplates(companyId),
+  )
+}
+
+/** Company admins: verify a number again; the numbers list then polls until the run settles. */
+export function useVerifyWhatsAppNumber(): UseMutationResult<WhatsAppVerificationRequest, Error, { numberId: EntityId }> {
+  const companyId = useActiveCompanyOrThrow()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ numberId }) => getWhatsAppIntegrationSource().verifyNumber(companyId(), numberId),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: whatsAppAccountKeys.all }),
+  })
+}
+
+/** Company admins: register a number with a 6-digit PIN. The PIN is never kept by the web app. */
+export function useRegisterWhatsAppNumber(): UseMutationResult<WhatsAppVerificationRequest, Error, { numberId: EntityId; pin: string }> {
+  const companyId = useActiveCompanyOrThrow()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ numberId, pin }) => getWhatsAppIntegrationSource().registerNumber(companyId(), numberId, pin),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: whatsAppAccountKeys.all }),
+  })
+}
+
+/** Company admins: disconnect a number. */
+export function useDisconnectWhatsAppNumber(): UseMutationResult<WhatsAppDisconnectResult, Error, { numberId: EntityId }> {
+  const companyId = useActiveCompanyOrThrow()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ numberId }) => getWhatsAppIntegrationSource().disconnectNumber(companyId(), numberId),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: whatsAppAccountKeys.all }),
+        queryClient.invalidateQueries({ queryKey: onboardingKeys.all }),
+      ]),
+  })
 }
 
 /** The active company id for a mutation; mutations only run from screens inside an open workspace. */

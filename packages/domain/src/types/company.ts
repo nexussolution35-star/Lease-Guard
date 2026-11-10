@@ -39,7 +39,58 @@ export interface WhatsAppPhoneNumber {
   /** LeaseGuard's verified connection status; `connected` only after the worker verified it. */
   connectionStatus: WhatsAppConnectionStatus
   lastVerifiedAt?: ISODateTime
+  /** Meta locked registration after too many attempts (error 133016); no new attempt before this time. */
+  registrationBlockedUntil?: ISODateTime
+  /** The outcome of each verification step, in step order; empty until verification first ran. */
+  verificationSteps: WhatsAppVerificationStepResult[]
   createdAt: ISODateTime
+}
+
+/**
+ * The checks LeaseGuard makes with Meta before a number is connected, in order: the business token's scopes,
+ * the number in its account, the webhook subscription, Cloud API registration and the template sync.
+ */
+export const WHATSAPP_VERIFICATION_STEPS = [
+  'token_scopes',
+  'phone_number',
+  'webhook_subscription',
+  'registration',
+  'message_templates',
+] as const
+export type WhatsAppVerificationStep = (typeof WHATSAPP_VERIFICATION_STEPS)[number]
+
+/** `action_needed`: waiting for the admin (the registration PIN). `not_required`: counts as passed. */
+export const WHATSAPP_VERIFICATION_STEP_STATUSES = ['pending', 'passed', 'failed', 'action_needed', 'not_required'] as const
+export type WhatsAppVerificationStepStatus = (typeof WHATSAPP_VERIFICATION_STEP_STATUSES)[number]
+
+/** One verification step of a number as the worker last recorded it. Messages are safe to show the admin. */
+export interface WhatsAppVerificationStepResult {
+  step: WhatsAppVerificationStep
+  status: WhatsAppVerificationStepStatus
+  /** What happened, for the admin. */
+  message?: string
+  /** How to recover, when the step failed or needs action. */
+  recovery?: string
+  /** Meta's error code, when Meta refused. */
+  metaErrorCode?: string
+  checkedAt?: ISODateTime
+}
+
+/** A message template Meta holds for a company's WhatsApp Business Account, as last synced. */
+export interface WhatsAppMessageTemplate {
+  id: EntityId
+  /** Meta id of the WhatsApp Business Account. */
+  businessAccountId: string
+  metaTemplateId: string
+  name: string
+  /** Meta language code, e.g. `en_ZA`. */
+  language: string
+  /** Meta's category, e.g. `UTILITY`. */
+  category: string
+  /** Meta's review status, e.g. `APPROVED`, `PENDING`, `REJECTED`, `PAUSED`. */
+  status: string
+  rejectedReason?: string
+  syncedAt: ISODateTime
 }
 
 /** A company's WhatsApp Business Account (Meta WABA) with its numbers. A company may hold several. */

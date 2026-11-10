@@ -135,3 +135,27 @@ describe('QueueProducer.enqueueOrRetry', () => {
     await expect(producer.enqueueOrRetry('statement-processing', PAYLOAD)).rejects.toBeInstanceOf(ServiceUnavailableException)
   })
 })
+
+describe('QueueProducer.isRunning', () => {
+  let producer: QueueProducer
+
+  beforeEach(() => {
+    fake.jobs.clear()
+    producer = new QueueProducer(testApiEnv())
+  })
+
+  it('is true only while a worker processes the job', async () => {
+    await expect(producer.isRunning('statement-processing', PAYLOAD)).resolves.toBe(false)
+    for (const state of ['waiting', 'delayed', 'completed', 'failed'] as const) {
+      fake.jobs.set(JOB_ID, job(state))
+      await expect(producer.isRunning('statement-processing', PAYLOAD)).resolves.toBe(false)
+    }
+    fake.jobs.set(JOB_ID, job('active'))
+    await expect(producer.isRunning('statement-processing', PAYLOAD)).resolves.toBe(true)
+  })
+
+  it('answers 503 when Redis fails', async () => {
+    fake.jobs.set(JOB_ID, { getState: async () => Promise.reject(new Error('ECONNREFUSED')) })
+    await expect(producer.isRunning('statement-processing', PAYLOAD)).rejects.toBeInstanceOf(ServiceUnavailableException)
+  })
+})

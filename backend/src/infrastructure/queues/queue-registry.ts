@@ -32,6 +32,14 @@ export interface JobPayloads {
    * membership: the invitee joins by accepting. Enqueued by the API when an admin creates or resends one.
    */
   'user-invitations': { companyId: EntityId; invitationId: EntityId }
+  /**
+   * Verify one business number with Meta before it is connected (token scopes, account, webhook subscription,
+   * registration, template sync). Enqueued by the API after Embedded Signup and when a company admin asks to
+   * verify again or registers the number. Never carries the registration PIN: the API hands it to the worker
+   * through a single-use Redis key (infrastructure/whatsapp/registration-pins.ts), so it never reaches
+   * job_runs or the job history.
+   */
+  'whatsapp-number-verification': { companyId: EntityId; numberId: EntityId }
 }
 
 export type QueueName = keyof JobPayloads
@@ -48,6 +56,7 @@ const JOB_KEY_FIELDS: { readonly [Q in QueueName]: readonly (keyof JobPayloads[Q
   'message-delivery': ['companyId', 'communicationId'],
   'monitoring-dispatch': ['asOf'],
   'user-invitations': ['companyId', 'invitationId'],
+  'whatsapp-number-verification': ['companyId', 'numberId'],
 }
 
 export const QUEUE_NAMES = Object.keys(JOB_KEY_FIELDS) as QueueName[]

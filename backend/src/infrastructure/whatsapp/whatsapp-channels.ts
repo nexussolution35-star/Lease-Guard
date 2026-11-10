@@ -12,11 +12,11 @@
 
 import type { EntityId } from '@leaseguard/domain'
 
-import type { WhatsAppMessage } from './whatsapp.client'
+import type { MetaMessageTemplate, MetaPhoneNumber, TokenInspection, WhatsAppMessage } from './whatsapp.client'
 
 // Graph failures keep their classification (retryable / outcomeUnknown) through the channel.
 export { WhatsAppApiError } from './whatsapp.client'
-export type { TemplateComponent, TemplateParameter, WhatsAppMessage } from './whatsapp.client'
+export type { MetaMessageTemplate, MetaPhoneNumber, TemplateComponent, TemplateParameter, TokenInspection, WhatsAppMessage } from './whatsapp.client'
 
 /** A company's connected WhatsApp number, ready to send. Errors are WhatsAppApiError. */
 export interface WhatsAppChannel {
@@ -48,6 +48,31 @@ export interface ChannelOptions {
   /** A specific receiving number of the company; without it, the company's account. */
   phoneNumberId?: string
 }
+
+/**
+ * Meta's management calls for one business number of a company, used to verify it before it is connected
+ * (the number may still be pending). The business token is closed over and never exposed. Errors are
+ * WhatsAppApiError.
+ */
+export interface NumberManagement {
+  readonly available: true
+  /** Meta id of the number's WhatsApp Business Account, as LeaseGuard recorded it. */
+  readonly businessAccountId: string
+  /** Meta phone number id. */
+  readonly phoneNumberId: string
+  /** Meta's debug_token of the business token; null when this process has no Meta app id and secret. */
+  inspectToken(): Promise<TokenInspection | null>
+  /** The numbers Meta lists in the business account. */
+  accountPhoneNumbers(): Promise<MetaPhoneNumber[]>
+  /** Subscribes LeaseGuard's app to the business account's webhooks. */
+  subscribeApp(): Promise<void>
+  /** Registers the number for the Cloud API with the admin's 6-digit PIN. */
+  register(pin: string): Promise<void>
+  /** The business account's message templates. */
+  templates(): Promise<MetaMessageTemplate[]>
+}
+
+export type NumberManagementLookup = NumberManagement | ChannelUnavailable
 
 /** The company that owns a receiving phone_number_id. */
 export interface ReceivingNumberOwner {
@@ -85,4 +110,11 @@ export abstract class WhatsAppChannels {
    * An admin-entered, unverified number is never an owner. Throws ChannelLookupError when transient.
    */
   abstract forReceivingNumber(phoneNumberId: string): Promise<ReceivingNumberOwner | null>
+
+  /**
+   * Management calls for number `numberId` (whatsapp_phone_numbers.id) of company `companyId`, whether or not
+   * it is connected yet; unavailable when the number is not the company's, was disconnected, or its
+   * credential cannot be resolved. Throws ChannelLookupError when transient.
+   */
+  abstract manageNumber(companyId: EntityId, numberId: EntityId): Promise<NumberManagementLookup>
 }

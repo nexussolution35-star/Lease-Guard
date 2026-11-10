@@ -55,5 +55,6 @@ export const numberRow: NumberRow = {
   webhook_configured: false,
   connection_status: 'pending_verification',
   last_verified_at: null,
+  registration_blocked_until: null,
   created_at: '2026-11-01T08:00:00+00:00',
 }

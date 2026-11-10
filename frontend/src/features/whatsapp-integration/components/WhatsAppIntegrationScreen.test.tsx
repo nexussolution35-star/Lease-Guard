@@ -14,6 +14,10 @@ import { WhatsAppIntegrationScreen } from './WhatsAppIntegrationScreen'
 const fakeSource = vi.hoisted(() => ({
   getCapabilities: vi.fn<WhatsAppIntegrationSource['getCapabilities']>(),
   listBusinessAccounts: vi.fn<WhatsAppIntegrationSource['listBusinessAccounts']>(),
+  listMessageTemplates: vi.fn<WhatsAppIntegrationSource['listMessageTemplates']>(),
+  verifyNumber: vi.fn<WhatsAppIntegrationSource['verifyNumber']>(),
+  registerNumber: vi.fn<WhatsAppIntegrationSource['registerNumber']>(),
+  disconnectNumber: vi.fn<WhatsAppIntegrationSource['disconnectNumber']>(),
 }))
 vi.mock('../api/selectSource', () => ({ getWhatsAppIntegrationSource: () => fakeSource }))
 
@@ -65,6 +69,10 @@ const ACCOUNTS: WhatsAppBusinessAccount[] = [
         webhookConfigured: true,
         connectionStatus: 'connected',
         lastVerifiedAt: '2026-11-04T10:00:00+02:00',
+        verificationSteps: (['token_scopes', 'phone_number', 'webhook_subscription', 'registration', 'message_templates'] as const).map((step) => ({
+          step,
+          status: 'passed' as const,
+        })),
         createdAt: '2026-11-01T09:00:00+02:00',
       },
       {
@@ -75,6 +83,13 @@ const ACCOUNTS: WhatsAppBusinessAccount[] = [
         displayNumber: '+27 11 555 0101',
         webhookConfigured: false,
         connectionStatus: 'pending_verification',
+        verificationSteps: [
+          { step: 'token_scopes', status: 'passed', message: 'The business token is valid.' },
+          { step: 'phone_number', status: 'passed' },
+          { step: 'webhook_subscription', status: 'passed' },
+          { step: 'registration', status: 'action_needed', message: 'The number must be registered.', recovery: 'Click Register number and enter a 6-digit PIN.' },
+          { step: 'message_templates', status: 'passed' },
+        ],
         createdAt: '2026-11-02T09:00:00+02:00',
       },
     ],
@@ -97,6 +112,10 @@ beforeEach(() => {
   role.admin = true
   fakeSource.getCapabilities.mockReset().mockResolvedValue(CONFIGURED)
   fakeSource.listBusinessAccounts.mockReset().mockResolvedValue(ACCOUNTS)
+  fakeSource.listMessageTemplates.mockReset().mockResolvedValue([])
+  fakeSource.verifyNumber.mockReset()
+  fakeSource.registerNumber.mockReset()
+  fakeSource.disconnectNumber.mockReset()
 })
 
 describe('WhatsAppIntegrationScreen', () => {
@@ -112,7 +131,8 @@ describe('WhatsAppIntegrationScreen', () => {
 
     const account = await screen.findByRole('region', { name: 'Nexus Leasing' })
     expect(within(account).getByText('Meta account id 102938475610')).toBeInTheDocument()
-    const rows = within(account).getAllByRole('row').slice(1)
+    // Each number has its row and a row with its verification steps.
+    const rows = within(account).getAllByRole('row').slice(1).filter((_, i) => i % 2 === 0)
     expect(rows).toHaveLength(2)
     expect(within(rows[0]!).getByText('+27 11 555 0100')).toBeInTheDocument()
     expect(within(rows[0]!).getByText('Nexus Leasing (Pty) Ltd')).toBeInTheDocument()

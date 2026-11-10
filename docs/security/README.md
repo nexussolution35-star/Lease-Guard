@@ -86,13 +86,20 @@ Images contain no `.env` file (root `.dockerignore`) and run as non-root users (
   service compares it in constant time (`hmac.compare_digest`) and refuses every extraction with 503
   while no token is configured. The worker refuses to start in production with a token shorter than
   32 characters. The service is meant to be reachable by the worker only.
-- **Meta app and AI settings.** `WHATSAPP_APP_SECRET` and `WHATSAPP_WEBHOOK_VERIFY_TOKEN` are loaded by
-  the API only, `ANTHROPIC_API_KEY` by the worker only (each process loads only its own schema's keys).
+- **Meta app and AI settings.** `WHATSAPP_WEBHOOK_VERIFY_TOKEN` is loaded by the API only,
+  `ANTHROPIC_API_KEY` by the worker only (each process loads only its own schema's keys). `WHATSAPP_APP_ID`
+  and `WHATSAPP_APP_SECRET` are loaded by both: the API exchanges Embedded Signup codes and checks webhook
+  signatures, the worker authenticates Meta's `debug_token` with the app access token while verifying a
+  number (ticket 04). The worker never logs or returns either, and reports only whether it has them.
   `GET /api/v1/integrations/whatsapp/capabilities` returns flags, the public app and Embedded Signup
   configuration ids and the names of missing settings, never a secret value; the worker reports whether
   it has an Anthropic key as a boolean through Redis. The Vite build and the web app refuse to start when
   a `VITE_*` variable names a server-only setting, holds an Anthropic-shaped key, or equals the Meta app
   secret, the verify token or the Anthropic key (`frontend/src/services/api/exposedSecrets.ts`).
+- **Registration PIN.** The 6-digit PIN an admin enters to register a number is never stored: the API
+  puts it in one Redis key under the queue prefix (expires after 10 minutes) and the worker deletes it as it
+  reads it (`GETDEL`), so it reaches neither Postgres, `job_runs`, BullMQ's job history nor a log
+  (`backend/src/infrastructure/whatsapp/registration-pins.ts`).
 - **WhatsApp access tokens** are never stored in plain columns or in `.env.example`.
   `whatsapp_phone_numbers.access_token_reference` takes one of two forms (formats:
   `backend/src/infrastructure/whatsapp/access-token-reference.ts`; the database CHECK

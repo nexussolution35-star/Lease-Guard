@@ -21,6 +21,7 @@ import { WorkerQueues } from './queues/worker-queues'
 import { MonitoringDispatchProcessor } from './scheduling/monitoring-dispatch.processor'
 import { MonitoringScheduler } from './scheduling/monitoring-scheduler'
 import { Clock } from './shared/clock'
+import { WhatsAppNumberVerificationProcessor } from './whatsapp/number-verification.processor'
 import { StatementFiles } from './shared/statement-files'
 import { StatementProcessingProcessor } from './statements/statement-processing.processor'
 
@@ -38,7 +39,13 @@ const clientProviders: Provider[] = [
     provide: WhatsAppChannels,
     inject: [WORKER_ENV, ServiceRoleClientFactory],
     useFactory: (env: WorkerEnv, clients: ServiceRoleClientFactory) =>
-      createWhatsAppChannels(clients, { apiUrl: env.WHATSAPP_GRAPH_API_URL, apiVersion: env.WHATSAPP_GRAPH_API_VERSION }, process.env),
+      createWhatsAppChannels(
+        clients,
+        { apiUrl: env.WHATSAPP_GRAPH_API_URL, apiVersion: env.WHATSAPP_GRAPH_API_VERSION },
+        process.env,
+        // The Meta app's credentials authenticate debug_token during number verification.
+        env.WHATSAPP_APP_ID && env.WHATSAPP_APP_SECRET ? { appId: env.WHATSAPP_APP_ID, appSecret: env.WHATSAPP_APP_SECRET } : null,
+      ),
   },
 ]
 
@@ -51,6 +58,7 @@ const processors: Provider[] = [
   StatementProcessingProcessor,
   MessageDeliveryProcessor,
   UserInvitationProcessor,
+  WhatsAppNumberVerificationProcessor,
 ]
 
 /**

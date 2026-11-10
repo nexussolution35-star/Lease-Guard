@@ -12,6 +12,7 @@ describe('queue registry', () => {
       'message-delivery',
       'monitoring-dispatch',
       'user-invitations',
+      'whatsapp-number-verification',
     ])
   })
 

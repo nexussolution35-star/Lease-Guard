@@ -1,6 +1,8 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Param, ParseUUIDPipe, Post } from '@nestjs/common'
 import {
+  ApiAcceptedResponse,
   ApiConflictResponse,
+  ApiTooManyRequestsResponse,
   ApiCreatedResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -8,7 +10,7 @@ import {
   ApiServiceUnavailableResponse,
   ApiTags,
 } from '@nestjs/swagger'
-import type { WhatsAppBusinessAccount } from '@leaseguard/domain'
+import type { WhatsAppBusinessAccount, WhatsAppMessageTemplate } from '@leaseguard/domain'
 
 import { Authenticated, CompanyScoped } from '../../common/decorators/company-scoped.decorator'
 import { CurrentCompany } from '../../common/decorators/current-company.decorator'
@@ -20,11 +22,19 @@ import type { ApiEnv } from '../../config/env'
 import { API_ENV } from '../../config/tokens'
 import { WorkerCapabilitiesReader } from '../../infrastructure/capabilities/worker-capabilities.reader'
 import type { DbClient } from '../../infrastructure/database/rls-client.factory'
-import { WhatsAppBusinessAccountDto, WhatsAppCapabilitiesDto } from './dto/whatsapp-integration.dto'
+import {
+  RegisterWhatsAppNumberDto,
+  WhatsAppBusinessAccountDto,
+  WhatsAppCapabilitiesDto,
+  WhatsAppDisconnectResultDto,
+  WhatsAppMessageTemplateDto,
+  WhatsAppVerificationRequestDto,
+} from './dto/whatsapp-integration.dto'
 import { CompleteWhatsAppOnboardingDto, WhatsAppOnboardingResultDto, WhatsAppOnboardingSessionDto } from './dto/whatsapp-onboarding.dto'
 import { type WhatsAppCapabilities, whatsAppCapabilities } from './whatsapp-capabilities'
 import { WhatsAppIntegrationService } from './whatsapp-integration.service'
-import { completeOnboardingBodySchema } from './whatsapp-onboarding.schemas'
+import { type DisconnectResult, type VerificationRequest, WhatsAppNumbersService } from './whatsapp-numbers.service'
+import { completeOnboardingBodySchema, registerNumberBodySchema } from './whatsapp-onboarding.schemas'
 import { type OnboardingResult, type OnboardingSessionStart, WhatsAppOnboardingService } from './whatsapp-onboarding.service'
 
 /**
@@ -37,6 +47,7 @@ export class WhatsAppIntegrationController {
   constructor(
     private readonly integration: WhatsAppIntegrationService,
     private readonly onboarding: WhatsAppOnboardingService,
+    private readonly numbers: WhatsAppNumbersService,
     private readonly worker: WorkerCapabilitiesReader,
     @Inject(API_ENV) private readonly env: ApiEnv,
   ) {}
@@ -109,5 +120,86 @@ export class WhatsAppIntegrationController {
     @Body(new ZodValidationPipe(completeOnboardingBodySchema)) body: CompleteWhatsAppOnboardingDto,
   ): Promise<OnboardingResult> {
     return this.onboarding.complete(db, company.companyId, sessionId, completeOnboardingBodySchema.parse(body))
+  }
+
+  @Get('message-templates')
+  @CompanyScoped()
+  @ApiOperation({
+    operationId: 'listWhatsAppMessageTemplates',
+    summary: "The message templates Meta holds for the active company's WhatsApp Business Accounts",
+    description: "As last synced during number verification: name, language, Meta's category and review status. Every member may read them.",
+  })
+  @ApiOkResponse({ type: [WhatsAppMessageTemplateDto] })
+  listMessageTemplates(@UserDb() db: DbClient, @CurrentCompany() company: CompanyContext): Promise<WhatsAppMessageTemplate[]> {
+    return this.numbers.listTemplates(db, company.companyId)
+  }
+
+  @Post('numbers/:numberId/verify')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @CompanyScoped({ roles: ['company_admin'] })
+  @ApiOperation({
+    operationId: 'verifyWhatsAppNumber',
+    summary: 'Verify a number with Meta again (company admins)',
+    description:
+      'Queues the verification of the number in the worker: token scopes, the number in its account, the webhook subscription, ' +
+      'registration and the template sync. The number is connected only when every step passes; the business accounts list shows ' +
+      'each step. Idempotent: a run already waiting or in progress is not duplicated.',
+  })
+  @ApiAcceptedResponse({ type: WhatsAppVerificationRequestDto })
+  @ApiNotFoundResponse({ type: ApiErrorDto, description: 'No such number in the active company' })
+  @ApiConflictResponse({ type: ApiErrorDto, description: 'The number was disconnected' })
+  @ApiServiceUnavailableResponse({ type: ApiErrorDto, description: 'Background processing is unavailable' })
+  verifyNumber(
+    @UserDb() db: DbClient,
+    @CurrentCompany() company: CompanyContext,
+    @Param('numberId', new ParseUUIDPipe()) numberId: string,
+  ): Promise<VerificationRequest> {
+    return this.numbers.verify(db, company.companyId, numberId)
+  }
+
+  @Post('numbers/:numberId/register')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @CompanyScoped({ roles: ['company_admin'] })
+  @ApiOperation({
+    operationId: 'registerWhatsAppNumber',
+    summary: 'Register a number for the WhatsApp Cloud API with a 6-digit PIN (company admins)',
+    description:
+      "The PIN becomes (or must match) the number's two-step verification PIN. It is handed to the worker for one attempt and " +
+      "is never stored or logged. Meta allows 10 attempts per 72 hours: after its rate-limit error (133016) further attempts " +
+      'are refused with 429 until the lock ends, so no request reaches Meta.',
+  })
+  @ApiAcceptedResponse({ type: WhatsAppVerificationRequestDto })
+  @ApiNotFoundResponse({ type: ApiErrorDto, description: 'No such number in the active company' })
+  @ApiConflictResponse({ type: ApiErrorDto, description: 'The number is already connected or was disconnected, or a verification run is in progress (the PIN is not stored)' })
+  @ApiTooManyRequestsResponse({ type: ApiErrorDto, description: "Meta's registration lock is in effect" })
+  @ApiServiceUnavailableResponse({ type: ApiErrorDto, description: 'Background processing is unavailable' })
+  registerNumber(
+    @UserDb() db: DbClient,
+    @CurrentCompany() company: CompanyContext,
+    @Param('numberId', new ParseUUIDPipe()) numberId: string,
+    @Body(new ZodValidationPipe(registerNumberBodySchema)) body: RegisterWhatsAppNumberDto,
+  ): Promise<VerificationRequest> {
+    return this.numbers.register(db, company.companyId, numberId, registerNumberBodySchema.parse(body).pin)
+  }
+
+  @Post('numbers/:numberId/disconnect')
+  @HttpCode(HttpStatus.OK)
+  @CompanyScoped({ roles: ['company_admin'] })
+  @ApiOperation({
+    operationId: 'disconnectWhatsAppNumber',
+    summary: 'Disconnect a number (company admins)',
+    description:
+      'The number stops sending and receiving at once and is marked disconnected; its stored business token is deleted from ' +
+      'Vault unless another number of the company in use still holds it. LeaseGuard stays installed in Meta until the business ' +
+      'removes it in Meta Business Settings.',
+  })
+  @ApiOkResponse({ type: WhatsAppDisconnectResultDto })
+  @ApiNotFoundResponse({ type: ApiErrorDto, description: 'No such number in the active company' })
+  disconnectNumber(
+    @UserDb() db: DbClient,
+    @CurrentCompany() company: CompanyContext,
+    @Param('numberId', new ParseUUIDPipe()) numberId: string,
+  ): Promise<DisconnectResult> {
+    return this.numbers.disconnect(db, company.companyId, numberId)
   }
 }

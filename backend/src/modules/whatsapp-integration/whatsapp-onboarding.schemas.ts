@@ -45,3 +45,9 @@ export const completeOnboardingBodySchema = z
   })
   .strict()
 export type CompleteOnboardingBody = z.infer<typeof completeOnboardingBodySchema>
+
+/** POST .../numbers/:numberId/register: the 6-digit PIN Meta's register endpoint requires; never stored. */
+export const registerNumberBodySchema = z.strictObject({
+  pin: z.string().regex(/^[0-9]{6}$/, 'a 6-digit PIN'),
+})
+export type RegisterNumberBody = z.infer<typeof registerNumberBodySchema>

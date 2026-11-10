@@ -37,6 +37,7 @@ Applied in file-name order. Every schema change is a new migration; existing fil
 | `20261109100300_extraction_field_value_default.sql` | Default JSON `null` for `statement_extraction_fields.value`, so the worker can store a field that was not found |
 | `20261109100400_guard_dedupe_keys.sql` | `private.guard_dedupe_key` trigger: only background jobs may set or change a dedupe key |
 | `20261110100400_whatsapp_business_accounts_and_numbers.sql` | Several WhatsApp Business Accounts and numbers per company: `whatsapp_accounts` renamed `whatsapp_phone_numbers` (unique per company and phone number id; Meta status columns written by the service role only; the credential reference no longer readable by signed-in users), new `whatsapp_business_accounts` (members read; written by the service role and by the trigger that records a number's account). See `docs/integrations/whatsapp.md` |
+| `20261110100700_whatsapp_number_verification.sql` | Number verification: `whatsapp_number_verification_steps` and `whatsapp_message_templates` (members read; service role writes), `whatsapp_phone_numbers.registration_blocked_until`, `finish_whatsapp_number_verification` and `sync_whatsapp_message_templates` (service role only), `disconnect_whatsapp_number` (company admins, `SECURITY DEFINER`). See `docs/integrations/whatsapp.md` |
 
 ## Row Level Security model
 
@@ -62,6 +63,7 @@ own RLS. Suspending a profile removes access everywhere.
 | `company_users` | members | `company_admin` |
 | `whatsapp_phone_numbers` | members (every column but `access_token_reference`) | `company_admin` inserts and updates the Meta ids and display fields only; status, Meta's view and the credential reference are service role only; no delete |
 | `whatsapp_business_accounts` | members | nobody signed in (the service role, and a trigger when a number is added) |
+| `whatsapp_number_verification_steps`, `whatsapp_message_templates` | members | nobody signed in (the worker with the service role); `disconnect_whatsapp_number` for company admins |
 | `profiles` | yourself and colleagues | yourself: `full_name`, `phone`, `whatsapp_number`, `job_title` only |
 | `notifications` | your own, in companies you belong to | `read` and `read_at` on your own |
 | `audit_logs` | `company_admin`, `property_manager`, `read_only` | members append entries for their own actions; nobody updates or deletes |

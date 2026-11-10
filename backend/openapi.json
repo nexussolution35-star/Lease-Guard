@@ -4593,6 +4593,382 @@
         ]
       }
     },
+    "/api/v1/integrations/whatsapp/message-templates": {
+      "get": {
+        "description": "As last synced during number verification: name, language, Meta's category and review status. Every member may read them.",
+        "operationId": "listWhatsAppMessageTemplates",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WhatsAppMessageTemplateDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "The message templates Meta holds for the active company's WhatsApp Business Accounts",
+        "tags": [
+          "whatsapp-integration"
+        ]
+      }
+    },
+    "/api/v1/integrations/whatsapp/numbers/{numberId}/verify": {
+      "post": {
+        "description": "Queues the verification of the number in the worker: token scopes, the number in its account, the webhook subscription, registration and the template sync. The number is connected only when every step passes; the business accounts list shows each step. Idempotent: a run already waiting or in progress is not duplicated.",
+        "operationId": "verifyWhatsAppNumber",
+        "parameters": [
+          {
+            "name": "numberId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppVerificationRequestDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such number in the active company",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The number was disconnected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Background processing is unavailable\n\nAuthentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Verify a number with Meta again (company admins)",
+        "tags": [
+          "whatsapp-integration"
+        ]
+      }
+    },
+    "/api/v1/integrations/whatsapp/numbers/{numberId}/register": {
+      "post": {
+        "description": "The PIN becomes (or must match) the number's two-step verification PIN. It is handed to the worker for one attempt and is never stored or logged. Meta allows 10 attempts per 72 hours: after its rate-limit error (133016) further attempts are refused with 429 until the lock ends, so no request reaches Meta.",
+        "operationId": "registerWhatsAppNumber",
+        "parameters": [
+          {
+            "name": "numberId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterWhatsAppNumberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppVerificationRequestDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such number in the active company",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The number is already connected or was disconnected, or a verification run is in progress (the PIN is not stored)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Meta's registration lock is in effect",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Background processing is unavailable\n\nAuthentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Register a number for the WhatsApp Cloud API with a 6-digit PIN (company admins)",
+        "tags": [
+          "whatsapp-integration"
+        ]
+      }
+    },
+    "/api/v1/integrations/whatsapp/numbers/{numberId}/disconnect": {
+      "post": {
+        "description": "The number stops sending and receiving at once and is marked disconnected; its stored business token is deleted from Vault unless another number of the company in use still holds it. LeaseGuard stays installed in Meta until the business removes it in Meta Business Settings.",
+        "operationId": "disconnectWhatsAppNumber",
+        "parameters": [
+          {
+            "name": "numberId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppDisconnectResultDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such number in the active company",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Disconnect a number (company admins)",
+        "tags": [
+          "whatsapp-integration"
+        ]
+      }
+    },
     "/api/v1/notifications": {
       "get": {
         "operationId": "listNotifications",
@@ -6151,6 +6527,67 @@
           "displayNumber"
         ]
       },
+      "WhatsAppVerificationStep": {
+        "type": "string",
+        "enum": [
+          "token_scopes",
+          "phone_number",
+          "webhook_subscription",
+          "registration",
+          "message_templates"
+        ]
+      },
+      "WhatsAppVerificationStepStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "passed",
+          "failed",
+          "action_needed",
+          "not_required"
+        ],
+        "description": "action_needed: waiting for the admin (the registration PIN); not_required counts as passed"
+      },
+      "WhatsAppVerificationStepDto": {
+        "type": "object",
+        "properties": {
+          "step": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WhatsAppVerificationStep"
+              }
+            ]
+          },
+          "status": {
+            "description": "action_needed: waiting for the admin (the registration PIN); not_required counts as passed",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WhatsAppVerificationStepStatus"
+              }
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "What happened"
+          },
+          "recovery": {
+            "type": "string",
+            "description": "How to recover"
+          },
+          "metaErrorCode": {
+            "type": "string",
+            "description": "Meta's error code, when Meta refused"
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "step",
+          "status"
+        ]
+      },
       "WhatsAppPhoneNumberDto": {
         "type": "object",
         "properties": {
@@ -6208,6 +6645,18 @@
             "type": "string",
             "format": "date-time"
           },
+          "registrationBlockedUntil": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Meta's registration lock after too many attempts (error 133016)"
+          },
+          "verificationSteps": {
+            "description": "In step order; empty until verification first ran",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppVerificationStepDto"
+            }
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -6221,6 +6670,7 @@
           "displayNumber",
           "webhookConfigured",
           "connectionStatus",
+          "verificationSteps",
           "createdAt"
         ]
       },
@@ -9198,6 +9648,121 @@
           "message",
           "businessAccountIds",
           "phoneNumberIds"
+        ]
+      },
+      "WhatsAppMessageTemplateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "businessAccountId": {
+            "type": "string",
+            "description": "Meta id of the WhatsApp Business Account"
+          },
+          "metaTemplateId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string",
+            "description": "Meta language code, e.g. en_ZA"
+          },
+          "category": {
+            "type": "string",
+            "description": "Meta's category, e.g. UTILITY"
+          },
+          "status": {
+            "type": "string",
+            "description": "Meta's review status, e.g. APPROVED, PENDING, REJECTED, PAUSED"
+          },
+          "rejectedReason": {
+            "type": "string"
+          },
+          "syncedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "businessAccountId",
+          "metaTemplateId",
+          "name",
+          "language",
+          "category",
+          "status",
+          "syncedAt"
+        ]
+      },
+      "WhatsAppVerificationRequestDto": {
+        "type": "object",
+        "properties": {
+          "numberId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "already_running"
+            ],
+            "description": "already_running: a run is waiting or in progress (for register: a waiting run, which reads the PIN)"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "numberId",
+          "status",
+          "message"
+        ]
+      },
+      "RegisterWhatsAppNumberDto": {
+        "type": "object",
+        "properties": {
+          "pin": {
+            "type": "string",
+            "description": "6-digit PIN: the number's two-step verification PIN, or the one it will get. Used once, never stored",
+            "pattern": "^[0-9]{6}$",
+            "example": "123456"
+          }
+        },
+        "required": [
+          "pin"
+        ]
+      },
+      "WhatsAppDisconnectResultDto": {
+        "type": "object",
+        "properties": {
+          "numberId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "disconnected"
+            ]
+          },
+          "tokenRemoved": {
+            "type": "boolean",
+            "description": "The stored business token was deleted (false when another number of the company in use still holds it, or the token is held in the worker environment)"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "numberId",
+          "status",
+          "tokenRemoved",
+          "message"
         ]
       },
       "NotificationSortField": {
