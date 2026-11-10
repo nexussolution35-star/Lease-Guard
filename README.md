@@ -134,13 +134,13 @@ flowchart LR
 
 | Component | Responsibility |
 | --- | --- |
-| **Frontend** (`frontend/`) | Web application for property managers. It runs in **demo mode** (seeded data in the browser, no backend) or **API mode** (Supabase sign-in and the backend API). |
+| **Frontend** (`frontend/`) | Web application for property managers: Supabase sign-in, then every record from the backend API. There is no offline or demo mode. |
 | **API** (`backend/src/main.ts`) | Authentication, company-level authorisation, validation, business operations and the OpenAPI document. Every database query runs as the signed-in user, so Row Level Security applies. |
 | **Worker** (`backend/src/worker.ts`) | Scheduled monitoring, statement processing and WhatsApp delivery, with retries, idempotency and job-run tracking. It is the only process that holds the Supabase service-role key. |
 | **Document processing** (`python-services/document-processing/`) | Stateless PDF text and OCR extraction, parsing and validation. It returns a structured, confidence-scored proposal; it never decides on its own. |
 | **Domain package** (`packages/domain/`) | The single source of business rules (escalations, expiry, renewal deadlines, guarantee coverage, arrears ageing, arrangement suppression, duplicate detection, communication eligibility) and the extraction wire contract. Framework-free and fully unit tested. |
 | **API client** (`packages/api-client/`) | A typed client generated from the backend's OpenAPI document, so request and response types are never written by hand twice. |
-| **Database** (`supabase/`) | Versioned migrations, Row Level Security policies, audit triggers, storage policies, database tests and the local seed. |
+| **Database** (`supabase/`) | Versioned migrations, Row Level Security policies, audit triggers, storage policies and database tests. |
 
 > The PRD suggested Next.js for both the frontend and the backend. This implementation keeps the same
 > layers but uses a Vite single-page app and a NestJS modular monolith, so the API and the worker share
@@ -172,7 +172,6 @@ LeaseGuard/
 │       ├── features/             feature modules (properties, leases, statements, …)
 │       ├── components/           ui (shadcn), shared, layout, forms
 │       ├── services/api/         API boundary: config, Supabase auth, API client, query client
-│       ├── services/demo/        browser-only demo data source (localStorage), isolated from API mode
 │       ├── store/  lib/  styles/  test/
 ├── backend/                      NestJS modular monolith (API + worker)
 │   └── src/
@@ -190,7 +189,7 @@ LeaseGuard/
 ├── packages/
 │   ├── domain/                   @leaseguard/domain: types and pure business rules
 │   └── api-client/               @leaseguard/api-client: generated, typed API client
-├── supabase/                     migrations/, tests/ (pgTAP), seed.sql, config.toml
+├── supabase/                     migrations/, tests/ (pgTAP), config.toml
 ├── infrastructure/               docker/, deployment/, scripts/
 ├── tests/                        cross-service integration and end-to-end tests
 ├── docs/                         PRD, architecture, development notes
@@ -209,30 +208,21 @@ LeaseGuard/
 - **Python 3.14** for the document-processing service
 - **Tesseract OCR** for local OCR fallback (for example `brew install tesseract`); the container image includes it
 
-### Quick look: demo mode (frontend only)
+### Local stack
 
-Demo mode runs the whole web app in the browser on seeded South African demo data. No backend, database or
-credentials are needed.
-
-```bash
-pnpm install
-cp .env.example .env          # VITE_DATA_SOURCE=demo is the default
-pnpm dev:frontend             # http://localhost:5173
-```
-
-### Full local stack
+The web app always runs against Supabase Auth and the LeaseGuard API; there is no demo mode.
 
 ```bash
 pnpm install
 cp .env.example .env
 
-# 1. Database, auth and storage (local Supabase; applies migrations and the local seed)
+# 1. Database, auth and storage (local Supabase; applies the migrations)
 pnpm db:start
 pnpm db:status                # copy the anon key to SUPABASE_ANON_KEY and VITE_SUPABASE_ANON_KEY,
                               # and the service-role key to SUPABASE_SERVICE_ROLE_KEY in .env
 
-# 2. Redis for background jobs
-pnpm docker:up redis
+# 2. Redis for background jobs, published on the host for `pnpm dev`
+docker run -d --name leaseguard-redis-dev -p 127.0.0.1:6379:6379 redis:7.4.12
 
 # 3. Document-processing service
 pnpm python:setup             # creates python-services/document-processing/.venv
@@ -242,9 +232,11 @@ pnpm dev:python               # http://127.0.0.1:8000
 pnpm dev                      # web http://localhost:5173 · API http://127.0.0.1:3000 · docs /api/docs
 ```
 
-To use the real API from the web app, set `VITE_DATA_SOURCE=api` in `.env` and sign in with a seeded
-user. Every local demo user's password is `leaseguard-local-only`. **These credentials exist only in the
-local seed: never load `supabase/seed.sql` into a shared or production project.**
+The local database starts **empty**: the database is the only source of truth and the repository ships
+no seed or demo data. To sign in to the web app locally, create your own user and company in the local
+Supabase Studio (`pnpm db:status` prints its URL): an Auth user with a confirmed email, a company, and a
+`company_users` membership with a role. The integration and end-to-end suites create (and remove) all the
+data they need themselves, so they also run against an empty database.
 
 The whole backend can also run in containers with `pnpm docker:up` (API, worker, document processing and
 Redis; Supabase still runs through its CLI).
@@ -266,10 +258,11 @@ All commands run from the repository root.
 | `pnpm test:integration` | API integration tests against local Supabase and Redis |
 | `pnpm test:e2e` | Playwright end-to-end tests |
 | `pnpm db:start` · `db:stop` · `db:status` | Local Supabase stack |
-| `pnpm db:reset` | Recreate the local database from migrations and the seed |
+| `pnpm db:reset` | Recreate the local database from the migrations (empty) |
 | `pnpm db:test` | Database tests (pgTAP): RLS isolation, audit and business-rule constraints |
-| `pnpm db:types` | Regenerate typed database definitions for the backend |
-| `pnpm db:seed:generate` | Regenerate `supabase/seed.sql` from the frontend demo data |
+| `pnpm db:push:remote` | Dry-run the hosted project's pending migrations; `-- --apply` applies them (needs `SUPABASE_DB_PASSWORD`) |
+| `pnpm auth:configure:remote` | Dry-run the hosted project's Auth settings (SMTP from `noreply@leaseguard.com`, email templates, 3-minute links, invite-only); `-- --apply` applies them (needs `SUPABASE_ACCESS_TOKEN` and `SMTP_*`) |
+| `pnpm db:types` · `db:types:check` | Regenerate the backend's typed database definitions, or check they are current |
 | `pnpm api:generate` | Regenerate `backend/openapi.json` and the typed API client |
 | `pnpm python:setup` · `python:test` · `python:lint` | Document-processing service |
 | `pnpm docker:config` · `docker:up` · `docker:down` | Docker Compose for local development |
@@ -291,9 +284,12 @@ if any are missing or invalid:
 - `SUPABASE_SERVICE_ROLE_KEY` is for the **worker only**. Each process loads only the variables its own
   schema declares, so the API never holds this key, and no service-role key is ever exposed to the browser.
 - `VITE_SUPABASE_ANON_KEY` (the public anon or publishable key) is the only Supabase key the browser receives.
-- WhatsApp access tokens are never stored in the database or in `.env.example`. Each company's
-  `whatsapp_accounts.access_token_reference` points to a secret (`secret://env/<VARIABLE>`) that the worker
-  resolves from its own environment.
+- WhatsApp access tokens are never stored in plain columns or in `.env.example`. Each company's
+  `whatsapp_accounts.access_token_reference` points to a secret the worker resolves: a variable in its own
+  environment (`secret://env/WHATSAPP_ACCESS_TOKEN_<COMPANY_ID_HEX_UPPERCASE>`) or a Supabase Vault secret
+  (`secret://vault/<secret id>`). See `docs/security/README.md`.
+- `SMTP_*` and `SUPABASE_ACCESS_TOKEN` are operator-only: read by `pnpm auth:configure:remote`, never by the API,
+  worker or browser. Auth emails go to each user's own address from `noreply@leaseguard.com`.
 - Never commit `.env`.
 
 ---
@@ -340,9 +336,11 @@ LeaseGuard is in active MVP development on the path to a single-property pilot.
 | Multi-company database with RLS, audit triggers and storage policies | In place |
 | Domain business rules (escalation, expiry, renewal, guarantees, arrears, arrangements, eligibility) | In place |
 | Document-processing service (PDF text, OCR fallback, validation) | In place |
-| Backend API modules, worker processors and scheduler | Foundations in place and being extended |
-| Web app shell, navigation, workspace switching and demo mode | In place |
-| Web app management screens | In progress: most screens are still placeholders |
+| Backend API: read endpoints for every module, lease verification, statement upload and processing, monitoring event workflow, message approvals, notifications, audit log | In place |
+| Background worker: daily lease, arrears and arrangement monitoring; statement extraction; WhatsApp delivery of approved messages | In place |
+| Create and edit endpoints for properties, units, tenants, leases and payment arrangements | Planned |
+| Web app shell, navigation, sign-in, workspace switching and profile management (edit profile, change password) | In place |
+| Web app management screens | In progress: the property list is complete and every feature's data source is wired to the API; most other screens are still placeholders |
 | Statement review and correction workflow | Planned |
 | WhatsApp webhooks, inbound replies, templates and opt-out handling | Planned |
 | Weekly owner summaries and supported owner questions | Planned |
@@ -356,9 +354,13 @@ more), see section 16 of the PRD.
 ## Documentation
 
 - [MVP Product Requirements Document](docs/LeaseGuard%20MVP%20v1.0.pdf): product scope and acceptance criteria
-- [docs/architecture/](docs/architecture/): architecture decisions, migration plan, frontend data layer
-- [docs/development/](docs/development/): frontend component guide
-- [python-services/document-processing/README.md](python-services/document-processing/README.md): extraction service
+- [Architecture overview](docs/architecture/overview.md), [frontend data layer](docs/architecture/frontend-data-layer.md) and [migration plan](docs/architecture/migration-plan.md)
+- [API conventions and endpoints](docs/api/README.md)
+- [Database: migrations, RLS and tests](docs/database/README.md)
+- [Security model](docs/security/README.md)
+- [Local setup troubleshooting](docs/development/local-setup.md) and [frontend component guide](docs/development/frontend-components.md)
+- [frontend/README.md](frontend/README.md), [tests/README.md](tests/README.md),
+  [python-services/document-processing/README.md](python-services/document-processing/README.md)
 - [infrastructure/deployment/README.md](infrastructure/deployment/README.md): deployment notes
 - API reference: Swagger UI at `/api/docs` when the API is running; the generated document is `backend/openapi.json`
 
