@@ -8,7 +8,7 @@ export type MessageDirection = (typeof MESSAGE_DIRECTIONS)[number]
 
 /**
  * The counterparty of a message. `contact`: a WhatsApp contact who is neither a tenant nor a property owner of
- * the company (inbound only until replies to contacts exist).
+ * the company (their inbound messages, and staff replies inside WhatsApp's 24-hour customer service window).
  */
 export const RECIPIENT_TYPES = ['tenant', 'property_owner', 'contact'] as const
 export type RecipientType = (typeof RECIPIENT_TYPES)[number]
@@ -66,7 +66,7 @@ export interface Communication extends CompanyScoped {
    * message whose sender WhatsApp identified by a business-scoped user id only.
    */
   counterpartyNumber?: string
-  /** The WhatsApp contact (inbound messages, ticket 05). */
+  /** The WhatsApp contact (inbound messages, ticket 05; replies to contacts, ticket 07). */
   contactId?: EntityId
   /** The WhatsApp conversation the message belongs to. */
   conversationId?: EntityId

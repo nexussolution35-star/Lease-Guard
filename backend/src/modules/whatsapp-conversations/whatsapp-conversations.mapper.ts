@@ -1,4 +1,4 @@
-import type { WhatsAppConversationContact, WhatsAppConversationSummary } from '@leaseguard/domain'
+import type { EntityId, HandoverRequester, HandoverStatus, WhatsAppConversationContact, WhatsAppConversationSummary, WhatsAppHandover } from '@leaseguard/domain'
 
 import type { Tables } from '../../infrastructure/database/database.types'
 
@@ -13,6 +13,48 @@ export type ConversationRow = Pick<Tables<'whatsapp_conversations'>, 'id' | 'com
     | null
   number: Pick<Tables<'whatsapp_phone_numbers'>, 'display_number' | 'phone_number_id'> | null
   messages?: Pick<Tables<'communications'>, 'body'>[]
+  /** The unresolved handover (at most one; the select filters out resolved ones). */
+  handovers?: HandoverRow[]
+}
+
+export type HandoverRow = Tables<'whatsapp_handovers'>
+
+/** Every handover column; members read them all. */
+export const HANDOVER_COLUMNS =
+  'id, company_id, conversation_id, status, reason, requested_by, requested_by_user_id, assigned_user_id, accepted_at, ' +
+  'resolved_at, resolved_by_user_id, resolution_note, created_at, updated_at'
+
+/** The conversation's handovers embed (filter it to unresolved ones with `.neq('handovers.status', 'resolved')`). */
+export const HANDOVERS_EMBED = `handovers:whatsapp_handovers!whatsapp_handovers_conversation_fk(${HANDOVER_COLUMNS})`
+
+/** Member names by user id, for the assignee (profiles are readable by colleagues). */
+export type MemberNames = ReadonlyMap<EntityId, string>
+
+/** Database row → domain `WhatsAppHandover`. */
+export function toHandover(row: HandoverRow, names: MemberNames = new Map()): WhatsAppHandover {
+  const assignedUserName = row.assigned_user_id ? names.get(row.assigned_user_id) : undefined
+  return {
+    id: row.id,
+    companyId: row.company_id,
+    conversationId: row.conversation_id,
+    status: row.status as HandoverStatus,
+    reason: row.reason,
+    requestedBy: row.requested_by as HandoverRequester,
+    ...(row.requested_by_user_id ? { requestedByUserId: row.requested_by_user_id } : {}),
+    ...(row.assigned_user_id ? { assignedUserId: row.assigned_user_id } : {}),
+    ...(assignedUserName ? { assignedUserName } : {}),
+    ...(row.accepted_at ? { acceptedAt: row.accepted_at } : {}),
+    ...(row.resolved_at ? { resolvedAt: row.resolved_at } : {}),
+    ...(row.resolved_by_user_id ? { resolvedByUserId: row.resolved_by_user_id } : {}),
+    ...(row.resolution_note ? { resolutionNote: row.resolution_note } : {}),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+/** The user ids whose names a list of handovers shows. */
+export function assigneeIds(rows: readonly (HandoverRow | undefined)[]): EntityId[] {
+  return [...new Set(rows.flatMap((row) => (row?.assigned_user_id ? [row.assigned_user_id] : [])))]
 }
 
 /**
@@ -45,8 +87,9 @@ function preview(body: string | undefined): string | undefined {
 }
 
 /** Database row → domain `WhatsAppConversationSummary`. */
-export function toConversationSummary(row: ConversationRow): WhatsAppConversationSummary {
+export function toConversationSummary(row: ConversationRow, names: MemberNames = new Map()): WhatsAppConversationSummary {
   const lastPreview = preview(row.messages?.[0]?.body)
+  const handover = row.handovers?.find((h) => h.status !== 'resolved')
   return {
     id: row.id,
     companyId: row.company_id,
@@ -56,6 +99,7 @@ export function toConversationSummary(row: ConversationRow): WhatsAppConversatio
     ...(row.last_inbound_at ? { lastInboundAt: row.last_inbound_at } : {}),
     lastMessageAt: row.last_message_at,
     ...(lastPreview ? { lastMessagePreview: lastPreview } : {}),
+    ...(handover ? { handover: toHandover(handover, names) } : {}),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }

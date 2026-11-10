@@ -16,6 +16,33 @@ export interface WhatsAppConversationContact {
   tenantName?: string
 }
 
+export const HANDOVER_STATUSES = ['open', 'accepted', 'resolved'] as const
+/**
+ * `open`: waiting for a person (possibly assigned to one who has not accepted it yet); `accepted`: a person has
+ * taken the conversation over; `resolved`: done.
+ */
+export type HandoverStatus = (typeof HANDOVER_STATUSES)[number]
+
+export const HANDOVER_REQUESTERS = ['agent', 'member'] as const
+/** Who asked for a person: the company's AI agent, or a member of staff who took the conversation over. */
+export type HandoverRequester = (typeof HANDOVER_REQUESTERS)[number]
+
+/** A request for a person to take over a WhatsApp conversation. At most one per conversation is unresolved. */
+export interface WhatsAppHandover extends CompanyScoped {
+  conversationId: EntityId
+  status: HandoverStatus
+  reason: string
+  requestedBy: HandoverRequester
+  requestedByUserId?: EntityId
+  /** The member who handles it (assigned, or who accepted it). */
+  assignedUserId?: EntityId
+  assignedUserName?: string
+  acceptedAt?: ISODateTime
+  resolvedAt?: ISODateTime
+  resolvedByUserId?: EntityId
+  resolutionNote?: string
+}
+
 /** One WhatsApp thread: a contact writing to one of the company's receiving numbers. */
 export interface WhatsAppConversationSummary extends CompanyScoped {
   /** The company's receiving number (whatsapp_phone_numbers id). */
@@ -28,6 +55,8 @@ export interface WhatsAppConversationSummary extends CompanyScoped {
   lastMessageAt: ISODateTime
   /** The latest message's text, shortened. */
   lastMessagePreview?: string
+  /** The conversation's unresolved handover, if any. */
+  handover?: WhatsAppHandover
 }
 
 /** A conversation with its messages, oldest first. */

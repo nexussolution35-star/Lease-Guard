@@ -65,6 +65,8 @@ interface Options {
   send?: () => Promise<{ messageId: string }>
   upload?: () => Promise<{ mediaId: string }>
   respond?: (query: RecordedQuery) => FakeResult | undefined
+  /** More tables the run reads. */
+  reads?: Record<string, readonly unknown[]>
 }
 
 /** The lifecycle operation a recorded query calls, by its database function. */
@@ -106,6 +108,7 @@ function harness(options: Options = {}) {
         payment_arrangements: options.arrangements ?? [],
         properties: [{ manager_user_id: MANAGER }],
         whatsapp_phone_numbers: [options.account ?? { connection_status: 'connected' }],
+        ...options.reads,
       },
     }),
   )
@@ -176,6 +179,49 @@ describe('MessageDeliveryProcessor', () => {
       expect(rpcArgs(query)).toMatchObject({ p_company_id: COMPANY, p_communication_id: COMMUNICATION })
     }
     for (const query of queries.filter((q) => q.table !== 'profiles' && !q.table.startsWith('rpc:'))) expect(eqValue(query, 'company_id')).toBe(COMPANY)
+  })
+
+  it("sends a member's reply to a contact from the number its conversation came in on, inside the window", async () => {
+    const reply = {
+      communication: { message_type: 'manual', recipient_type: 'contact', tenant_id: null, property_id: null, contact_id: 'contact-1', conversation_id: 'conversation-1', counterparty_number: '+27829990001', body: 'Yes, parking is available.' },
+      account: { id: 'number-2', phone_number_id: '1110002', connection_status: 'connected' },
+    }
+    // No tenant of the company has the contact's number (this fake's reads ignore filters, so the table states it).
+    const thread = { whatsapp_conversations: [{ id: 'conversation-1', contact_id: 'contact-1', number_id: 'number-2', last_inbound_at: '2026-11-09T07:00:00Z' }], tenants: [] }
+    const { processor, sendMessage, channels } = harness({
+      ...reply,
+      reads: { ...thread, whatsapp_contacts: [{ id: 'contact-1', wa_id: '27829990001', tenant_id: null }] },
+    })
+    await expect(processor.deliver(payload, firstAttempt)).resolves.toEqual({ outcome: 'sent', externalMessageId: 'wamid.SENT' })
+    expect(channels.lookups).toEqual([{ companyId: COMPANY, options: { phoneNumberId: '1110002' } }])
+    expect(sendMessage).toHaveBeenCalledWith('+27829990001', { type: 'text', text: { body: 'Yes, parking is available.', preview_url: false } })
+
+    // The clock says 08:00 on 9 November: a contact who last wrote 25 hours earlier is outside the window.
+    const late = harness({
+      ...reply,
+      reads: {
+        ...thread,
+        whatsapp_conversations: [{ ...thread.whatsapp_conversations[0], last_inbound_at: '2026-11-08T07:00:00Z' }],
+        whatsapp_contacts: [{ id: 'contact-1', wa_id: '27829990001', tenant_id: null }],
+      },
+    })
+    await expect(late.processor.deliver(payload, firstAttempt)).rejects.toBeInstanceOf(UnrecoverableError)
+    expect(late.sendMessage).not.toHaveBeenCalled()
+    expect(transitions(late.queries)).toEqual([failed(expect.stringMatching(/24-hour customer service window has closed/))])
+
+    // A contact who turned out to be a tenant never gets the free-form reply.
+    const tenant = harness({ ...reply, reads: { ...thread, whatsapp_contacts: [{ id: 'contact-1', wa_id: '27829990001', tenant_id: TENANT }] } })
+    await expect(tenant.processor.deliver(payload, firstAttempt)).rejects.toBeInstanceOf(UnrecoverableError)
+    expect(tenant.sendMessage).not.toHaveBeenCalled()
+
+    // Nor does a tenant whose number was recorded after the contact last wrote (the contact is not linked yet).
+    const renumbered = harness({
+      ...reply,
+      reads: { ...thread, tenants: [{ id: TENANT }], whatsapp_contacts: [{ id: 'contact-1', wa_id: '27829990001', tenant_id: null }] },
+    })
+    await expect(renumbered.processor.deliver(payload, firstAttempt)).rejects.toBeInstanceOf(UnrecoverableError)
+    expect(renumbered.sendMessage).not.toHaveBeenCalled()
+    expect(transitions(renumbered.queries)).toEqual([failed(expect.stringMatching(/This contact is a tenant/))])
   })
 
   it('is idempotent: a message that already has a WhatsApp id is never sent again', async () => {

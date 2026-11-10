@@ -106,6 +106,18 @@ _Avoid_: Chat, ticket, thread (in user-facing text)
 The list of a company's conversations, most recent first, where members read inbound WhatsApp messages.
 _Avoid_: Messages page, chat list
 
+**Customer service window**:
+WhatsApp's 24 hours after a contact's last message, during which the business may send free-form text; outside it only approved templates can be sent.
+_Avoid_: Session, reply window (except as short UI text), CSW
+
+**Handover**:
+A request for a person to take over a conversation, from the company's AI agent or from a member who takes it over; it is open, accepted by the member who handles it, or resolved, and a conversation has at most one that is not resolved.
+_Avoid_: Escalation (which is a rental increase), ticket, transfer
+
+**Contact reply**:
+A free-form WhatsApp message a company writer sends to a contact inside the customer service window, approved by its author; never sent to a tenant.
+_Avoid_: Manual message, tenant reply
+
 **Business-scoped user id**:
 Meta's identifier for a WhatsApp user within one business (BSUID); Meta may send it instead of the person's phone number, so a contact can be known without a number.
 _Avoid_: WhatsApp id (which reads as the phone number Meta calls wa_id)

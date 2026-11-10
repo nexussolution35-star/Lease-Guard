@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { tableDb } from '../common/testing/table-db.test-helpers'
-import { checkOutbound, MessagingReadError, type OutboundCheckOptions, type OutboundVerdict } from './outbound-gate'
+import { checkContactReply, checkOutbound, MessagingReadError, type OutboundCheckOptions, type OutboundVerdict } from './outbound-gate'
 
 /**
  * The outbound gate through its interface: "is this message deliverable, and why not". Rows live in
@@ -293,5 +293,121 @@ describe('checkOutbound: failed reads', () => {
     const failure = check({ failing: { [table]: { code: 'PGRST000', message: 'connection refused' } } })
     await expect(failure).rejects.toBeInstanceOf(MessagingReadError)
     await expect(failure).rejects.toMatchObject({ databaseError: { code: 'PGRST000' } })
+  })
+})
+
+describe('checkOutbound and checkContactReply: replies to WhatsApp contacts', () => {
+  const CONVERSATION = '6f1d2c1e-0000-4000-8000-0000000000e1'
+  const CONTACT = '6f1d2c1e-0000-4000-8000-0000000000e2'
+  const NUMBER_ID = '6f1d2c1e-0000-4000-8000-0000000000e3'
+  const CONTACT_NUMBER = '+27829990001'
+  const NOW = new Date('2026-11-10T12:00:00Z')
+  const REPLY = 'Yes, parking is available in the basement.'
+
+  const reply: Row = {
+    ...communication,
+    message_type: 'manual',
+    recipient_type: 'contact',
+    tenant_id: null,
+    contact_id: CONTACT,
+    conversation_id: CONVERSATION,
+    counterparty_number: CONTACT_NUMBER,
+    body: REPLY,
+  }
+  const conversation: Row = { id: CONVERSATION, company_id: COMPANY, contact_id: CONTACT, number_id: NUMBER_ID, last_inbound_at: '2026-11-10T10:00:00Z' }
+  const contact: Row = { id: CONTACT, company_id: COMPANY, wa_id: '27829990001', tenant_id: null }
+  const number: Row = { id: NUMBER_ID, company_id: COMPANY, phone_number_id: '1110001', connection_status: 'connected', created_at: '2026-11-02T00:00:00Z' }
+  // The company's default (earliest) number is disconnected: a reply goes out from its conversation's number.
+  const defaultNumber: Row = { id: 'n-default', company_id: COMPANY, phone_number_id: '1110000', connection_status: 'disconnected', created_at: '2026-11-01T00:00:00Z' }
+
+  interface ReplyWorld {
+    communication?: Row
+    approvals?: Row[]
+    conversation?: Row | null
+    contact?: Row
+    number?: Row
+    tenants?: Row[]
+  }
+
+  function db(world: ReplyWorld = {}) {
+    return tableDb({
+      communications: [{ ...reply, ...world.communication }],
+      message_approvals: world.approvals ?? [approved],
+      whatsapp_conversations: [
+        ...(world.conversation === null ? [] : [{ ...conversation, ...world.conversation }]),
+        { ...conversation, company_id: OTHER_COMPANY },
+      ],
+      whatsapp_contacts: [{ ...contact, ...world.contact }, { ...contact, company_id: OTHER_COMPANY, tenant_id: TENANT }],
+      whatsapp_phone_numbers: [defaultNumber, { ...number, ...world.number }, { ...number, company_id: OTHER_COMPANY, connection_status: 'disconnected' }],
+      // Another company's tenant with the contact's number never makes this company's contact a tenant.
+      tenants: [...(world.tenants ?? []), { ...tenant, company_id: OTHER_COMPANY, whatsapp_number: CONTACT_NUMBER }],
+    })
+  }
+  const verdict = (world: ReplyWorld = {}) => checkOutbound(db(world), { companyId: COMPANY, communicationId: MESSAGE }, TODAY, { now: NOW })
+  const replyBlockers = async (world: ReplyWorld = {}) => {
+    const result = await verdict(world)
+    return result.deliverable ? [] : result.blockers
+  }
+
+  it("delivers an approved reply inside the window as free text, from the conversation's number", async () => {
+    const result = await verdict()
+    expect(result.deliverable).toBe(true)
+    if (!result.deliverable) return
+    expect(result.delivery.to).toBe(CONTACT_NUMBER)
+    expect(result.delivery.phoneNumberId).toBe('1110001')
+    expect(result.delivery.message()).toEqual({ type: 'text', text: { body: REPLY, preview_url: false } })
+  })
+
+  it('refuses after the 24-hour customer service window has closed', async () => {
+    expect(await replyBlockers({ conversation: { last_inbound_at: '2026-11-09T11:59:00Z' } })).toEqual([expect.stringMatching(/24-hour customer service window has closed/)])
+  })
+
+  it('never delivers to a contact who is a tenant', async () => {
+    expect(await replyBlockers({ contact: { tenant_id: TENANT } })).toEqual([expect.stringMatching(/^This contact is a tenant/)])
+  })
+
+  it("never delivers to a tenant whose number was recorded after the contact's last message (contact not yet linked)", async () => {
+    const renumbered = [{ ...tenant, whatsapp_number: CONTACT_NUMBER, whatsapp_verified: false }]
+    expect(await replyBlockers({ tenants: renumbered })).toEqual([expect.stringMatching(/^This contact is a tenant/)])
+    expect(await checkContactReply(db({ tenants: renumbered }), { companyId: COMPANY, conversationId: CONVERSATION, body: REPLY }, NOW)).toEqual({
+      found: true,
+      blockers: [expect.stringMatching(/^This contact is a tenant/)],
+    })
+  })
+
+  it('needs an approval that names its approver', async () => {
+    expect(await replyBlockers({ approvals: [] })).toEqual(['Property manager approval is required before sending'])
+  })
+
+  it("refuses when the conversation's number is not connected, or the contact's number changed", async () => {
+    expect(await replyBlockers({ number: { connection_status: 'disconnected' } })).toEqual(['The company WhatsApp account is disconnected'])
+    expect(await replyBlockers({ contact: { wa_id: '27829990002' } })).toEqual([
+      "The contact's WhatsApp number is no longer the number this message is addressed to; create a new message",
+    ])
+  })
+
+  it('refuses a reply whose conversation is gone or belongs to another contact, a template, or banking details', async () => {
+    expect(await replyBlockers({ conversation: null })).toEqual(['The conversation this reply belongs to no longer exists'])
+    expect(await replyBlockers({ conversation: { contact_id: 'someone-else' } })).toEqual(['The reply is not addressed to the contact of its conversation'])
+    expect(await replyBlockers({ communication: { template_id: TEMPLATE } })).toContain('A reply to a contact is free text, not a message template')
+    expect(await replyBlockers({ communication: { body: 'Please pay into account number 62845019876.' } })).toEqual([
+      expect.stringMatching(/may not contain banking details/),
+    ])
+  })
+
+  it('checks a reply before it is written with the same rules', async () => {
+    const draft = (world: ReplyWorld = {}, body = REPLY) => checkContactReply(db(world), { companyId: COMPANY, conversationId: CONVERSATION, body }, NOW)
+    expect(await draft()).toEqual({ found: true, blockers: [] })
+    expect(await draft({ conversation: null })).toEqual({ found: false })
+    expect(await draft({ contact: { tenant_id: TENANT, wa_id: null }, conversation: { last_inbound_at: null }, number: { connection_status: 'pending_verification' } }, 'EFT to account 62845019876')).toEqual({
+      found: true,
+      blockers: [
+        expect.stringMatching(/^This contact is a tenant/),
+        expect.stringMatching(/24-hour customer service window has closed/),
+        expect.stringMatching(/has not shared this contact's number/),
+        expect.stringMatching(/may not contain banking details/),
+        'The company WhatsApp account is pending verification',
+      ],
+    })
   })
 })

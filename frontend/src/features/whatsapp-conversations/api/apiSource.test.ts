@@ -25,4 +25,39 @@ describe('createApiConversationSource', () => {
     const fetch = fakeFetch(403, { statusCode: 403, error: 'Forbidden', message: 'Not a member', requestId: null })
     await expect(createApiConversationSource(fakeApiClient(fetch)).list(TEST_COMPANY_ID, { page: 1, pageSize: 25 })).rejects.toBeInstanceOf(ApiError)
   })
+
+  it('asks for a filtered view', async () => {
+    const fetch = fakeFetch(200, { items: [], total: 0, page: 1, pageSize: 25 })
+    await createApiConversationSource(fakeApiClient(fetch)).list(TEST_COMPANY_ID, { page: 1, pageSize: 25, filter: 'mine' })
+    expect(urlOf(fetch).query).toEqual({ page: '1', pageSize: '25', filter: 'mine' })
+  })
+
+  it('accepts, assigns and resolves handovers and replies, for the active company', async () => {
+    const handover = { id: 'h1', status: 'accepted' }
+    const accept = fakeFetch(200, handover)
+    await expect(createApiConversationSource(fakeApiClient(accept)).acceptHandover(TEST_COMPANY_ID, TEST_RECORD_ID)).resolves.toEqual(handover)
+    expect(urlOf(accept).pathname).toBe(`/api/v1/whatsapp/conversations/${TEST_RECORD_ID}/handover/accept`)
+    expect(requestAt(accept).method).toBe('POST')
+    expect(requestAt(accept).headers.get('X-Company-Id')).toBe(TEST_COMPANY_ID)
+
+    const assign = fakeFetch(200, handover)
+    await createApiConversationSource(fakeApiClient(assign)).assignHandover(TEST_COMPANY_ID, TEST_RECORD_ID, 'u1')
+    expect(urlOf(assign).pathname).toBe(`/api/v1/whatsapp/conversations/${TEST_RECORD_ID}/handover/assign`)
+    expect(await requestAt(assign).json()).toEqual({ userId: 'u1' })
+
+    const resolve = fakeFetch(200, handover)
+    await createApiConversationSource(fakeApiClient(resolve)).resolveHandover(TEST_COMPANY_ID, TEST_RECORD_ID, 'Done')
+    expect(urlOf(resolve).pathname).toBe(`/api/v1/whatsapp/conversations/${TEST_RECORD_ID}/handover/resolve`)
+    expect(await requestAt(resolve).json()).toEqual({ note: 'Done' })
+
+    const reply = fakeFetch(201, { id: 'm1' })
+    await createApiConversationSource(fakeApiClient(reply)).reply(TEST_COMPANY_ID, TEST_RECORD_ID, 'Hello')
+    expect(urlOf(reply).pathname).toBe(`/api/v1/whatsapp/conversations/${TEST_RECORD_ID}/replies`)
+    expect(await requestAt(reply).json()).toEqual({ body: 'Hello' })
+  })
+
+  it('rethrows a refused reply with its reasons', async () => {
+    const fetch = fakeFetch(422, { statusCode: 422, error: 'Unprocessable Entity', message: ['Reply window closed'], requestId: null })
+    await expect(createApiConversationSource(fakeApiClient(fetch)).reply(TEST_COMPANY_ID, TEST_RECORD_ID, 'Hi')).rejects.toMatchObject({ status: 422, messages: ['Reply window closed'] })
+  })
 })

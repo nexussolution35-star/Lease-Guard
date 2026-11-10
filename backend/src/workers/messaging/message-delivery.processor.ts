@@ -195,12 +195,13 @@ export class MessageDeliveryProcessor implements OnModuleInit {
   private async prepare(db: DbClient, communication: CommunicationRow): Promise<PreparedDelivery> {
     const companyId = communication.company_id
     // A failed read (MessagingReadError) is retried like any database failure: nothing was sent.
-    const verdict = await checkOutbound(db, { companyId, communicationId: communication.id }, this.clock.today())
+    const verdict = await checkOutbound(db, { companyId, communicationId: communication.id }, this.clock.today(), { now: this.clock.now() })
     if (!verdict.deliverable) throw new UndeliverableMessageError(verdict.blockers)
     const { delivery } = verdict
 
     // A transient lookup failure (ChannelLookupError) is retried like any database failure.
-    const channel = await this.channels.forCompany(companyId)
+    // A reply to a contact goes out from the number its conversation came in on; everything else from the default.
+    const channel = await this.channels.forCompany(companyId, delivery.phoneNumberId ? { phoneNumberId: delivery.phoneNumberId } : {})
     if (!channel.available) throw new PermanentDeliveryError(channel.message)
 
     let mediaId: string | undefined
@@ -266,7 +267,7 @@ export class MessageDeliveryProcessor implements OnModuleInit {
           type: 'message_failed',
           severity: 'warning',
           title: 'WhatsApp message could not be sent',
-          body: `The ${communication.message_type.replaceAll('_', ' ')} message to ${communication.counterparty_number} was not sent: ${failure.reason.slice(0, 2000)}`,
+          body: `The ${communication.recipient_type === 'contact' ? 'reply' : `${communication.message_type.replaceAll('_', ' ')} message`} to ${communication.counterparty_number} was not sent: ${failure.reason.slice(0, 2000)}`,
           link: { entityType: 'communication', entityId: communication.id },
         },
       ])

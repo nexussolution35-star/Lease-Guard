@@ -81,6 +81,8 @@ const DOMAIN_ONLY: Readonly<Record<string, string>> = {
   MONITORED_LEASE_STATUSES: 'subset of lease_status (monitoring rule)',
   OPEN_EVENT_STATUSES: 'subset of monitoring_event_status (workflow rule)',
   TERMINAL_EVENT_STATUSES: 'subset of monitoring_event_status (workflow rule)',
+  HANDOVER_STATUSES: 'whatsapp_handovers.status is text with a check constraint (20261110101100), not an enum',
+  HANDOVER_REQUESTERS: 'whatsapp_handovers.requested_by is text with a check constraint (20261110101100), not an enum',
 }
 
 /**

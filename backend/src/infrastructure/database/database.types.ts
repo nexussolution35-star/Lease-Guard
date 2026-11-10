@@ -974,6 +974,50 @@ isOneToOne: false
       referencedColumns: ["company_id","id"]
     }
                   ]
+                },"whatsapp_handovers": {
+                  Row: {
+                    "accepted_at": string | null,"assigned_user_id": string | null,"company_id": string,"conversation_id": string,"created_at": string,"id": string,"reason": string,"requested_by": string,"requested_by_user_id": string | null,"resolution_note": string | null,"resolved_at": string | null,"resolved_by_user_id": string | null,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "accepted_at"?: string | null,"assigned_user_id"?: string | null,"company_id": string,"conversation_id": string,"created_at"?: string,"id"?: string,"reason": string,"requested_by": string,"requested_by_user_id"?: string | null,"resolution_note"?: string | null,"resolved_at"?: string | null,"resolved_by_user_id"?: string | null,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "accepted_at"?: string | null,"assigned_user_id"?: string | null,"company_id"?: string,"conversation_id"?: string,"created_at"?: string,"id"?: string,"reason"?: string,"requested_by"?: string,"requested_by_user_id"?: string | null,"resolution_note"?: string | null,"resolved_at"?: string | null,"resolved_by_user_id"?: string | null,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "whatsapp_handovers_assigned_fk"
+      columns: ["company_id","assigned_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    },{
+      foreignKeyName: "whatsapp_handovers_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "whatsapp_handovers_conversation_fk"
+      columns: ["company_id","conversation_id"]
+isOneToOne: false
+      referencedRelation: "whatsapp_conversations"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "whatsapp_handovers_requested_by_fk"
+      columns: ["company_id","requested_by_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    },{
+      foreignKeyName: "whatsapp_handovers_resolved_by_fk"
+      columns: ["company_id","resolved_by_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    }
+                  ]
                 },"whatsapp_message_templates": {
                   Row: {
                     "business_account_id": string,"category": string,"company_id": string,"created_at": string,"id": string,"language": string,"meta_template_id": string,"name": string,"rejected_reason": string | null,"status": string,"status_updated_at": string | null,"synced_at": string,"updated_at": string
@@ -1101,9 +1145,19 @@ isOneToOne: false
             "accept_company_invitation":
 { Args: { "p_invitation_id": string }; Returns: string
                            },
+"accept_whatsapp_handover":
+{ Args: { "p_company_id": string,"p_conversation_id": string }; Returns: {
+              "handover_id": string,"outcome": string
+            }[]
+                           },
 "apply_whatsapp_template_status":
 { Args: { "p_business_account_id": string,"p_category": string,"p_language": string,"p_meta_template_id": string,"p_name": string,"p_occurred_at"?: string,"p_reason": string,"p_status": string }; Returns: {
               "company_id": string,"outcome": string
+            }[]
+                           },
+"assign_whatsapp_handover":
+{ Args: { "p_assignee": string,"p_company_id": string,"p_conversation_id": string }; Returns: {
+              "handover_id": string,"outcome": string
             }[]
                            },
 "claim_communication":
@@ -1154,6 +1208,16 @@ isOneToOne: false
 "remove_whatsapp_business_account_access":
 { Args: { "p_business_account_id": string,"p_event": string,"p_occurred_at"?: string }; Returns: {
               "admins_notified": number,"company_id": string,"numbers_disconnected": number,"token_removed": boolean
+            }[]
+                           },
+"reply_to_whatsapp_contact":
+{ Args: { "p_body": string,"p_company_id": string,"p_conversation_id": string }; Returns: {
+              "communication_id": string,"outcome": string
+            }[]
+                           },
+"resolve_whatsapp_handover":
+{ Args: { "p_company_id": string,"p_conversation_id": string,"p_note"?: string }; Returns: {
+              "handover_id": string,"outcome": string
             }[]
                            },
 "start_whatsapp_onboarding":

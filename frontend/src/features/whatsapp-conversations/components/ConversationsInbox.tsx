@@ -6,19 +6,32 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { AppLink, DataTablePagination, DateDisplay, EmptyState, ErrorState, LoadingState, NoActiveWorkspace, StatusBadge } from '@/components/shared'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useCurrentUserId } from '@/features/account/useActiveRole'
 import { isAwaitingWorkspace } from '@/lib/data/queries'
 import { cn } from '@/lib/utils'
 
 import { useConversation, useConversationList } from '../api/queries'
-import type { WhatsAppConversation, WhatsAppConversationSummary } from '../api/source'
+import type { ConversationFilter, WhatsAppConversation, WhatsAppConversationSummary } from '../api/source'
+import { handoverStatusText } from '../handover'
+import { HandoverPanel } from './HandoverPanel'
+import { ReplyBox } from './ReplyBox'
 
 export interface InboxParams {
   page: number
   pageSize: number
+  /** Only handed-over conversations, or those assigned to the signed-in user. */
+  filter?: ConversationFilter
   /** The open conversation. */
   conversation?: EntityId
 }
+
+const FILTERS: readonly { value: ConversationFilter | undefined; label: string }[] = [
+  { value: undefined, label: 'All' },
+  { value: 'handed_over', label: 'Handed over' },
+  { value: 'mine', label: 'Assigned to me' },
+]
 
 export interface ConversationsInboxProps {
   params: InboxParams
@@ -37,12 +50,12 @@ function messageTime(message: Communication): string {
 }
 
 /**
- * The WhatsApp conversations inbox of the active workspace (read-only in this version): conversations, most recent
- * first, and the open conversation's messages. Messages arrive through Meta's webhook, routed to this workspace by
- * the number they were sent to; the inbox refreshes itself.
+ * The WhatsApp conversations inbox of the active workspace: conversations, most recent first (all, handed over, or
+ * assigned to me), and the open conversation's messages with its handover and the reply box. Messages arrive
+ * through Meta's webhook, routed to this workspace by the number they were sent to; the inbox refreshes itself.
  */
 export function ConversationsInbox({ params, onParamsChange }: ConversationsInboxProps) {
-  const list = useConversationList({ page: params.page, pageSize: params.pageSize })
+  const list = useConversationList({ page: params.page, pageSize: params.pageSize, ...(params.filter ? { filter: params.filter } : {}) })
   const header = (
     <PageHeader title="Conversations" description="WhatsApp messages people sent to this workspace's business numbers." />
   )
@@ -67,10 +80,27 @@ export function ConversationsInbox({ params, onParamsChange }: ConversationsInbo
       <Alert>
         <Info aria-hidden="true" />
         <AlertDescription>
-          The inbox is read-only for now: replying to contacts and taking over conversations come in a later release. Tenants are never
-          answered automatically.
+          Company admins and property managers can take conversations over and reply to contacts within 24 hours of their last message.
+          Tenants are never answered automatically or with free-form replies: they only receive approved statement and payment messages.
         </AlertDescription>
       </Alert>
+      <div role="group" aria-label="Show" className="flex flex-wrap gap-2">
+        {FILTERS.map(({ value, label }) => (
+          <Button
+            key={label}
+            type="button"
+            size="sm"
+            variant={params.filter === value ? 'default' : 'outline'}
+            aria-pressed={params.filter === value}
+            onClick={() => {
+              const { filter: _previous, ...rest } = params
+              onParamsChange({ ...rest, page: 1, ...(value ? { filter: value } : {}) })
+            }}
+          >
+            {label}
+          </Button>
+        ))}
+      </div>
       <div className="grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
         <ConversationList
           query={list}
@@ -102,6 +132,7 @@ function ConversationList({
   onPageChange: (page: number) => void
 }) {
   const headingId = useId()
+  const currentUserId = useCurrentUserId()
   return (
     <Card aria-labelledby={headingId} role="region">
       <CardHeader>
@@ -143,9 +174,10 @@ function ConversationList({
                         <span className="truncate font-medium text-foreground">{contactName(conversation.contact)}</span>
                         <DateDisplay value={conversation.lastMessageAt} style="datetime" className="shrink-0 text-xs text-muted-foreground" />
                       </span>
-                      {conversation.contact.tenantName ? (
-                        <span>
-                          <Badge variant="outline">Tenant · {conversation.contact.tenantName}</Badge>
+                      {conversation.contact.tenantName || conversation.handover ? (
+                        <span className="flex flex-wrap gap-1">
+                          {conversation.contact.tenantName ? <Badge variant="outline">Tenant · {conversation.contact.tenantName}</Badge> : null}
+                          {conversation.handover ? <Badge variant="secondary">{handoverStatusText(conversation.handover, currentUserId)}</Badge> : null}
                         </span>
                       ) : null}
                       {conversation.lastMessagePreview ? (
@@ -233,7 +265,8 @@ function Thread({ conversation }: { conversation: WhatsAppConversation }) {
           ) : null}
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        <HandoverPanel conversation={conversation} />
         {conversation.messages.length === 0 ? (
           <EmptyState title="No messages" description="This conversation has no messages yet." />
         ) : (
@@ -260,6 +293,7 @@ function Thread({ conversation }: { conversation: WhatsAppConversation }) {
             })}
           </ol>
         )}
+        <ReplyBox conversation={conversation} />
       </CardContent>
     </section>
   )

@@ -5,6 +5,8 @@
  * - the approve endpoint asks as if its approval were granted and refuses (422) with every blocker,
  *   so a person can never approve a message that delivery would then refuse;
  * - the delivery worker asks immediately before claiming a message, and fails it with the blockers;
+ * - the reply endpoint asks `checkContactReply` before a member's reply to a WhatsApp contact is written, with
+ *   the same contact rules `checkOutbound` applies before it is sent (ticket 07);
  * - next: a per-business AI agent can ask before it requests approval for a draft.
  *
  * Interface: `checkOutbound(db, message, today, options)` returns either the delivery (what the
@@ -20,6 +22,7 @@
 
 import {
   approvalBlocker,
+  canReplyToContact,
   canSendOwnerMessage,
   canSendTenantMessage,
   checkOutboundMessage,
@@ -29,7 +32,7 @@ import {
 
 import type { Tables } from '../infrastructure/database/database.types'
 import type { DbClient } from '../infrastructure/database/rls-client.factory'
-import { channelReadiness } from '../infrastructure/whatsapp/channel-readiness'
+import { accountUnavailability, channelReadiness } from '../infrastructure/whatsapp/channel-readiness'
 import { ChannelLookupError, type WhatsAppMessage } from '../infrastructure/whatsapp/whatsapp-channels'
 import { currentApproval } from './governing-approval'
 import { MessagingReadError, readOrThrow } from './read-error'
@@ -50,6 +53,8 @@ export interface OutboundCheckOptions {
    * it records the decision. Without it the recorded approval must be approved and name its approver.
    */
   readonly asIfApproved?: boolean
+  /** The moment to judge WhatsApp's 24-hour customer service window at (replies to contacts); default now. */
+  readonly now?: Date
 }
 
 /** A document stored with the message, to upload through the company's channel before sending. */
@@ -63,6 +68,11 @@ export interface OutboundAttachment {
 export interface OutboundDelivery {
   /** The recipient's WhatsApp number (E.164); the gate has checked it is still the recipient's. */
   readonly to: string
+  /**
+   * The company's number to send from (Meta phone number id): a reply goes out from the number its conversation
+   * came in on. Absent: the company's default number.
+   */
+  readonly phoneNumberId?: string
   readonly attachment?: OutboundAttachment
   /**
    * The WhatsApp message. Pass the media id of the uploaded attachment when there is one. Cannot fail
@@ -109,9 +119,10 @@ export async function checkOutbound(
     ? { decision: 'approved', approverRecorded: true }
     : recorded && { decision: recorded.decision, approverRecorded: recorded.decided_by_user_id !== null }
 
+  const thread = communication.recipient_type === 'contact' ? await loadReplyThread(db, companyId, communication.conversation_id) : undefined
   const [recipient, channel, template] = await Promise.all([
-    recipientBlockers(db, communication, approval, today),
-    channelBlockers(db, companyId),
+    thread !== undefined ? contactRecipientBlockers(communication, thread, options.now ?? new Date()) : recipientBlockers(db, communication, approval, today),
+    thread !== undefined ? numberBlockers(thread) : channelBlockers(db, companyId),
     templateCheck(db, communication),
   ])
   const attachment = attachmentOf(communication)
@@ -121,7 +132,7 @@ export async function checkOutbound(
   const blockers: string[] = [
     // Every outbound message needs an approval that names its approver; tenant approval is judged
     // with the tenant's eligibility below (canSendTenantMessage owns that hard constraint).
-    ...(communication.recipient_type === 'property_owner' ? optional(approvalBlocker(approval)) : []),
+    ...(communication.recipient_type !== 'tenant' ? optional(approvalBlocker(approval)) : []),
     ...(approval?.decision === 'approved' && !approval.approverRecorded ? ['The message approval does not record who approved it'] : []),
     ...recipient,
     ...checkOutboundMessage(communication.body, communication.recipient_type).errors,
@@ -138,6 +149,7 @@ export async function checkOutbound(
     deliverable: true,
     delivery: {
       to,
+      ...(thread?.number ? { phoneNumberId: thread.number.phone_number_id } : {}),
       ...(attachment ? { attachment } : {}),
       message: (attachmentMediaId) => {
         if (attachment && !attachmentMediaId) throw new Error('Upload the attachment before building the message')
@@ -158,10 +170,6 @@ function optional(reason: string | undefined): string[] {
 /** The recipient still exists, still has the number the message is addressed to, and may receive it. */
 async function recipientBlockers(db: DbClient, communication: CommunicationRow, approval: GoverningApproval, today: ISODate): Promise<string[]> {
   const companyId = communication.company_id
-  if (communication.recipient_type === 'contact') {
-    // Inbound only (communications_recipient_check); replies to contacts are a conversation feature (ticket 07).
-    return ['Messages to WhatsApp contacts are not delivered through approval']
-  }
   if (communication.recipient_type === 'tenant') {
     const tenantId = communication.tenant_id
     if (!tenantId) return ['The message has no tenant recipient']
@@ -211,8 +219,109 @@ async function recipientBlockers(db: DbClient, communication: CommunicationRow, 
   return [...(changed ? [numberChanged('owner')] : []), ...eligibility.reasons]
 }
 
-function numberChanged(recipient: 'tenant' | 'owner'): string {
+function numberChanged(recipient: 'tenant' | 'owner' | 'contact'): string {
   return `The ${recipient}'s WhatsApp number is no longer the number this message is addressed to; create a new message`
+}
+
+// ------------------------------------------------------------------ replies to WhatsApp contacts
+
+/** A conversation a reply belongs to: its contact and the company's number it came in on (null when unreadable). */
+interface ReplyThread {
+  readonly conversation: Pick<Tables<'whatsapp_conversations'>, 'id' | 'contact_id' | 'number_id' | 'last_inbound_at'>
+  readonly contact: Pick<Tables<'whatsapp_contacts'>, 'id' | 'wa_id' | 'tenant_id'> | null
+  readonly number: Pick<Tables<'whatsapp_phone_numbers'>, 'id' | 'phone_number_id' | 'connection_status'> | null
+  /**
+   * A tenant of the company whose WhatsApp number is the contact's number (verified or not), or null. The contact's
+   * own tenant link is only set at its next inbound message, so a tenant added or renumbered since then is found here.
+   */
+  readonly numberTenantId: EntityId | null
+}
+
+/** The conversation, its contact and its receiving number; null when the company has no such conversation. */
+async function loadReplyThread(db: DbClient, companyId: EntityId, conversationId: EntityId | null): Promise<ReplyThread | null> {
+  if (!conversationId) return null
+  const conversationResult = await db
+    .from('whatsapp_conversations')
+    .select('id, contact_id, number_id, last_inbound_at')
+    .eq('company_id', companyId)
+    .eq('id', conversationId)
+    .maybeSingle()
+  const conversation = readOrThrow(conversationResult, 'Load conversation', null)
+  if (!conversation) return null
+  const [contactResult, numberResult] = await Promise.all([
+    db.from('whatsapp_contacts').select('id, wa_id, tenant_id').eq('company_id', companyId).eq('id', conversation.contact_id).maybeSingle(),
+    db.from('whatsapp_phone_numbers').select('id, phone_number_id, connection_status').eq('company_id', companyId).eq('id', conversation.number_id).maybeSingle(),
+  ])
+  const contact = readOrThrow(contactResult, 'Load conversation contact', null)
+  return {
+    conversation,
+    contact,
+    number: readOrThrow(numberResult, 'Load conversation number', null),
+    numberTenantId: contact?.wa_id ? await tenantWithNumber(db, companyId, `+${contact.wa_id}`) : null,
+  }
+}
+
+/** A tenant of the company with this WhatsApp number (as inbound routing links them), or null. */
+async function tenantWithNumber(db: DbClient, companyId: EntityId, whatsappNumber: string): Promise<EntityId | null> {
+  const result = await db.from('tenants').select('id').eq('company_id', companyId).eq('whatsapp_number', whatsappNumber)
+  const tenants = readOrThrow(result, 'Load tenants with the contact number', [])
+  return tenants[0]?.id ?? null
+}
+
+/** @leaseguard/domain's canReplyToContact for the thread: not a tenant, inside the window, a known number. */
+function replyRuleBlockers(thread: ReplyThread, now: Date): string[] {
+  const contact = thread.contact
+  if (!contact) return ['The contact of this conversation no longer exists']
+  const tenantId = contact.tenant_id ?? thread.numberTenantId
+  return canReplyToContact(
+    { ...(contact.wa_id ? { phoneNumber: `+${contact.wa_id}` } : {}), ...(tenantId ? { tenantId } : {}) },
+    thread.conversation.last_inbound_at ?? undefined,
+    now,
+  ).reasons
+}
+
+/** The reply's conversation still exists, is its contact's, and the contact may receive a free-form reply now. */
+function contactRecipientBlockers(communication: CommunicationRow, thread: ReplyThread | null, now: Date): string[] {
+  if (!thread) return ['The conversation this reply belongs to no longer exists']
+  if (thread.conversation.contact_id !== communication.contact_id) return ['The reply is not addressed to the contact of its conversation']
+  const contactNumber = thread.contact?.wa_id ? `+${thread.contact.wa_id}` : null
+  return [
+    ...(contactNumber !== null && contactNumber !== communication.counterparty_number ? [numberChanged('contact')] : []),
+    ...replyRuleBlockers(thread, now),
+    ...(communication.template_id ? ['A reply to a contact is free text, not a message template'] : []),
+  ]
+}
+
+/** The conversation's receiving number is connected (a reply goes out from it, not from the default number). */
+function numberBlockers(thread: ReplyThread | null): string[] {
+  if (!thread) return []
+  if (!thread.number) return ['The WhatsApp number of this conversation no longer exists']
+  const unavailable = accountUnavailability(thread.number)
+  return unavailable ? [unavailable.message] : []
+}
+
+/** A reply a member is about to write to the contact of a conversation. */
+export interface ContactReplyDraft {
+  readonly companyId: EntityId
+  readonly conversationId: EntityId
+  readonly body: string
+}
+
+export type ContactReplyCheck = { readonly found: false } | { readonly found: true; readonly blockers: readonly string[] }
+
+/**
+ * Whether a member may write this reply now, and if not, every reason: the rules `checkOutbound` applies to the
+ * reply before it is sent (not a tenant, inside the 24-hour customer service window, a known contact number, the
+ * conversation's number connected) and the content rules (no banking details). `found: false` when the company
+ * has no such conversation. Throws MessagingReadError when a read fails.
+ */
+export async function checkContactReply(db: DbClient, draft: ContactReplyDraft, now: Date): Promise<ContactReplyCheck> {
+  const thread = await loadReplyThread(db, draft.companyId, draft.conversationId)
+  if (!thread) return { found: false }
+  return {
+    found: true,
+    blockers: [...replyRuleBlockers(thread, now), ...checkOutboundMessage(draft.body, 'contact').errors, ...numberBlockers(thread)],
+  }
 }
 
 /** The company's channel is configured and connected (credentials are checked when the worker opens it). */

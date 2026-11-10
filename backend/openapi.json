@@ -5168,6 +5168,15 @@
               "format": "uuid",
               "type": "string"
             }
+          },
+          {
+            "name": "filter",
+            "required": false,
+            "in": "query",
+            "description": "handed_over: only conversations with an unresolved handover; mine: only those assigned to the caller",
+            "schema": {
+              "$ref": "#/components/schemas/ConversationFilter"
+            }
           }
         ],
         "responses": {
@@ -5316,6 +5325,428 @@
           }
         ],
         "summary": "One conversation with its latest messages, oldest first",
+        "tags": [
+          "whatsapp-conversations"
+        ]
+      }
+    },
+    "/api/v1/whatsapp/conversations/{conversationId}/handover/accept": {
+      "post": {
+        "description": "Accepts the conversation's open handover for the caller, or starts one the caller accepts at once. Repeating it is harmless. Refused (409) when a colleague has already accepted it: assign it to yourself to take it from them.",
+        "operationId": "acceptWhatsAppHandover",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppHandoverDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such conversation in the active company",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A colleague has already accepted it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Take a conversation over",
+        "tags": [
+          "whatsapp-conversations"
+        ]
+      }
+    },
+    "/api/v1/whatsapp/conversations/{conversationId}/handover/assign": {
+      "post": {
+        "description": "Assigns the conversation (starting a handover when it has none) to an active company admin or property manager of the company. It stays open until that person accepts it; assigning it to yourself accepts it.",
+        "operationId": "assignWhatsAppHandover",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignHandoverBodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppHandoverDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such conversation in the active company",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The assignee cannot handle conversations of this company",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Hand a conversation to a colleague",
+        "tags": [
+          "whatsapp-conversations"
+        ]
+      }
+    },
+    "/api/v1/whatsapp/conversations/{conversationId}/handover/resolve": {
+      "post": {
+        "description": "Records who resolved it, when, and an optional note.",
+        "operationId": "resolveWhatsAppHandover",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveHandoverBodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppHandoverDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such conversation in the active company",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The conversation has no open handover",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Resolve a conversation's handover",
+        "tags": [
+          "whatsapp-conversations"
+        ]
+      }
+    },
+    "/api/v1/whatsapp/conversations/{conversationId}/replies": {
+      "post": {
+        "description": "Free text to the conversation's contact, sent from the number the conversation came in on, approved by the caller and queued for delivery. Refused (422, listing every reason) for a tenant (tenants only receive approved statement and payment messages), outside WhatsApp's 24-hour customer service window (from the contact's last message), when WhatsApp has not shared the contact's number, when the conversation's number is not connected, or for banking details. The delivery worker checks the same rules again before it sends.",
+        "operationId": "replyToWhatsAppContact",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplyBodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunicationDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such conversation in the active company",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The reply may not be sent; lists every reason",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database or delivery queue unavailable\n\nAuthentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Reply to the contact of a conversation",
         "tags": [
           "whatsapp-conversations"
         ]
@@ -10169,6 +10600,13 @@
           "queued"
         ]
       },
+      "ConversationFilter": {
+        "type": "string",
+        "enum": [
+          "handed_over",
+          "mine"
+        ]
+      },
       "WhatsAppConversationContactDto": {
         "type": "object",
         "properties": {
@@ -10195,6 +10633,105 @@
         },
         "required": [
           "id"
+        ]
+      },
+      "HandoverStatus": {
+        "type": "string",
+        "enum": [
+          "open",
+          "accepted",
+          "resolved"
+        ],
+        "description": "open: waiting for a person (possibly assigned, not yet accepted); accepted: a person has taken it over; resolved: done"
+      },
+      "HandoverRequester": {
+        "type": "string",
+        "enum": [
+          "agent",
+          "member"
+        ],
+        "description": "agent: the company's AI agent; member: a member of staff"
+      },
+      "WhatsAppHandoverDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "conversationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "description": "open: waiting for a person (possibly assigned, not yet accepted); accepted: a person has taken it over; resolved: done",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HandoverStatus"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why a person is needed"
+          },
+          "requestedBy": {
+            "description": "agent: the company's AI agent; member: a member of staff",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HandoverRequester"
+              }
+            ]
+          },
+          "requestedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assignedUserId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The member who handles it"
+          },
+          "assignedUserName": {
+            "type": "string"
+          },
+          "acceptedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "resolutionNote": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "conversationId",
+          "status",
+          "reason",
+          "requestedBy",
+          "createdAt",
+          "updatedAt"
         ]
       },
       "WhatsAppConversationSummaryDto": {
@@ -10232,6 +10769,14 @@
           "lastMessagePreview": {
             "type": "string",
             "description": "The latest message's text, shortened"
+          },
+          "handover": {
+            "description": "The conversation's unresolved handover, if any",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WhatsAppHandoverDto"
+              }
+            ]
           },
           "createdAt": {
             "type": "string",
@@ -10318,6 +10863,14 @@
             "type": "string",
             "description": "The latest message's text, shortened"
           },
+          "handover": {
+            "description": "The conversation's unresolved handover, if any",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WhatsAppHandoverDto"
+              }
+            ]
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -10343,6 +10896,43 @@
           "createdAt",
           "updatedAt",
           "messages"
+        ]
+      },
+      "AssignHandoverBodyDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "An active company admin or property manager of the company"
+          }
+        },
+        "required": [
+          "userId"
+        ]
+      },
+      "ResolveHandoverBodyDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "What was done"
+          }
+        }
+      },
+      "ReplyBodyDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096,
+            "description": "Free text; no banking details"
+          }
+        },
+        "required": [
+          "body"
         ]
       },
       "NotificationSortField": {

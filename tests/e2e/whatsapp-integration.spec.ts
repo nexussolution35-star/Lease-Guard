@@ -127,7 +127,7 @@ test.describe('Settings → Integrations → WhatsApp', () => {
 // Inbound routing (ticket 05): no worker and no Meta run in e2e, so the messages are recorded through the same
 // service-role function the worker calls after the webhook. Each company sees only the messages sent to its number.
 test.describe('WhatsApp conversations inbox', () => {
-  test('shows a member the messages sent to their company’s number, read-only, and never another company’s', async ({ page }) => {
+  test('shows a member the messages sent to their company’s number, never another company’s, and lets a manager take over and reply', async ({ page, browser }) => {
     const db = serviceRoleClient(e2eContext().supabase)
     const companies = { a: e2eWorld().companies.a.id, b: e2eWorld().companies.b.id }
     const unique = `${Date.now()}`
@@ -184,8 +184,33 @@ test.describe('WhatsApp conversations inbox', () => {
       await expect(thread.getByRole('listitem')).toHaveCount(1)
       await expect(thread).toContainText('Is there parking for visitors?')
       await expect(page.getByText(`+${sender}`)).toBeVisible()
-      // Read-only: no reply box in this version.
-      await expect(page.getByRole('textbox')).toHaveCount(0)
+      // A read-only member sees the reply box disabled and no handover actions (ticket 07).
+      await expect(page.getByText('Only company admins and property managers can reply.')).toBeVisible()
+      await expect(page.getByRole('textbox', { name: 'Message' })).toBeDisabled()
+      await expect(page.getByRole('button', { name: 'Take over' })).toHaveCount(0)
+
+      // A property manager (own browser session) takes the conversation over and replies inside the 24-hour window
+      // (ticket 07). No worker runs in e2e, so the reply stays approved and queued.
+      const managerContext = await browser.newContext({ baseURL: test.info().project.use.baseURL })
+      const manager = await managerContext.newPage()
+      try {
+        await signIn(manager, e2eUser('manager'), '/whatsapp/conversations')
+        await manager.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: /E2E Sender/ }).click()
+        await expect(manager.getByText(/Reply window: \d+ h \d+ min left/)).toBeVisible()
+        await manager.getByRole('button', { name: 'Take over' }).click()
+        await expect(manager.getByRole('region', { name: 'Handover' })).toContainText('Taken over by you')
+        await manager.getByRole('textbox', { name: 'Message' }).fill('Yes, visitors park in bay 4.')
+        await manager.getByRole('button', { name: 'Send reply' }).click()
+        const replies = manager.getByRole('list', { name: 'Messages' })
+        await expect(replies.getByRole('listitem')).toHaveCount(2)
+        await expect(replies).toContainText('Yes, visitors park in bay 4.')
+        await expect(manager.getByRole('textbox', { name: 'Message' })).toHaveValue('')
+        await manager.getByRole('button', { name: 'Assigned to me' }).click()
+        await expect(manager).toHaveURL(/filter=mine/)
+        await expect(manager.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: /E2E Sender/ })).toBeVisible()
+      } finally {
+        await managerContext.close()
+      }
     } finally {
       const conversations = await db.from('whatsapp_conversations').select('id').in('number_id', numbers)
       const conversationIds = ((conversations.data ?? []) as { id: string }[]).map((c) => c.id)
