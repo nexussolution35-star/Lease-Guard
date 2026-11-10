@@ -3,10 +3,9 @@ import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
+import { AccountMenu } from './AccountMenu'
 import { Breadcrumbs } from './Breadcrumbs'
-import { GlobalSearch } from './GlobalSearch'
 import { NotificationCenter } from './NotificationCenter'
-import { UserProfileMenu } from './UserProfileMenu'
 
 export interface TopbarProps {
   /** Opens the mobile navigation drawer. */
@@ -34,9 +33,8 @@ export function Topbar({ onOpenNavigation, className }: TopbarProps) {
       </Button>
       <Breadcrumbs className="min-w-0 flex-1" />
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-        <GlobalSearch />
         <NotificationCenter />
-        <UserProfileMenu />
+        <AccountMenu />
       </div>
     </header>
   )

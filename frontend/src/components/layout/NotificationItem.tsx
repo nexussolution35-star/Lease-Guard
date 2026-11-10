@@ -3,11 +3,12 @@ import { Info, OctagonAlert, TriangleAlert, type LucideIcon } from 'lucide-react
 import { AppLink, DateDisplay } from '@/components/shared'
 import { entityHref } from '@/lib/navigation'
 import { cn } from '@/lib/utils'
-import { markRead } from '@/services/notifications'
 import type { Notification, NotificationSeverity } from '@leaseguard/domain'
 
 export interface NotificationItemProps {
   notification: Notification
+  /** Marks the notification read when it is activated (through the API). */
+  onMarkRead: (notification: Notification) => void
   /** Called after the item is activated (e.g. to close the popover). */
   onNavigate?: () => void
   className?: string
@@ -19,13 +20,13 @@ const SEVERITY: Readonly<Record<NotificationSeverity, { icon: LucideIcon; classN
   critical: { icon: OctagonAlert, className: 'bg-destructive/10 text-destructive', label: 'Critical' },
 }
 
-export function NotificationItem({ notification, onNavigate, className }: NotificationItemProps) {
+export function NotificationItem({ notification, onMarkRead, onNavigate, className }: NotificationItemProps) {
   const severity = SEVERITY[notification.severity]
   const Icon = severity.icon
   const href = notification.link ? entityHref(notification.link.entityType, notification.link.entityId) : undefined
 
   const activate = () => {
-    markRead(notification.id)
+    onMarkRead(notification)
     onNavigate?.()
   }
 

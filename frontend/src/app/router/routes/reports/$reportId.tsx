@@ -1,12 +1,23 @@
 import { createFileRoute, useParams } from '@tanstack/react-router'
 
-import { ScreenPlaceholder } from '@/components/layout'
-import { breadcrumbsFor } from '@/lib/navigation'
+import { RecordNotFound, ScreenPlaceholder } from '@/components/layout'
+import { findReportDefinition } from '@/features/reports/reportDefinitions'
 
 export const Route = createFileRoute('/reports/$reportId')({
   component: function ReportScreen() {
     const { reportId } = useParams({ from: '/reports/$reportId' })
-    const title = breadcrumbsFor(`/reports/${reportId}`).at(-1)?.label ?? 'Report'
-    return <ScreenPlaceholder title={title} description="Report details for the active workspace." />
+    const definition = findReportDefinition(reportId)
+    if (!definition) {
+      return (
+        <RecordNotFound
+          entityLabel="Report"
+          title="Report not found"
+          description="There is no report with this name. Choose one from the reports list."
+          backTo="/reports"
+          backLabel="Back to reports"
+        />
+      )
+    }
+    return <ScreenPlaceholder title={definition.title} description={definition.description} />
   },
 })

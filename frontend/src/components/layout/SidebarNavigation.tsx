@@ -2,7 +2,6 @@ import { useRouterState } from '@tanstack/react-router'
 
 import { isNavItemActive, NAV_SECTIONS } from '@/lib/navigation'
 import { cn } from '@/lib/utils'
-import { useNavBadgeCounts } from '@/services/navigationCounts'
 
 import { SidebarNavigationItem } from './SidebarNavigationItem'
 
@@ -15,7 +14,6 @@ export interface SidebarNavigationProps {
 
 export function SidebarNavigation({ collapsed = false, onNavigate, className }: SidebarNavigationProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const counts = useNavBadgeCounts()
 
   return (
     <nav aria-label="Main" className={cn('flex flex-col gap-4', className)}>
@@ -37,7 +35,6 @@ export function SidebarNavigation({ collapsed = false, onNavigate, className }: 
                   item={item}
                   active={isNavItemActive(item, pathname)}
                   collapsed={collapsed}
-                  {...(item.badgeKey ? { badgeCount: counts[item.badgeKey] } : {})}
                   {...(onNavigate ? { onNavigate } : {})}
                 />
               </li>

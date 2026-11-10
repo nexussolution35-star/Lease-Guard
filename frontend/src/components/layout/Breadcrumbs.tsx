@@ -11,14 +11,14 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { breadcrumbsFor, type BreadcrumbEntry, type BreadcrumbResolvers } from '@/lib/navigation'
+import { useArrangementQuery } from '@/features/arrangements/api'
+import { useLeaseQuery } from '@/features/leases/api'
+import { useMonitoringEventQuery } from '@/features/monitoring/api'
+import { usePropertyQuery } from '@/features/properties/api'
+import { useStatementQuery } from '@/features/statements/api'
+import { useTenantQuery } from '@/features/tenants/api'
+import { useUnitQuery } from '@/features/units/api'
 import { cn } from '@/lib/utils'
-import { useAllArrangements } from '@/services/arrangements'
-import { useAllLeases } from '@/services/leases'
-import { useAllEvents } from '@/services/monitoring'
-import { useAllProperties } from '@/services/properties'
-import { useAllStatements } from '@/services/statements'
-import { useAllTenants } from '@/services/tenants'
-import { useAllUnits } from '@/services/units'
 
 export interface BreadcrumbsProps {
   /** Explicit trail. When omitted, the trail is derived from the current route. */
@@ -26,40 +26,73 @@ export interface BreadcrumbsProps {
   className?: string
 }
 
-/** Record-name resolvers for detail routes, scoped to the active workspace. */
-function useRecordResolvers(): BreadcrumbResolvers {
-  const properties = useAllProperties()
-  const units = useAllUnits()
-  const tenants = useAllTenants()
-  const leases = useAllLeases()
-  const statements = useAllStatements()
-  const events = useAllEvents()
-  const arrangements = useAllArrangements()
+function detailIdFor(pathname: string, section: string): string {
+  const [, first, second] = pathname.split('/')
+  if (first !== section || !second) return ''
+  try {
+    return decodeURIComponent(second)
+  } catch {
+    return second
+  }
+}
 
-  return useMemo(() => {
-    const byId = <T extends { id: string }>(rows: readonly T[], label: (row: T) => string | undefined) => {
-      const map = new Map(rows.map((r) => [r.id, r]))
-      return (id: string) => {
-        const row = map.get(id)
-        return row ? label(row) : undefined
-      }
-    }
-    const tenantName = byId(tenants, (t) => t.tradingName)
-    return {
-      properties: byId(properties, (p) => p.name),
-      units: byId(units, (u) => `Unit ${u.unitNumber}`),
-      tenants: tenantName,
-      leases: byId(leases, (l) => l.reference),
-      statements: byId(statements, (s) => s.statementNumber ?? s.file.fileName),
-      monitoring: byId(events, (e) => e.title),
-      arrangements: byId(arrangements, (a) => (tenantName(a.tenantId) ? `${tenantName(a.tenantId)} arrangement` : undefined)),
-    }
-  }, [properties, units, tenants, leases, statements, events, arrangements])
+/** A resolver that names only the record on screen (`id`), once its label is known. */
+function resolverFor(currentId: string, label: string | undefined): (id: string) => string | undefined {
+  return (id) => (label && id === currentId ? label : undefined)
+}
+
+/**
+ * Resolve the record on the current detail route through its detail query (shared with the
+ * screen, so no extra request). Each query is enabled only while the pathname is in its section, so a
+ * route requests at most its own record (plus the tenant behind an arrangement, for its label).
+ */
+function useRecordResolvers(pathname: string): BreadcrumbResolvers {
+  const propertyId = detailIdFor(pathname, 'properties')
+  const unitId = detailIdFor(pathname, 'units')
+  const tenantId = detailIdFor(pathname, 'tenants')
+  const leaseId = detailIdFor(pathname, 'leases')
+  const statementId = detailIdFor(pathname, 'statements')
+  const eventId = detailIdFor(pathname, 'monitoring')
+  const arrangementId = detailIdFor(pathname, 'arrangements')
+
+  const property = usePropertyQuery(propertyId, { enabled: propertyId !== '' }).data
+  const unit = useUnitQuery(unitId, { enabled: unitId !== '' }).data
+  const tenant = useTenantQuery(tenantId, { enabled: tenantId !== '' }).data
+  const lease = useLeaseQuery(leaseId, { enabled: leaseId !== '' }).data
+  const statement = useStatementQuery(statementId, { enabled: statementId !== '' }).data
+  const event = useMonitoringEventQuery(eventId, { enabled: eventId !== '' }).data
+  const arrangement = useArrangementQuery(arrangementId, { enabled: arrangementId !== '' }).data
+  const arrangementTenantId = arrangementId !== '' ? (arrangement?.tenantId ?? '') : ''
+  const arrangementTenant = useTenantQuery(arrangementTenantId, { enabled: arrangementTenantId !== '' }).data
+
+  const propertyLabel = property?.name
+  const unitLabel = unit ? `Unit ${unit.unitNumber}` : undefined
+  const tenantLabel = tenant?.tradingName
+  const leaseLabel = lease?.reference
+  const statementLabel = statement ? (statement.statementNumber ?? statement.file.fileName) : undefined
+  const eventLabel = event?.title
+  const arrangementLabel = arrangementTenant ? `${arrangementTenant.tradingName} arrangement` : undefined
+
+  return useMemo(
+    () => ({
+      properties: resolverFor(propertyId, propertyLabel),
+      units: resolverFor(unitId, unitLabel),
+      tenants: resolverFor(tenantId, tenantLabel),
+      leases: resolverFor(leaseId, leaseLabel),
+      statements: resolverFor(statementId, statementLabel),
+      monitoring: resolverFor(eventId, eventLabel),
+      arrangements: resolverFor(arrangementId, arrangementLabel),
+    }),
+    [
+      propertyId, propertyLabel, unitId, unitLabel, tenantId, tenantLabel, leaseId, leaseLabel,
+      statementId, statementLabel, eventId, eventLabel, arrangementId, arrangementLabel,
+    ],
+  )
 }
 
 export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const resolvers = useRecordResolvers()
+  const resolvers = useRecordResolvers(pathname)
   const trail = useMemo(() => items ?? breadcrumbsFor(pathname, resolvers), [items, pathname, resolvers])
 
   return (

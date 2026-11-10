@@ -16,16 +16,12 @@ import {
 
 import type { EntityId, EntityType } from '@leaseguard/domain'
 
-/** Counts that can drive a badge on a navigation item. */
-export type NavBadgeKey = 'openEvents' | 'pendingApprovals' | 'pendingReviews'
-
 export interface NavItem {
   id: string
   label: string
   /** Route path, e.g. `/properties`. */
   to: string
   icon: LucideIcon
-  badgeKey?: NavBadgeKey
 }
 
 export interface NavSection {
@@ -55,8 +51,8 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     id: 'operations',
     label: 'Operations',
     items: [
-      { id: 'statements', label: 'Statements', to: '/statements', icon: FileSpreadsheet, badgeKey: 'pendingReviews' },
-      { id: 'monitoring', label: 'Monitoring', to: '/monitoring', icon: ShieldAlert, badgeKey: 'openEvents' },
+      { id: 'statements', label: 'Statements', to: '/statements', icon: FileSpreadsheet },
+      { id: 'monitoring', label: 'Monitoring', to: '/monitoring', icon: ShieldAlert },
       { id: 'arrangements', label: 'Arrangements', to: '/arrangements', icon: ArrowLeftRight },
     ],
   },
@@ -64,13 +60,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     id: 'communication',
     label: 'Communication',
     items: [
-      {
-        id: 'communications',
-        label: 'Communications',
-        to: '/communications',
-        icon: MessagesSquare,
-        badgeKey: 'pendingApprovals',
-      },
+      { id: 'communications', label: 'Communications', to: '/communications', icon: MessagesSquare },
       { id: 'whatsapp', label: 'WhatsApp', to: '/whatsapp', icon: MessageCircle },
     ],
   },

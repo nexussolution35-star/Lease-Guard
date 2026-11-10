@@ -58,3 +58,4 @@ export {
   zarAmount,
 } from './schemas'
 export type { DateRangeRefinementOptions } from './schemas'
+export { zodResolver } from './zodResolver'

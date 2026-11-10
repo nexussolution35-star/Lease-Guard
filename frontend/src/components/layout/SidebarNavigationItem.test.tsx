@@ -21,14 +21,9 @@ describe('SidebarNavigationItem', () => {
     expect(link).not.toHaveAttribute('aria-current')
   })
 
-  it('shows a badge count when expanded', async () => {
-    await renderWithRouter(<SidebarNavigationItem item={item} active={false} badgeCount={3} />, '/')
-    expect(await screen.findByLabelText('3 properties needing attention')).toHaveTextContent('3')
-  })
-
-  it('uses an accessible name and hides the text label when collapsed', async () => {
-    await renderWithRouter(<SidebarNavigationItem item={item} active={false} collapsed badgeCount={2} />, '/')
-    const link = await screen.findByRole('link', { name: 'Properties (2)' })
+  it('uses the label as the accessible name and hides the text when collapsed', async () => {
+    await renderWithRouter(<SidebarNavigationItem item={item} active={false} collapsed />, '/')
+    const link = await screen.findByRole('link', { name: 'Properties' })
     expect(link).not.toHaveTextContent('Properties')
   })
 })

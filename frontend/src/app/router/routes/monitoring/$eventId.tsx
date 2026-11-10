@@ -1,13 +1,20 @@
 import { createFileRoute, useParams } from '@tanstack/react-router'
 
 import { RecordNotFound, ScreenPlaceholder } from '@/components/layout'
-import { useEvent } from '@/services/monitoring'
+import { RecordQueryView } from '@/components/shared'
+import { useMonitoringEventQuery } from '@/features/monitoring/api'
 
 export const Route = createFileRoute('/monitoring/$eventId')({
   component: function MonitoringEventScreen() {
     const { eventId } = useParams({ from: '/monitoring/$eventId' })
-    const record = useEvent(eventId)
-    if (!record) return <RecordNotFound entityLabel="Monitoring event" backTo="/monitoring" backLabel="Back to monitoring" />
-    return <ScreenPlaceholder title={record.title} description="Event details, calculation and recommended action." />
+    const query = useMonitoringEventQuery(eventId)
+    return (
+      <RecordQueryView
+        query={query}
+        notFound={<RecordNotFound entityLabel="Monitoring event" backTo="/monitoring" backLabel="Back to monitoring" />}
+      >
+        {(record) => <ScreenPlaceholder title={record.title} description="Event details, calculation and recommended action." />}
+      </RecordQueryView>
+    )
   },
 })

@@ -2,6 +2,7 @@ import { Search, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 
 import { Input } from '@/components/ui/input'
+import { MAX_LIST_SEARCH_LENGTH } from '@/lib/data/listParams'
 import { cn } from '@/lib/utils'
 
 export interface SearchInputProps {
@@ -12,6 +13,8 @@ export interface SearchInputProps {
   debounceMs?: number
   /** Visually hidden label. Default `Search`. */
   label?: string
+  /** Longest text the box accepts. Default `MAX_LIST_SEARCH_LENGTH`, the list endpoints' limit. */
+  maxLength?: number
   className?: string
 }
 
@@ -21,6 +24,7 @@ export function SearchInput({
   placeholder = 'Search…',
   debounceMs = 250,
   label = 'Search',
+  maxLength = MAX_LIST_SEARCH_LENGTH,
   className,
 }: SearchInputProps) {
   const id = useId()
@@ -64,6 +68,7 @@ export function SearchInput({
         value={text}
         placeholder={placeholder}
         autoComplete="off"
+        maxLength={maxLength}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === 'Escape' && text !== '') {

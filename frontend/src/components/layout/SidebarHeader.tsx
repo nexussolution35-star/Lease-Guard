@@ -26,6 +26,7 @@ export function SidebarHeader({ collapsed = false, className }: SidebarHeaderPro
         </span>
         {collapsed ? null : <span>LeaseGuard</span>}
       </AppLink>
+      {/* The signed-in user's company workspaces from `GET /me`. */}
       <WorkspaceSwitcher collapsed={collapsed} />
     </div>
   )

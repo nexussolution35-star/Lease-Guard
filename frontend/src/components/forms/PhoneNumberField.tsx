@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { FieldPath, FieldValues } from 'react-hook-form'
 import {
   FormControl,
@@ -37,7 +36,11 @@ function toDisplay(value: unknown): string {
   return normaliseSAPhoneNumber(value) === value ? formatSAPhoneNumber(value) : value
 }
 
-/** Stores E.164 (`+27821234567`) once valid; shows `+27 82 123 4567` when not editing. */
+/**
+ * Stores E.164 (`+27821234567`) once valid and shows a stored E.164 value as `+27 82 123 4567`; text
+ * being typed is shown as typed. The displayed text never changes on focus, so selecting the value
+ * and typing over it replaces it.
+ */
 function PhoneInput({
   value,
   onChange,
@@ -49,7 +52,6 @@ function PhoneInput({
   required,
   ...slotProps
 }: PhoneInputProps) {
-  const [editing, setEditing] = useState(false)
   const raw = typeof value === 'string' ? value : ''
   return (
     <Input
@@ -59,14 +61,12 @@ function PhoneInput({
       type="tel"
       inputMode="tel"
       autoComplete="tel"
-      value={editing ? raw : toDisplay(value)}
+      value={toDisplay(value)}
       placeholder={placeholder}
       disabled={disabled}
       aria-required={required || undefined}
-      onFocus={() => setEditing(true)}
       onChange={(event) => onChange(event.target.value)}
       onBlur={() => {
-        setEditing(false)
         const normalised = normaliseSAPhoneNumber(raw)
         if (normalised && normalised !== raw) onChange(normalised)
         onBlur()
