@@ -1,0 +1,22 @@
+{
+  "name": "@leaseguard/tests",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Cross-service integration tests (API + Supabase + Redis) and browser end-to-end tests.",
+  "type": "module",
+  "scripts": {
+    "test:integration": "vitest run --config integration/vitest.config.ts",
+    "test:e2e": "playwright test --config e2e/playwright.config.ts",
+    "e2e:install": "playwright install chromium",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@leaseguard/api-client": "workspace:*",
+    "@leaseguard/domain": "workspace:*",
+    "@playwright/test": "^1.65.0",
+    "@supabase/supabase-js": "^2.119.0",
+    "@types/node": "^24.19.2",
+    "typescript": "~7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

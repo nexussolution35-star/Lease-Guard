@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    // Vitest and Playwright compile these files themselves (bundler semantics). "bundler" also lets the
+    // integration tests drive backend modules (a CommonJS package) through their interface, with the
+    // same supabase-js declarations on both sides.
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "customConditions": ["@leaseguard/source"],
+    "noEmit": true
+  },
+  "include": ["fixtures", "integration", "e2e"]
+}
