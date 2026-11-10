@@ -1,0 +1,47 @@
+import type { CompanyRow, WhatsAppAccountRow } from './companies.mapper'
+
+/** Test fixtures shared by the companies and auth tests. */
+export const companyRow: CompanyRow = {
+  id: '6f1d2c1e-0000-4000-8000-000000000001',
+  name: 'Nexus Solution (Pty) Ltd',
+  trading_name: 'Nexus Solution',
+  registration_number: '2015/123456/07',
+  vat_number: null,
+  address_line1: '12 Rivonia Road',
+  address_line2: null,
+  suburb: 'Sandton',
+  city: 'Johannesburg',
+  province: 'Gauteng',
+  postal_code: '2196',
+  country: 'South Africa',
+  contact_email: 'info@nexussolution.co.za',
+  contact_phone: '+27 11 555 0100',
+  status: 'active',
+  initials: 'NS',
+  lease_expiry_notice_days: [180, 90, 30],
+  renewal_deadline_warning_days: [90, 60, 30],
+  guarantee_expiry_notice_days: [90, 30],
+  payment_reminder_initial_days: 3,
+  payment_reminder_overdue_days: 10,
+  payment_reminder_follow_up_days: 20,
+  installment_reminder_lead_days: 3,
+  owner_summary_weekday: 'monday',
+  timezone: 'Africa/Johannesburg',
+  created_at: '2026-01-01T08:00:00+00:00',
+  updated_at: '2026-11-01T08:00:00+00:00',
+}
+
+export const whatsappRow: WhatsAppAccountRow = {
+  id: '6f1d2c1e-0000-4000-8000-0000000000c1',
+  company_id: companyRow.id,
+  business_account_id: '102938475610',
+  phone_number_id: '564738291045',
+  display_name: 'Nexus Solution',
+  display_number: '+27 11 555 0100',
+  access_token_reference: 'secret://whatsapp/cmp_nexus/access-token',
+  webhook_configured: true,
+  connection_status: 'connected',
+  last_verified_at: '2026-11-01T09:00:00+00:00',
+  created_at: '2026-01-01T08:00:00+00:00',
+  updated_at: '2026-11-01T09:00:00+00:00',
+}

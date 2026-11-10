@@ -2,19 +2,33 @@
   "name": "@leaseguard/backend",
   "version": "0.0.0",
   "private": true,
-  "description": "LeaseGuard NestJS modular monolith: REST API and background workers.",
+  "description": "LeaseGuard NestJS modular monolith: HTTP API and BullMQ worker processes built from one codebase.",
+  "type": "commonjs",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "node scripts/domain-build.mjs && pnpm run clean && tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
+    "start:worker": "node dist/worker.js",
+    "dev": "node scripts/dev.mjs api",
+    "dev:worker": "node scripts/dev.mjs worker",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "oxlint src"
+    "lint": "oxlint src",
+    "test": "vitest run",
+    "openapi:generate": "pnpm run build && node --env-file=../.env.example dist/generate-openapi.js"
   },
   "dependencies": {
+    "@leaseguard/domain": "workspace:*",
     "@nestjs/common": "^11.2.8",
     "@nestjs/core": "^11.2.8",
     "@nestjs/platform-express": "^11.2.8",
     "@nestjs/swagger": "^11.4.8",
-    "dotenv": "^18.0.9",
+    "@supabase/supabase-js": "^2.119.0",
+    "bullmq": "^6.7.2",
+    "helmet": "^8.3.0",
+    "ioredis": "^6.0.0",
+    "nestjs-pino": "^5.3.1",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "^4.6.7"
@@ -23,6 +37,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "^24.19.2",
     "oxlint": "^1.92.0",
-    "typescript": "~5.9.3"
+    "typescript": "~7.0.2",
+    "vitest": "^5.1.0"
   }
 }

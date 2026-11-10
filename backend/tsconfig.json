@@ -13,6 +13,7 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "types": ["node"],
+    "customConditions": ["@leaseguard/source"],
     "noEmit": true
   },
   "include": ["src"]
