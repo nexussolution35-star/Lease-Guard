@@ -40,7 +40,10 @@ export const WEEKDAYS = [
 ] as const
 export type Weekday = (typeof WEEKDAYS)[number]
 
-/** Configurable monitoring intervals and communication defaults per company. */
+/**
+ * Configurable monitoring intervals and communication defaults per company. Tenant-message approval is
+ * not a setting: every tenant message needs property-manager approval (product hard constraint).
+ */
 export interface CompanySettings {
   /** Days before lease expiry at which expiry events are raised. */
   leaseExpiryNoticeDays: readonly number[]
@@ -53,8 +56,6 @@ export interface CompanySettings {
   /** Days before an instalment due date to send the instalment reminder. */
   installmentReminderLeadDays: number
   ownerSummaryWeekday: Weekday
-  /** Pilot safety switch: tenant messages require approval before sending. */
-  requireApprovalForTenantMessages: boolean
   timezone: 'Africa/Johannesburg'
 }
 

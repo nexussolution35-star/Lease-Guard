@@ -15,23 +15,30 @@ export interface BankDetailMatch {
 }
 
 const BANK_KEYWORDS: readonly RegExp[] = [
-  /\baccount\s*(?:number|no\.?|#)/i,
-  /\bacc(?:ount)?\s*no\b/i,
-  /\bbranch\s*code\b/i,
+  /\baccount\s*(?:number|no\.?|nr\.?|#)/i,
+  /\bacc(?:ount)?\.?\s*(?:no|nr)\b/i,
+  /\bbranch(?:\s*code\b|\s*(?:no\.?|number|#)?\s*:?\s*\d{6}\b)/i,
   /\bbank(?:ing)?\s*details\b/i,
   /\bswift\s*(?:code|bic)\b/i,
   /\biban\b/i,
+  /\bEFT\b/,
+  /\bpay(?:ments?)?\s+into\b/i,
 ]
 
 /** IBAN-like: 2 letters, 2 check digits, 11–30 alphanumerics (spaces allowed in groups of 4). */
 const IBAN_PATTERN = /\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){2,7}(?:\s?[A-Z0-9]{1,4})?\b/g
 
 /**
- * A run of 9–17 consecutive digits not prefixed by `+` (international phone numbers) and not part of
- * a longer digit run. SA bank account numbers are 9–11 digits; 10-digit SA phone numbers
- * (`0[1-8]xxxxxxxx`) are deliberately NOT flagged so a contact number never trips the rule.
+ * A number of 9 or more digits, where single spaces, dots or dashes between digit groups are ignored
+ * (`6201 2345 678`, `62-012-345-678`). Not flagged when it is:
+ * - part of a longer number, or prefixed by `+` (international phone numbers);
+ * - part of an alphanumeric reference (`INV202611001`, `MSQ-2026-11-001234`);
+ * - a rand amount (`R 1 234 567.89`).
+ * SA bank account numbers are 9–11 digits. A 10-digit SA phone number (`0[1-8]xxxxxxxx`) is
+ * exempt so a contact number never trips the rule, UNLESS the message also carries banking
+ * wording (`EFT to … 0712345678 branch 051001`).
  */
-const DIGIT_RUN_PATTERN = /(?<![+\d])\d{9,17}(?!\d)/g
+const DIGIT_RUN_PATTERN = /(?<![+\w]|[+\d][ .-]|[A-Za-z][.-]|R\s)\d(?:[ .-]?\d){8,}(?![ .-]?\d|[A-Za-z_])/g
 const SA_PHONE_PATTERN = /^0[1-8]\d{8}$/
 
 /** Every banking-detail fragment in `text` (empty when clean). */
@@ -44,8 +51,10 @@ export function findBankDetails(text: string): BankDetailMatch[] {
   for (const m of text.matchAll(IBAN_PATTERN)) {
     if (/\d{6,}/.test(m[0].replace(/\s/g, ''))) matches.push({ kind: 'iban', text: m[0] })
   }
+  const phoneExempt = matches.length === 0
   for (const m of text.matchAll(DIGIT_RUN_PATTERN)) {
-    if (!SA_PHONE_PATTERN.test(m[0])) matches.push({ kind: 'account_number', text: m[0] })
+    const digits = m[0].replace(/[ .-]/g, '')
+    if (!(phoneExempt && SA_PHONE_PATTERN.test(digits))) matches.push({ kind: 'account_number', text: m[0] })
   }
   return matches
 }
@@ -111,13 +120,12 @@ export interface MessageContentCheck {
 }
 
 /**
- * Validate a message or template body for an audience. Rules:
+ * Validate a message about to be sent (drafted, rendered or re-checked at send time). Rules:
  * - non-empty
  * - no banking details for any audience
  * - tenant audience: none of the forbidden tenant topics
- * - placeholders numbered contiguously from {{1}}
  */
-export function checkMessageContent(body: string, audience: RecipientType): MessageContentCheck {
+export function checkOutboundMessage(body: string, audience: RecipientType): MessageContentCheck {
   const errors: string[] = []
   if (body.trim() === '') errors.push('Message body is empty')
   const bankDetails = findBankDetails(body)
@@ -130,9 +138,23 @@ export function checkMessageContent(body: string, audience: RecipientType): Mess
   if (forbiddenTopics.length > 0) {
     errors.push(`Tenant messages may not mention: ${forbiddenTopics.map((t) => t.replace(/_/g, ' ')).join(', ')}`)
   }
+  return { valid: errors.length === 0, errors, bankDetails, forbiddenTopics }
+}
+
+/**
+ * Validate a template body for an audience: every checkOutboundMessage rule, plus placeholders
+ * numbered contiguously from {{1}}. Use checkOutboundMessage for rendered text, where a variable
+ * value may legitimately contain `{{n}}`.
+ */
+export function checkMessageContent(body: string, audience: RecipientType): MessageContentCheck {
+  const check = checkOutboundMessage(body, audience)
   const placeholders = templatePlaceholders(body)
   if (placeholders.some((n, i) => n !== i + 1)) {
-    errors.push(`Placeholders must be numbered {{1}}…{{n}} without gaps (found ${placeholders.map((n) => `{{${n}}}`).join(', ')})`)
+    const errors = [
+      ...check.errors,
+      `Placeholders must be numbered {{1}}…{{n}} without gaps (found ${placeholders.map((n) => `{{${n}}}`).join(', ')})`,
+    ]
+    return { ...check, valid: false, errors }
   }
-  return { valid: errors.length === 0, errors, bankDetails, forbiddenTopics }
+  return check
 }

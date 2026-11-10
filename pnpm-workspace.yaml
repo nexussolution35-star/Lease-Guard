@@ -2,3 +2,12 @@ packages:
   - frontend
   - backend
   - packages/*
+  - tests
+minimumReleaseAgeExclude:
+  - bullmq@6.7.2
+  - supertest@7.3.2
+# Install scripts that are not needed: @scarf/scarf is telemetry; msgpackr-extract is an optional
+# native speed-up for BullMQ that falls back to pure JavaScript.
+allowBuilds:
+  '@scarf/scarf': false
+  msgpackr-extract: false

@@ -1,0 +1,61 @@
+# Build context for the images built from the repository root (backend/Dockerfile and
+# frontend/Dockerfile). The Python service builds from its own directory and has its own
+# python-services/document-processing/.dockerignore.
+#
+# Dependencies are installed inside the image from pnpm-lock.yaml and every output is rebuilt there,
+# so nothing installed or generated on the host is sent.
+
+# Version control, editors, agent tooling
+.git
+.gitignore
+**/.DS_Store
+.vscode
+.idea
+.claude
+.agents
+CLAUDE.md
+skills-lock.json
+
+# Secrets: environment files never enter an image. Containers receive configuration at run time.
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+
+# Installed dependencies and build output (rebuilt in the image)
+**/node_modules
+**/dist
+**/dist-ssr
+**/.dev
+**/.dev-*
+**/*.tsbuildinfo
+**/.tanstack
+frontend/src/app/router/routeTree.gen.ts
+
+# Tests, coverage and browser-test output
+**/coverage
+**/playwright-report
+**/test-results
+**/blob-report
+**/.vitest
+
+# Logs and caches
+**/*.log
+**/.cache
+**/.eslintcache
+
+# Python (not part of these images)
+python-services
+**/.venv
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.ruff_cache
+**/*.egg-info
+
+# Not needed to build or run any image
+docs
+supabase
+infrastructure/deployment
+**/README.md

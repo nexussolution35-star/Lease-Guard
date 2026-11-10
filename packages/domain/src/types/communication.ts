@@ -3,7 +3,8 @@ import type { CompanyScoped, EntityId, ISODateTime, StoredFile } from './common.
 export const CHANNELS = ['whatsapp', 'email', 'system'] as const
 export type Channel = (typeof CHANNELS)[number]
 
-export type MessageDirection = 'outbound' | 'inbound'
+export const MESSAGE_DIRECTIONS = ['outbound', 'inbound'] as const
+export type MessageDirection = (typeof MESSAGE_DIRECTIONS)[number]
 
 export const RECIPIENT_TYPES = ['tenant', 'property_owner'] as const
 export type RecipientType = (typeof RECIPIENT_TYPES)[number]

@@ -1,0 +1,29 @@
+{
+  "name": "@leaseguard/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Typed client for the LeaseGuard backend API. Types are generated from backend/openapi.json; nothing is hand-duplicated.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@leaseguard/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "generate": "openapi-typescript ../../backend/openapi.json --output src/generated/schema.ts --root-types --root-types-no-schema-prefix",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "oxlint src --ignore-pattern 'src/generated/**'",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.17.0"
+  },
+  "devDependencies": {
+    "oxlint": "^1.92.0",
+    "typescript": "~7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

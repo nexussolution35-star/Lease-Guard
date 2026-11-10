@@ -9,10 +9,41 @@
     "pnpm": ">=12"
   },
   "scripts": {
-    "dev": "pnpm --filter @leaseguard/frontend dev",
+    "dev": "pnpm run \"/^dev:(frontend|backend|worker)$/\"",
+    "dev:frontend": "pnpm --filter @leaseguard/frontend dev",
+    "dev:backend": "pnpm --filter @leaseguard/backend dev",
+    "dev:worker": "pnpm --filter @leaseguard/backend dev:worker",
+    "dev:python": "bash infrastructure/scripts/python.sh dev",
     "build": "pnpm -r --workspace-concurrency=1 build",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "test:domain": "pnpm --filter @leaseguard/domain test",
+    "test:api-client": "pnpm --filter @leaseguard/api-client test",
+    "test:backend": "pnpm --filter @leaseguard/backend test",
+    "test:frontend": "pnpm --filter @leaseguard/frontend test",
+    "test:integration": "pnpm --filter @leaseguard/tests test:integration",
+    "test:e2e": "pnpm --filter @leaseguard/tests test:e2e",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:status": "supabase status",
+    "db:reset": "supabase db reset",
+    "db:test": "supabase test db",
+    "db:push:remote": "node infrastructure/scripts/db-push-remote.mjs",
+    "auth:configure:remote": "node infrastructure/scripts/configure-auth-remote.mjs",
+    "platform:create-company": "node infrastructure/scripts/platform-create-company.mjs",
+    "db:types": "node infrastructure/scripts/generate-db-types.mjs",
+    "db:types:check": "node infrastructure/scripts/generate-db-types.mjs --check",
+    "api:generate": "pnpm --filter @leaseguard/backend openapi:generate && pnpm --filter @leaseguard/api-client generate",
+    "python:setup": "bash infrastructure/scripts/python.sh setup",
+    "python:test": "bash infrastructure/scripts/python.sh test",
+    "python:lint": "bash infrastructure/scripts/python.sh lint",
+    "docker:config": "bash infrastructure/scripts/compose.sh config --quiet",
+    "docker:up": "bash infrastructure/scripts/compose.sh up -d --build",
+    "docker:down": "bash infrastructure/scripts/compose.sh down"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0",
+    "supabase": "3.0.0"
   }
 }

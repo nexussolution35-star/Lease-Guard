@@ -11,7 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
-.agents 
+.agents
 
 # Editor directories and files
 .vscode/*
@@ -27,9 +27,11 @@ dist-ssr
 
 # TanStack Router generated
 frontend/src/app/router/routeTree.gen.ts
-.DS_Store
 
 CLAUDE.md
+.claude
+# Agent-skill lockfile for the local .claude/ skills (kept local, like .claude/)
+skills-lock.json
 
 # Environment
 .env
@@ -42,7 +44,21 @@ __pycache__/
 .venv/
 .pytest_cache/
 .ruff_cache/
+*.egg-info/
+python-services/**/build/
 
 # Coverage and build info
 coverage/
 *.tsbuildinfo
+
+# Backend development output (scripts/dev.mjs writes .dev-api/ and .dev-worker/) and scratch builds
+.dev/
+backend/.dev/
+backend/.dev-*/
+
+# Browser end-to-end test output (Playwright)
+playwright-report/
+test-results/
+blob-report/
+
+.scratch

@@ -1,4 +1,5 @@
 import type { CompanyScoped, EntityId, ISODate, ISODateTime, StoredFile, ZAR } from './common.js'
+import type { DocumentExtractionIssue } from './extraction.js'
 
 export const STATEMENT_SOURCES = ['MRI', 'MDA', 'PropSys', 'Sage', 'other'] as const
 export type StatementSource = (typeof STATEMENT_SOURCES)[number]
@@ -27,7 +28,8 @@ export const LINE_ITEM_CATEGORIES = [
 ] as const
 export type LineItemCategory = (typeof LINE_ITEM_CATEGORIES)[number]
 
-export type LineItemKind = 'charge' | 'payment' | 'credit'
+export const LINE_ITEM_KINDS = ['charge', 'payment', 'credit'] as const
+export type LineItemKind = (typeof LINE_ITEM_KINDS)[number]
 
 export interface StatementLineItem {
   id: EntityId
@@ -86,6 +88,8 @@ export interface StatementExtraction extends CompanyScoped {
   reviewedByUserId?: EntityId
   reviewedAt?: ISODateTime
   reviewNotes?: string
+  /** Validation issues reported by the document-processing service for this run. */
+  issues?: readonly DocumentExtractionIssue[]
 }
 
 export interface Statement extends CompanyScoped {
@@ -119,6 +123,8 @@ export interface Statement extends CompanyScoped {
   verifiedAt?: ISODateTime
   /** Set when the statement was delivered to the tenant via WhatsApp. */
   deliveredCommunicationId?: EntityId
+  /** Why automatic processing could not complete; the statement then needs manual review. */
+  processingError?: string
   /** If marked duplicate, the statement it duplicates. */
   duplicateOfStatementId?: EntityId
 }

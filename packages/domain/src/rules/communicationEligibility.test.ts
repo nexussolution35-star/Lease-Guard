@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { TENANT_MESSAGE_TYPES } from '../types/index.js'
 import { makeArrangement, makeOwner, makeTenant } from './__fixtures__/lease.js'
 import {
+  approvalBlocker,
   assertNeverTenantTopic,
   canSendOwnerMessage,
   canSendTenantMessage,
@@ -13,7 +14,7 @@ import {
 
 const today = '2026-11-06'
 const baseCtx: TenantMessageContext = {
-  settings: { requireApprovalForTenantMessages: false },
+  approval: { decision: 'approved' },
   arrangements: [],
   today,
 }
@@ -48,12 +49,18 @@ describe('canSendTenantMessage', () => {
     expect(canSendTenantMessage(makeTenant({ status: 'vacated' }), 'monthly_statement', baseCtx).reasons).toEqual(['Tenant has vacated'])
     expect(canSendTenantMessage(makeTenant({ status: 'in_arrears' }), 'overdue_payment_reminder', baseCtx).eligible).toBe(true)
   })
-  it('approval gate', () => {
-    const ctx: TenantMessageContext = { ...baseCtx, settings: { requireApprovalForTenantMessages: true } }
+  it('approval gate: always required, with no setting that relaxes it', () => {
+    const ctx: TenantMessageContext = { arrangements: [], today }
     expect(canSendTenantMessage(makeTenant(), 'monthly_statement', ctx).reasons).toEqual(['Property manager approval is required before sending'])
     expect(canSendTenantMessage(makeTenant(), 'monthly_statement', { ...ctx, approval: { decision: 'pending' } }).eligible).toBe(false)
     expect(canSendTenantMessage(makeTenant(), 'monthly_statement', { ...ctx, approval: { decision: 'rejected' } }).reasons).toEqual(['Message approval was rejected'])
     expect(canSendTenantMessage(makeTenant(), 'monthly_statement', { ...ctx, approval: { decision: 'approved' } }).eligible).toBe(true)
+  })
+  it('approvalBlocker: only an approved decision allows sending', () => {
+    expect(approvalBlocker({ decision: 'approved' })).toBeUndefined()
+    expect(approvalBlocker({ decision: 'pending' })).toBe('Property manager approval is required before sending')
+    expect(approvalBlocker(undefined)).toBe('Property manager approval is required before sending')
+    expect(approvalBlocker({ decision: 'rejected' })).toBe('Message approval was rejected')
   })
   it('arrears reminders suppressed by active arrangement; instalment reminders need one', () => {
     const withArr: TenantMessageContext = { ...baseCtx, arrangements: [makeArrangement({ tenantId: 'ten_test' })] }

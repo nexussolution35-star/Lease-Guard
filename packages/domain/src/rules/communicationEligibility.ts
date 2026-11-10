@@ -1,5 +1,4 @@
 import type {
-  CompanySettings,
   EntityId,
   ISODate,
   MessageApproval,
@@ -58,8 +57,10 @@ export interface EligibilityResult {
 }
 
 export interface TenantMessageContext {
-  settings: Pick<CompanySettings, 'requireApprovalForTenantMessages'>
-  /** Approval attached to the draft communication, if any. */
+  /**
+   * The approval that governs the message, if any. Always required: tenant communication needs a
+   * property manager's approval before sending (product hard constraint, no per-company switch).
+   */
   approval?: Pick<MessageApproval, 'decision'>
   arrangements: readonly Pick<
     PaymentArrangement,
@@ -74,13 +75,23 @@ const ARREARS_REMINDER_TYPES: readonly MessageType[] = [
   'follow_up_payment_reminder',
 ]
 
+/**
+ * Why `approval` does not allow sending, or undefined when it is approved. Tenant messages always need
+ * an approved approval (canSendTenantMessage); the backend's outbound gate applies the same rule, with
+ * the same wording, to owner messages.
+ */
+export function approvalBlocker(approval: Pick<MessageApproval, 'decision'> | undefined): string | undefined {
+  if (approval?.decision === 'approved') return undefined
+  return approval?.decision === 'rejected' ? 'Message approval was rejected' : 'Property manager approval is required before sending'
+}
+
 type EligibleTenant = Pick<Tenant, 'id' | 'whatsappVerified' | 'whatsappOptedOut' | 'status'>
 
 /**
  * Can this message be sent to a tenant right now? Rules, all of which must hold:
  * - messageType is a TenantMessageType (statements & payment reminders only)
  * - tenant WhatsApp number verified, tenant not opted out, tenant not vacated
- * - approval approved when the company requires approval for tenant messages
+ * - an approved property-manager approval (always; there is no setting that relaxes it)
  * - arrears reminders suppressed while an active arrangement pauses them
  * - instalment reminders only when the tenant has an active arrangement
  */
@@ -99,13 +110,8 @@ export function canSendTenantMessage(
   if (tenant.status === 'vacated') reasons.push('Tenant has vacated')
   if (tenant.status === 'prospective') reasons.push('Tenant is prospective and has no lease yet')
 
-  if (context.settings.requireApprovalForTenantMessages && context.approval?.decision !== 'approved') {
-    reasons.push(
-      context.approval?.decision === 'rejected'
-        ? 'Message approval was rejected'
-        : 'Property manager approval is required before sending',
-    )
-  }
+  const approval = approvalBlocker(context.approval)
+  if (approval) reasons.push(approval)
 
   if (ARREARS_REMINDER_TYPES.includes(messageType)) {
     if (shouldSuppressArrearsReminder(tenant.id, context.arrangements, context.today)) {

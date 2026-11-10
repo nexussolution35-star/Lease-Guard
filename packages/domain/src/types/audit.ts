@@ -28,7 +28,8 @@ export interface FieldChange {
 }
 
 export interface AuditLog extends CompanyScoped {
-  actorUserId: EntityId
+  /** Absent for actions taken by background jobs (no human actor). */
+  actorUserId?: EntityId
   action: AuditAction
   entityType: EntityType
   entityId: EntityId
