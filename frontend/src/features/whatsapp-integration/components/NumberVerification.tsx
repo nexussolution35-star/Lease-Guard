@@ -71,7 +71,30 @@ export function VerificationSteps({ number }: { number: WhatsAppPhoneNumber }) {
   const titleId = useId()
   const locked = useRegistrationLocked(number)
   if (number.connectionStatus === 'disconnected') {
-    return <p className="text-sm text-muted-foreground">Disconnected. Connect the number again with Connect WhatsApp Business to use it.</p>
+    if (!number.disconnectedReason) {
+      return <p className="text-sm text-muted-foreground">Disconnected. Connect the number again with Connect WhatsApp Business to use it.</p>
+    }
+    return (
+      <Alert variant="destructive" role="status">
+        <Unplug aria-hidden="true" />
+        <AlertDescription>
+          <p>
+            <span className="font-medium">Disconnected in Meta</span>
+            {number.disconnectedAt ? (
+              <>
+                {' '}
+                on <DateDisplay value={number.disconnectedAt} style="datetime" />
+              </>
+            ) : null}
+            . {number.disconnectedReason}
+          </p>
+          <p>
+            LeaseGuard no longer has access to this number in Meta, so no WhatsApp messages are sent or received on it. To use it again, a
+            company admin connects it with Connect WhatsApp Business.
+          </p>
+        </AlertDescription>
+      </Alert>
+    )
   }
   const byStep = new Map(number.verificationSteps.map((s) => [s.step, s]))
   const running = isNumberVerificationRunning(number)

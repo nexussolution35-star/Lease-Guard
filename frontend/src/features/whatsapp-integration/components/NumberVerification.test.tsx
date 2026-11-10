@@ -212,6 +212,32 @@ describe('number verification on the WhatsApp page', () => {
     expect(screen.queryByRole('button', { name: 'Disconnect' })).not.toBeInTheDocument()
   })
 
+  it('says when a number was disconnected in Meta, why, and how to connect again', async () => {
+    fakeSource.listBusinessAccounts.mockResolvedValue(
+      accounts({
+        ...BASE,
+        connectionStatus: 'disconnected',
+        disconnectedAt: '2026-11-09T09:30:00+02:00',
+        disconnectedReason: 'The business removed LeaseGuard from this WhatsApp Business Account in Meta.',
+      }),
+    )
+    await renderScreen()
+    expect(await screen.findByText(/The business removed LeaseGuard from this WhatsApp Business Account in Meta\./)).toBeInTheDocument()
+    expect(screen.getByText(/09 Nov 2026/)).toBeInTheDocument()
+    expect(screen.getByText(/LeaseGuard no longer has access to this number in Meta/)).toBeInTheDocument()
+    // Whether the stored token was deleted is not known here (env-form token, or one still used elsewhere), so the page never claims it.
+    expect(screen.queryByText(/deleted the stored access token/)).not.toBeInTheDocument()
+    expect(screen.getByText(/company admin connects it with Connect WhatsApp Business/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Disconnect' })).not.toBeInTheDocument()
+  })
+
+  it("shows Meta's quality rating and messaging limit of a number", async () => {
+    fakeSource.listBusinessAccounts.mockResolvedValue(accounts({ ...BASE, connectionStatus: 'connected', qualityRating: 'YELLOW', messagingLimitTier: 'TIER_1K' }))
+    await renderScreen()
+    const meta = await screen.findByText('YELLOW')
+    expect(meta.closest('dl')).toHaveTextContent('QualityYELLOWMessaging limitTIER_1K')
+  })
+
   it('shows steps but no actions to members who are not company admins', async () => {
     role.admin = false
     await renderScreen()
@@ -251,6 +277,34 @@ describe('number verification on the WhatsApp page', () => {
     expect(rows.map((row) => within(row).getAllByRole('cell').slice(0, 4).map((cell) => cell.textContent))).toEqual([
       ['monthly_statement', 'en_ZA', 'Utility', 'Approved'],
       ['payment_reminder', 'en', 'Utility', 'RejectedInvalid format'],
+    ])
+  })
+
+  it("shows a status Meta changed after the sync, with when it changed", async () => {
+    fakeSource.listMessageTemplates.mockResolvedValue([
+      {
+        id: 't3',
+        businessAccountId: '771001',
+        metaTemplateId: '9003',
+        name: 'overdue_payment_reminder',
+        language: 'en',
+        category: 'UTILITY',
+        status: 'PAUSED',
+        rejectedReason: 'Low quality',
+        syncedAt: '2026-11-08T10:00:00+02:00',
+        statusUpdatedAt: '2026-11-10T10:00:00+02:00',
+      },
+    ])
+    await renderScreen()
+    const card = await screen.findByRole('region', { name: 'Message templates' })
+    const [, row] = await within(card).findAllByRole('row')
+    expect(within(card).getByRole('columnheader', { name: 'Last updated' })).toBeInTheDocument()
+    expect(within(row!).getAllByRole('cell').map((cell) => cell.textContent)).toEqual([
+      'overdue_payment_reminder',
+      'en',
+      'Utility',
+      'PausedLow quality',
+      '10 Nov 2026',
     ])
   })
 

@@ -90,6 +90,14 @@ _Avoid_: Password, code (which reads as the Embedded Signup code)
 **Receiving number**:
 The company's business phone number that an inbound WhatsApp message was sent to; it, not the sender's number, identifies which company the message belongs to.
 
+**Account holder**:
+A company with verified access to a WhatsApp Business Account: LeaseGuard stored a business token for it through WhatsApp signup, or verified and connected one of its numbers. Meta's account-level events (removal of LeaseGuard, template status, number quality) name only the account and apply to its holders; a company that merely typed the same account id is not a holder.
+_Avoid_: Owner (of an account), subscriber
+
+**Disconnected in Meta**:
+A business number LeaseGuard disconnected because Meta reported that the business removed LeaseGuard, or the WhatsApp Business Account was deleted or offboarded. Its stored token, when LeaseGuard holds one in Vault that nothing else of the company uses, is deleted, and the company's admins are notified; it is used again only after a new WhatsApp signup.
+_Avoid_: Uninstalled number, revoked number
+
 **Conversation**:
 The thread of WhatsApp messages between one contact (or tenant) and one of a company's receiving numbers; it records when the person last wrote, which opens WhatsApp's 24-hour customer service window.
 _Avoid_: Chat, ticket, thread (in user-facing text)

@@ -14,7 +14,7 @@ import type { Tables } from '../../infrastructure/database/database.types'
  */
 // One literal (not concatenated), so supabase-js can type the selected row.
 export const NUMBER_COLUMNS =
-  'id, company_id, business_account_id, phone_number_id, display_name, display_number, verified_name, quality_rating, code_verification_status, name_status, meta_status, webhook_configured, connection_status, last_verified_at, registration_blocked_until, created_at'
+  'id, company_id, business_account_id, phone_number_id, display_name, display_number, verified_name, quality_rating, code_verification_status, name_status, meta_status, webhook_configured, connection_status, last_verified_at, registration_blocked_until, messaging_limit_tier, disconnected_at, disconnected_reason, created_at'
 
 export type NumberRow = Pick<
   Tables<'whatsapp_phone_numbers'>,
@@ -33,6 +33,9 @@ export type NumberRow = Pick<
   | 'connection_status'
   | 'last_verified_at'
   | 'registration_blocked_until'
+  | 'messaging_limit_tier'
+  | 'disconnected_at'
+  | 'disconnected_reason'
   | 'created_at'
 >
 
@@ -73,6 +76,9 @@ export function toWhatsAppPhoneNumber(row: NumberRow, steps: readonly StepRow[] 
     connectionStatus: row.connection_status,
     ...(row.last_verified_at ? { lastVerifiedAt: row.last_verified_at } : {}),
     ...(row.registration_blocked_until ? { registrationBlockedUntil: row.registration_blocked_until } : {}),
+    ...(row.messaging_limit_tier ? { messagingLimitTier: row.messaging_limit_tier } : {}),
+    ...(row.connection_status === 'disconnected' && row.disconnected_at ? { disconnectedAt: row.disconnected_at } : {}),
+    ...(row.connection_status === 'disconnected' && row.disconnected_reason ? { disconnectedReason: row.disconnected_reason } : {}),
     verificationSteps: steps
       .filter((step) => step.number_id === row.id)
       .sort((a, b) => WHATSAPP_VERIFICATION_STEPS.indexOf(a.step) - WHATSAPP_VERIFICATION_STEPS.indexOf(b.step))

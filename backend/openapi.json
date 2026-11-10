@@ -7002,6 +7002,19 @@
             "format": "date-time",
             "description": "Meta's registration lock after too many attempts (error 133016)"
           },
+          "messagingLimitTier": {
+            "type": "string",
+            "description": "Meta's messaging limit, e.g. TIER_1K, from Meta's quality updates"
+          },
+          "disconnectedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the number was disconnected (only while it is)"
+          },
+          "disconnectedReason": {
+            "type": "string",
+            "description": "Why the number was disconnected, when Meta reported it (e.g. the business removed LeaseGuard in Meta)"
+          },
           "verificationSteps": {
             "description": "In step order; empty until verification first ran",
             "type": "array",
@@ -10052,6 +10065,11 @@
           "syncedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "statusUpdatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When Meta last changed the status (Meta's status webhook), if after the last sync"
           }
         },
         "required": [

@@ -151,6 +151,7 @@ function MetaDetail({ number }: { number: WhatsAppPhoneNumber }) {
     number.codeVerificationStatus ? { label: 'Verification', value: number.codeVerificationStatus } : null,
     number.nameStatus ? { label: 'Display name', value: number.nameStatus } : null,
     number.metaStatus ? { label: 'Meta status', value: number.metaStatus } : null,
+    number.messagingLimitTier ? { label: 'Messaging limit', value: number.messagingLimitTier } : null,
   ].filter((fact) => fact !== null)
   if (facts.length === 0) return <span className="text-muted-foreground">Not reported yet</span>
   return (

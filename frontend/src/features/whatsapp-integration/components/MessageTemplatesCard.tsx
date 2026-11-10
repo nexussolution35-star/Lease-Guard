@@ -18,6 +18,7 @@ const STATUS_TONES: Readonly<Record<string, Tone>> = {
   REJECTED: 'danger',
   DISABLED: 'danger',
   PAUSED: 'warning',
+  FLAGGED: 'warning',
 }
 
 const sentence = (value: string) => value.charAt(0) + value.slice(1).toLowerCase().replaceAll('_', ' ')
@@ -34,8 +35,8 @@ export function MessageTemplatesCard() {
           Message templates
         </CardTitle>
         <CardDescription>
-          The templates Meta holds for this workspace’s WhatsApp Business Accounts, as LeaseGuard last synced them. Meta reviews and approves
-          each template; LeaseGuard sends only approved ones.
+          The templates Meta holds for this workspace’s WhatsApp Business Accounts, synced during verification and kept up to date when Meta
+          changes a status. Meta reviews and approves each template; LeaseGuard sends only approved ones.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -53,7 +54,7 @@ export function MessageTemplatesCard() {
                   <TableHead>Language</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="hidden md:table-cell">Synced</TableHead>
+                  <TableHead className="hidden md:table-cell">Last updated</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -69,7 +70,7 @@ export function MessageTemplatesCard() {
                       {template.rejectedReason ? <p className="mt-1 text-xs text-muted-foreground">{sentence(template.rejectedReason)}</p> : null}
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      <DateDisplay value={template.syncedAt} />
+                      <DateDisplay value={template.statusUpdatedAt ?? template.syncedAt} />
                     </TableCell>
                   </TableRow>
                 ))}

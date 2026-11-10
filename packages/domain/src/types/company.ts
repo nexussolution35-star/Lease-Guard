@@ -41,6 +41,12 @@ export interface WhatsAppPhoneNumber {
   lastVerifiedAt?: ISODateTime
   /** Meta locked registration after too many attempts (error 133016); no new attempt before this time. */
   registrationBlockedUntil?: ISODateTime
+  /** Meta's messaging limit, e.g. `TIER_1K` (from Meta's quality updates). */
+  messagingLimitTier?: string
+  /** When the number was disconnected, while it is. */
+  disconnectedAt?: ISODateTime
+  /** Why, when Meta reported it (e.g. the business removed LeaseGuard in Meta); absent for a disconnect in LeaseGuard. */
+  disconnectedReason?: string
   /** The outcome of each verification step, in step order; empty until verification first ran. */
   verificationSteps: WhatsAppVerificationStepResult[]
   createdAt: ISODateTime
@@ -91,6 +97,8 @@ export interface WhatsAppMessageTemplate {
   status: string
   rejectedReason?: string
   syncedAt: ISODateTime
+  /** When Meta last changed the status (its status webhook), if after the last sync. */
+  statusUpdatedAt?: ISODateTime
 }
 
 /** A company's WhatsApp Business Account (Meta WABA) with its numbers. A company may hold several. */

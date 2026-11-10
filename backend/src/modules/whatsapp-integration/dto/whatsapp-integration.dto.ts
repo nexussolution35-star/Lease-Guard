@@ -58,6 +58,10 @@ export class WhatsAppPhoneNumberDto implements WhatsAppPhoneNumber {
   @ApiPropertyOptional({ format: 'date-time' }) lastVerifiedAt?: string
   @ApiPropertyOptional({ format: 'date-time', description: "Meta's registration lock after too many attempts (error 133016)" })
   registrationBlockedUntil?: string
+  @ApiPropertyOptional({ description: "Meta's messaging limit, e.g. TIER_1K, from Meta's quality updates" }) messagingLimitTier?: string
+  @ApiPropertyOptional({ format: 'date-time', description: 'When the number was disconnected (only while it is)' }) disconnectedAt?: string
+  @ApiPropertyOptional({ description: 'Why the number was disconnected, when Meta reported it (e.g. the business removed LeaseGuard in Meta)' })
+  disconnectedReason?: string
   @ApiProperty({ type: [WhatsAppVerificationStepDto], description: 'In step order; empty until verification first ran' })
   verificationSteps!: WhatsAppVerificationStepDto[]
   @ApiProperty({ format: 'date-time' }) createdAt!: string
@@ -74,6 +78,8 @@ export class WhatsAppMessageTemplateDto implements WhatsAppMessageTemplate {
   @ApiProperty({ description: "Meta's review status, e.g. APPROVED, PENDING, REJECTED, PAUSED" }) status!: string
   @ApiPropertyOptional() rejectedReason?: string
   @ApiProperty({ format: 'date-time' }) syncedAt!: string
+  @ApiPropertyOptional({ format: 'date-time', description: "When Meta last changed the status (Meta's status webhook), if after the last sync" })
+  statusUpdatedAt?: string
 }
 
 export class RegisterWhatsAppNumberDto {

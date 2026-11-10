@@ -57,6 +57,13 @@ const tables = {
       last_verified_at: '2026-11-04T10:00:00Z',
     }),
     number('num-x', OTHER, '9009', '999999', '2026-10-01T09:00:00Z', { connection_status: 'connected' }),
+    number('num-gone', COMPANY, '2002', '222333', '2026-11-02T09:00:00Z', {
+      connection_status: 'disconnected',
+      disconnected_at: '2026-11-09T07:00:00Z',
+      disconnected_reason: 'The business removed LeaseGuard from this WhatsApp Business Account in Meta.',
+      messaging_limit_tier: 'TIER_1K',
+      messaging_limit_updated_at: '2026-11-08T07:00:00Z',
+    }),
   ],
   whatsapp_number_verification_steps: [
     step('num-b', COMPANY, 'registration', 'action_needed', { recovery: 'Click Register number' }),
@@ -88,9 +95,19 @@ describe('WhatsAppIntegrationService.listBusinessAccounts', () => {
 
     expect(accounts.map((a) => [a.businessAccountId, a.numbers.map((n) => n.phoneNumberId)])).toEqual([
       ['1001', ['111111', '111222']],
-      ['2002', []],
+      ['2002', ['222333']],
     ])
     expect(JSON.stringify(accounts)).not.toMatch(/9009|999999|Other company/)
+  })
+
+  it('says when and why Meta disconnected a number, and its messaging limit', async () => {
+    const accounts = await service.listBusinessAccounts(tableDb(tables), COMPANY)
+    expect(accounts[1]?.numbers[0]).toMatchObject({
+      connectionStatus: 'disconnected',
+      disconnectedAt: '2026-11-09T07:00:00Z',
+      disconnectedReason: 'The business removed LeaseGuard from this WhatsApp Business Account in Meta.',
+      messagingLimitTier: 'TIER_1K',
+    })
   })
 
   it("maps Meta's status of a number and omits what Meta has not reported", async () => {

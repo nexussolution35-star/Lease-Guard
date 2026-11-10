@@ -56,5 +56,8 @@ export const numberRow: NumberRow = {
   connection_status: 'pending_verification',
   last_verified_at: null,
   registration_blocked_until: null,
+  messaging_limit_tier: null,
+  disconnected_at: null,
+  disconnected_reason: null,
   created_at: '2026-11-01T08:00:00+00:00',
 }

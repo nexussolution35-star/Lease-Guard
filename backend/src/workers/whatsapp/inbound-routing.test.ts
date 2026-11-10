@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
+import type { ProviderStatusOutcome, ProviderStatusUpdate } from '../../messaging/communication-lifecycle'
+
+import type { AccountEvents } from './account-events'
 import {
   inboundMessageText,
   type InboundMessage,
   type InboundMessageStore,
   type MessageRecordOutcome,
+  type ProviderStatusStore,
   type ReceivingNumber,
   routeWebhookPayload,
 } from './inbound-routing'
@@ -30,7 +34,40 @@ function harness() {
       return NUMBERS[phoneNumberId] ?? null
     },
   }
-  return { recorded, lookups, route: (payload: unknown) => routeWebhookPayload(payload, { numbers, store }) }
+  // The lifecycle's rule for one message: the status only moves forward; a repeat changes nothing.
+  const RANK = { sent: 1, delivered: 2, read: 3, failed: 0 } as const
+  const delivery = new Map<string, { status: ProviderStatusUpdate['status']; applied: ProviderStatusUpdate[] }>()
+  const statuses: ProviderStatusStore = {
+    async record(update): Promise<ProviderStatusOutcome> {
+      const key = `${update.companyId}/${update.providerMessageId}`
+      const message = delivery.get(key)
+      if (!message) return 'not_found'
+      if (message.applied.some((a) => a.status === update.status)) return 'unchanged'
+      message.applied.push(update)
+      if (update.status === 'failed') return 'unchanged'
+      if (RANK[update.status] > RANK[message.status]) {
+        message.status = update.status
+        return 'advanced'
+      }
+      return 'recorded'
+    },
+  }
+  const accountChanges: { field: string; businessAccountId: string | null }[] = []
+  const accounts: AccountEvents = {
+    async route(field, change) {
+      accountChanges.push({ field, businessAccountId: change.businessAccountId })
+      return field === 'account_update' ? [{ field, outcome: 'not_handled' }] : null
+    },
+  }
+  const sent = (companyId: string, providerMessageId: string) => delivery.set(`${companyId}/${providerMessageId}`, { status: 'sent', applied: [] })
+  return {
+    recorded,
+    lookups,
+    delivery,
+    sent,
+    accountChanges,
+    route: (payload: unknown) => routeWebhookPayload(payload, { numbers, store, statuses, accounts }),
+  }
 }
 
 function payload(changes: unknown[]) {
@@ -134,12 +171,81 @@ describe('routeWebhookPayload', () => {
     expect(recorded[0]?.message).toMatchObject({ userId: 'ZA.9', waId: null })
   })
 
-  it('leaves statuses and account events to later tickets, recording that they were not handled', async () => {
-    const { route } = harness()
-    const outcomes = await route(payload([messages('1110001', [], [], [{ id: 'wamid.S1', status: 'read' }]), { field: 'account_update', value: { event: 'PARTNER_APP_UNINSTALLED' } }]))
+  it('applies delivery statuses to the outbound message of the company that owns the receiving number', async () => {
+    const { route, sent, delivery } = harness()
+    sent(ATLAS.companyId, 'wamid.OUT1')
+    const outcomes = await route(payload([messages('1110001', [], [], [{ id: 'wamid.OUT1', status: 'delivered', timestamp: '1794297600', recipient_id: '27829990001' }])]))
     expect(outcomes).toEqual([
-      { field: 'messages', phoneNumberId: '1110001', companyId: ATLAS.companyId, outcome: 'statuses_not_handled', statuses: 1 },
+      {
+        field: 'messages',
+        phoneNumberId: '1110001',
+        companyId: ATLAS.companyId,
+        statusId: 'wamid.OUT1',
+        status: 'delivered',
+        occurredAt: new Date(1794297600 * 1000).toISOString(),
+        outcome: 'advanced',
+      },
+    ])
+    expect(delivery.get(`${ATLAS.companyId}/wamid.OUT1`)?.status).toBe('delivered')
+  })
+
+  it('never moves a message backwards when statuses arrive out of order, and applies a repeat once', async () => {
+    const { route, sent, delivery } = harness()
+    sent(ATLAS.companyId, 'wamid.OUT2')
+    const read = { id: 'wamid.OUT2', status: 'read', timestamp: '1794297700' }
+    const deliveredLate = { id: 'wamid.OUT2', status: 'delivered', timestamp: '1794297650' }
+    const outcomes = await route(payload([messages('1110001', [], [], [read, deliveredLate, read])]))
+    expect(outcomes.map((o) => o.outcome)).toEqual(['advanced', 'recorded', 'unchanged'])
+    expect(delivery.get(`${ATLAS.companyId}/wamid.OUT2`)?.status).toBe('read')
+    expect(delivery.get(`${ATLAS.companyId}/wamid.OUT2`)?.applied.map((a) => a.status)).toEqual(['read', 'delivered'])
+  })
+
+  it("never applies a status to another company's message with the same id", async () => {
+    const { route, sent, delivery } = harness()
+    sent(BAOBAB.companyId, 'wamid.OUT3')
+    const outcomes = await route(payload([messages('1110001', [], [], [{ id: 'wamid.OUT3', status: 'read' }])]))
+    expect(outcomes).toEqual([expect.objectContaining({ companyId: ATLAS.companyId, statusId: 'wamid.OUT3', outcome: 'not_found' })])
+    expect(delivery.get(`${BAOBAB.companyId}/wamid.OUT3`)?.status).toBe('sent')
+  })
+
+  it("records Meta's error as the failure reason, without the message or the recipient", async () => {
+    const { route, sent, delivery } = harness()
+    sent(ATLAS.companyId, 'wamid.OUT4')
+    await route(
+      payload([
+        messages('1110001', [], [], [
+          {
+            id: 'wamid.OUT4',
+            status: 'failed',
+            recipient_id: '27829990001',
+            errors: [{ code: 131049, title: 'This message was not delivered to maintain healthy ecosystem engagement.', error_data: { details: 'Per-user limit' } }],
+          },
+        ]),
+      ]),
+    )
+    expect(delivery.get(`${ATLAS.companyId}/wamid.OUT4`)?.applied[0]).toMatchObject({
+      status: 'failed',
+      failureReason: 'WhatsApp error 131049: This message was not delivered to maintain healthy ecosystem engagement. (Per-user limit)',
+    })
+  })
+
+  it('reports statuses it does not track and statuses without an id, and keeps the rest', async () => {
+    const { route, sent } = harness()
+    sent(ATLAS.companyId, 'wamid.OUT5')
+    const outcomes = await route(payload([messages('1110001', [], [], [{ id: 'wamid.OUT5', status: 'deleted' }, { status: 'read' }, { id: 'wamid.OUT5', status: 'read' }])]))
+    expect(outcomes.map((o) => o.outcome)).toEqual(['not_handled', 'invalid', 'advanced'])
+  })
+
+  it('hands account-level changes to the account events with the WhatsApp Business Account of the entry', async () => {
+    const { route, accountChanges } = harness()
+    const outcomes = await route(payload([{ field: 'account_update', value: { event: 'PARTNER_APP_UNINSTALLED' } }, { field: 'calls', value: {} }]))
+    expect(outcomes).toEqual([
       { field: 'account_update', outcome: 'not_handled' },
+      { field: 'calls', outcome: 'not_handled' },
+    ])
+    expect(accountChanges).toEqual([
+      { field: 'account_update', businessAccountId: 'waba-1' },
+      { field: 'calls', businessAccountId: 'waba-1' },
     ])
   })
 
