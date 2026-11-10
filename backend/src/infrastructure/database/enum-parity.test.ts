@@ -83,6 +83,10 @@ const DOMAIN_ONLY: Readonly<Record<string, string>> = {
   TERMINAL_EVENT_STATUSES: 'subset of monitoring_event_status (workflow rule)',
   HANDOVER_STATUSES: 'whatsapp_handovers.status is text with a check constraint (20261110101100), not an enum',
   HANDOVER_REQUESTERS: 'whatsapp_handovers.requested_by is text with a check constraint (20261110101100), not an enum',
+  AGENT_PERMITTED_ACTIONS: 'whatsapp_agent_configs.permitted_actions is text[] with a check constraint (20261111100000), not an enum',
+  AGENT_LANGUAGES: 'whatsapp_agent_configs.languages is text[] with a check constraint (20261111100000), not an enum',
+  KNOWLEDGE_STATUSES: 'whatsapp_knowledge_*.status is text with a check constraint (20261111100000), not an enum',
+  KNOWLEDGE_DOCUMENT_MIME_TYPES: 'whatsapp_knowledge_documents.mime_type is text with a check constraint (20261111100000), not an enum',
 }
 
 /**

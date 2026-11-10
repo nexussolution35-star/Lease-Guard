@@ -125,3 +125,23 @@ _Avoid_: WhatsApp id (which reads as the phone number Meta calls wa_id)
 **Webhook event**:
 One signed payload Meta delivered to LeaseGuard's shared WhatsApp webhook, stored once and recorded with what routing did with each change; it is not visible to companies.
 _Avoid_: Notification, callback (as the record)
+
+**AI agent**:
+A company's own WhatsApp assistant that may answer contacts' common questions from that company's approved knowledge, within the settings its company admins chose; it never answers a tenant automatically and hands anything else to a person.
+_Avoid_: Bot, chatbot, assistant (as the record), AI (on its own)
+
+**Knowledge base**:
+A company's FAQs, knowledge entries and documents for its AI agent; each item is a draft or approved, and only approved items ever reach the agent.
+_Avoid_: Training data, content library
+
+**Approved knowledge**:
+Knowledge base items a company admin has approved; changing one makes it a draft again until it is approved anew.
+_Avoid_: Published, live
+
+**Handover contact**:
+A company admin or property manager whom the company told the AI agent to notify when it hands a conversation to a person.
+_Avoid_: Escalation contact, agent owner
+
+**Auto-reply**:
+A company's choice to let its AI agent answer contacts on its own; off until a company admin turns it on, and never applies to tenants.
+_Avoid_: Automation, autopilot

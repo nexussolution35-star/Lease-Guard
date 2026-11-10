@@ -116,7 +116,7 @@ export interface WorldCleanupReport {
   usersDeactivated: number
 }
 
-const STORAGE_BUCKETS = ['statements', 'lease-documents'] as const
+const STORAGE_BUCKETS = ['statements', 'lease-documents', 'agent-knowledge'] as const
 
 function newRunId(): string {
   return `${Date.now().toString(36)}${randomBytes(3).toString('hex')}`

@@ -156,6 +156,7 @@ const STATIC_SEGMENT_LABELS: Readonly<Record<string, string>> = {
   notifications: 'Notifications',
   integrations: 'Integrations',
   whatsapp: 'WhatsApp',
+  agent: 'AI agent',
   templates: 'Templates',
   audit: 'Audit log',
   preferences: 'Preferences',

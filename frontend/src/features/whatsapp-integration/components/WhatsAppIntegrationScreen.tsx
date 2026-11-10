@@ -1,9 +1,9 @@
 import { Fragment, useId } from 'react'
-import { AlertTriangle, Info, MessageCircle } from 'lucide-react'
+import { AlertTriangle, Bot, Info, MessageCircle } from 'lucide-react'
 import type { WhatsAppCapability } from '@leaseguard/api-client'
 
 import { PageHeader } from '@/components/layout/PageHeader'
-import { DateDisplay, EmptyState, ErrorState, LoadingState, NoActiveWorkspace, StatusBadge } from '@/components/shared'
+import { AppLink, DateDisplay, EmptyState, ErrorState, LoadingState, NoActiveWorkspace, StatusBadge } from '@/components/shared'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -254,6 +254,29 @@ function BusinessAccounts({ isAdmin }: { isAdmin: boolean }) {
   )
 }
 
+/** Where the company's AI agent and knowledge base are set up (ticket 09). */
+function AgentLinkCard({ isAdmin }: { isAdmin: boolean }) {
+  const titleId = useId()
+  return (
+    <Card role="region" aria-labelledby={titleId}>
+      <CardHeader>
+        <CardTitle id={titleId} className="flex items-center gap-2 text-base">
+          <Bot className="size-4" aria-hidden="true" />
+          AI agent and knowledge base
+        </CardTitle>
+        <CardDescription>
+          The agent answers contacts' common questions from your approved information. Tenants are never answered automatically.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <AppLink to="/settings/integrations/whatsapp/agent" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+          {isAdmin ? 'Set up the AI agent' : 'View the AI agent settings'}
+        </AppLink>
+      </CardContent>
+    </Card>
+  )
+}
+
 /**
  * Settings → Integrations → WhatsApp: the active company's WhatsApp Business Accounts and numbers with the
  * status LeaseGuard verified, what LeaseGuard still needs from Meta, and (company admins) Connect WhatsApp
@@ -282,6 +305,7 @@ export function WhatsAppIntegrationScreen() {
         <h2 className="text-lg font-semibold text-foreground">Business accounts and numbers</h2>
         <BusinessAccounts isAdmin={isAdmin} />
       </div>
+      <AgentLinkCard isAdmin={isAdmin} />
       <MessageTemplatesCard />
     </section>
   )

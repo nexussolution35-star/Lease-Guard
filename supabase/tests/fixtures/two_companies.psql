@@ -180,6 +180,40 @@ select w.company_id, w.id, 'Fixture handover', 'agent'
 from public.whatsapp_conversations w
 where w.contact_id in ('96000000-0000-4000-8000-000000000001', '96000000-0000-4000-8000-000000000002');
 
+-- AI agent and knowledge base per company: an approved and a draft item of each kind (members read; admins write).
+insert into public.whatsapp_agent_configs (company_id, agent_name, business_description, operating_hours, permitted_actions, auto_reply_enabled)
+values
+  ('20000000-0000-4000-8000-000000000001', 'Nexus assistant', 'Nexus Solution manages retail centres in Gauteng.',
+   '[{"day":"monday","opens":"08:00","closes":"17:00"}]', '{answer_faq,share_business_info}', true),
+  ('20000000-0000-4000-8000-000000000002', 'Kgalagadi assistant', 'Kgalagadi Property Holdings lets offices in Pretoria.',
+   '[]', '{answer_faq}', false);
+insert into public.whatsapp_agent_handover_contacts (company_id, user_id)
+values
+  ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000002'),
+  ('20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000002');
+insert into public.whatsapp_knowledge_faqs (company_id, question, answer, status, approved_at)
+values
+  ('20000000-0000-4000-8000-000000000001', 'Where do visitors park?', 'NS parking: basement level P2.', 'approved', now()),
+  ('20000000-0000-4000-8000-000000000001', 'NS draft question', 'NS draft answer.', 'draft', null),
+  ('20000000-0000-4000-8000-000000000002', 'How do I get an access card?', 'KP access cards: reception, ground floor.', 'approved', now()),
+  ('20000000-0000-4000-8000-000000000002', 'KP draft question', 'KP draft answer.', 'draft', null);
+insert into public.whatsapp_knowledge_entries (company_id, title, content, status, approved_at)
+values
+  ('20000000-0000-4000-8000-000000000001', 'NS office hours', 'NS is open 08:00 to 17:00 on weekdays.', 'approved', now()),
+  ('20000000-0000-4000-8000-000000000001', 'NS draft entry', 'NS unapproved text.', 'draft', null),
+  ('20000000-0000-4000-8000-000000000002', 'KP office hours', 'KP is open 07:30 to 16:30 on weekdays.', 'approved', now()),
+  ('20000000-0000-4000-8000-000000000002', 'KP draft entry', 'KP unapproved text.', 'draft', null);
+insert into public.whatsapp_knowledge_documents (id, company_id, title, file_name, storage_path, mime_type, size_bytes, status, approved_at)
+values
+  ('97000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', 'NS leasing brochure', 'brochure.pdf',
+   '20000000-0000-4000-8000-000000000001/97000000-0000-4000-8000-000000000001/brochure.pdf', 'application/pdf', 1024, 'approved', now()),
+  ('97000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000001', 'NS draft document', 'draft.pdf',
+   '20000000-0000-4000-8000-000000000001/97000000-0000-4000-8000-000000000002/draft.pdf', 'application/pdf', 1024, 'draft', null),
+  ('97000000-0000-4000-8000-000000000003', '20000000-0000-4000-8000-000000000002', 'KP leasing brochure', 'brochure.pdf',
+   '20000000-0000-4000-8000-000000000002/97000000-0000-4000-8000-000000000003/brochure.pdf', 'application/pdf', 1024, 'approved', now()),
+  ('97000000-0000-4000-8000-000000000004', '20000000-0000-4000-8000-000000000002', 'KP draft document', 'draft.pdf',
+   '20000000-0000-4000-8000-000000000002/97000000-0000-4000-8000-000000000004/draft.pdf', 'application/pdf', 1024, 'draft', null);
+
 insert into public.communications (id, company_id, channel, direction, message_type, recipient_type, tenant_id, owner_user_id, statement_id, counterparty_number, company_number, body, attachment_file_name, attachment_storage_path, attachment_mime_type, status, external_message_id, sent_at, delivered_at)
 values
   -- NS: awaiting approval

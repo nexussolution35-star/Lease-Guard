@@ -896,6 +896,58 @@ isOneToOne: false
       referencedColumns: ["company_id","id"]
     }
                   ]
+                },"whatsapp_agent_configs": {
+                  Row: {
+                    "agent_name": string,"auto_reply_enabled": boolean,"business_description": string,"company_id": string,"created_at": string,"escalation_rules": string,"languages": (string)[],"operating_hours": NonNullable<Json>,"out_of_hours_message": string | null,"permitted_actions": (string)[],"policies": string,"support_instructions": string,"timezone": string,"tone": string,"updated_at": string,"updated_by_user_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "agent_name": string,"auto_reply_enabled"?: boolean,"business_description"?: string,"company_id": string,"created_at"?: string,"escalation_rules"?: string,"languages"?: (string)[],"operating_hours"?: NonNullable<Json>,"out_of_hours_message"?: string | null,"permitted_actions"?: (string)[],"policies"?: string,"support_instructions"?: string,"timezone"?: string,"tone"?: string,"updated_at"?: string,"updated_by_user_id"?: string | null
+                  }
+                  Update: {
+                    "agent_name"?: string,"auto_reply_enabled"?: boolean,"business_description"?: string,"company_id"?: string,"created_at"?: string,"escalation_rules"?: string,"languages"?: (string)[],"operating_hours"?: NonNullable<Json>,"out_of_hours_message"?: string | null,"permitted_actions"?: (string)[],"policies"?: string,"support_instructions"?: string,"timezone"?: string,"tone"?: string,"updated_at"?: string,"updated_by_user_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "whatsapp_agent_configs_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: true
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "whatsapp_agent_configs_updated_by_fk"
+      columns: ["company_id","updated_by_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    }
+                  ]
+                },"whatsapp_agent_handover_contacts": {
+                  Row: {
+                    "company_id": string,"created_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "company_id": string,"created_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "company_id"?: string,"created_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "whatsapp_agent_handover_contacts_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "whatsapp_agent_configs"
+      referencedColumns: ["company_id"]
+    },{
+      foreignKeyName: "whatsapp_agent_handover_contacts_member_fk"
+      columns: ["company_id","user_id"]
+isOneToOne: true
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    }
+                  ]
                 },"whatsapp_business_accounts": {
                   Row: {
                     "access_token_reference": string | null,"business_account_id": string,"company_id": string,"created_at": string,"id": string,"name": string | null,"updated_at": string
@@ -1013,6 +1065,102 @@ isOneToOne: false
     },{
       foreignKeyName: "whatsapp_handovers_resolved_by_fk"
       columns: ["company_id","resolved_by_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    }
+                  ]
+                },"whatsapp_knowledge_documents": {
+                  Row: {
+                    "approved_at": string | null,"approved_by_user_id": string | null,"company_id": string,"created_at": string,"created_by_user_id": string | null,"description": string | null,"file_name": string,"id": string,"mime_type": string,"size_bytes": number,"status": string,"storage_path": string,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "approved_at"?: string | null,"approved_by_user_id"?: string | null,"company_id": string,"created_at"?: string,"created_by_user_id"?: string | null,"description"?: string | null,"file_name": string,"id"?: string,"mime_type": string,"size_bytes": number,"status"?: string,"storage_path": string,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "approved_at"?: string | null,"approved_by_user_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by_user_id"?: string | null,"description"?: string | null,"file_name"?: string,"id"?: string,"mime_type"?: string,"size_bytes"?: number,"status"?: string,"storage_path"?: string,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "whatsapp_knowledge_documents_approved_by_fk"
+      columns: ["company_id","approved_by_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    },{
+      foreignKeyName: "whatsapp_knowledge_documents_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "whatsapp_knowledge_documents_created_by_fk"
+      columns: ["company_id","created_by_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    }
+                  ]
+                },"whatsapp_knowledge_entries": {
+                  Row: {
+                    "approved_at": string | null,"approved_by_user_id": string | null,"company_id": string,"content": string,"created_at": string,"created_by_user_id": string | null,"id": string,"status": string,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "approved_at"?: string | null,"approved_by_user_id"?: string | null,"company_id": string,"content": string,"created_at"?: string,"created_by_user_id"?: string | null,"id"?: string,"status"?: string,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "approved_at"?: string | null,"approved_by_user_id"?: string | null,"company_id"?: string,"content"?: string,"created_at"?: string,"created_by_user_id"?: string | null,"id"?: string,"status"?: string,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "whatsapp_knowledge_entries_approved_by_fk"
+      columns: ["company_id","approved_by_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    },{
+      foreignKeyName: "whatsapp_knowledge_entries_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "whatsapp_knowledge_entries_created_by_fk"
+      columns: ["company_id","created_by_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    }
+                  ]
+                },"whatsapp_knowledge_faqs": {
+                  Row: {
+                    "answer": string,"approved_at": string | null,"approved_by_user_id": string | null,"company_id": string,"created_at": string,"created_by_user_id": string | null,"id": string,"question": string,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "answer": string,"approved_at"?: string | null,"approved_by_user_id"?: string | null,"company_id": string,"created_at"?: string,"created_by_user_id"?: string | null,"id"?: string,"question": string,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "answer"?: string,"approved_at"?: string | null,"approved_by_user_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by_user_id"?: string | null,"id"?: string,"question"?: string,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "whatsapp_knowledge_faqs_approved_by_fk"
+      columns: ["company_id","approved_by_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    },{
+      foreignKeyName: "whatsapp_knowledge_faqs_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "whatsapp_knowledge_faqs_created_by_fk"
+      columns: ["company_id","created_by_user_id"]
 isOneToOne: false
       referencedRelation: "company_users"
       referencedColumns: ["company_id","user_id"]
@@ -1220,6 +1368,31 @@ isOneToOne: false
               "handover_id": string,"outcome": string
             }[]
                            },
+"save_whatsapp_agent_config":
+{ Args: { "p_company_id": string,"p_config": Json,"p_handover_user_ids": (string)[] }; Returns: {
+              "agent_name": string,
+"auto_reply_enabled": boolean,
+"business_description": string,
+"company_id": string,
+"created_at": string,
+"escalation_rules": string,
+"languages": (string)[],
+"operating_hours": NonNullable<Json>,
+"out_of_hours_message": string | null,
+"permitted_actions": (string)[],
+"policies": string,
+"support_instructions": string,
+"timezone": string,
+"tone": string,
+"updated_at": string,
+"updated_by_user_id": string | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "whatsapp_agent_configs"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "start_whatsapp_onboarding":
 { Args: { "p_company_id": string }; Returns: {
               "expires_at": string,"session_id": string,"state": string
@@ -1235,6 +1408,9 @@ isOneToOne: false
                            },
 "whatsapp_account_access_token":
 { Args: { "p_account_id": string }; Returns: string
+                           },
+"whatsapp_agent_knowledge":
+{ Args: { "p_company_id": string }; Returns: Json
                            },
 "whatsapp_business_account_holders":
 { Args: { "p_business_account_id": string }; Returns: {

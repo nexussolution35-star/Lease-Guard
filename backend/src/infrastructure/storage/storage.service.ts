@@ -36,6 +36,17 @@ export interface SignedUpload {
 export interface StoredObjectInfo {
   /** Size in bytes, when Storage reports it. */
   sizeBytes?: number
+  /**
+   * Media type Storage recorded for the object (the upload's Content-Type, which the bucket's
+   * allowed_mime_types checked), without parameters and lower-cased; absent when Storage does not report it.
+   */
+  mimeType?: string
+}
+
+/** `text/plain;charset=UTF-8` -> `text/plain`; `undefined` for a missing or blank value. */
+export function baseMimeType(value: string | null | undefined): string | undefined {
+  const base = value?.split(';')[0]?.trim().toLowerCase()
+  return base ? base : undefined
 }
 
 /**
@@ -84,7 +95,27 @@ export class StorageService {
       if (isNotFound(error)) return null
       throw httpErrorFromStorage(error, 'Read object info', this.logger)
     }
-    return typeof data.size === 'number' ? { sizeBytes: data.size } : {}
+    const mimeType = baseMimeType(data.contentType)
+    return {
+      ...(typeof data.size === 'number' ? { sizeBytes: data.size } : {}),
+      ...(mimeType ? { mimeType } : {}),
+    }
+  }
+
+  /** A short-lived link to read an object the caller may read; `null` when it does not exist (or is not visible). */
+  async createSignedDownloadUrl(db: DbClient, bucket: string, path: string, expiresInSeconds: number): Promise<string | null> {
+    const { data, error } = await db.storage.from(bucket).createSignedUrl(path, expiresInSeconds)
+    if (error) {
+      if (isNotFound(error)) return null
+      throw httpErrorFromStorage(error, 'Create signed download URL', this.logger)
+    }
+    return data.signedUrl
+  }
+
+  /** Removes an object the caller may delete (storage policies decide). Removing a missing object is not an error. */
+  async removeObject(db: DbClient, bucket: string, path: string): Promise<void> {
+    const { error } = await db.storage.from(bucket).remove([path])
+    if (error && !isNotFound(error)) throw httpErrorFromStorage(error, 'Remove object', this.logger)
   }
 
   /**

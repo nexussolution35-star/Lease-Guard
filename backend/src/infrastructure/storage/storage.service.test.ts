@@ -46,9 +46,12 @@ describe('StorageService', () => {
     await expect(service.createSignedUploadUrl(client, 'statements', PATH)).rejects.toBeInstanceOf(type)
   })
 
-  it('reports object size, or null when the object does not exist', async () => {
-    const found = fakeStorageDb(() => ({ data: { size: 1234 }, error: null }))
-    await expect(service.objectInfo(found.client, 'statements', PATH)).resolves.toEqual({ sizeBytes: 1234 })
+  it('reports object size and base media type, or null when the object does not exist', async () => {
+    const found = fakeStorageDb(() => ({ data: { size: 1234, contentType: 'Text/Plain; charset=UTF-8' }, error: null }))
+    await expect(service.objectInfo(found.client, 'statements', PATH)).resolves.toEqual({ sizeBytes: 1234, mimeType: 'text/plain' })
+
+    const bare = fakeStorageDb(() => ({ data: { size: 1234 }, error: null }))
+    await expect(service.objectInfo(bare.client, 'statements', PATH)).resolves.toEqual({ sizeBytes: 1234 })
     expect(found.calls[0]).toMatchObject({ bucket: 'statements', method: 'info', args: [PATH] })
 
     const missing = fakeStorageDb(() => ({ data: null, error: { message: 'Object not found', status: 400, statusCode: '404' } }))
