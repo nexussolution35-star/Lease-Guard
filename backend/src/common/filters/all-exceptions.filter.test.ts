@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { AllExceptionsFilter, type ApiErrorBody } from './all-exceptions.filter'
 
-function run(exception: unknown): { status: number; body: ApiErrorBody } {
+function run(exception: unknown, url = '/api/v1/leases'): { status: number; body: ApiErrorBody } {
   const sent: { status: number; body: ApiErrorBody } = { status: 0, body: {} as ApiErrorBody }
   const response = {
     status: (code: number) => {
@@ -13,7 +13,7 @@ function run(exception: unknown): { status: number; body: ApiErrorBody } {
   }
   const host = {
     switchToHttp: () => ({
-      getRequest: () => ({ id: 'req-1', method: 'GET', url: '/api/v1/leases' }),
+      getRequest: () => ({ id: 'req-1', method: 'GET', url }),
       getResponse: () => response,
     }),
   } as unknown as ArgumentsHost
@@ -44,6 +44,14 @@ describe('AllExceptionsFilter', () => {
       requestId: 'req-1',
     })
     expect(logged).toHaveBeenCalledWith(expect.stringContaining('ECONNREFUSED'))
+    logged.mockRestore()
+  })
+
+  it("does not log Meta's webhook verify token with an unhandled error", () => {
+    const logged = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
+    run(new Error('boom'), '/api/v1/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=never-log-me&hub.challenge=1')
+    expect(logged).toHaveBeenCalledWith(expect.stringContaining('hub.verify_token=[Redacted]'))
+    expect(logged).not.toHaveBeenCalledWith(expect.stringContaining('never-log-me'))
     logged.mockRestore()
   })
 })

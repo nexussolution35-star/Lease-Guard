@@ -1,4 +1,4 @@
-import type { EntityId, ISODate } from '@leaseguard/domain'
+import type { EntityId, ISODate, ISODateTime } from '@leaseguard/domain'
 import type { DefaultJobOptions } from 'bullmq'
 
 /**
@@ -40,6 +40,15 @@ export interface JobPayloads {
    * job_runs or the job history.
    */
   'whatsapp-number-verification': { companyId: EntityId; numberId: EntityId }
+  /**
+   * Route one signed Meta webhook payload (inbound messages) to the companies that own its receiving numbers.
+   * Enqueued by the API's public webhook after the signature check. The one payload that is not identifiers
+   * only, and has no companyId: the API holds no service-role key and cannot store the payload itself, and
+   * the company is only known once the worker has routed it (ADR 0002). The worker stores the payload in
+   * whatsapp_webhook_events first; the job is removed from Redis once it completed (`jobOptionsFor`).
+   * `payloadSha256` (hex SHA-256 of the raw body) is the job id, so Meta's retries of the same body are one job.
+   */
+  'whatsapp-webhook': { payloadSha256: string; body: string; receivedAt: ISODateTime }
 }
 
 export type QueueName = keyof JobPayloads
@@ -57,6 +66,7 @@ const JOB_KEY_FIELDS: { readonly [Q in QueueName]: readonly (keyof JobPayloads[Q
   'monitoring-dispatch': ['asOf'],
   'user-invitations': ['companyId', 'invitationId'],
   'whatsapp-number-verification': ['companyId', 'numberId'],
+  'whatsapp-webhook': ['payloadSha256'],
 }
 
 export const QUEUE_NAMES = Object.keys(JOB_KEY_FIELDS) as QueueName[]
@@ -72,7 +82,7 @@ export const MONITORING_DISPATCH_SCHEDULE = {
   tz: 'Africa/Johannesburg',
 } as const
 
-/** The company a payload belongs to; undefined for the system-level dispatch. */
+/** The company a payload belongs to; undefined for the system-level dispatch and webhook routing. */
 export function companyIdOf(payload: JobPayloads[QueueName]): EntityId | undefined {
   return 'companyId' in payload ? payload.companyId : undefined
 }
@@ -109,4 +119,13 @@ export const DEFAULT_JOB_OPTIONS: DefaultJobOptions = {
   backoff: { type: 'exponential', delay: 30_000 },
   removeOnComplete: { age: 7 * 24 * 3600, count: 1000 },
   removeOnFail: { age: 30 * 24 * 3600 },
+}
+
+/**
+ * The default options of one queue. A webhook payload carries message text and phone numbers: once the worker
+ * has stored it in the database, the completed job is removed from Redis instead of being kept for a week (a
+ * retry of the same body after that is skipped by the processed marker and the payload's unique hash).
+ */
+export function jobOptionsFor(queue: QueueName): DefaultJobOptions {
+  return queue === 'whatsapp-webhook' ? { ...DEFAULT_JOB_OPTIONS, removeOnComplete: true } : DEFAULT_JOB_OPTIONS
 }

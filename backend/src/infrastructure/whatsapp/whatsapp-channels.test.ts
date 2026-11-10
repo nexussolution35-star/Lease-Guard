@@ -237,6 +237,7 @@ describe('WhatsAppChannels.forReceivingNumber', () => {
     const { channels, queries, rpc, graphCalls } = harness({ account: { access_token_reference: `secret://vault/${VAULT_SECRET}` } })
     const owner = owned(await channels.forReceivingNumber('1234567890'))
     expect(owner.companyId).toBe(NEXUS)
+    expect(owner.numberId).toBe(ACCOUNT)
     expect(eqCalls(queries[0])).toEqual([
       ['phone_number_id', '1234567890'],
       ['connection_status', 'connected'],

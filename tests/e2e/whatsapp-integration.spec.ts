@@ -4,7 +4,7 @@ import { serviceRoleClient } from '../fixtures/world.ts'
 import { expectShell, pageHeading, signIn } from './support/app.ts'
 import { e2eContext, e2eUser, e2eWorld } from './support/world.ts'
 
-// The verification test below adds a number to company A; the first test expects none, so this file runs in order.
+// The verification and inbox tests below add numbers to company A; the first test expects none, so this file runs in order.
 test.describe.configure({ mode: 'serial' })
 
 // The e2e API runs with the .env.example values: no Meta app settings and no worker, so the page must
@@ -120,6 +120,82 @@ test.describe('Settings → Integrations → WhatsApp', () => {
     } finally {
       await db.from('whatsapp_phone_numbers').delete().eq('phone_number_id', phoneId)
       await db.from('whatsapp_business_accounts').delete().eq('business_account_id', accountId)
+    }
+  })
+})
+
+// Inbound routing (ticket 05): no worker and no Meta run in e2e, so the messages are recorded through the same
+// service-role function the worker calls after the webhook. Each company sees only the messages sent to its number.
+test.describe('WhatsApp conversations inbox', () => {
+  test('shows a member the messages sent to their company’s number, read-only, and never another company’s', async ({ page }) => {
+    const db = serviceRoleClient(e2eContext().supabase)
+    const companies = { a: e2eWorld().companies.a.id, b: e2eWorld().companies.b.id }
+    const unique = `${Date.now()}`
+    const sender = `2784${unique.slice(-7)}`
+    const ids = { a: { account: `${unique}1`, phone: `${unique}2` }, b: { account: `${unique}3`, phone: `${unique}4` } }
+    const numbers: string[] = []
+    const throwOn = (what: string, result: { error: { message: string } | null }) => {
+      if (result.error) throw new Error(`${what}: ${result.error.message}`)
+    }
+    try {
+      for (const key of ['a', 'b'] as const) {
+        throwOn('account', await db.from('whatsapp_business_accounts').insert({ company_id: companies[key], business_account_id: ids[key].account }))
+        const inserted = await db
+          .from('whatsapp_phone_numbers')
+          .insert({
+            company_id: companies[key],
+            business_account_id: ids[key].account,
+            phone_number_id: ids[key].phone,
+            display_name: '',
+            display_number: key === 'a' ? '+27 11 555 0188' : '+27 12 555 0288',
+            connection_status: 'connected',
+          })
+          .select('id')
+          .single()
+        throwOn('number', inserted)
+        const numberId = (inserted.data as { id: string }).id
+        numbers.push(numberId)
+        throwOn(
+          'message',
+          await db.rpc('record_whatsapp_inbound_message', {
+            p_company_id: companies[key],
+            p_number_id: numberId,
+            p_provider_message_id: `wamid.e2e-${key}-${unique}`,
+            p_user_id: null,
+            p_wa_id: sender,
+            p_profile_name: 'E2E Sender',
+            p_body: key === 'a' ? 'Is there parking for visitors?' : 'Message for company B only',
+            p_sent_at: new Date().toISOString(),
+          }),
+        )
+      }
+
+      await signIn(page, e2eUser('readOnly'), '/whatsapp/conversations')
+      await expectShell(page)
+      await expect(pageHeading(page)).toHaveText('Conversations')
+      const inbox = page.getByRole('list', { name: 'Conversations' })
+      const conversation = inbox.getByRole('button', { name: /E2E Sender/ })
+      await expect(conversation).toContainText('Is there parking for visitors?')
+      await expect(page.getByText('Message for company B only')).toHaveCount(0)
+
+      await conversation.click()
+      await expect(page).toHaveURL(/conversation=/)
+      const thread = page.getByRole('list', { name: 'Messages' })
+      await expect(thread.getByRole('listitem')).toHaveCount(1)
+      await expect(thread).toContainText('Is there parking for visitors?')
+      await expect(page.getByText(`+${sender}`)).toBeVisible()
+      // Read-only: no reply box in this version.
+      await expect(page.getByRole('textbox')).toHaveCount(0)
+    } finally {
+      const conversations = await db.from('whatsapp_conversations').select('id').in('number_id', numbers)
+      const conversationIds = ((conversations.data ?? []) as { id: string }[]).map((c) => c.id)
+      if (conversationIds.length > 0) {
+        await db.from('communications').delete().in('conversation_id', conversationIds)
+        await db.from('whatsapp_conversations').delete().in('id', conversationIds)
+      }
+      await db.from('whatsapp_contacts').delete().in('company_id', [companies.a, companies.b]).eq('wa_id', sender)
+      await db.from('whatsapp_phone_numbers').delete().in('phone_number_id', [ids.a.phone, ids.b.phone])
+      await db.from('whatsapp_business_accounts').delete().in('business_account_id', [ids.a.account, ids.b.account])
     }
   })
 })

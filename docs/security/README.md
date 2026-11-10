@@ -11,8 +11,9 @@ Related: [Architecture overview](../architecture/overview.md) · [API convention
 
 - **Users** sign in with Supabase Auth (email and password). The web app uses supabase-js with the
   public anon key for sign-in only (`frontend/src/services/api/supabase.ts`); records come from the API.
-- **API** (`SupabaseAuthGuard`, global): every route except `GET /health` and `GET /health/ready`
-  requires `Authorization: Bearer <access token>`. Tokens are verified with `auth.getClaims` and must
+- **API** (`SupabaseAuthGuard`, global): every route except `GET /health`, `GET /health/ready` and Meta's
+  WhatsApp webhook (`GET`/`POST /api/v1/webhooks/whatsapp`, which authenticates Meta with the verify token and the
+  app-secret signature over the raw body; see docs/integrations/whatsapp.md) requires `Authorization: Bearer <access token>`. Tokens are verified with `auth.getClaims` and must
   have `role = authenticated` and a subject, so the anon key and the service-role key are refused as
   bearer tokens. A 401 makes the web app sign out locally and return to `/login`.
 - **Accounts are invite-only**: public sign-up is off (`enable_signup = false`). A company admin invites
@@ -166,6 +167,9 @@ and `read_only` members, not by property owners. See [Database](../database/READ
 ## Logging and errors
 
 - The API logs JSON (pino). `Authorization`, `Cookie` and `apikey` request headers are redacted.
+  Secret query parameters are replaced with `[Redacted]` in the logged url and query, and in the url of
+  an unhandled-error log: Meta's webhook handshake sends `hub.verify_token` in the query string
+  (`backend/src/common/logging/redact-url.ts`).
 - Every response has an `X-Request-Id`; error bodies include the same id.
 - Unexpected errors return a generic 500; database errors are mapped to generic messages, so
   constraint and policy names are not returned to clients.

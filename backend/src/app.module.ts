@@ -23,7 +23,9 @@ import { StatementsModule } from './modules/statements/statements.module'
 import { TenantsModule } from './modules/tenants/tenants.module'
 import { UnitsModule } from './modules/units/units.module'
 import { UsersModule } from './modules/users/users.module'
+import { WhatsAppConversationsModule } from './modules/whatsapp-conversations/whatsapp-conversations.module'
 import { WhatsAppIntegrationModule } from './modules/whatsapp-integration/whatsapp-integration.module'
+import { WhatsAppWebhookModule } from './modules/whatsapp-webhook/whatsapp-webhook.module'
 
 /** Root module of the HTTP API process. */
 @Module({})
@@ -51,6 +53,8 @@ export class AppModule {
         ArrangementsModule,
         CommunicationsModule,
         WhatsAppIntegrationModule,
+        WhatsAppWebhookModule,
+        WhatsAppConversationsModule,
         NotificationsModule,
         AuditModule,
       ],

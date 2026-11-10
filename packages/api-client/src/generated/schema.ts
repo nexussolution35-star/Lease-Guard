@@ -906,6 +906,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/webhooks/whatsapp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Meta's webhook verification handshake (called by Meta)
+         * @description Echoes hub.challenge when hub.mode is subscribe and hub.verify_token equals WHATSAPP_WEBHOOK_VERIFY_TOKEN.
+         */
+        get: operations["verifyWhatsAppWebhook"];
+        put?: never;
+        /**
+         * Meta's WhatsApp events for every company (called by Meta)
+         * @description Verifies X-Hub-Signature-256 (HMAC-SHA256 of the raw body with WHATSAPP_APP_SECRET) before reading the body, then queues the payload for the worker, which routes each message by its receiving number only. The same body delivered again is one job. 401 when unsigned or tampered; 503 when not configured or Redis is unavailable (Meta retries). Bodies up to 3 MB.
+         */
+        post: operations["receiveWhatsAppWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/whatsapp/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The active company's WhatsApp conversations, most recent first */
+        get: operations["listWhatsAppConversations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/whatsapp/conversations/{conversationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One conversation with its latest messages, oldest first */
+        get: operations["getWhatsAppConversation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/notifications": {
         parameters: {
             query?: never;
@@ -2031,7 +2089,7 @@ export interface components {
         /** @enum {string} */
         MessageType: "monthly_statement" | "initial_payment_reminder" | "overdue_payment_reminder" | "follow_up_payment_reminder" | "arrangement_installment_reminder" | "owner_weekly_summary" | "owner_query_response" | "inbound_reply" | "manual";
         /** @enum {string} */
-        RecipientType: "tenant" | "property_owner";
+        RecipientType: "tenant" | "property_owner" | "contact";
         /** @enum {string} */
         Channel: "whatsapp" | "email" | "system";
         /** @enum {string} */
@@ -2062,8 +2120,23 @@ export interface components {
             arrangementId?: string;
             /** Format: uuid */
             templateId?: string;
-            /** @description Counterparty WhatsApp number (tenant or owner) */
-            counterpartyNumber: string;
+            /** @description Counterparty WhatsApp number (tenant, owner or contact). Absent on an inbound message whose sender WhatsApp identified by a business-scoped user id only */
+            counterpartyNumber?: string;
+            /**
+             * Format: uuid
+             * @description The WhatsApp contact of an inbound message
+             */
+            contactId?: string;
+            /**
+             * Format: uuid
+             * @description The WhatsApp conversation the message belongs to
+             */
+            conversationId?: string;
+            /**
+             * Format: date-time
+             * @description When the sender sent an inbound message
+             */
+            receivedAt?: string;
             /** @description The company's own WhatsApp Business number */
             companyNumber: string;
             body: string;
@@ -2312,6 +2385,87 @@ export interface components {
             tokenRemoved: boolean;
             message: string;
         };
+        WhatsAppWebhookReceiptDto: {
+            /** @enum {boolean} */
+            received: true;
+            /** @description False for a signed payload that is not for WhatsApp (acknowledged, not routed) */
+            queued: boolean;
+        };
+        WhatsAppConversationContactDto: {
+            /** Format: uuid */
+            id: string;
+            /** @description The sender's WhatsApp profile name, when Meta sent one */
+            profileName?: string;
+            /** @description E.164 number, when Meta sent it (it may identify the sender by a business-scoped user id only) */
+            phoneNumber?: string;
+            /**
+             * Format: uuid
+             * @description A tenant of the company whose WhatsApp number is the contact's number
+             */
+            tenantId?: string;
+            tenantName?: string;
+        };
+        WhatsAppConversationSummaryDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            companyId: string;
+            /**
+             * Format: uuid
+             * @description The company's receiving number
+             */
+            numberId: string;
+            /** @description The receiving number as displayed */
+            companyNumber: string;
+            contact: components["schemas"]["WhatsAppConversationContactDto"];
+            /**
+             * Format: date-time
+             * @description The contact's last message (starts WhatsApp's 24-hour window)
+             */
+            lastInboundAt?: string;
+            /** Format: date-time */
+            lastMessageAt: string;
+            /** @description The latest message's text, shortened */
+            lastMessagePreview?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        WhatsAppConversationPage: {
+            items: components["schemas"]["WhatsAppConversationSummaryDto"][];
+            total: number;
+            page: number;
+            pageSize: number;
+        };
+        WhatsAppConversationDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            companyId: string;
+            /**
+             * Format: uuid
+             * @description The company's receiving number
+             */
+            numberId: string;
+            /** @description The receiving number as displayed */
+            companyNumber: string;
+            contact: components["schemas"]["WhatsAppConversationContactDto"];
+            /**
+             * Format: date-time
+             * @description The contact's last message (starts WhatsApp's 24-hour window)
+             */
+            lastInboundAt?: string;
+            /** Format: date-time */
+            lastMessageAt: string;
+            /** @description The latest message's text, shortened */
+            lastMessagePreview?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            messages: components["schemas"]["CommunicationDto"][];
+        };
         /** @enum {string} */
         NotificationSortField: "createdAt";
         /** @enum {string} */
@@ -2554,6 +2708,11 @@ export type WhatsAppMessageTemplateDto = components['schemas']['WhatsAppMessageT
 export type WhatsAppVerificationRequestDto = components['schemas']['WhatsAppVerificationRequestDto'];
 export type RegisterWhatsAppNumberDto = components['schemas']['RegisterWhatsAppNumberDto'];
 export type WhatsAppDisconnectResultDto = components['schemas']['WhatsAppDisconnectResultDto'];
+export type WhatsAppWebhookReceiptDto = components['schemas']['WhatsAppWebhookReceiptDto'];
+export type WhatsAppConversationContactDto = components['schemas']['WhatsAppConversationContactDto'];
+export type WhatsAppConversationSummaryDto = components['schemas']['WhatsAppConversationSummaryDto'];
+export type WhatsAppConversationPage = components['schemas']['WhatsAppConversationPage'];
+export type WhatsAppConversationDto = components['schemas']['WhatsAppConversationDto'];
 export type NotificationSortField = components['schemas']['NotificationSortField'];
 export type NotificationType = components['schemas']['NotificationType'];
 export type NotificationSeverity = components['schemas']['NotificationSeverity'];
@@ -5857,6 +6016,249 @@ export interface operations {
                 };
             };
             /** @description No such number in the active company */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    verifyWhatsAppWebhook: {
+        parameters: {
+            query: {
+                "hub.challenge": unknown;
+                "hub.verify_token": unknown;
+                "hub.mode": unknown;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The challenge, as plain text */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            /** @description Missing or invalid challenge */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Wrong verify token or mode */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description WHATSAPP_WEBHOOK_VERIFY_TOKEN is not set */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    receiveWhatsAppWebhook: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-hub-signature-256": string;
+                /** @description sha256=<hex HMAC-SHA256 of the raw body> */
+                "X-Hub-Signature-256": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Meta's webhook payload (object: whatsapp_business_account) */
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppWebhookReceiptDto"];
+                };
+            };
+            /** @description The signed body is not JSON */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing or invalid signature */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Body over 3 MB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description WHATSAPP_APP_SECRET is not set, or background processing is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    listWhatsAppConversations: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                /** @description Only conversations with this receiving number */
+                numberId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppConversationPage"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getWhatsAppConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppConversationDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description No such conversation in the active company */
             404: {
                 headers: {
                     [name: string]: unknown;

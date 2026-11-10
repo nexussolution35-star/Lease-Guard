@@ -70,7 +70,8 @@ request; the frontend's feature sources also pass the company id from their quer
 ## Background jobs
 
 Queues are declared in `backend/src/infrastructure/queues/queue-registry.ts`. Payloads carry ids
-only; processors reload current rows themselves.
+only; processors reload current rows themselves. The one exception is `whatsapp-webhook`, which carries Meta's
+signed raw payload (the API cannot store it; the worker stores it first and the job is removed once completed).
 
 | Queue | Payload | Enqueued by | Concurrency |
 | --- | --- | --- | --- |
@@ -80,6 +81,7 @@ only; processors reload current rows themselves.
 | `lease-monitoring` | `companyId`, `asOf` | `monitoring-dispatch`, one job per active company | 1 |
 | `arrears-monitoring` | `companyId`, `asOf` | `monitoring-dispatch` | 1 |
 | `arrangement-reminders` | `companyId`, `asOf` | `monitoring-dispatch` | 1 |
+| `whatsapp-webhook` | `payloadSha256`, `body`, `receivedAt` | API: `POST /webhooks/whatsapp` (Meta, signed) | 4 |
 
 Processors live under `backend/src/workers/` (`statements/`, `messaging/`, `monitoring/`,
 `scheduling/`). Reliability is layered:

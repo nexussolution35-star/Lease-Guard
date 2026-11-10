@@ -6,7 +6,11 @@ export type Channel = (typeof CHANNELS)[number]
 export const MESSAGE_DIRECTIONS = ['outbound', 'inbound'] as const
 export type MessageDirection = (typeof MESSAGE_DIRECTIONS)[number]
 
-export const RECIPIENT_TYPES = ['tenant', 'property_owner'] as const
+/**
+ * The counterparty of a message. `contact`: a WhatsApp contact who is neither a tenant nor a property owner of
+ * the company (inbound only until replies to contacts exist).
+ */
+export const RECIPIENT_TYPES = ['tenant', 'property_owner', 'contact'] as const
 export type RecipientType = (typeof RECIPIENT_TYPES)[number]
 
 /** Tenant-facing types are restricted to statements and payment reminders by product rule. */
@@ -57,8 +61,17 @@ export interface Communication extends CompanyScoped {
   statementId?: EntityId
   arrangementId?: EntityId
   templateId?: EntityId
-  /** Counterparty number (tenant or owner). */
-  counterpartyNumber: string
+  /**
+   * Counterparty number (tenant, owner or contact). Always set on outbound messages; absent on an inbound
+   * message whose sender WhatsApp identified by a business-scoped user id only.
+   */
+  counterpartyNumber?: string
+  /** The WhatsApp contact (inbound messages, ticket 05). */
+  contactId?: EntityId
+  /** The WhatsApp conversation the message belongs to. */
+  conversationId?: EntityId
+  /** When the sender sent an inbound message. */
+  receivedAt?: ISODateTime
   /** The company's own WhatsApp Business number this message used. */
   companyNumber: string
   body: string

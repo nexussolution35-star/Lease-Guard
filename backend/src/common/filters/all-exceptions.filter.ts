@@ -2,6 +2,7 @@ import { type ArgumentsHost, Catch, type ExceptionFilter, HttpException, HttpSta
 import { STATUS_CODES } from 'node:http'
 import type { Response } from 'express'
 
+import { redactUrl } from '../logging/redact-url'
 import type { LeaseGuardRequest } from '../request-context'
 
 /** Error body returned by every failing API request. */
@@ -36,7 +37,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message = typeof body === 'string' ? body : messageFrom(body) ?? exception.message
     } else {
       const detail = exception instanceof Error ? exception.stack ?? exception.message : String(exception)
-      this.logger.error(`Unhandled error on ${request.method} ${request.url} [request ${requestId}]: ${detail}`)
+      this.logger.error(`Unhandled error on ${request.method} ${redactUrl(request.url)} [request ${requestId}]: ${detail}`)
     }
 
     const body: ApiErrorBody = { statusCode, error: STATUS_CODES[statusCode] ?? 'Error', message, requestId }

@@ -21,6 +21,8 @@ export interface FakeChannelOptions {
   lookupError?: Error
   /** Answers manageNumber; default: unavailable (not configured). */
   manageNumber?: (companyId: EntityId, numberId: EntityId) => Promise<NumberManagementLookup>
+  /** Connected receiving numbers by Meta phone_number_id; default: none. */
+  receivingNumbers?: Readonly<Record<string, { companyId: EntityId; numberId: EntityId }>>
 }
 
 /**
@@ -53,9 +55,14 @@ export class FakeWhatsAppChannels extends WhatsAppChannels {
     }
   }
 
-  /** No caller routes inbound traffic yet; extend when the webhook's tests need owners. */
-  async forReceivingNumber(): Promise<ReceivingNumberOwner | null> {
-    return null
+  readonly receivingLookups: string[] = []
+
+  async forReceivingNumber(phoneNumberId: string): Promise<ReceivingNumberOwner | null> {
+    this.receivingLookups.push(phoneNumberId)
+    if (this.options.lookupError) throw this.options.lookupError
+    const owner = this.options.receivingNumbers?.[phoneNumberId]
+    if (!owner) return null
+    return { ...owner, channel: () => this.forCompany(owner.companyId, { phoneNumberId }) }
   }
 
   async manageNumber(companyId: EntityId, numberId: EntityId): Promise<NumberManagementLookup> {

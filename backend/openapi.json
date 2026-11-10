@@ -4969,6 +4969,358 @@
         ]
       }
     },
+    "/api/v1/webhooks/whatsapp": {
+      "get": {
+        "description": "Echoes hub.challenge when hub.mode is subscribe and hub.verify_token equals WHATSAPP_WEBHOOK_VERIFY_TOKEN.",
+        "operationId": "verifyWhatsAppWebhook",
+        "parameters": [
+          {
+            "name": "hub.challenge",
+            "required": true,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "hub.verify_token",
+            "required": true,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "hub.mode",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "subscribe"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The challenge, as plain text",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid challenge",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong verify token or mode",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "WHATSAPP_WEBHOOK_VERIFY_TOKEN is not set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Meta's webhook verification handshake (called by Meta)",
+        "tags": [
+          "whatsapp-webhook"
+        ]
+      },
+      "post": {
+        "description": "Verifies X-Hub-Signature-256 (HMAC-SHA256 of the raw body with WHATSAPP_APP_SECRET) before reading the body, then queues the payload for the worker, which routes each message by its receiving number only. The same body delivered again is one job. 401 when unsigned or tampered; 503 when not configured or Redis is unavailable (Meta retries). Bodies up to 3 MB.",
+        "operationId": "receiveWhatsAppWebhook",
+        "parameters": [
+          {
+            "name": "x-hub-signature-256",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Hub-Signature-256",
+            "in": "header",
+            "description": "sha256=<hex HMAC-SHA256 of the raw body>",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Meta's webhook payload (object: whatsapp_business_account)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppWebhookReceiptDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The signed body is not JSON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid signature",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body over 3 MB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "WHATSAPP_APP_SECRET is not set, or background processing is unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Meta's WhatsApp events for every company (called by Meta)",
+        "tags": [
+          "whatsapp-webhook"
+        ]
+      }
+    },
+    "/api/v1/whatsapp/conversations": {
+      "get": {
+        "operationId": "listWhatsAppConversations",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "type": "number"
+            }
+          },
+          {
+            "name": "numberId",
+            "required": false,
+            "in": "query",
+            "description": "Only conversations with this receiving number",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppConversationPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "The active company's WhatsApp conversations, most recent first",
+        "tags": [
+          "whatsapp-conversations"
+        ]
+      }
+    },
+    "/api/v1/whatsapp/conversations/{conversationId}": {
+      "get": {
+        "operationId": "getWhatsAppConversation",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppConversationDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such conversation in the active company",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "One conversation with its latest messages, oldest first",
+        "tags": [
+          "whatsapp-conversations"
+        ]
+      }
+    },
     "/api/v1/notifications": {
       "get": {
         "operationId": "listNotifications",
@@ -8972,7 +9324,8 @@
         "type": "string",
         "enum": [
           "tenant",
-          "property_owner"
+          "property_owner",
+          "contact"
         ]
       },
       "Channel": {
@@ -9060,7 +9413,22 @@
           },
           "counterpartyNumber": {
             "type": "string",
-            "description": "Counterparty WhatsApp number (tenant or owner)"
+            "description": "Counterparty WhatsApp number (tenant, owner or contact). Absent on an inbound message whose sender WhatsApp identified by a business-scoped user id only"
+          },
+          "contactId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The WhatsApp contact of an inbound message"
+          },
+          "conversationId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The WhatsApp conversation the message belongs to"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the sender sent an inbound message"
           },
           "companyNumber": {
             "type": "string",
@@ -9122,7 +9490,6 @@
           "direction",
           "messageType",
           "recipientType",
-          "counterpartyNumber",
           "companyNumber",
           "body",
           "status",
@@ -9763,6 +10130,201 @@
           "status",
           "tokenRemoved",
           "message"
+        ]
+      },
+      "WhatsAppWebhookReceiptDto": {
+        "type": "object",
+        "properties": {
+          "received": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "queued": {
+            "type": "boolean",
+            "description": "False for a signed payload that is not for WhatsApp (acknowledged, not routed)"
+          }
+        },
+        "required": [
+          "received",
+          "queued"
+        ]
+      },
+      "WhatsAppConversationContactDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "profileName": {
+            "type": "string",
+            "description": "The sender's WhatsApp profile name, when Meta sent one"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "description": "E.164 number, when Meta sent it (it may identify the sender by a business-scoped user id only)"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A tenant of the company whose WhatsApp number is the contact's number"
+          },
+          "tenantName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "WhatsAppConversationSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "numberId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The company's receiving number"
+          },
+          "companyNumber": {
+            "type": "string",
+            "description": "The receiving number as displayed"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/WhatsAppConversationContactDto"
+          },
+          "lastInboundAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The contact's last message (starts WhatsApp's 24-hour window)"
+          },
+          "lastMessageAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastMessagePreview": {
+            "type": "string",
+            "description": "The latest message's text, shortened"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "numberId",
+          "companyNumber",
+          "contact",
+          "lastMessageAt",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "WhatsAppConversationPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppConversationSummaryDto"
+            }
+          },
+          "total": {
+            "type": "number",
+            "minimum": 0
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ]
+      },
+      "WhatsAppConversationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "numberId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The company's receiving number"
+          },
+          "companyNumber": {
+            "type": "string",
+            "description": "The receiving number as displayed"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/WhatsAppConversationContactDto"
+          },
+          "lastInboundAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The contact's last message (starts WhatsApp's 24-hour window)"
+          },
+          "lastMessageAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastMessagePreview": {
+            "type": "string",
+            "description": "The latest message's text, shortened"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommunicationDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "numberId",
+          "companyNumber",
+          "contact",
+          "lastMessageAt",
+          "createdAt",
+          "updatedAt",
+          "messages"
         ]
       },
       "NotificationSortField": {

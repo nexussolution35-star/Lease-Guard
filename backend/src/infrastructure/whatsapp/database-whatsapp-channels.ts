@@ -107,7 +107,7 @@ export class DatabaseWhatsAppChannels extends WhatsAppChannels {
     if (error) throw new ChannelLookupError('Find the company of a WhatsApp number', error.code, error.message)
     if (data?.connection_status !== 'connected') return null
     // The credential is resolved only when a caller opens the channel (see ReceivingNumberOwner).
-    return { companyId: data.company_id, channel: () => this.open(data) }
+    return { companyId: data.company_id, numberId: data.id, channel: () => this.open(data) }
   }
 
   private async open(account: AccountRow): Promise<ChannelLookup> {

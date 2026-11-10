@@ -104,6 +104,8 @@ select is((select count(*) from public.company_invitations), 0::bigint, 'a prope
 reset role;
 
 -- ================================================================== WhatsApp configuration
+-- Conversations keep their receiving number; the fixture's goes first so the numbers can be removed.
+delete from public.whatsapp_conversations where company_id = '20000000-0000-4000-8000-000000000001';
 delete from public.whatsapp_phone_numbers where company_id = '20000000-0000-4000-8000-000000000001';
 select set_config('request.jwt.claims', tests.claims('thandi.mokoena@nexussolution.co.za'), true);
 set local role authenticated;

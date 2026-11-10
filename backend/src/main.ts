@@ -7,6 +7,7 @@ import { AppModule } from './app.module'
 import { COMPANY_ID_HEADER } from './common/guards/company-access.guard'
 import { REQUEST_ID_HEADER } from './common/logging/logging.module'
 import { loadApiEnv } from './config/env'
+import { rawWebhookBody, WHATSAPP_WEBHOOK_ROUTE } from './modules/whatsapp-webhook/raw-body'
 import { API_PREFIX, createOpenApiDocument, UNPREFIXED_ROUTES } from './openapi'
 
 async function bootstrap(): Promise<void> {
@@ -24,6 +25,9 @@ async function bootstrap(): Promise<void> {
     allowedHeaders: ['Authorization', 'Content-Type', COMPANY_ID_HEADER, REQUEST_ID_HEADER],
     exposedHeaders: [REQUEST_ID_HEADER],
   })
+  // Meta signs the webhook's raw bytes: that route reads its body unparsed (and up to 3 MB) before Nest's JSON
+  // parser, which is registered when the app initialises and then skips the already-read request.
+  app.use(`/${API_PREFIX}/${WHATSAPP_WEBHOOK_ROUTE}`, rawWebhookBody())
   app.setGlobalPrefix(API_PREFIX, { exclude: UNPREFIXED_ROUTES })
   app.enableShutdownHooks()
 

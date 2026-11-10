@@ -89,3 +89,19 @@ _Avoid_: Password, code (which reads as the Embedded Signup code)
 
 **Receiving number**:
 The company's business phone number that an inbound WhatsApp message was sent to; it, not the sender's number, identifies which company the message belongs to.
+
+**Conversation**:
+The thread of WhatsApp messages between one contact (or tenant) and one of a company's receiving numbers; it records when the person last wrote, which opens WhatsApp's 24-hour customer service window.
+_Avoid_: Chat, ticket, thread (in user-facing text)
+
+**Inbox**:
+The list of a company's conversations, most recent first, where members read inbound WhatsApp messages.
+_Avoid_: Messages page, chat list
+
+**Business-scoped user id**:
+Meta's identifier for a WhatsApp user within one business (BSUID); Meta may send it instead of the person's phone number, so a contact can be known without a number.
+_Avoid_: WhatsApp id (which reads as the phone number Meta calls wa_id)
+
+**Webhook event**:
+One signed payload Meta delivered to LeaseGuard's shared WhatsApp webhook, stored once and recorded with what routing did with each change; it is not visible to companies.
+_Avoid_: Notification, callback (as the record)

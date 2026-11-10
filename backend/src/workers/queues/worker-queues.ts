@@ -4,7 +4,7 @@ import type { Redis } from 'ioredis'
 
 import type { WorkerEnv } from '../../config/env'
 import { WORKER_ENV } from '../../config/tokens'
-import { DEFAULT_JOB_OPTIONS, jobIdFor, type JobPayloads, QUEUE_NAMES, type QueueName } from '../../infrastructure/queues/queue-registry'
+import { jobIdFor, jobOptionsFor, type JobPayloads, QUEUE_NAMES, type QueueName } from '../../infrastructure/queues/queue-registry'
 import { createQueueConnection } from '../../infrastructure/queues/redis-connection'
 
 /**
@@ -34,7 +34,7 @@ export class WorkerQueues implements OnModuleInit, OnApplicationShutdown {
     })
     this.queues = new Map(
       QUEUE_NAMES.map((name) => {
-        const queue = new Queue(name, { connection: this.connection, prefix: env.QUEUE_PREFIX, defaultJobOptions: DEFAULT_JOB_OPTIONS })
+        const queue = new Queue(name, { connection: this.connection, prefix: env.QUEUE_PREFIX, defaultJobOptions: jobOptionsFor(name) })
         queue.on('error', onError)
         return [name, queue]
       }),

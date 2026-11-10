@@ -77,6 +77,8 @@ export type NumberManagementLookup = NumberManagement | ChannelUnavailable
 /** The company that owns a receiving phone_number_id. */
 export interface ReceivingNumberOwner {
   readonly companyId: EntityId
+  /** The company's number (whatsapp_phone_numbers.id) that owns the receiving phone_number_id. */
+  readonly numberId: EntityId
   /**
    * Opens the owner's channel for this number (which may be unavailable). The credential is resolved
    * here, not by forReceivingNumber, so routing a webhook event never decrypts a token or fails when

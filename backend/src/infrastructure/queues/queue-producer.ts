@@ -4,7 +4,7 @@ import type { Redis } from 'ioredis'
 
 import type { ApiEnv } from '../../config/env'
 import { API_ENV } from '../../config/tokens'
-import { DEFAULT_JOB_OPTIONS, jobIdFor, type JobPayloads, processedMarkerKey, type QueueName } from './queue-registry'
+import { jobIdFor, jobOptionsFor, type JobPayloads, processedMarkerKey, type QueueName } from './queue-registry'
 import { createProducerConnection } from './redis-connection'
 
 const ENQUEUE_TIMEOUT_MS = 5_000
@@ -161,7 +161,7 @@ export class QueueProducer implements OnApplicationShutdown {
   private queue(name: QueueName): Queue {
     let queue = this.queues.get(name)
     if (!queue) {
-      queue = new Queue(name, { connection: this.redis(), prefix: this.env.QUEUE_PREFIX, defaultJobOptions: DEFAULT_JOB_OPTIONS })
+      queue = new Queue(name, { connection: this.redis(), prefix: this.env.QUEUE_PREFIX, defaultJobOptions: jobOptionsFor(name) })
       queue.on('error', (error) => this.logger.warn(`Queue ${name}: ${error.message}`))
       this.queues.set(name, queue)
     }

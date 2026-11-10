@@ -118,7 +118,7 @@ export async function checkOutbound(
   const build = (mediaId: string | undefined): WhatsAppMessage =>
     buildWhatsAppMessage(communication.body, template.template, attachment && { mediaId: mediaId ?? '', fileName: attachment.fileName })
 
-  const blockers = [
+  const blockers: string[] = [
     // Every outbound message needs an approval that names its approver; tenant approval is judged
     // with the tenant's eligibility below (canSendTenantMessage owns that hard constraint).
     ...(communication.recipient_type === 'property_owner' ? optional(approvalBlocker(approval)) : []),
@@ -130,12 +130,14 @@ export async function checkOutbound(
     // A trial build: the approved text must be expressible as the WhatsApp message (template parameters).
     ...(template.found ? buildBlockers(() => build(undefined)) : []),
   ]
-  if (blockers.length > 0) return blocked(blockers)
+  const to = communication.counterparty_number
+  if (to === null) blockers.push('The message has no recipient WhatsApp number')
+  if (blockers.length > 0 || to === null) return blocked(blockers)
 
   return {
     deliverable: true,
     delivery: {
-      to: communication.counterparty_number,
+      to,
       ...(attachment ? { attachment } : {}),
       message: (attachmentMediaId) => {
         if (attachment && !attachmentMediaId) throw new Error('Upload the attachment before building the message')
@@ -156,6 +158,10 @@ function optional(reason: string | undefined): string[] {
 /** The recipient still exists, still has the number the message is addressed to, and may receive it. */
 async function recipientBlockers(db: DbClient, communication: CommunicationRow, approval: GoverningApproval, today: ISODate): Promise<string[]> {
   const companyId = communication.company_id
+  if (communication.recipient_type === 'contact') {
+    // Inbound only (communications_recipient_check); replies to contacts are a conversation feature (ticket 07).
+    return ['Messages to WhatsApp contacts are not delivered through approval']
+  }
   if (communication.recipient_type === 'tenant') {
     const tenantId = communication.tenant_id
     if (!tenantId) return ['The message has no tenant recipient']

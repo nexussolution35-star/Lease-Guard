@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { companyIdOf, DAILY_MONITORING_QUEUES, jobIdFor, MONITORING_DISPATCH_SCHEDULE, processedMarkerKey, QUEUE_NAMES } from './queue-registry'
+import {
+  companyIdOf,
+  DAILY_MONITORING_QUEUES,
+  DEFAULT_JOB_OPTIONS,
+  jobIdFor,
+  jobOptionsFor,
+  MONITORING_DISPATCH_SCHEDULE,
+  processedMarkerKey,
+  QUEUE_NAMES,
+} from './queue-registry'
 
 describe('queue registry', () => {
   it('lists the LeaseGuard queues, each with a processor in the worker', () => {
@@ -13,7 +22,16 @@ describe('queue registry', () => {
       'monitoring-dispatch',
       'user-invitations',
       'whatsapp-number-verification',
+      'whatsapp-webhook',
     ])
+  })
+
+  it('keys a webhook payload by its SHA-256 and removes it from Redis once routed', () => {
+    const payloadSha256 = 'ab'.repeat(32)
+    expect(jobIdFor('whatsapp-webhook', { payloadSha256, body: '{}', receivedAt: '2026-11-10T08:00:00Z' })).toBe(`whatsapp-webhook.${payloadSha256}`)
+    expect(jobIdFor('whatsapp-webhook', { payloadSha256, body: '{"other":1}', receivedAt: '2026-11-10T09:00:00Z' })).toBe(`whatsapp-webhook.${payloadSha256}`)
+    expect(jobOptionsFor('whatsapp-webhook').removeOnComplete).toBe(true)
+    expect(jobOptionsFor('message-delivery')).toBe(DEFAULT_JOB_OPTIONS)
   })
 
   it('derives the same job id for the same unit of work', () => {

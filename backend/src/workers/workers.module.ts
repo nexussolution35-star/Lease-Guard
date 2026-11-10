@@ -21,6 +21,7 @@ import { WorkerQueues } from './queues/worker-queues'
 import { MonitoringDispatchProcessor } from './scheduling/monitoring-dispatch.processor'
 import { MonitoringScheduler } from './scheduling/monitoring-scheduler'
 import { Clock } from './shared/clock'
+import { WhatsAppWebhookProcessor } from './whatsapp/inbound-webhook.processor'
 import { WhatsAppNumberVerificationProcessor } from './whatsapp/number-verification.processor'
 import { StatementFiles } from './shared/statement-files'
 import { StatementProcessingProcessor } from './statements/statement-processing.processor'
@@ -59,6 +60,7 @@ const processors: Provider[] = [
   MessageDeliveryProcessor,
   UserInvitationProcessor,
   WhatsAppNumberVerificationProcessor,
+  WhatsAppWebhookProcessor,
 ]
 
 /**

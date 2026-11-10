@@ -55,7 +55,13 @@ export class CommunicationDto implements Communication {
   @ApiPropertyOptional({ format: 'uuid' }) statementId?: string
   @ApiPropertyOptional({ format: 'uuid' }) arrangementId?: string
   @ApiPropertyOptional({ format: 'uuid' }) templateId?: string
-  @ApiProperty({ description: 'Counterparty WhatsApp number (tenant or owner)' }) counterpartyNumber!: string
+  @ApiPropertyOptional({
+    description: 'Counterparty WhatsApp number (tenant, owner or contact). Absent on an inbound message whose sender WhatsApp identified by a business-scoped user id only',
+  })
+  counterpartyNumber?: string
+  @ApiPropertyOptional({ format: 'uuid', description: 'The WhatsApp contact of an inbound message' }) contactId?: string
+  @ApiPropertyOptional({ format: 'uuid', description: 'The WhatsApp conversation the message belongs to' }) conversationId?: string
+  @ApiPropertyOptional({ format: 'date-time', description: 'When the sender sent an inbound message' }) receivedAt?: string
   @ApiProperty({ description: "The company's own WhatsApp Business number" }) companyNumber!: string
   @ApiProperty() body!: string
   @ApiPropertyOptional({ type: StoredFileDto }) attachment?: StoredFileDto

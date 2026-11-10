@@ -165,6 +165,16 @@ values
   ('20000000-0000-4000-8000-000000000001', 'Monthly statement', 'monthly_statement', 'tenant', 'monthly_statement_v1', 'en', 'utility', 'Good day. Your {{1}} statement is attached.', true),
   ('20000000-0000-4000-8000-000000000002', 'Monthly statement', 'monthly_statement', 'tenant', 'monthly_statement_v1', 'en', 'utility', 'Good day. Your {{1}} statement is attached.', true);
 
+-- One WhatsApp contact and conversation per company (worker-written; members read).
+insert into public.whatsapp_contacts (id, company_id, wa_id, profile_name, first_message_at, last_message_at)
+values
+  ('96000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', '27829000001', 'Fixture contact NS', now(), now()),
+  ('96000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002', '27829000002', 'Fixture contact KP', now(), now());
+insert into public.whatsapp_conversations (company_id, number_id, contact_id, last_inbound_at, last_message_at)
+select n.company_id, n.id, k.id, now(), now()
+from public.whatsapp_phone_numbers n join public.whatsapp_contacts k on k.company_id = n.company_id
+where k.id in ('96000000-0000-4000-8000-000000000001', '96000000-0000-4000-8000-000000000002');
+
 insert into public.communications (id, company_id, channel, direction, message_type, recipient_type, tenant_id, owner_user_id, statement_id, counterparty_number, company_number, body, attachment_file_name, attachment_storage_path, attachment_mime_type, status, external_message_id, sent_at, delivered_at)
 values
   -- NS: awaiting approval
