@@ -16,9 +16,23 @@ import { PropertyListScreen } from './PropertyListScreen'
 const fakeSource = vi.hoisted(() => ({
   list: vi.fn<PropertySource['list']>(),
   get: vi.fn<PropertySource['get']>(),
+  create: vi.fn<PropertySource['create']>(),
+  update: vi.fn<PropertySource['update']>(),
+  archive: vi.fn<PropertySource['archive']>(),
+  restore: vi.fn<PropertySource['restore']>(),
 }))
 
 vi.mock('../api/selectSource', () => ({ getPropertySource: () => fakeSource }))
+vi.mock('@/services/api/client', () => ({ getApiClient: () => ({}) }))
+vi.mock('@/features/users/api/apiSource', () => ({
+  createApiUserSource: () => ({ listMembers: async () => ({ items: [], total: 0, page: 1, pageSize: 100 }) }),
+}))
+
+const viewer = vi.hoisted(() => ({ writer: false }))
+vi.mock('@/features/account/useActiveRole', () => ({
+  useIsCompanyWriter: () => viewer.writer,
+  useCurrentUserId: () => '7d9f3c2a-0000-5000-8000-000000000001',
+}))
 
 const BASE: PropertyListParams = { page: 1, pageSize: 25, sort: 'name', direction: 'asc' }
 
@@ -57,8 +71,8 @@ beforeEach(() => {
   localStorage.clear()
   resetWorkspace()
   openWorkspace(NEXUS_ID)
-  fakeSource.list.mockReset()
-  fakeSource.get.mockReset()
+  viewer.writer = false
+  for (const fn of Object.values(fakeSource)) fn.mockReset()
 })
 
 describe('PropertyListScreen', () => {
@@ -183,5 +197,19 @@ describe('PropertyListScreen', () => {
     await renderScreen()
     expect(await screen.findByText('No workspace selected')).toBeInTheDocument()
     expect(fakeSource.list).not.toHaveBeenCalled()
+  })
+
+  it('offers "Add property" to company admins and property managers only', async () => {
+    fakeSource.list.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 25 })
+    const reader = await renderScreen()
+    expect(await screen.findByText('No properties yet')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add property' })).not.toBeInTheDocument()
+    reader.unmount()
+
+    viewer.writer = true
+    await renderScreen()
+    expect(await screen.findByText('Add the first property of this workspace.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Add property' }))
+    expect(await screen.findByRole('dialog', { name: 'Add property' })).toBeInTheDocument()
   })
 })

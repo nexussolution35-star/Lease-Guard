@@ -1,5 +1,6 @@
 import { useNavigate } from '@tanstack/react-router'
-import { useEffect } from 'react'
+import { Plus } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { PROPERTY_STATUSES, PROPERTY_TYPES, type Property, type PropertyStatus, type PropertyType } from '@leaseguard/domain'
 
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -15,12 +16,14 @@ import {
   type DataTableSort,
 } from '@/components/shared'
 import { Button } from '@/components/ui/button'
+import { useIsCompanyWriter } from '@/features/account/useActiveRole'
 import { isAwaitingWorkspace } from '@/lib/data/queries'
 import { LIST_PAGE_SIZE_OPTIONS, lastPageWhenPastEnd, listSearchTerm } from '@/lib/data/listParams'
 import { enumOptions, labelFor } from '@/lib/labels'
 
 import { usePropertyList } from '../api/queries'
 import { PROPERTY_SORT_FIELDS, type PropertyListParams } from '../api/source'
+import { PropertyFormDialog } from './PropertyFormDialog'
 
 const AREA_FORMAT = new Intl.NumberFormat('en-ZA', { maximumFractionDigits: 0 })
 
@@ -74,6 +77,8 @@ export interface PropertyListScreenProps {
 export function PropertyListScreen({ params, onParamsChange }: PropertyListScreenProps) {
   const navigate = useNavigate()
   const query = usePropertyList(params)
+  const isWriter = useIsCompanyWriter()
+  const [adding, setAdding] = useState(false)
   const isFiltered = listSearchTerm(params.search) !== undefined || params.status !== undefined || params.type !== undefined
 
   /** Changing search, filters, sort or page size returns to page 1. */
@@ -89,7 +94,15 @@ export function PropertyListScreen({ params, onParamsChange }: PropertyListScree
     if (lastPage !== null) onParamsChange({ ...params, page: lastPage })
   }, [lastPage, params, onParamsChange])
 
-  const header = <PageHeader title="Properties" description="Properties in this workspace with occupancy and monitoring status." />
+  const addButton = isWriter ? (
+    <Button type="button" onClick={() => setAdding(true)}>
+      <Plus aria-hidden="true" />
+      Add property
+    </Button>
+  ) : null
+  const header = (
+    <PageHeader title="Properties" description="Properties in this workspace with occupancy and monitoring status." actions={addButton} />
+  )
 
   if (isAwaitingWorkspace(query)) {
     return (
@@ -124,7 +137,12 @@ export function PropertyListScreen({ params, onParamsChange }: PropertyListScree
             <DataTableEmptyState
               isFiltered={isFiltered}
               onClearFilters={clearFilters}
-              {...(isFiltered ? {} : { title: 'No properties yet', description: 'Properties added to this workspace appear here.' })}
+              {...(isFiltered
+                ? {}
+                : {
+                    title: 'No properties yet',
+                    description: isWriter ? 'Add the first property of this workspace.' : 'Properties added to this workspace appear here.',
+                  })}
             />
           }
           toolbar={
@@ -174,6 +192,13 @@ export function PropertyListScreen({ params, onParamsChange }: PropertyListScree
             : {})}
         />
       </div>
+      {isWriter ? (
+        <PropertyFormDialog
+          open={adding}
+          onOpenChange={setAdding}
+          onSaved={(property) => void navigate({ to: '/properties/$propertyId', params: { propertyId: property.id } })}
+        />
+      ) : null}
     </section>
   )
 }

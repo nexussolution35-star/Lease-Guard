@@ -6,7 +6,10 @@ import { listSearchTerm } from '@/lib/data/listParams'
 
 import type { PropertySource } from './source'
 
-/** Properties from the LeaseGuard API (`GET /api/v1/properties`, `GET /api/v1/properties/{propertyId}`). */
+/**
+ * Properties from the LeaseGuard API: list and read (`GET /api/v1/properties`, `GET /api/v1/properties/{propertyId}`),
+ * create, edit, archive and restore.
+ */
 export function createApiPropertySource(api: ApiClient): PropertySource {
   return {
     async list(companyId, params) {
@@ -44,6 +47,24 @@ export function createApiPropertySource(api: ApiClient): PropertySource {
         if (isApiError(error) && error.isNotFound) return null
         throw error
       }
+    },
+
+    create(companyId, property) {
+      return unwrap(api.POST('/api/v1/properties', { body: property, headers: { [COMPANY_ID_HEADER]: companyId } }))
+    },
+
+    update(companyId, id, changes) {
+      return unwrap(
+        api.PATCH('/api/v1/properties/{propertyId}', { params: { path: { propertyId: id } }, body: changes, headers: { [COMPANY_ID_HEADER]: companyId } }),
+      )
+    },
+
+    archive(companyId, id) {
+      return unwrap(api.POST('/api/v1/properties/{propertyId}/archive', { params: { path: { propertyId: id } }, headers: { [COMPANY_ID_HEADER]: companyId } }))
+    },
+
+    restore(companyId, id) {
+      return unwrap(api.POST('/api/v1/properties/{propertyId}/restore', { params: { path: { propertyId: id } }, headers: { [COMPANY_ID_HEADER]: companyId } }))
     },
   }
 }
