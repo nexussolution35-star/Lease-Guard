@@ -24,7 +24,6 @@ package); the Python image builds from its own directory:
 ```sh
 docker build -f backend/Dockerfile -t leaseguard-backend:<version> .
 docker build -f frontend/Dockerfile -t leaseguard-frontend:<version> \
-  --build-arg VITE_DATA_SOURCE=api \
   --build-arg VITE_API_URL=https://<api origin> \
   --build-arg VITE_SUPABASE_URL=https://<project>.supabase.co \
   --build-arg VITE_SUPABASE_ANON_KEY=<public anon key> .
@@ -80,7 +79,7 @@ documents each variable. Give each process only its own variables.
 | `WHATSAPP_GRAPH_API_VERSION` | | yes | | for example `v23.0` |
 | `WHATSAPP_ACCESS_TOKEN_<COMPANY ID>` | | yes | | **secret**, one per connected company; see below |
 
-Frontend `VITE_*` values (`VITE_DATA_SOURCE=api`, `VITE_API_URL`, `VITE_SUPABASE_URL`,
+Frontend `VITE_*` values (`VITE_API_URL`, `VITE_SUPABASE_URL`,
 `VITE_SUPABASE_ANON_KEY`) are build arguments compiled into the JavaScript bundle. They are public by
 nature: never put a secret in a `VITE_*` variable. Changing them requires rebuilding the frontend
 image.
@@ -151,6 +150,75 @@ After a schema change, regenerate `backend/src/infrastructure/database/database.
 - Worker: no HTTP endpoint. Treat process exit as failure (the platform's restart policy restarts
   it); its logs report Redis connection loss and failed jobs, and job outcomes are recorded in the
   `job_runs` table.
+
+## Load balancing and caching
+
+nginx in this repository is the static file server for the frontend only
+(`infrastructure/docker/nginx/frontend.conf`). It does not proxy, load-balance or cache the API. Do
+not add an nginx tier in front of the API on a platform that already balances replicas.
+
+### Load balancing the API
+
+The API is stateless: a bearer token on every request, no sessions or cookies, no in-process data
+cache, no WebSockets. One replica is enough for the pilot. When more are run, use the platform's own
+load balancer and hold it to these rules:
+
+- **No session persistence.** No sticky sessions, IP hashing or cookie affinity. Use least-connections
+  where the balancer offers a choice and round robin otherwise; at this scale they behave the same.
+- **Health.** Route on `GET /health/ready` with an active check. `GET /health` is liveness only.
+- **Retries.** Retry only when no connection to a replica could be made. Never replay a request that
+  was already sent unless it is a `GET` or `HEAD`. `POST`, `PATCH`, `PUT` and `DELETE` routes send
+  WhatsApp messages and invitations, remove members and change WhatsApp settings, and none of them
+  takes an idempotency key.
+- **Idle connections.** The API keeps an idle connection open for 65 s (`KEEP_ALIVE_TIMEOUT_MS` in
+  `backend/src/main.ts`). The balancer's idle timeout towards the API must be shorter (60 s is the
+  common default). Otherwise it reuses a connection the API is closing and callers see occasional
+  502s.
+- **Timeouts.** Allow at least 30 s for a response. The slowest call, the Meta code exchange, is
+  capped at 10 s.
+- **WhatsApp webhook** (`/api/v1/webhooks/whatsapp`). Allow bodies of 3 MB and pass the body and the
+  `X-Hub-Signature-256` header through unmodified: Meta's signature covers the exact bytes. The `GET`
+  handshake carries the secret verify token in its query string, so the balancer's access and error
+  logs must not record query strings for this path. The API redacts it in its own logs.
+- **Headers.** Pass `X-Request-Id` through. The API does not read the client address, so Express
+  `trust proxy` is unset. When a feature needs the address (rate limiting, IP logging), set it to the
+  exact number of proxy hops, never `true`.
+
+Not built yet, and needed before a second replica serves real traffic:
+
+1. **Drain on shutdown.** On `SIGTERM` the API should answer 503 on `/health/ready` for a few seconds
+   before it closes, and the platform should give it a stop grace period. Today a request in flight
+   on a stopping replica can fail.
+2. **Idempotency keys on the routes that send.** `POST /whatsapp/conversations/:id/replies`,
+   `/invitations`, `/invitations/:id/resend` and `/integrations/whatsapp/test-messages` create a new
+   record on every call. A user who sees a 502 or 504 and presses send again can send a tenant the
+   same message twice.
+
+Self-hosting without a platform balancer has not been set up or tested. If it is ever needed, prefer
+a proxy with active health checks (HAProxy, Traefik or Caddy). Open-source nginx has passive checks
+only, so it cannot route on `/health/ready`, and it replays `PUT` and `DELETE` requests after a
+connection error unless `proxy_next_upstream off` is set for everything except `GET` and `HEAD`.
+
+### Caching
+
+| Content | `Cache-Control` | Set by |
+| --- | --- | --- |
+| `/assets/*` (content-hashed by Vite) | `public, max-age=31536000, immutable` | frontend nginx |
+| `index.html` and client-side route fallbacks | `no-cache` (revalidated; 304 when unchanged) | frontend nginx |
+| `/favicon.svg` (the only unhashed file) | `public, max-age=86400` | frontend nginx |
+| Every API response, including health and errors | `no-store` | `backend/src/common/http/no-store.ts` |
+
+Never cache `/api/` or `/health` at a proxy or CDN. The company is carried in the `Authorization` and
+`X-Company-Id` headers, not in the URL, so a cache keyed on the URL would serve one company's data to
+another and bypass both the API guards and Row Level Security. Do not add a proxy cache, a rule that
+ignores origin cache headers, or a CDN rule that caches by path or file extension on the API host.
+Repeat reads are cached in the browser by TanStack Query, keyed by company id and cleared on sign-out.
+
+A new unhashed file in `frontend/public` needs its own `location` with an explicit lifetime in
+`frontend.conf`. The one-year policy is only for `/assets/`.
+
+Checks: `pnpm docker:nginx-check` runs `nginx -t` on `frontend.conf` in the pinned image and asserts
+the headers above; `tests/integration/cache-headers.test.ts` asserts `no-store` on the running API.
 
 ## Network exposure
 

@@ -17,6 +17,7 @@ containers reach it at `host.docker.internal:54321`.
 cp .env.example .env            # once; fill in the keys printed by `pnpm db:status`
 pnpm db:start                   # Supabase
 pnpm docker:config              # validate docker-compose.yml
+pnpm docker:nginx-check         # nginx -t and cache/compression headers for nginx/frontend.conf
 pnpm docker:up                  # build and start redis, document-processing, api, worker
 bash infrastructure/scripts/compose.sh --profile frontend up -d --build   # also the SPA
 bash infrastructure/scripts/compose.sh logs -f api worker
@@ -38,8 +39,8 @@ uppercase>` (for example `WHATSAPP_ACCESS_TOKEN_3AB0FC4AEADB50B8BC4D5673ADA1519E
 name-based variables are not accepted. Tokens kept in Supabase Vault (`secret://vault/…`) need no
 variable.
 
-The frontend image compiles `VITE_*` values in at build time (they are public, never secrets). With
-`VITE_DATA_SOURCE=demo` it runs on in-browser demo data.
+The frontend image compiles `VITE_API_URL`, `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in at
+build time (they are public, never secrets).
 
 ## `compose.sh`
 

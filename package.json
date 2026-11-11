@@ -41,7 +41,8 @@
     "python:lint": "bash infrastructure/scripts/python.sh lint",
     "docker:config": "bash infrastructure/scripts/compose.sh config --quiet",
     "docker:up": "bash infrastructure/scripts/compose.sh up -d --build",
-    "docker:down": "bash infrastructure/scripts/compose.sh down"
+    "docker:down": "bash infrastructure/scripts/compose.sh down",
+    "docker:nginx-check": "bash infrastructure/scripts/nginx-check.sh"
   },
   "devDependencies": {
     "openapi-typescript": "7.13.0",
