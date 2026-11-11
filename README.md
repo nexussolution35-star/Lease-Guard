@@ -193,8 +193,10 @@ LeaseGuard/
 ├── infrastructure/               docker/, deployment/, scripts/
 ├── tests/                        cross-service integration and end-to-end tests
 ├── docs/                         PRD, architecture, development notes
-├── docker-compose.yml            local Redis, API, worker and document-processing containers
-└── .env.example                  the single environment contract for every process
+└── docker-compose.yml            local Redis, API, worker and document-processing containers
+
+backend/.env.example              server settings and secrets (API, worker, scripts, document processing)
+frontend/.env.example             the web app's public VITE_* values only
 ```
 
 ---
@@ -273,9 +275,12 @@ All commands run from the repository root.
 
 ## Configuration
 
-Every process reads **one** environment contract: [`.env.example`](.env.example), copied to `.env` at the
-repository root. Each process validates its variables at startup and refuses to start with a clear message
-if any are missing or invalid:
+Configuration is split by side. The server processes (API, worker, operator scripts, document processing)
+read [`backend/.env.example`](backend/.env.example), copied to `backend/.env`; it holds every server setting
+and secret. The web app reads [`frontend/.env.example`](frontend/.env.example), copied to `frontend/.env`;
+it holds public `VITE_*` values only, and its build refuses a `VITE_*` value that holds a server secret.
+Docker Compose reads both (through `infrastructure/scripts/compose.sh`). Each process validates its
+variables at startup and refuses to start with a clear message if any are missing or invalid:
 
 | Process | Validation |
 | --- | --- |
@@ -286,7 +291,9 @@ if any are missing or invalid:
 - `SUPABASE_SERVICE_ROLE_KEY` is for the **worker only**. Each process loads only the variables its own
   schema declares, so the API never holds this key, and no service-role key is ever exposed to the browser.
 - `VITE_SUPABASE_ANON_KEY` (the public anon or publishable key) is the only Supabase key the browser receives.
-- WhatsApp access tokens are never stored in plain columns or in `.env.example`. Each company's
+- `GOOGLE_MAPS_API_KEY` (address suggestions) is server-only: the browser calls
+  `POST /api/v1/address-suggestions` and the API calls Google, with per-user and deployment-wide rate limits.
+- WhatsApp access tokens are never stored in plain columns or in `backend/.env.example`. Each company's
   `whatsapp_phone_numbers.access_token_reference` (one row per business number) points to a secret the worker resolves: a variable in its own
   environment (`secret://env/WHATSAPP_ACCESS_TOKEN_<COMPANY_ID_HEX_UPPERCASE>`) or a Supabase Vault secret
   (`secret://vault/<secret id>`). See `docs/security/README.md`.

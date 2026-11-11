@@ -13,15 +13,15 @@ The local stack is for development and tests only.
 worker and the web app connect: `SUPABASE_URL` (backend) and `VITE_SUPABASE_URL` (frontend) are either the local stack (`http://127.0.0.1:54321`) or a hosted project
 (`https://<ref>.supabase.co`). The keys must belong to the same project as the URL.
 
-- `pnpm db:status` prints the **local** stack's URL and keys. Use them when `.env` should point at
+- `pnpm db:status` prints the **local** stack's URL and keys. Use them when `backend/.env` and `frontend/.env` should point at
   the local stack.
-- The database scripts ignore `.env` and always act on the local stack: `pnpm db:reset`,
+- The database scripts ignore the env files and always act on the local stack: `pnpm db:reset`,
   `pnpm db:test`, `pnpm db:types` and `pnpm db:types:check` (Supabase CLI 3 targets the local
   database unless `--remote` is passed).
-- `pnpm test:integration` never reads `.env`: it takes the URL and keys from `supabase status` and
+- `pnpm test:integration` never reads `backend/.env` or `frontend/.env`: it takes the URL and keys from `supabase status` and
   refuses to run unless they are on this machine.
 - Containers started with `pnpm docker:up` use the local stack at `host.docker.internal:54321` unless
-  `DOCKER_SUPABASE_URL` is set in `.env`.
+  `DOCKER_SUPABASE_URL` is set in `backend/.env`.
 
 If the web app signs in but shows no data, or the API reports `/health/ready` as 503, check that the
 URL and the keys come from the same project and that the stack is running (`pnpm db:status`).
@@ -65,7 +65,7 @@ Build the backend and frontend images from the repository root; the document-pro
 
 The containers publish the same host ports `pnpm dev` uses (API 3000, document processing 8000,
 frontend container 8080). Stop one before starting the other, or move the containers with
-`API_HOST_PORT`, `DOCUMENT_PROCESSING_HOST_PORT` and `FRONTEND_HOST_PORT` in `.env`.
+`API_HOST_PORT`, `DOCUMENT_PROCESSING_HOST_PORT` and `FRONTEND_HOST_PORT` in `backend/.env`.
 
 ## Sign-in is rejected or rate-limited locally
 

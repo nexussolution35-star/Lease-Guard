@@ -27,13 +27,13 @@ bash infrastructure/scripts/compose.sh down -v                            # also
 ```
 
 The host ports are the ones `pnpm dev` uses, so run either the containers or `pnpm dev`, or move the
-containers with `API_HOST_PORT`, `DOCUMENT_PROCESSING_HOST_PORT` and `FRONTEND_HOST_PORT` (in `.env`
+containers with `API_HOST_PORT`, `DOCUMENT_PROCESSING_HOST_PORT` and `FRONTEND_HOST_PORT` (in `backend/.env`
 or the shell).
 
 Configuration comes from `backend/.env` and, for the frontend image's build arguments, `frontend/.env`. Inside containers the host names differ, so the compose
 file sets `REDIS_URL=redis://redis:6379`, `SUPABASE_URL=http://host.docker.internal:54321` and
 `DOCUMENT_PROCESSING_URL=http://document-processing:8000`. The API and the document-processing
-service receive only their own variables; the worker receives the whole `.env` because it also needs
+service receive only their own variables; the worker receives the whole `backend/.env` because it also needs
 each company's WhatsApp access-token variable, `WHATSAPP_ACCESS_TOKEN_<company uuid without dashes,
 uppercase>` (for example `WHATSAPP_ACCESS_TOKEN_3AB0FC4AEADB50B8BC4D5673ADA1519E`; see
 `backend/src/infrastructure/whatsapp/access-token-reference.ts`). The bare `WHATSAPP_ACCESS_TOKEN` and

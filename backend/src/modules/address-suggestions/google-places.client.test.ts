@@ -66,6 +66,9 @@ describe('GooglePlacesClient', () => {
     vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('fetch failed'))))
     await expect(new GooglePlacesClient(env()).address('abc', TOKEN)).rejects.toBeInstanceOf(GooglePlacesUnavailableError)
 
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('<html>proxy error</html>', { status: 200, headers: { 'Content-Type': 'text/html' } })))
+    await expect(new GooglePlacesClient(env()).autocomplete('Sandton', TOKEN)).rejects.toBeInstanceOf(GooglePlacesUnavailableError)
+
     const client = new GooglePlacesClient(env(null))
     expect(client.configured).toBe(false)
     await expect(client.autocomplete('Sandton', TOKEN)).rejects.toBeInstanceOf(GooglePlacesUnavailableError)

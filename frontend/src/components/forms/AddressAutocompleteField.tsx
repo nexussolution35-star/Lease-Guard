@@ -80,12 +80,15 @@ export function AddressAutocompleteField<TFieldValues extends FieldValues, TName
   const [active, setActive] = useState(-1)
   const [filled, setFilled] = useState(false)
   const latest = useRef(0)
+  const pending = useRef<number | undefined>(undefined)
 
   // Ask for suggestions a moment after the user stops typing; only the newest answer is shown.
   useEffect(() => {
     if (!source || query.trim().length < MIN_QUERY_LENGTH) return
     const request = ++latest.current
     const timer = window.setTimeout(() => {
+      // A choice made while this search was waiting cancels it (no stray, billed search after the lookup ended).
+      if (request !== latest.current) return
       setLookup({ state: 'loading' })
       source.suggest(query.trim()).then(
         (items) => {
@@ -98,6 +101,7 @@ export function AddressAutocompleteField<TFieldValues extends FieldValues, TName
         },
       )
     }, DEBOUNCE_MS)
+    pending.current = timer
     return () => window.clearTimeout(timer)
   }, [query, source])
 
@@ -111,6 +115,7 @@ export function AddressAutocompleteField<TFieldValues extends FieldValues, TName
 
         const choose = async (suggestion: AddressSuggestion) => {
           setOpen(false)
+          window.clearTimeout(pending.current)
           latest.current += 1
           try {
             const address = await source!.resolve(suggestion)

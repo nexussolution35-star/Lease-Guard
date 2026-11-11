@@ -61,6 +61,20 @@ describe('AddressAutocompleteField', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 
+  it('does not search again when a suggestion is chosen while the next search is waiting', async () => {
+    renderField()
+    const input = await screen.findByRole('combobox', { name: 'Street address' })
+    await userEvent.type(input, '12 Fr')
+    await screen.findByRole('option', { name: /12 Fredman Drive/ })
+    const searches = source.suggest.mock.calls.length
+    // Type, then choose within the 250 ms pause before the next search.
+    await userEvent.type(input, 'e')
+    await userEvent.click(screen.getByRole('option', { name: /12 Fredman Drive/ }))
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(source.suggest.mock.calls.length).toBe(searches)
+    expect(source.resolve).toHaveBeenCalledWith(FREDMAN)
+  })
+
   it('chooses with the keyboard', async () => {
     renderField()
     const input = await screen.findByRole('combobox', { name: 'Street address' })

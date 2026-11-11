@@ -8,8 +8,29 @@ import { counterKey, decide, RateLimiter, type RateLimitDecision, type RateLimit
 const COMMAND_TIMEOUT_MS = 2_000
 
 /**
- * Fixed-window counters in Redis (INCR + EXPIRE in one MULTI per request), so limits hold across API replicas.
- * Keys live under the queue prefix and expire with their window.
+ * Check-then-count in one atomic step: KEYS are the counters, ARGV the limits then the windows (seconds). Returns the
+ * counts before this use; the use is counted (INCR + EXPIRE on every key) only when every count is under its limit.
+ */
+const CHECK_AND_COUNT = `
+local n = #KEYS
+local counts = {}
+local allowed = true
+for i = 1, n do
+  counts[i] = tonumber(redis.call('GET', KEYS[i]) or '0')
+  if counts[i] >= tonumber(ARGV[i]) then allowed = false end
+end
+if allowed then
+  for i = 1, n do
+    redis.call('INCR', KEYS[i])
+    redis.call('EXPIRE', KEYS[i], tonumber(ARGV[n + i]))
+  end
+end
+return counts
+`
+
+/**
+ * Fixed-window counters in Redis, so limits hold across API replicas. A refused use is not counted (one Lua script
+ * checks every counter before counting any). Keys live under the queue prefix and expire with their window.
  */
 @Injectable()
 export class RedisRateLimiter extends RateLimiter implements OnApplicationBootstrap, OnApplicationShutdown {
@@ -41,19 +62,12 @@ export class RedisRateLimiter extends RateLimiter implements OnApplicationBootst
   }
 
   async consume(subject: string, rules: readonly RateLimitRule[]): Promise<RateLimitDecision> {
+    if (rules.length === 0) return { allowed: true }
     const now = Date.now()
-    const transaction = this.redis.multi()
-    for (const rule of rules) {
-      const key = counterKey(this.env.QUEUE_PREFIX, rule, subject, now)
-      transaction.incr(key).expire(key, rule.windowSeconds + 1)
-    }
-    const results = await transaction.exec()
-    if (!results) throw new Error('The rate-limit transaction was discarded')
-    const counts = rules.map((_, index) => {
-      const [error, value] = results[index * 2] ?? [new Error('missing result'), null]
-      if (error) throw error
-      return Number(value)
-    })
-    return decide(rules, counts, now)
+    const keys = rules.map((rule) => counterKey(this.env.QUEUE_PREFIX, rule, subject, now))
+    const args = [...rules.map((rule) => String(rule.limit)), ...rules.map((rule) => String(rule.windowSeconds + 1))]
+    const result: unknown = await this.redis.eval(CHECK_AND_COUNT, keys.length, ...keys, ...args)
+    if (!Array.isArray(result) || result.length !== rules.length) throw new Error('Unexpected rate-limit script result')
+    return decide(rules, result.map(Number), now)
   }
 }

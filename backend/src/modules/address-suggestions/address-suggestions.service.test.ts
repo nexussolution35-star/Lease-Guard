@@ -51,13 +51,15 @@ describe('AddressSuggestionsService', () => {
     expect(limiter.calls[2]).toEqual({ subject: USER, rules: RESOLVE_RULES })
   })
 
-  it('refuses over a user limit with 429 and the wait, without calling Google', async () => {
+  it('refuses over a user limit with 429 and the wait, without calling Google or touching the deployment ceiling', async () => {
     const client = places()
-    const service = new AddressSuggestionsService(client, new FakeLimiter((s) => (s === USER ? { allowed: false, retryAfterSeconds: 37, rule: 'address-search-minute' } : { allowed: true })), env)
+    const limiter = new FakeLimiter((s) => (s === USER ? { allowed: false, retryAfterSeconds: 37, rule: 'address-search-minute' } : { allowed: true }))
+    const service = new AddressSuggestionsService(client, limiter, env)
     const refusal = await service.search(USER, body).catch((error: unknown) => error)
     expect(refusal).toBeInstanceOf(TooManyRequestsException)
     expect((refusal as TooManyRequestsException).retryAfterSeconds).toBe(37)
     expect(client.autocomplete).not.toHaveBeenCalled()
+    expect(limiter.calls.map((call) => call.subject)).toEqual([USER])
   })
 
   it('refuses when the deployment reached its daily limit', async () => {

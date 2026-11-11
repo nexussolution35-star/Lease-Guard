@@ -61,6 +61,10 @@ describe('RedisRateLimiter against the real Redis', () => {
       expect(!refused.allowed && refused.retryAfterSeconds).toBeLessThanOrEqual(60)
       // Another user is not affected.
       expect((await limiter.consume(`${subject}-other`, rules)).allowed).toBe(true)
+
+      // A refused use is not counted: with one more allowed, the same counter (30 uses, not 31) has room again.
+      expect((await limiter.consume(subject, [{ ...rules[0]!, limit: 31 }])).allowed).toBe(true)
+      expect((await limiter.consume(subject, [{ ...rules[0]!, limit: 31 }])).allowed).toBe(false)
     } finally {
       limiter.onApplicationShutdown()
     }

@@ -3,7 +3,7 @@ import { Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs
 import { TooManyRequestsException } from '../../common/http/too-many-requests.exception'
 import type { ApiEnv } from '../../config/env'
 import { API_ENV } from '../../config/tokens'
-import { RateLimiter, type RateLimitRule } from '../../infrastructure/rate-limit/rate-limiter'
+import { RateLimiter, type RateLimitDecision, type RateLimitRule } from '../../infrastructure/rate-limit/rate-limiter'
 import type { AddressResolveBody, AddressSearchBody } from './address-suggestions.schemas'
 import type { SuggestedAddress } from './google-address'
 import { GooglePlacesClient, GooglePlacesUnavailableError, type AddressSuggestion } from './google-places.client'
@@ -31,8 +31,8 @@ export const UNAVAILABLE_MESSAGE = 'Address suggestions are unavailable right no
 
 /**
  * Address suggestions for signed-in users, through LeaseGuard's server so the Google key never reaches a browser.
- * Every call is counted first (per user per minute and per day, and for the whole deployment per day); a refusal is a
- * 429 with Retry-After. When the counters cannot be reached the call is refused (503), never sent to Google uncounted.
+ * Every call is counted first (per user per minute and per day, then for the whole deployment per day); a refusal is a
+ * 429 with Retry-After and is not counted. When the counters cannot be reached the call is refused (503), never sent to Google uncounted.
  */
 @Injectable()
 export class AddressSuggestionsService {
@@ -64,21 +64,30 @@ export class AddressSuggestionsService {
     if (!this.places.configured) throw new ServiceUnavailableException(NOT_CONFIGURED_MESSAGE)
   }
 
+  /**
+   * The user's own limits first; only a use they allow is counted against the deployment's ceiling, so one user's
+   * refused requests can never use up everyone's allowance.
+   */
   private async count(userId: string, rules: readonly RateLimitRule[]): Promise<void> {
     const deployment: RateLimitRule = { name: 'address-lookup-deployment-day', limit: this.env.ADDRESS_LOOKUP_DAILY_LIMIT, windowSeconds: DAY }
-    let mine, everyone
-    try {
-      ;[mine, everyone] = await Promise.all([this.limiter.consume(userId, rules), this.limiter.consume(ALL_USERS, [deployment])])
-    } catch (error) {
-      this.logger.warn(`Address lookup refused: the rate-limit counters are unreachable (${error instanceof Error ? error.message : 'unknown'})`)
-      throw new ServiceUnavailableException(UNAVAILABLE_MESSAGE)
-    }
+    const mine = await this.consume(userId, rules)
     if (!mine.allowed) {
       throw new TooManyRequestsException('Too many address lookups. Wait a moment, or type the address in full.', mine.retryAfterSeconds)
     }
+    const everyone = await this.consume(ALL_USERS, [deployment])
     if (!everyone.allowed) {
       this.logger.warn('Address lookups reached the daily limit for this deployment (ADDRESS_LOOKUP_DAILY_LIMIT)')
-      throw new TooManyRequestsException('Address suggestions have reached today\'s limit. Type the address in full.', everyone.retryAfterSeconds)
+      throw new TooManyRequestsException("Address suggestions have reached today's limit. Type the address in full.", everyone.retryAfterSeconds)
+    }
+  }
+
+  /** Fail closed: when the counters cannot be reached, nothing is sent to Google. */
+  private async consume(subject: string, rules: readonly RateLimitRule[]): Promise<RateLimitDecision> {
+    try {
+      return await this.limiter.consume(subject, rules)
+    } catch (error) {
+      this.logger.warn(`Address lookup refused: the rate-limit counters are unreachable (${error instanceof Error ? error.message : 'unknown'})`)
+      throw new ServiceUnavailableException(UNAVAILABLE_MESSAGE)
     }
   }
 

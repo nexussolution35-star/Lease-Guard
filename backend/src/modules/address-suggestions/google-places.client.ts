@@ -97,6 +97,12 @@ export class GooglePlacesClient {
       this.logger.warn(`${operation} refused by Google: HTTP ${response.status} ${status}`)
       throw new GooglePlacesUnavailableError(`${operation} refused`)
     }
-    return (await response.json()) as T
+    try {
+      // The timeout also covers reading the body; a stalled or non-JSON body is an outage, not a server error.
+      return (await response.json()) as T
+    } catch (error) {
+      this.logger.warn(`${operation} returned an unreadable answer: ${error instanceof Error ? error.name : 'error'}`)
+      throw new GooglePlacesUnavailableError(`${operation} failed`)
+    }
   }
 }
