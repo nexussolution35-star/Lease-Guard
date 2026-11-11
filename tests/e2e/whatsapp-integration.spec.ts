@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 
+import { localSql } from '../fixtures/local-db.ts'
 import { serviceRoleClient } from '../fixtures/world.ts'
 import { expectShell, pageHeading, signIn } from './support/app.ts'
 import { e2eContext, e2eUser, e2eWorld } from './support/world.ts'
@@ -120,6 +121,43 @@ test.describe('Settings → Integrations → WhatsApp', () => {
     } finally {
       await db.from('whatsapp_phone_numbers').delete().eq('phone_number_id', phoneId)
       await db.from('whatsapp_business_accounts').delete().eq('business_account_id', accountId)
+    }
+  })
+
+  test('shows a number Nexus Solution imported as pending until verified, and points its admins to Nexus', async ({ page }) => {
+    const db = serviceRoleClient(e2eContext().supabase)
+    const companyId = e2eWorld().companies.a.id
+    const unique = `${Date.now()}`
+    const accountId = `${unique}5`
+    const phoneId = `${unique}6`
+    try {
+      // What `pnpm whatsapp:import-test-number -- --apply` stores (no worker in e2e, so the number stays pending).
+      const imported = await db.rpc('import_whatsapp_number', {
+        p_company_id: companyId,
+        p_business_account_id: accountId,
+        p_phone_number_id: phoneId,
+        p_access_token: `EAAG-e2e-test-number-${unique}`,
+        p_apply: true,
+      })
+      if (imported.error) throw new Error(`import: ${imported.error.message}`)
+      expect((imported.data as { outcome: string }[])[0]?.outcome).toBe('new_number')
+
+      await signIn(page, e2eUser('admin'), '/settings/integrations/whatsapp')
+      await expect(page.getByText(`Number id ${phoneId}`)).toBeVisible()
+      await expect(page.getByText(/Nexus Solution connected this number with the number import on/)).toBeVisible()
+      await expect(page.getByText('Pending verification')).toBeVisible()
+      await expect(page.getByText('Connected', { exact: true })).toHaveCount(0)
+
+      await page.getByRole('button', { name: 'Disconnect' }).click()
+      const confirm = page.getByRole('alertdialog')
+      await expect(confirm).toContainText('ask Nexus Solution to import it again')
+      await confirm.getByRole('button', { name: 'Disconnect' }).click()
+      await expect(page.getByText(/Disconnected\. Ask Nexus Solution to import the number again/)).toBeVisible()
+    } finally {
+      await db.from('whatsapp_phone_numbers').delete().eq('phone_number_id', phoneId)
+      await db.from('whatsapp_business_accounts').delete().eq('business_account_id', accountId)
+      // The disconnect deleted the imported token; remove it anyway if the test stopped before that.
+      await localSql(`delete from vault.secrets where name like 'whatsapp_access_token:${companyId}:import:%'`)
     }
   })
 })

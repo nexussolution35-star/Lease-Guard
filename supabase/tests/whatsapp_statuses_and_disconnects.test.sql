@@ -9,7 +9,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 \ir fixtures/two_companies.psql
-select plan(52);
+select plan(53);
 
 create schema tests;
 
@@ -135,6 +135,9 @@ select is((select count(*) from public.notifications where company_id = :kp and 
   'no other company is notified');
 select ok((select body not like '%deleted%' from public.notifications where company_id = :ns and dedupe_key like 'whatsapp-access-removed:%'),
   'the notification claims no token deletion when none was deleted (the number used the worker''s env token)');
+select alike((select body from public.notifications where company_id = :ns and dedupe_key like 'whatsapp-access-removed:%'),
+  '% on it until a company admin connects again with Connect WhatsApp Business on the WhatsApp integration page.',
+  'a number that was not imported (number import) is connected again with Connect WhatsApp Business');
 select is((select count(*) from public.remove_whatsapp_business_account_access('waba-ns', 'PARTNER_APP_UNINSTALLED', now())), 0::bigint,
   'a retried event finds nothing in use any more');
 select is((select count(*) from public.notifications where company_id = :ns and dedupe_key like 'whatsapp-access-removed:%'), 1::bigint,

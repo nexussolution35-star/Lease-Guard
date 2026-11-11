@@ -9693,6 +9693,11 @@
             "type": "string",
             "description": "Why the number was disconnected, when Meta reported it (e.g. the business removed LeaseGuard in Meta)"
           },
+          "operatorImportedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When a Nexus operator last connected the number with the number import (Nexus Solution's own test number, before Meta's approval); absent for a number from WhatsApp signup"
+          },
           "verificationSteps": {
             "description": "In step order; empty until verification first ran",
             "type": "array",

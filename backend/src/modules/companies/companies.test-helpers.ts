@@ -61,5 +61,6 @@ export const numberRow: NumberRow = {
   messaging_limit_tier: null,
   disconnected_at: null,
   disconnected_reason: null,
+  operator_imported_at: null,
   created_at: '2026-11-01T08:00:00+00:00',
 }

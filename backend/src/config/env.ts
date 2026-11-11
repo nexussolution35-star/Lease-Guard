@@ -123,8 +123,34 @@ const workerEnvSchema = sharedSchema
     }
   })
 
+/** A required numeric Meta id (phone number id, WhatsApp Business Account id). */
+const metaId = z.string().trim().regex(/^[0-9]{1,32}$/, 'a numeric Meta id')
+
+/**
+ * The number import operator command (pnpm whatsapp:import-test-number, backend/src/operator/; ticket 15): the one
+ * reader of the installation's single test number. It stores that number's token in Vault for one named company with
+ * the service role and queues its verification. Neither the API nor the worker loads these three test-number
+ * settings, so they are never a sending channel.
+ */
+const numberImportEnvSchema = z.object({
+  SUPABASE_URL: z.url({ protocol: /^https?$/ }),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'the service-role key (operator tooling and the worker only)'),
+  REDIS_URL: z.url({ protocol: /^rediss?$/ }),
+  QUEUE_PREFIX: queuePrefix,
+  /** The test number's access token from the Meta App Dashboard. Messages name the rule, never the value. */
+  WHATSAPP_ACCESS_TOKEN: z
+    .string()
+    .trim()
+    .min(20, 'an access token of at least 20 characters')
+    .max(4096, 'an access token of at most 4096 characters')
+    .regex(/^\S+$/, 'an access token without whitespace'),
+  WHATSAPP_PHONE_NUMBER_ID: metaId,
+  WHATSAPP_BUSINESS_MESSAGING_ACCOUNT_ID: metaId,
+})
+
 export type ApiEnv = z.infer<typeof apiEnvSchema>
 export type WorkerEnv = z.infer<typeof workerEnvSchema>
+export type NumberImportEnv = z.infer<typeof numberImportEnvSchema>
 
 export class InvalidEnvironmentError extends Error {
   constructor(processName: string, missing: string[], invalid: string[]) {
@@ -184,6 +210,7 @@ export { WHATSAPP_ACCESS_TOKEN_KEY }
 
 export const API_ENV_KEYS: readonly string[] = Object.keys(apiEnvShape)
 export const WORKER_ENV_KEYS: readonly string[] = Object.keys(workerEnvSchema.shape)
+export const NUMBER_IMPORT_ENV_KEYS: readonly string[] = Object.keys(numberImportEnvSchema.shape)
 
 /** API configuration. Throws InvalidEnvironmentError listing every missing or invalid variable. */
 export function loadApiEnv(source?: NodeJS.ProcessEnv): ApiEnv {
@@ -195,4 +222,15 @@ export function loadApiEnv(source?: NodeJS.ProcessEnv): ApiEnv {
 export function loadWorkerEnv(source?: NodeJS.ProcessEnv): WorkerEnv {
   if (!source) loadEnvFileKeys(ROOT_ENV_FILE, WORKER_ENV_KEYS, process.env, WHATSAPP_ACCESS_TOKEN_KEY)
   return parseEnv('worker', workerEnvSchema, source ?? process.env)
+}
+
+/**
+ * The number import command's configuration: its own keys from the process environment, falling back to the env file
+ * (the repository-root `.env` by default) only when one of them is missing there, and then only for its own keys.
+ * Throws InvalidEnvironmentError naming every missing or invalid variable, never a value.
+ */
+export function loadNumberImportEnv({ env = process.env, file = ROOT_ENV_FILE }: { env?: NodeJS.ProcessEnv; file?: string } = {}): NumberImportEnv {
+  const source: NodeJS.ProcessEnv = Object.fromEntries(NUMBER_IMPORT_ENV_KEYS.filter((key) => env[key]?.trim()).map((key) => [key, env[key]]))
+  if (NUMBER_IMPORT_ENV_KEYS.some((key) => source[key] === undefined)) loadEnvFileKeys(file, NUMBER_IMPORT_ENV_KEYS, source)
+  return parseEnv('number import', numberImportEnvSchema, source)
 }

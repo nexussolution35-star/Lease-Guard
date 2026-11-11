@@ -45,7 +45,7 @@ const tables = {
     account('acc-x', OTHER, '9009', '2026-10-01T08:00:00Z', 'Other company'),
   ],
   whatsapp_phone_numbers: [
-    number('num-b', COMPANY, '1001', '111222', '2026-11-03T08:00:00Z'),
+    number('num-b', COMPANY, '1001', '111222', '2026-11-03T08:00:00Z', { operator_imported_at: '2026-11-03T07:30:00Z' }),
     number('num-a', COMPANY, '1001', '111111', '2026-11-01T09:00:00Z', {
       verified_name: 'Nexus Leasing',
       quality_rating: 'GREEN',
@@ -110,6 +110,14 @@ describe('WhatsAppIntegrationService.listBusinessAccounts', () => {
     })
   })
 
+  it('says when Nexus Solution connected a number with the number import', async () => {
+    const [first] = await service.listBusinessAccounts(tableDb(tables), COMPANY)
+    expect(first?.numbers.map((n) => [n.id, n.operatorImportedAt])).toEqual([
+      ['num-a', undefined],
+      ['num-b', '2026-11-03T07:30:00Z'],
+    ])
+  })
+
   it("maps Meta's status of a number and omits what Meta has not reported", async () => {
     const [first] = await service.listBusinessAccounts(tableDb(tables), COMPANY)
 
@@ -139,6 +147,7 @@ describe('WhatsAppIntegrationService.listBusinessAccounts', () => {
       displayNumber: '+27 11 555 0100',
       webhookConfigured: false,
       connectionStatus: 'pending_verification',
+      operatorImportedAt: '2026-11-03T07:30:00Z',
       verificationSteps: [
         { step: 'token_scopes', status: 'passed', message: 'token_scopes passed', checkedAt: '2026-11-05T08:00:00Z' },
         {

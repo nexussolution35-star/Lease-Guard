@@ -47,6 +47,12 @@ export interface WhatsAppPhoneNumber {
   disconnectedAt?: ISODateTime
   /** Why, when Meta reported it (e.g. the business removed LeaseGuard in Meta); absent for a disconnect in LeaseGuard. */
   disconnectedReason?: string
+  /**
+   * When a Nexus operator last connected the number with the number import (Nexus Solution's own test number, before
+   * Meta approves LeaseGuard's app); absent for a number from WhatsApp signup. Such a number is imported again rather
+   * than signed up again.
+   */
+  operatorImportedAt?: ISODateTime
   /** The outcome of each verification step, in step order; empty until verification first ran. */
   verificationSteps: WhatsAppVerificationStepResult[]
   createdAt: ISODateTime

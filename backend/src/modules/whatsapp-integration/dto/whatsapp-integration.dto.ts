@@ -62,6 +62,11 @@ export class WhatsAppPhoneNumberDto implements WhatsAppPhoneNumber {
   @ApiPropertyOptional({ format: 'date-time', description: 'When the number was disconnected (only while it is)' }) disconnectedAt?: string
   @ApiPropertyOptional({ description: 'Why the number was disconnected, when Meta reported it (e.g. the business removed LeaseGuard in Meta)' })
   disconnectedReason?: string
+  @ApiPropertyOptional({
+    format: 'date-time',
+    description: "When a Nexus operator last connected the number with the number import (Nexus Solution's own test number, before Meta's approval); absent for a number from WhatsApp signup",
+  })
+  operatorImportedAt?: string
   @ApiProperty({ type: [WhatsAppVerificationStepDto], description: 'In step order; empty until verification first ran' })
   verificationSteps!: WhatsAppVerificationStepDto[]
   @ApiProperty({ format: 'date-time' }) createdAt!: string

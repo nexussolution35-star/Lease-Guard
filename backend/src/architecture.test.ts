@@ -7,15 +7,17 @@ import { describe, expect, it } from 'vitest'
  * (workers/) are two callers of the same shared modules; if either imports the other, a change behind
  * one caller's interface silently reaches the other and the shared seam loses its locality. Shared code
  * they both need lives in messaging/, infrastructure/ or common/, which import neither caller.
- * Test files count too: a test that reaches across leaks the coupling back in.
+ * Test files count too: a test that reaches across leaks the coupling back in. Operator commands (operator/) are a
+ * third caller and use the shared folders only.
  */
 const FORBIDDEN: Readonly<Record<string, readonly string[]>> = {
-  modules: ['workers'],
-  workers: ['modules'],
-  messaging: ['modules', 'workers'],
-  infrastructure: ['modules', 'workers', 'messaging'],
-  common: ['modules', 'workers', 'messaging'],
-  config: ['modules', 'workers', 'messaging'],
+  modules: ['workers', 'operator'],
+  workers: ['modules', 'operator'],
+  messaging: ['modules', 'workers', 'operator'],
+  infrastructure: ['modules', 'workers', 'messaging', 'operator'],
+  common: ['modules', 'workers', 'messaging', 'operator'],
+  config: ['modules', 'workers', 'messaging', 'operator'],
+  operator: ['modules', 'workers'],
 }
 
 const SRC = __dirname

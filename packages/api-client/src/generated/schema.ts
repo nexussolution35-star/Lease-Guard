@@ -1856,6 +1856,11 @@ export interface components {
             disconnectedAt?: string;
             /** @description Why the number was disconnected, when Meta reported it (e.g. the business removed LeaseGuard in Meta) */
             disconnectedReason?: string;
+            /**
+             * Format: date-time
+             * @description When a Nexus operator last connected the number with the number import (Nexus Solution's own test number, before Meta's approval); absent for a number from WhatsApp signup
+             */
+            operatorImportedAt?: string;
             /** @description In step order; empty until verification first ran */
             verificationSteps: components["schemas"]["WhatsAppVerificationStepDto"][];
             /** Format: date-time */

@@ -32,6 +32,7 @@
     "db:push:remote": "node infrastructure/scripts/db-push-remote.mjs",
     "auth:configure:remote": "node infrastructure/scripts/configure-auth-remote.mjs",
     "platform:create-company": "node infrastructure/scripts/platform-create-company.mjs",
+    "whatsapp:import-test-number": "node infrastructure/scripts/whatsapp-import-test-number.mjs",
     "db:types": "node infrastructure/scripts/generate-db-types.mjs",
     "db:types:check": "node infrastructure/scripts/generate-db-types.mjs --check",
     "api:generate": "pnpm --filter @leaseguard/backend openapi:generate && pnpm --filter @leaseguard/api-client generate",

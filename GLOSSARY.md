@@ -83,6 +83,10 @@ _Avoid_: Onboarding (on its own, which reads as the company's setup checklist), 
 LeaseGuard's checks with Meta before a business number is connected: the business token covers its WhatsApp Business Account, Meta lists the number there, LeaseGuard receives the account's webhooks, the number is registered for the Cloud API, and the account's message templates are synced. The number is connected only when every check passes; otherwise the failed check and how to recover are shown.
 _Avoid_: Health check, onboarding (for this step)
 
+**Number import**:
+A Nexus operator's connection of Nexus Solution's own WhatsApp number, the test number configured for the installation, to one named company before Meta approves LeaseGuard's app; its token is stored for that company only, and the number counts as connected only after number verification, like one from a WhatsApp signup. Every other business connects through WhatsApp signup.
+_Avoid_: Manual connection, token import, test-number channel
+
 **Registration PIN**:
 The 6-digit two-step verification PIN a company admin enters so LeaseGuard can register a business number with Meta; it is used once and never stored.
 _Avoid_: Password, code (which reads as the Embedded Signup code)

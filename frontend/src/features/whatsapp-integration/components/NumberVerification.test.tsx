@@ -231,6 +231,39 @@ describe('number verification on the WhatsApp page', () => {
     expect(screen.queryByRole('button', { name: 'Disconnect' })).not.toBeInTheDocument()
   })
 
+  it('says when Nexus Solution connected a number with the number import, and that a new token comes from Nexus', async () => {
+    fakeSource.listBusinessAccounts.mockResolvedValue(accounts({ ...NEEDS_PIN, operatorImportedAt: '2026-11-11T08:15:00+02:00' }))
+    await renderScreen()
+    const note = await screen.findByText(/Nexus Solution connected this number with the number import/)
+    expect(note).toHaveTextContent('11 Nov 2026')
+    expect(note).toHaveTextContent(/before Meta approves LeaseGuard/)
+    expect(note).toHaveTextContent(/ask Nexus Solution to import it again/)
+    // The steps and statuses are still the API's: an import is never shown as connected by itself.
+    expect(screen.getByText('Pending verification')).toBeInTheDocument()
+    expect(screen.queryByText('Connected')).not.toBeInTheDocument()
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Disconnect' }))
+    const dialog = await screen.findByRole('alertdialog', { name: 'Disconnect +27 11 555 0100?' })
+    expect(dialog).toHaveTextContent(/ask Nexus Solution to import it again/)
+    expect(dialog).not.toHaveTextContent(/Connect WhatsApp Business/)
+  })
+
+  it('tells admins to have an imported number imported again once it is disconnected', async () => {
+    fakeSource.listBusinessAccounts.mockResolvedValue(
+      accounts({ ...BASE, connectionStatus: 'disconnected', operatorImportedAt: '2026-11-11T08:15:00+02:00' }),
+    )
+    await renderScreen()
+    expect(await screen.findByText(/Disconnected\. Ask Nexus Solution to import the number again/)).toBeInTheDocument()
+    expect(screen.queryByText(/Connect the number again with Connect WhatsApp Business/)).not.toBeInTheDocument()
+  })
+
+  it('does not mention the import for a number from WhatsApp signup', async () => {
+    await renderScreen()
+    await steps()
+    expect(screen.queryByText(/number import/)).not.toBeInTheDocument()
+  })
+
   it("shows Meta's quality rating and messaging limit of a number", async () => {
     fakeSource.listBusinessAccounts.mockResolvedValue(accounts({ ...BASE, connectionStatus: 'connected', qualityRating: 'YELLOW', messagingLimitTier: 'TIER_1K' }))
     await renderScreen()

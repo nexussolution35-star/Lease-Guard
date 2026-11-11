@@ -14,16 +14,20 @@ function store(answer: (query: RecordedQuery) => FakeResult) {
 }
 
 describe('DatabaseVerificationStore', () => {
-  it("loads the company's number and whether its signup was a WhatsApp Business app number", async () => {
+  it("loads the company's number, whether it was imported and whether its signup was a WhatsApp Business app number", async () => {
     const { store: s, queries } = store((q) =>
       q.table === 'whatsapp_phone_numbers'
-        ? { data: { connection_status: 'pending_verification', registration_blocked_until: '2026-11-12T10:00:00Z', phone_number_id: '660001' }, error: null }
+        ? {
+            data: { connection_status: 'pending_verification', registration_blocked_until: '2026-11-12T10:00:00Z', phone_number_id: '660001', operator_imported_at: null },
+            error: null,
+          }
         : { data: { is_on_business_app: true }, error: null },
     )
     await expect(s.load(COMPANY, NUMBER)).resolves.toEqual({
       connectionStatus: 'pending_verification',
       registrationBlockedUntil: new Date('2026-11-12T10:00:00Z'),
       onBusinessApp: true,
+      importedByOperator: false,
     })
     expect(callsTo(queries[0]!, 'eq')).toEqual([
       ['company_id', COMPANY],
@@ -33,6 +37,18 @@ describe('DatabaseVerificationStore', () => {
       ['company_id', COMPANY],
       ['phone_number_id', '660001'],
     ])
+  })
+
+  it('knows a number a Nexus operator imported', async () => {
+    const { store: s } = store((q) =>
+      q.table === 'whatsapp_phone_numbers'
+        ? {
+            data: { connection_status: 'pending_verification', registration_blocked_until: null, phone_number_id: '660001', operator_imported_at: '2026-11-11T08:00:00Z' },
+            error: null,
+          }
+        : { data: null, error: null },
+    )
+    await expect(s.load(COMPANY, NUMBER)).resolves.toMatchObject({ importedByOperator: true, onBusinessApp: false })
   })
 
   it('records steps by number and step, with the check time', async () => {

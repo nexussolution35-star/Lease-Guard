@@ -58,7 +58,7 @@ function harness(options: { number?: Partial<NumberToVerify> | null; meta?: Meta
     async load() {
       return options.number === null
         ? null
-        : { connectionStatus: 'pending_verification', registrationBlockedUntil: null, onBusinessApp: false, ...options.number }
+        : { connectionStatus: 'pending_verification', registrationBlockedUntil: null, onBusinessApp: false, importedByOperator: false, ...options.number }
     },
     async recordSteps(_c, _n, steps) {
       written.push([...steps])
@@ -220,6 +220,27 @@ describe('verifyNumber', () => {
     const unavailable = harness({ unavailable: true })
     await expect(unavailable.run()).resolves.toMatchObject({ status: 'error' })
     expect(unavailable.step('token_scopes')?.message).toBe('The WhatsApp access token is not in the vault')
+  })
+
+  it('tells the admin to have Nexus Solution import a number again when the number came from the number import', async () => {
+    const invalid = harness({ number: { importedByOperator: true }, meta: { inspection: { isValid: false, granularScopes: [] } } })
+    await invalid.run()
+    expect(invalid.step('token_scopes')).toMatchObject({ status: 'failed', recovery: expect.stringContaining('Ask Nexus Solution to import') })
+    expect(invalid.step('token_scopes')?.recovery).not.toContain('Connect WhatsApp Business')
+
+    const uncovered = harness({ number: { importedByOperator: true }, meta: { inspection: { isValid: true, granularScopes: [] } } })
+    await uncovered.run()
+    expect(uncovered.step('token_scopes')?.recovery).toContain('Ask Nexus Solution to import')
+    expect(uncovered.step('token_scopes')?.recovery).not.toContain('Meta’s window')
+
+    const unavailable = harness({ number: { importedByOperator: true }, unavailable: true })
+    await unavailable.run()
+    expect(unavailable.step('token_scopes')?.recovery).toContain('Ask Nexus Solution to import')
+
+    const unlisted = harness({ number: { importedByOperator: true }, meta: { numbers: [{ id: '999' }] } })
+    await unlisted.run()
+    expect(unlisted.step('phone_number')).toMatchObject({ status: 'failed', recovery: expect.stringContaining('phone number id and WhatsApp Business Account id') })
+    expect(unlisted.step('phone_number')?.recovery).not.toContain('Connect WhatsApp Business')
   })
 
   it('fails the number step when Meta does not list it in the account', async () => {

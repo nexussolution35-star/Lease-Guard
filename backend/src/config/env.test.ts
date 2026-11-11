@@ -9,7 +9,9 @@ import {
   InvalidEnvironmentError,
   loadApiEnv,
   loadEnvFileKeys,
+  loadNumberImportEnv,
   loadWorkerEnv,
+  NUMBER_IMPORT_ENV_KEYS,
   WHATSAPP_ACCESS_TOKEN_KEY,
   WORKER_ENV_KEYS,
 } from './env'
@@ -140,6 +142,62 @@ describe('loadWorkerEnv', () => {
 
   it('rejects a queue prefix containing the BullMQ key separator', () => {
     expect(() => loadWorkerEnv({ ...worker, QUEUE_PREFIX: 'a:b' })).toThrow(/QUEUE_PREFIX/)
+  })
+})
+
+describe('loadNumberImportEnv', () => {
+  const settings = {
+    SUPABASE_URL: 'http://127.0.0.1:54321',
+    SUPABASE_SERVICE_ROLE_KEY: 'service-role-key',
+    REDIS_URL: 'redis://127.0.0.1:6379',
+    QUEUE_PREFIX: 'leaseguard',
+    WHATSAPP_ACCESS_TOKEN: 'EAAG-the-installation-test-number-token-0123456789',
+    WHATSAPP_PHONE_NUMBER_ID: '660001',
+    WHATSAPP_BUSINESS_MESSAGING_ACCOUNT_ID: '771001',
+  }
+  // A directory: reading it as the env file throws, so a passing call proves the file was not read.
+  const unreadable = mkdtempSync(join(tmpdir(), 'leaseguard-env-dir-'))
+
+  it('reads exactly the import command\'s own settings: the test number, the service role and the queue', () => {
+    expect([...NUMBER_IMPORT_ENV_KEYS].sort()).toEqual(Object.keys(settings).sort())
+    expect(loadNumberImportEnv({ env: settings, file: unreadable })).toEqual(settings)
+  })
+
+  it('reads the env file only for a setting the process environment lacks, and only its own keys', () => {
+    const file = join(mkdtempSync(join(tmpdir(), 'leaseguard-env-')), '.env')
+    writeFileSync(file, 'WHATSAPP_PHONE_NUMBER_ID=660009\nWHATSAPP_ACCESS_TOKEN=EAAG-from-the-file-not-used-0123456789\nANTHROPIC_API_KEY=sk-ant-no\n')
+    const { WHATSAPP_PHONE_NUMBER_ID: _phone, ...withoutPhone } = settings
+    const env = loadNumberImportEnv({ env: withoutPhone, file })
+    expect(env.WHATSAPP_PHONE_NUMBER_ID).toBe('660009')
+    expect(env.WHATSAPP_ACCESS_TOKEN).toBe(settings.WHATSAPP_ACCESS_TOKEN)
+    expect(env).not.toHaveProperty('ANTHROPIC_API_KEY')
+  })
+
+  it('names every missing or invalid setting without echoing the token', () => {
+    const token = 'EAAG token with spaces 0123456789'
+    let error: unknown
+    try {
+      loadNumberImportEnv({
+        env: { ...settings, WHATSAPP_ACCESS_TOKEN: token, WHATSAPP_BUSINESS_MESSAGING_ACCOUNT_ID: 'waba', SUPABASE_SERVICE_ROLE_KEY: '' },
+        file: join(tmpdir(), 'does-not-exist.env'),
+      })
+    } catch (caught) {
+      error = caught
+    }
+    expect(error).toBeInstanceOf(InvalidEnvironmentError)
+    const text = (error as Error).message
+    expect(text).toMatch(/WHATSAPP_ACCESS_TOKEN/)
+    expect(text).toMatch(/WHATSAPP_BUSINESS_MESSAGING_ACCOUNT_ID: a numeric Meta id/)
+    expect(text).toMatch(/SUPABASE_SERVICE_ROLE_KEY/)
+    expect(text).not.toContain(token)
+  })
+
+  it('is the only reader of the test-number settings: neither the API nor the worker loads them', () => {
+    for (const key of ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_BUSINESS_MESSAGING_ACCOUNT_ID']) {
+      expect(API_ENV_KEYS).not.toContain(key)
+      expect(WORKER_ENV_KEYS).not.toContain(key)
+      expect(WHATSAPP_ACCESS_TOKEN_KEY.test(key)).toBe(false)
+    }
   })
 })
 

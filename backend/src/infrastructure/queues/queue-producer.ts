@@ -52,7 +52,8 @@ export class QueueProducer implements OnApplicationShutdown {
   private connection: Redis | undefined
   private readonly queues = new Map<QueueName, Queue>()
 
-  constructor(@Inject(API_ENV) private readonly env: ApiEnv) {}
+  // Only the Redis settings: the number import operator command (src/operator) uses it outside the API as well.
+  constructor(@Inject(API_ENV) private readonly env: Pick<ApiEnv, 'REDIS_URL' | 'QUEUE_PREFIX'>) {}
 
   /** Adds one job; resolves with its id. Throws 503 when Redis cannot accept the job. */
   async enqueue<Q extends QueueName>(queue: Q, payload: JobPayloads[Q]): Promise<string> {

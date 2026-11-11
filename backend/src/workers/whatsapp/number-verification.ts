@@ -58,6 +58,11 @@ export interface NumberToVerify {
   registrationBlockedUntil: Date | null
   /** Embedded Signup reported a WhatsApp Business app number (coexistence): Meta registers it itself. */
   onBusinessApp: boolean
+  /**
+   * A Nexus operator connected the number with the number import (operator_imported_at): its token comes from the
+   * installation's test-number settings, so the admin recovers through Nexus Solution, not Embedded Signup.
+   */
+  importedByOperator: boolean
 }
 
 /** Where verification reads and records (the database, with the service role; a fake in tests). */
@@ -95,6 +100,10 @@ export class TransientVerificationError extends Error {
 }
 
 const RECONNECT = 'Click Connect WhatsApp Business and complete Meta’s signup again for this number.'
+const IMPORT_AGAIN =
+  'Ask Nexus Solution to import the number again with a current access token for this WhatsApp Business Account (pnpm whatsapp:import-test-number); the import verifies it again.'
+const IMPORT_WITH_RIGHT_IDS =
+  'Check the number in WhatsApp Manager, then ask Nexus Solution to import it again with the right phone number id and WhatsApp Business Account id.'
 const VERIFY_AGAIN = 'Click Verify again in a few minutes. If it keeps failing, contact Nexus Solution support.'
 
 function transient(error: unknown): boolean {
@@ -126,6 +135,8 @@ export async function verifyNumber(
   if (!number) return { outcome: 'skipped', reason: 'not_found' }
   if (number.connectionStatus === 'disconnected') return { outcome: 'skipped', reason: 'disconnected' }
 
+  // How the admin gets a new token: Meta's signup, or Nexus Solution's number import.
+  const reconnect = number.importedByOperator ? IMPORT_AGAIN : RECONNECT
   const steps: StepRecord[] = []
   const record = async (result: StepRecord): Promise<void> => {
     steps.push(result)
@@ -163,7 +174,7 @@ export async function verifyNumber(
   try {
     const lookup = await deps.channels.manageNumber(companyId, numberId)
     if (!lookup.available) {
-      await record({ step: 'token_scopes', status: 'failed', message: lookup.message, recovery: RECONNECT })
+      await record({ step: 'token_scopes', status: 'failed', message: lookup.message, recovery: reconnect })
       return finish()
     }
     management = lookup
@@ -187,7 +198,7 @@ export async function verifyNumber(
       return finish()
     }
     if (!inspection.isValid) {
-      await record({ step: 'token_scopes', status: 'failed', message: 'Meta reports that the business token is no longer valid (it was revoked or expired).', recovery: RECONNECT })
+      await record({ step: 'token_scopes', status: 'failed', message: 'Meta reports that the business token is no longer valid (it was revoked or expired).', recovery: reconnect })
       return finish()
     }
     const missing = REQUIRED_SCOPES.filter((scope) => !covers(inspection.granularScopes, scope, accountId))
@@ -196,13 +207,13 @@ export async function verifyNumber(
         step: 'token_scopes',
         status: 'failed',
         message: `The business token does not cover WhatsApp Business Account ${accountId} for ${missing.join(' and ')}.`,
-        recovery: `${RECONNECT} In Meta’s window, share this WhatsApp Business Account with LeaseGuard.`,
+        recovery: number.importedByOperator ? IMPORT_AGAIN : `${RECONNECT} In Meta’s window, share this WhatsApp Business Account with LeaseGuard.`,
       })
       return finish()
     }
     await record({ step: 'token_scopes', status: 'passed', message: `The business token is valid and covers WhatsApp Business Account ${accountId}.` })
   } catch (error) {
-    return failed('token_scopes', error, { ...metaRefusal(error), recovery: RECONNECT })
+    return failed('token_scopes', error, { ...metaRefusal(error), recovery: reconnect })
   }
 
   // 2. The number in its account
@@ -214,7 +225,7 @@ export async function verifyNumber(
         step: 'phone_number',
         status: 'failed',
         message: `Meta does not list number id ${management.phoneNumberId} in WhatsApp Business Account ${accountId}.`,
-        recovery: 'Check the number in WhatsApp Manager, then connect it again with Connect WhatsApp Business.',
+        recovery: number.importedByOperator ? IMPORT_WITH_RIGHT_IDS : 'Check the number in WhatsApp Manager, then connect it again with Connect WhatsApp Business.',
       })
       return finish()
     }

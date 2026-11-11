@@ -30,7 +30,7 @@ export class DatabaseVerificationStore implements VerificationStore {
   async load(companyId: EntityId, numberId: EntityId): Promise<NumberToVerify | null> {
     const number = await this.db
       .from('whatsapp_phone_numbers')
-      .select('connection_status, registration_blocked_until, phone_number_id')
+      .select('connection_status, registration_blocked_until, phone_number_id, operator_imported_at')
       .eq('company_id', companyId)
       .eq('id', numberId)
       .maybeSingle()
@@ -51,6 +51,8 @@ export class DatabaseVerificationStore implements VerificationStore {
       connectionStatus: number.data.connection_status,
       registrationBlockedUntil: number.data.registration_blocked_until ? new Date(number.data.registration_blocked_until) : null,
       onBusinessApp: session.data?.is_on_business_app === true,
+      // Nexus Solution's number import (ticket 15) brought its token, so its recovery goes through Nexus.
+      importedByOperator: number.data.operator_imported_at !== null,
     }
   }
 

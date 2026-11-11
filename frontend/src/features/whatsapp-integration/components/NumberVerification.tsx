@@ -70,9 +70,17 @@ function useRegistrationLocked(number: WhatsAppPhoneNumber): boolean {
 export function VerificationSteps({ number }: { number: WhatsAppPhoneNumber }) {
   const titleId = useId()
   const locked = useRegistrationLocked(number)
+  // A number from Nexus Solution's number import gets a new token from Nexus, not through WhatsApp signup.
+  const imported = number.operatorImportedAt !== undefined
   if (number.connectionStatus === 'disconnected') {
     if (!number.disconnectedReason) {
-      return <p className="text-sm text-muted-foreground">Disconnected. Connect the number again with Connect WhatsApp Business to use it.</p>
+      return (
+        <p className="text-sm text-muted-foreground">
+          {imported
+            ? 'Disconnected. Ask Nexus Solution to import the number again to use it.'
+            : 'Disconnected. Connect the number again with Connect WhatsApp Business to use it.'}
+        </p>
+      )
     }
     return (
       <Alert variant="destructive" role="status">
@@ -89,8 +97,8 @@ export function VerificationSteps({ number }: { number: WhatsAppPhoneNumber }) {
             . {number.disconnectedReason}
           </p>
           <p>
-            LeaseGuard no longer has access to this number in Meta, so no WhatsApp messages are sent or received on it. To use it again, a
-            company admin connects it with Connect WhatsApp Business.
+            LeaseGuard no longer has access to this number in Meta, so no WhatsApp messages are sent or received on it.{' '}
+            {imported ? 'To use it again, ask Nexus Solution to import it again.' : 'To use it again, a company admin connects it with Connect WhatsApp Business.'}
           </p>
         </AlertDescription>
       </Alert>
@@ -105,6 +113,13 @@ export function VerificationSteps({ number }: { number: WhatsAppPhoneNumber }) {
         Verification with Meta
         {running ? <Loader2 className="size-4 animate-spin text-muted-foreground" aria-label="Verification in progress" /> : null}
       </h4>
+      {imported ? (
+        <p className="text-sm text-muted-foreground">
+          Nexus Solution connected this number with the number import on <DateDisplay value={number.operatorImportedAt} />, before Meta
+          approves LeaseGuard for WhatsApp signup. It is verified like any other number; for a new access token, ask Nexus Solution to import it
+          again.
+        </p>
+      ) : null}
       {byStep.size === 0 ? (
         <p className="text-sm text-muted-foreground">Waiting for LeaseGuard to start verifying this number with Meta.</p>
       ) : failed ? (
@@ -230,7 +245,9 @@ export function NumberActions({ number }: { number: WhatsAppPhoneNumber }) {
         open={confirming}
         onOpenChange={setConfirming}
         title={`Disconnect ${label}?`}
-        description="The number stops sending and receiving WhatsApp messages in LeaseGuard at once, and LeaseGuard deletes its stored access token. To use it again, connect it with Connect WhatsApp Business."
+        description={`The number stops sending and receiving WhatsApp messages in LeaseGuard at once, and LeaseGuard deletes its stored access token. ${
+          number.operatorImportedAt === undefined ? 'To use it again, connect it with Connect WhatsApp Business.' : 'To use it again, ask Nexus Solution to import it again.'
+        }`}
         confirmLabel="Disconnect"
         destructive
         onConfirm={confirmDisconnect}

@@ -1296,14 +1296,14 @@ isOneToOne: false
                   ]
                 },"whatsapp_phone_numbers": {
                   Row: {
-                    "access_token_reference": string,"business_account_id": string,"code_verification_status": string | null,"company_id": string,"connection_status": Database["public"]['Enums']["whatsapp_connection_status"],"created_at": string,"disconnected_at": string | null,"disconnected_reason": string | null,"display_name": string,"display_number": string,"id": string,"last_verified_at": string | null,"messaging_limit_tier": string | null,"messaging_limit_updated_at": string | null,"meta_status": string | null,"name_status": string | null,"phone_number_id": string,"quality_rating": string | null,"registration_blocked_until": string | null,"updated_at": string,"verified_name": string | null,"webhook_configured": boolean
+                    "access_token_reference": string,"business_account_id": string,"code_verification_status": string | null,"company_id": string,"connection_status": Database["public"]['Enums']["whatsapp_connection_status"],"created_at": string,"disconnected_at": string | null,"disconnected_reason": string | null,"display_name": string,"display_number": string,"id": string,"last_verified_at": string | null,"messaging_limit_tier": string | null,"messaging_limit_updated_at": string | null,"meta_status": string | null,"name_status": string | null,"operator_imported_at": string | null,"phone_number_id": string,"quality_rating": string | null,"registration_blocked_until": string | null,"updated_at": string,"verified_name": string | null,"webhook_configured": boolean
                   }
                   ComputedFields: never
                   Insert: {
-                    "access_token_reference": string,"business_account_id": string,"code_verification_status"?: string | null,"company_id": string,"connection_status"?: Database["public"]['Enums']["whatsapp_connection_status"],"created_at"?: string,"disconnected_at"?: string | null,"disconnected_reason"?: string | null,"display_name": string,"display_number": string,"id"?: string,"last_verified_at"?: string | null,"messaging_limit_tier"?: string | null,"messaging_limit_updated_at"?: string | null,"meta_status"?: string | null,"name_status"?: string | null,"phone_number_id": string,"quality_rating"?: string | null,"registration_blocked_until"?: string | null,"updated_at"?: string,"verified_name"?: string | null,"webhook_configured"?: boolean
+                    "access_token_reference": string,"business_account_id": string,"code_verification_status"?: string | null,"company_id": string,"connection_status"?: Database["public"]['Enums']["whatsapp_connection_status"],"created_at"?: string,"disconnected_at"?: string | null,"disconnected_reason"?: string | null,"display_name": string,"display_number": string,"id"?: string,"last_verified_at"?: string | null,"messaging_limit_tier"?: string | null,"messaging_limit_updated_at"?: string | null,"meta_status"?: string | null,"name_status"?: string | null,"operator_imported_at"?: string | null,"phone_number_id": string,"quality_rating"?: string | null,"registration_blocked_until"?: string | null,"updated_at"?: string,"verified_name"?: string | null,"webhook_configured"?: boolean
                   }
                   Update: {
-                    "access_token_reference"?: string,"business_account_id"?: string,"code_verification_status"?: string | null,"company_id"?: string,"connection_status"?: Database["public"]['Enums']["whatsapp_connection_status"],"created_at"?: string,"disconnected_at"?: string | null,"disconnected_reason"?: string | null,"display_name"?: string,"display_number"?: string,"id"?: string,"last_verified_at"?: string | null,"messaging_limit_tier"?: string | null,"messaging_limit_updated_at"?: string | null,"meta_status"?: string | null,"name_status"?: string | null,"phone_number_id"?: string,"quality_rating"?: string | null,"registration_blocked_until"?: string | null,"updated_at"?: string,"verified_name"?: string | null,"webhook_configured"?: boolean
+                    "access_token_reference"?: string,"business_account_id"?: string,"code_verification_status"?: string | null,"company_id"?: string,"connection_status"?: Database["public"]['Enums']["whatsapp_connection_status"],"created_at"?: string,"disconnected_at"?: string | null,"disconnected_reason"?: string | null,"display_name"?: string,"display_number"?: string,"id"?: string,"last_verified_at"?: string | null,"messaging_limit_tier"?: string | null,"messaging_limit_updated_at"?: string | null,"meta_status"?: string | null,"name_status"?: string | null,"operator_imported_at"?: string | null,"phone_number_id"?: string,"quality_rating"?: string | null,"registration_blocked_until"?: string | null,"updated_at"?: string,"verified_name"?: string | null,"webhook_configured"?: boolean
                   }
                   Relationships: [
                     {
@@ -1428,6 +1428,11 @@ isOneToOne: false
                            },
 "finish_whatsapp_number_verification":
 { Args: { "p_company_id": string,"p_number_id": string }; Returns: Database["public"]['Enums']["whatsapp_connection_status"]
+                           },
+"import_whatsapp_number":
+{ Args: { "p_access_token": string,"p_apply"?: boolean,"p_business_account_id": string,"p_company_id": string,"p_phone_number_id": string }; Returns: {
+              "applied": boolean,"company_name": string,"conflicting_company_id": string,"conflicting_company_name": string,"number_id": string,"outcome": string,"previous_status": Database["public"]['Enums']["whatsapp_connection_status"],"secrets_deleted": number
+            }[]
                            },
 "list_my_company_invitations":
 { Args: Record<PropertyKey, never>; Returns: {

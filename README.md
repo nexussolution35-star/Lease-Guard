@@ -262,6 +262,7 @@ All commands run from the repository root.
 | `pnpm db:test` | Database tests (pgTAP): RLS isolation, audit and business-rule constraints |
 | `pnpm db:push:remote` | Dry-run the hosted project's pending migrations; `-- --apply` applies them (needs `SUPABASE_DB_PASSWORD`) |
 | `pnpm auth:configure:remote` | Dry-run the hosted project's Auth settings (SMTP from `noreply@leaseguard.com`, email templates, 3-minute links, invite-only); `-- --apply` applies them (needs `SUPABASE_ACCESS_TOKEN` and `SMTP_*`) |
+| `pnpm whatsapp:import-test-number -- --company <id or initials>` | Nexus operators: connect Nexus Solution's own WhatsApp test number (`WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_MESSAGING_ACCOUNT_ID`) to one company before Meta approves LeaseGuard's app. Dry run by default; `--apply` asks, `--apply --yes` applies without asking; `--hosted` for a hosted project. The token goes to Vault for that company only and the number is Connected only after LeaseGuard verified it with Meta. See `docs/integrations/whatsapp.md` |
 | `pnpm db:types` · `db:types:check` | Regenerate the backend's typed database definitions, or check they are current |
 | `pnpm api:generate` | Regenerate `backend/openapi.json` and the typed API client |
 | `pnpm python:setup` · `python:test` · `python:lint` | Document-processing service |
@@ -293,6 +294,9 @@ if any are missing or invalid:
   `WHATSAPP_APP_SECRET` to verify numbers with Meta. `ANTHROPIC_API_KEY` is read by the worker only. The app secret, the verify token and the Anthropic key are secrets; the app id and Embedded
   Signup configuration id are public and reach the browser through `GET /api/v1/integrations/whatsapp/capabilities`.
   See `docs/integrations/whatsapp.md`.
+- `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` and `WHATSAPP_BUSINESS_MESSAGING_ACCOUNT_ID` (Nexus Solution's own
+  test number) are operator-only: read by `pnpm whatsapp:import-test-number`, which stores the token in Vault for one
+  named company; the API and worker never load them, so they are never a sending channel.
 - `SMTP_*` and `SUPABASE_ACCESS_TOKEN` are operator-only: read by `pnpm auth:configure:remote`, never by the API,
   worker or browser. Auth emails go to each user's own address from `noreply@leaseguard.com`.
 - Never commit `.env`.

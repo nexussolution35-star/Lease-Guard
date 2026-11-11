@@ -61,6 +61,7 @@ only what its own schema declares:
 | --- | --- | --- |
 | API | `loadApiEnv` in `backend/src/config/env.ts` | only `API_ENV_KEYS`; never the service-role key, the document-processing token or WhatsApp tokens |
 | Worker | `loadWorkerEnv` | `WORKER_ENV_KEYS` plus variables matching `WHATSAPP_ACCESS_TOKEN_KEY` (`^WHATSAPP_ACCESS_TOKEN_[0-9A-F]{32}$`: one per company, named by its uuid without dashes in uppercase) |
+| Number import command (operator, `pnpm whatsapp:import-test-number`) | `loadNumberImportEnv` | `NUMBER_IMPORT_ENV_KEYS` only: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `REDIS_URL`, `QUEUE_PREFIX` and the test number's `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_MESSAGING_ACCOUNT_ID`; the file is read only when one of them is missing from the process |
 | Document processing | pydantic-settings (`python-services/document-processing/app/core/config.py`, `extra="ignore"`) | its declared fields only |
 | Web app | Vite | only `VITE_*` variables reach the browser |
 
@@ -101,6 +102,13 @@ Images contain no `.env` file (root `.dockerignore`) and run as non-root users (
   puts it in one Redis key under the queue prefix (expires after 10 minutes) and the worker deletes it as it
   reads it (`GETDEL`), so it reaches neither Postgres, `job_runs`, BullMQ's job history nor a log
   (`backend/src/infrastructure/whatsapp/registration-pins.ts`).
+- **Nexus Solution's test number (number import, ticket 15).** `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` and
+  `WHATSAPP_BUSINESS_MESSAGING_ACCOUNT_ID` are loaded by the operator command `pnpm whatsapp:import-test-number` only
+  (`loadNumberImportEnv`: its own seven keys, from the process environment, reading the root `.env` only when one is
+  missing), never by the API or the worker. The command uses the service-role key, like `platform:create-company`,
+  and hands the token to `public.import_whatsapp_number` (service role only), which stores it in Vault as
+  `whatsapp_access_token:<company id>:import:<uuid>` for the named company only. Every line it prints has the token
+  replaced by `[redacted]`; the verification job carries ids only.
 - **WhatsApp access tokens** are never stored in plain columns or in `.env.example`.
   `whatsapp_phone_numbers.access_token_reference` takes one of two forms (formats:
   `backend/src/infrastructure/whatsapp/access-token-reference.ts`; the database CHECK
