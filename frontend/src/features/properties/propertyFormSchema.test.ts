@@ -51,6 +51,10 @@ describe('propertyFormSchema', () => {
     expect(result.error?.issues[0]?.message).toBe(message)
   })
 
+  it.each([4200.35, 1.13, 2.01, 1250.1, 0.07])('accepts %s m², which has two decimals', (area) => {
+    expect(propertyFormSchema.safeParse({ ...propertyFormDefaults(PROPERTY), grossLettableAreaSqm: area }).success).toBe(true)
+  })
+
   it('starts a new property empty, active, with no owner and the signed-in user as manager', () => {
     expect(newPropertyFormDefaults(MANAGER)).toMatchObject({ name: '', status: 'active', ownerUserId: NO_OWNER, managerUserId: MANAGER })
     expect(propertyFormSchema.safeParse(newPropertyFormDefaults(MANAGER)).success).toBe(false)

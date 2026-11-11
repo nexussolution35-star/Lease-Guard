@@ -95,6 +95,14 @@ describe('PropertyDetailScreen', () => {
     expect(lists.leases).toHaveBeenCalledWith(NEXUS_ID, expect.objectContaining({ propertyId: PROPERTY.id, status: 'active' }))
   })
 
+  it('does not call the manager a former member when the member list cannot be loaded', async () => {
+    lists.members.mockRejectedValue(new ApiError(500, [], null))
+    await renderScreen()
+    const details = await screen.findByRole('region', { name: 'Details' })
+    expect((await within(details).findAllByText('Not available')).length).toBeGreaterThan(0)
+    expect(within(details).queryByText('Former member')).not.toBeInTheDocument()
+  })
+
   it('lists the units and the open monitoring events with links', async () => {
     await renderScreen()
     const units = await screen.findByRole('table', { name: 'Units in Maponya Square' })

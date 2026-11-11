@@ -45,7 +45,7 @@ export const propertyFormSchema = z.object({
     .number({ error: 'Enter the gross lettable area' })
     .positive('The area must be more than 0 m²')
     .max(10_000_000, 'Use at most 10 000 000 m²')
-    .refine((value) => Math.round(value * 100) === value * 100, { message: 'Use at most two decimals' }),
+    .refine((value) => Math.round(value * 100) / 100 === value, { message: 'Use at most two decimals' }),
   managerUserId: z.string().min(1, 'Choose the property manager'),
   ownerUserId: z.string(),
   accountingSystem: z.enum(STATEMENT_SOURCES, { error: 'Choose the accounting system' }),

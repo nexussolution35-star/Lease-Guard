@@ -347,10 +347,11 @@ LeaseGuard is in active MVP development on the path to a single-property pilot.
 | Document-processing service (PDF text, OCR fallback, validation) | In place |
 | Backend API: read endpoints for every module, lease verification, statement upload and processing, monitoring event workflow, message approvals, notifications, audit log | In place |
 | Background worker: daily lease, arrears and arrangement monitoring; statement extraction; WhatsApp delivery of approved messages | In place |
-| Create and edit endpoints for properties, units, tenants, leases and payment arrangements | Planned |
+| Property management (PRD module 2): create, edit, archive and restore, with audit and the property detail screen | In place |
+| Create and edit endpoints for units, tenants, leases and payment arrangements | Planned |
 | Web app shell, navigation, sign-in, workspace switching and profile management (edit profile, change password) | In place |
 | Authentication and company management (PRD module 1): sign-in, workspaces, users and invitations, roles, company details, notice periods and reminder timing, audit log | In place. Companies are registered by a Nexus operator (`pnpm platform:create-company`) |
-| Web app management screens | In progress: the property list is complete and every feature's data source is wired to the API; the portfolio, statement, monitoring and arrangement screens are still placeholders |
+| Web app management screens | In progress: the property screens are complete and every feature's data source is wired to the API; the portfolio, statement, monitoring and arrangement screens are still placeholders |
 | Statement review and correction workflow | Planned |
 | WhatsApp webhooks, inbound replies, templates and opt-out handling | Planned |
 | Weekly owner summaries and supported owner questions | Planned |

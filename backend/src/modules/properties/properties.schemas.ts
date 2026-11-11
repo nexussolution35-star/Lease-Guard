@@ -47,11 +47,12 @@ export const propertyAddressSchema = z.strictObject({
   postalCode: z.string().trim().regex(/^[0-9]{4}$/, 'must be a four-digit South African postal code'),
 })
 
+/** At most two decimals (numeric(12,2)). Compared after rounding: value * 100 is often not exact in floating point. */
 const grossLettableArea = z
   .number()
   .positive('must be more than 0')
   .max(10_000_000, 'must be at most 10 000 000 m²')
-  .refine((value) => Math.round(value * 100) === value * 100, { message: 'must have at most two decimals' })
+  .refine((value) => Math.round(value * 100) / 100 === value, { message: 'must have at most two decimals' })
 
 const propertyFields = {
   name: requiredText(200, 'Enter the property name'),

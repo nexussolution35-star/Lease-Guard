@@ -107,9 +107,16 @@ export function PropertyDetailScreen({ property }: PropertyDetailScreenProps) {
   const units = useUnitList({ page: 1, pageSize: UNITS_SHOWN, propertyId: property.id, sort: 'unitNumber', direction: 'asc' })
   const events = useMonitoringEventList({ page: 1, pageSize: EVENTS_SHOWN, propertyId: property.id, open: true, sort: 'priority', direction: 'desc' })
   const members = useMemberList({ page: 1, pageSize: MAX_LIST_PAGE_SIZE, sort: 'fullName', direction: 'asc' })
+  /**
+   * A member's name. The manager and owner are always members (database rule), so "Former member" is only said when
+   * the complete member list loaded without them; while loading, on an error or past the first page it is unknown.
+   */
   const nameOf = (userId: string | undefined) => {
     if (!userId) return undefined
-    return members.data?.items.find((member) => member.id.toLowerCase() === userId.toLowerCase())?.fullName ?? (members.isPending ? '…' : 'Former member')
+    const name = members.data?.items.find((member) => member.id.toLowerCase() === userId.toLowerCase())?.fullName
+    if (name) return name
+    if (members.isPending) return '…'
+    return members.isSuccess && members.data.total <= members.data.items.length ? 'Former member' : 'Not available'
   }
 
   async function confirmStatusChange() {

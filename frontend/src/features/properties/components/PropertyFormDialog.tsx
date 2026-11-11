@@ -74,16 +74,19 @@ export function PropertyFormDialog({ open, onOpenChange, property, onSaved }: Pr
   }, [open, property, currentUserId, reset])
 
   const { managerOptions, ownerOptions } = useMemo(() => {
-    const active = (members.data?.items ?? []).filter((member) => member.status === 'active')
-    const keep = (member: CompanyMember, id: string | undefined) => member.id === id
-    return {
-      managerOptions: active.filter((m) => MANAGER_ROLES.has(roleOf(m) ?? '') || keep(m, property?.managerUserId)).map(memberOption),
-      ownerOptions: [
-        { value: NO_OWNER, label: 'No owner' },
-        ...active.filter((m) => roleOf(m) === 'property_owner' || keep(m, property?.ownerUserId)).map(memberOption),
-      ],
+    const loaded = members.data?.items ?? []
+    // The property's current manager and owner stay selectable whatever their status, so the select shows who is
+    // assigned; anyone else must be an active member with the right role.
+    const options = (current: string | undefined, qualifies: (member: CompanyMember) => boolean, fallback: string): FieldOption[] => {
+      const listed = loaded.filter((m) => m.id === current || (m.status === 'active' && qualifies(m))).map(memberOption)
+      if (current && members.isSuccess && !listed.some((option) => option.value === current)) listed.unshift({ value: current, label: fallback })
+      return listed
     }
-  }, [members.data, property?.managerUserId, property?.ownerUserId])
+    return {
+      managerOptions: options(property?.managerUserId, (m) => MANAGER_ROLES.has(roleOf(m) ?? ''), 'Current manager'),
+      ownerOptions: [{ value: NO_OWNER, label: 'No owner' }, ...options(property?.ownerUserId, (m) => roleOf(m) === 'property_owner', 'Current owner')],
+    }
+  }, [members.data, members.isSuccess, property?.managerUserId, property?.ownerUserId])
 
   const rootError = form.formState.errors.root?.message
 

@@ -102,6 +102,7 @@ describe('PropertiesService', () => {
       expect(createPropertyBodySchema.safeParse({ ...body, code: 'TOO-LONG-CODE' }).success).toBe(false)
       expect(createPropertyBodySchema.safeParse({ ...body, grossLettableAreaSqm: 0 }).success).toBe(false)
       expect(createPropertyBodySchema.safeParse({ ...body, grossLettableAreaSqm: 10.123 }).success).toBe(false)
+      for (const area of [4200.35, 1.13, 2.01, 1250.1, 0.07]) expect(createPropertyBodySchema.safeParse({ ...body, grossLettableAreaSqm: area }).success).toBe(true)
       expect(createPropertyBodySchema.safeParse({ ...body, status: 'archived' }).success).toBe(false)
       expect(createPropertyBodySchema.safeParse({ ...body, companyId: COMPANY }).success).toBe(false)
     })

@@ -4,7 +4,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 \ir fixtures/two_companies.psql
-select plan(26);
+select plan(33);
 
 create schema tests;
 grant usage on schema tests to authenticated, service_role;
@@ -103,9 +103,39 @@ select throws_ok(
   $$update public.properties set name = 'Renamed while archived' where code = 'RBC'$$,
   'P0001', 'This property is archived. Restore it before changing it.', 'an archived property is read-only'
 );
+select throws_ok(
+  $$update public.properties set status = 'active', name = 'Restored and renamed' where code = 'RBC'$$,
+  'P0001', 'This property is archived. Restore it before changing it.', 'restoring cannot carry other changes'
+);
+select throws_ok(
+  $$update public.properties set status = 'under_development' where code = 'RBC'$$,
+  'P0001', 'This property is archived. Restore it before changing it.', 'an archived property is restored to active only'
+);
 update public.properties set status = 'active' where code = 'RBC';
 select is((select count(*) from tests.audit((tests.property('RBC')).id) where summary = 'Property Rosebank Corner Offices restored'), 1::bigint,
   'restoring is audited');
+
+-- ------------------------------------------------------------------ which leases block archiving
+-- A unit and one lease on RBC, written as the database owner; the lease's status is then varied.
+reset role;
+insert into public.units (company_id, property_id, unit_number, type, floor_area_sqm, occupancy_status)
+  values ((select nexus from tests.ids), (tests.property('RBC')).id, 'R01', 'office_suite', 100, 'vacant');
+insert into public.leases (company_id, reference, property_id, unit_id, tenant_id, commencement_date, expiry_date,
+    initial_monthly_rental, current_monthly_rental, payment_due_day, escalation_type, escalation_percentage,
+    escalation_frequency, first_escalation_date, status)
+  select (select nexus from tests.ids), 'RBC-L001', (tests.property('RBC')).id, u.id,
+    (select id from public.tenants where company_id = (select nexus from tests.ids) order by id limit 1),
+    '2024-01-01', '2025-12-31', 10000, 10000, 1, 'percentage', 8, 'annual', '2025-01-01', 'draft'
+  from public.units u where u.unit_number = 'R01' and u.property_id = (tests.property('RBC')).id;
+select throws_ok($$update public.properties set status = 'archived' where code = 'RBC'$$, 'P0001', null, 'a draft lease blocks archiving');
+update public.leases set status = 'pending_verification' where reference = 'RBC-L001';
+select throws_ok($$update public.properties set status = 'archived' where code = 'RBC'$$, 'P0001', null, 'a lease pending verification blocks archiving');
+update public.leases set status = 'expiring' where reference = 'RBC-L001';
+select throws_ok($$update public.properties set status = 'archived' where code = 'RBC'$$, 'P0001', null, 'an expiring lease blocks archiving');
+update public.leases set status = 'expired' where reference = 'RBC-L001';
+select lives_ok($$update public.properties set status = 'archived' where code = 'RBC'$$, 'a property whose leases have all ended can be archived');
+update public.properties set status = 'active' where code = 'RBC';
+set local role authenticated;
 
 -- ------------------------------------------------------------------ no hard delete
 select throws_ok($$delete from public.properties where code = 'RBC'$$, '42501', null, 'a writer cannot delete a property');
@@ -123,14 +153,24 @@ select set_config('request.jwt.claims', tests.claims('naledi.vdmerwe@nexussoluti
 update public.properties set name = 'Changed across companies' where code = 'KGP';
 reset role;
 select is((tests.property('KGP')).name, 'Kgalagadi Park', 'a writer of one company cannot change another company''s property');
+-- Inserting into a company the caller cannot write is refused before any of that company's members are looked up.
+set local role authenticated;
+select throws_ok(
+  $$insert into public.properties (company_id, name, code, type, address_line1, suburb, city, province, postal_code,
+      gross_lettable_area_sqm, manager_user_id, accounting_system)
+    values ((select kgalagadi from tests.ids), 'Probe', 'PRB', 'office', '1 Road', 'X', 'Y', 'Gauteng', '2000', 10,
+      (select id from auth.users where email = 'lerato@kgalagadiproperty.co.za'), 'MRI')$$,
+  '42501', null, 'another company''s member roles cannot be probed through the manager rule'
+);
+reset role;
 select is((select count(*) from public.audit_logs where company_id = (select kgalagadi from tests.ids) and entity_type = 'property' and action <> 'create'), 0::bigint,
   'nothing was audited in the other company');
 
 -- ------------------------------------------------------------------ background jobs (no signed-in user)
 select set_config('request.jwt.claims', '', true);
 update public.properties set description = 'Updated by a job' where code = 'KGP';
-select is((select actor_user_id from public.audit_logs where entity_id = (tests.property('KGP')).id and action = 'update'), null,
-  'a change without a signed-in user is audited without an actor');
+select is((select count(*) from public.audit_logs where entity_id = (tests.property('KGP')).id and action = 'update' and actor_user_id is null),
+  1::bigint, 'a change without a signed-in user is audited, without an actor');
 select throws_ok(
   $$update public.properties set status = 'archived' where code = 'KGP'$$,
   'P0001', 'This property still has leases that have not ended. End or terminate them before archiving the property.',

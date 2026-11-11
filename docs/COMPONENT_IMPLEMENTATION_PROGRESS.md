@@ -16,7 +16,7 @@ Counts are component files (`.tsx`, excluding tests and test helpers) on disk in
 | A. Application shell | `components/layout` | 17 | 20 | Complete without global search and navigation badge counts (removed with demo mode; no API endpoints yet). Extras: `RecordNotFound`, `ScreenPlaceholder`, `AccountMenu` (profile management), `NotificationPopover`, `ThemeSubMenu`, `WorkspaceSwitcherTrigger` |
 | B. Shared UI | `components/shared` | 33 | 37 | Complete. Extras: `AppLink`, `NoActiveWorkspace`, `RecordQueryView`, `SingleSelectFilter` |
 | C. Forms | `components/forms` | 15 | 17 | Complete. Extras: `FieldMessage`, `RequiredIndicator` |
-| Properties | `features/properties/components` | 12 | 1 | Started: `PropertyListScreen` (search, filters, sort, paging) |
+| Properties | `features/properties/components` | 12 | 3 | PRD module 2 complete: `PropertyListScreen` (search, filters, sort, paging, "Add property" for writers), `PropertyFormDialog` (create and edit), `PropertyDetailScreen` (details, counts, units, open monitoring events, archive and restore) |
 | Units | `features/units/components` | 10 | 0 | Not started |
 | Tenants | `features/tenants/components` | 15 | 0 | Not started |
 | Leases | `features/leases/components` | 19 | 0 | Not started |
@@ -38,13 +38,13 @@ mode and its in-browser services were removed; the API is the only data source.
 
 ## Screens (route files)
 
-`app/router/routes` has 42 route files; 20 of them still render `ScreenPlaceholder`.
+`app/router/routes` has 42 route files; 19 of them still render `ScreenPlaceholder`.
 
 | State | Routes |
 | --- | --- |
-| Real screen | `/login`, `/auth/accept`, `/auth/forgot-password`, `/auth/reset-password`, `/` (dashboard: onboarding and WhatsApp activity), `/properties`, `/communications/approvals`, `/communications/analytics`, `/whatsapp/conversations`, `/settings/company`, `/settings/notifications`, `/settings/users`, `/settings/roles`, `/settings/audit`, `/settings/integrations/whatsapp`, `/settings/integrations/whatsapp/agent` |
+| Real screen | `/login`, `/auth/accept`, `/auth/forgot-password`, `/auth/reset-password`, `/` (dashboard: onboarding and WhatsApp activity), `/properties`, `/properties/$propertyId`, `/communications/approvals`, `/communications/analytics`, `/whatsapp/conversations`, `/settings/company`, `/settings/notifications`, `/settings/users`, `/settings/roles`, `/settings/audit`, `/settings/integrations/whatsapp`, `/settings/integrations/whatsapp/agent` |
 | Layout or redirect | `__root` (shell, auth guard, not-found), `/settings` (section navigation), `/settings/` (to `/settings/company`), `/communications` (Messages, Approvals, Analytics navigation), `/settings/integrations/` and `/settings/whatsapp` (to `/settings/integrations/whatsapp`) |
-| Record loaded, body is `ScreenPlaceholder` | `/properties/$propertyId`, `/units/$unitId`, `/tenants/$tenantId`, `/leases/$leaseId`, `/statements/$statementId`, `/monitoring/$eventId`, `/arrangements/$arrangementId` (each loads the record through its feature hook and shows "not found in this workspace" for other companies), `/reports/$reportId` (resolves the report definition) |
+| Record loaded, body is `ScreenPlaceholder` | `/units/$unitId`, `/tenants/$tenantId`, `/leases/$leaseId`, `/statements/$statementId`, `/monitoring/$eventId`, `/arrangements/$arrangementId` (each loads the record through its feature hook and shows "not found in this workspace" for other companies), `/reports/$reportId` (resolves the report definition) |
 | `ScreenPlaceholder` only | `/units`, `/tenants`, `/leases`, `/statements`, `/statements/upload`, `/monitoring`, `/arrangements`, `/communications` (messages), `/whatsapp`, `/reports`, `/settings/templates`, `/settings/preferences` |
 
 `ScreenPlaceholder` is temporary. Remove it when the last route gets its real screen.

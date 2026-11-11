@@ -74,12 +74,12 @@ Each feature has the same files under `features/<feature>/api/`:
 
 | Feature | Hooks |
 | --- | --- |
-| properties | `usePropertyList`, `usePropertyQuery` |
+| properties | `usePropertyList`, `usePropertyQuery`, `useCreateProperty`, `useUpdateProperty`, `useArchiveProperty`, `useRestoreProperty` |
 | units | `useUnitList`, `useUnitQuery` |
 | tenants | `useTenantList`, `useTenantQuery` |
 | leases | `useLeaseList`, `useLeaseQuery` |
 | statements | `useStatementList`, `useStatementQuery` |
-| monitoring | `useMonitoringEventList`, `useMonitoringEventQuery` |
+| monitoring | `useMonitoringEventList` (`open`: still needing attention), `useMonitoringEventQuery` |
 | arrangements | `useArrangementList`, `useArrangementQuery` |
 | communications | `useCommunicationList`, `useCommunicationQuery` |
 | notifications | `useNotificationList`, `useUnreadNotificationCount`, `useMarkNotificationRead`, `useMarkAllNotificationsRead` |

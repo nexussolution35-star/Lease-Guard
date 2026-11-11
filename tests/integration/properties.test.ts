@@ -14,6 +14,9 @@ import { auditCount, snapshotRow } from './support/local-db.ts'
 // Codes this file creates: unique per run would need 8+ characters, so a fixed prefix outside the world's codes.
 const CODES = ['ZQA', 'ZQB'] as const
 
+/** The id of the property the first test creates; the later tests change it. */
+let createdId: string | undefined
+
 afterAll(async () => {
   // destroyWorld removes company rows too; remove this file's properties explicitly so later files see the world's set.
   expectOk(
@@ -47,6 +50,7 @@ describe('properties: create', () => {
       address: { line1: '1 Cradock Avenue', postalCode: '2196', country: 'South Africa' },
     })
     expect(await auditCount(property.id)).toBe(1)
+    createdId = property.id
 
     const fetched = await unwrap(apiAs('readOnly', 'a').GET('/api/v1/properties/{propertyId}', { params: { path: { propertyId: property.id } } }))
     expect(fetched.name).toBe(property.name)
@@ -84,11 +88,10 @@ describe('properties: create', () => {
 })
 
 describe('properties: edit, archive and restore', () => {
+  /** The property the create test added, read fresh from the API. */
   const created = async () => {
-    const page = await unwrap(apiAs('manager', 'a').GET('/api/v1/properties', { params: { query: { search: CODES[0] } } }))
-    const property = page.items.find((item) => item.code === CODES[0])
-    if (!property) throw new Error('The property created earlier in this file is missing')
-    return property
+    if (!createdId) throw new Error('The create test did not run or failed')
+    return unwrap(apiAs('manager', 'a').GET('/api/v1/properties/{propertyId}', { params: { path: { propertyId: createdId } } }))
   }
 
   it('edits only the fields sent and audits the change', async () => {
@@ -118,6 +121,12 @@ describe('properties: edit, archive and restore', () => {
     const locked = await apiErrorOf(unwrap(apiAs('manager', 'a').PATCH('/api/v1/properties/{propertyId}', { ...path, body: { name: 'Renamed while archived' } })))
     expect(locked.status).toBe(422)
     expect(locked.messages.join(' ')).toBe('This property is archived. Restore it before changing it.')
+    expect(await snapshotRow('properties', property.id)).toEqual(before)
+    // Changing the status in an edit does not get round it: only the restore action takes it out of archived.
+    const restoreAndEdit = await apiErrorOf(
+      unwrap(apiAs('manager', 'a').PATCH('/api/v1/properties/{propertyId}', { ...path, body: { status: 'under_development', name: 'Renamed while archived' } })),
+    )
+    expect(restoreAndEdit.status).toBe(422)
     expect(await snapshotRow('properties', property.id)).toEqual(before)
 
     const restored = await unwrap(apiAs('manager', 'a').POST('/api/v1/properties/{propertyId}/restore', path))
@@ -155,13 +164,42 @@ describe('properties: edit, archive and restore', () => {
 })
 
 describe('monitoring events: open filter', () => {
-  it('lists the events that still need attention for one property', async () => {
+  // One resolved event on a world property, so the filter has something to leave out; removed afterwards.
+  let resolvedId: string | undefined
+  afterAll(async () => {
+    if (resolvedId) expectOk(await serviceRole().from('monitoring_events').delete().eq('id', resolvedId), 'Delete the resolved event')
+  })
+
+  it('lists the events that still need attention for one property, and leaves out resolved ones', async () => {
     const property = world().companies.a.properties[0]!
-    const open = await unwrap(apiAs('readOnly', 'a').GET('/api/v1/monitoring/events', { params: { query: { propertyId: property.id, open: true } } }))
-    const closed = await unwrap(apiAs('readOnly', 'a').GET('/api/v1/monitoring/events', { params: { query: { propertyId: property.id, open: false } } }))
-    expect(open.items.every((event) => !['resolved', 'dismissed'].includes(event.status) && event.propertyId === property.id)).toBe(true)
+    const inserted = await serviceRole()
+      .from('monitoring_events')
+      .insert({
+        company_id: world().companies.a.id,
+        type: 'lease_expiry',
+        property_id: property.id,
+        title: `Resolved event ${integration().runId}`,
+        description: 'Resolved before this test ran.',
+        identified_on: '2026-10-01',
+        priority: 'low',
+        recommended_action: 'None.',
+        status: 'resolved',
+        resolved_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single()
+    expectOk(inserted, 'Insert a resolved event')
+    resolvedId = (inserted.data as { id: string }).id
+
+    const query = (open?: boolean) =>
+      unwrap(apiAs('readOnly', 'a').GET('/api/v1/monitoring/events', { params: { query: { propertyId: property.id, pageSize: 100, ...(open === undefined ? {} : { open }) } } }))
+    const [open, closed, all] = await Promise.all([query(true), query(false), query()])
+
+    expect(open.total).toBeGreaterThan(0)
+    expect(open.items.some((event) => event.id === resolvedId)).toBe(false)
+    expect(open.items.every((event) => ['new', 'under_review', 'action_required', 'in_progress'].includes(event.status))).toBe(true)
+    expect(closed.items.map((event) => event.id)).toContain(resolvedId)
     expect(closed.items.every((event) => ['resolved', 'dismissed'].includes(event.status))).toBe(true)
-    const all = await unwrap(apiAs('readOnly', 'a').GET('/api/v1/monitoring/events', { params: { query: { propertyId: property.id } } }))
     expect(open.total + closed.total).toBe(all.total)
   })
 })

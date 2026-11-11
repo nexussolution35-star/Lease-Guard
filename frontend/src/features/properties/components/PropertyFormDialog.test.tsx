@@ -80,7 +80,8 @@ beforeEach(() => {
 })
 
 describe('PropertyFormDialog', () => {
-  it('adds a property with the signed-in user as manager and an owner', async () => {
+  // Many select interactions: allow more than the default 5 s when the whole workspace's suites run at once.
+  it('adds a property with the signed-in user as manager and an owner', { timeout: 20_000 }, async () => {
     const created: Property = { ...sampleRecord('properties'), name: 'Rosebank Corner', code: 'RBC' }
     fakeProperties.create.mockResolvedValue(created)
     await renderDialog()
@@ -111,6 +112,31 @@ describe('PropertyFormDialog', () => {
     expect(await screen.findByRole('option', { name: 'Sipho Dlamini (Company admin)' })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /Kabelo Molefe/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /Pieter Botha/ })).not.toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
+
+    await userEvent.click(within(dialog).getByRole('combobox', { name: /^Property owner/ }))
+    expect(await screen.findByRole('option', { name: 'No owner' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Pieter Botha (Property owner)' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Kabelo Molefe/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Sipho Dlamini/ })).not.toBeInTheDocument()
+  })
+
+  it('keeps the current manager selectable when they are no longer an active manager', async () => {
+    const SUSPENDED = '5b0c1d2e-0000-4000-8000-0000000000a9'
+    members.list.mockResolvedValue({
+      items: [person(ME, 'Sipho Dlamini', 'company_admin'), { ...person(SUSPENDED, 'Thandi Mokoena', 'property_manager'), status: 'suspended' }],
+      total: 2,
+      page: 1,
+      pageSize: 100,
+    })
+    await renderWithRouter(
+      <QueryClientProvider client={createTestQueryClient()}>
+        <PropertyFormDialog open onOpenChange={() => undefined} property={{ ...sampleRecord('properties'), name: 'Maponya Square', managerUserId: SUSPENDED }} />
+      </QueryClientProvider>,
+      '/properties',
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'Edit Maponya Square' })
+    expect(await within(dialog).findByRole('combobox', { name: /^Property manager/ })).toHaveTextContent('Thandi Mokoena (Property manager)')
   })
 
   it('shows a duplicate code on the code field', async () => {
