@@ -25,7 +25,7 @@ Counts are component files (`.tsx`, excluding tests and test helpers) on disk in
 | Arrangements | `features/arrangements/components` | 14 | 0 | Not started |
 | Communications | `features/communications/components` | 24 | 0 | Not started |
 | Reports | `features/reports/components` | 11 | 0 | Not started |
-| Settings | `features/settings/components` | 16 | 0 | Not started |
+| Settings | `features/company/components`, `features/users/components`, `features/audit/components` | 16 | 11 | Company, Notifications, Users, Roles and Audit log are real screens (PRD module 1). Templates and Preferences are still placeholders. Settings screens live in the feature that owns their data, not in `features/settings` |
 | WhatsApp Business | `features/whatsapp/components` | 38 | 0 | Not started |
 
 Outside the specification: `features/auth/components` (`LoginForm`, `LoginScreen`) and
@@ -38,14 +38,14 @@ mode and its in-browser services were removed; the API is the only data source.
 
 ## Screens (route files)
 
-`app/router/routes` has 34 route files; 29 of them still render `ScreenPlaceholder`.
+`app/router/routes` has 42 route files; 20 of them still render `ScreenPlaceholder`.
 
 | State | Routes |
 | --- | --- |
-| Real screen | `/login`, `/properties` (`PropertyListScreen`) |
-| Layout or redirect | `__root` (shell, auth guard, not-found), `/settings` (section navigation), `/settings/` (redirects to `/settings/company`) |
+| Real screen | `/login`, `/auth/accept`, `/auth/forgot-password`, `/auth/reset-password`, `/` (dashboard: onboarding and WhatsApp activity), `/properties`, `/communications/approvals`, `/communications/analytics`, `/whatsapp/conversations`, `/settings/company`, `/settings/notifications`, `/settings/users`, `/settings/roles`, `/settings/audit`, `/settings/integrations/whatsapp`, `/settings/integrations/whatsapp/agent` |
+| Layout or redirect | `__root` (shell, auth guard, not-found), `/settings` (section navigation), `/settings/` (to `/settings/company`), `/communications` (Messages, Approvals, Analytics navigation), `/settings/integrations/` and `/settings/whatsapp` (to `/settings/integrations/whatsapp`) |
 | Record loaded, body is `ScreenPlaceholder` | `/properties/$propertyId`, `/units/$unitId`, `/tenants/$tenantId`, `/leases/$leaseId`, `/statements/$statementId`, `/monitoring/$eventId`, `/arrangements/$arrangementId` (each loads the record through its feature hook and shows "not found in this workspace" for other companies), `/reports/$reportId` (resolves the report definition) |
-| `ScreenPlaceholder` only | `/` (dashboard), `/units`, `/tenants`, `/leases`, `/statements`, `/statements/upload`, `/monitoring`, `/arrangements`, `/communications`, `/communications/approvals`, `/whatsapp`, `/whatsapp/conversations`, `/reports`, and the eight settings sections (`company`, `users`, `roles`, `notifications`, `whatsapp`, `templates`, `audit`, `preferences`) |
+| `ScreenPlaceholder` only | `/units`, `/tenants`, `/leases`, `/statements`, `/statements/upload`, `/monitoring`, `/arrangements`, `/communications` (messages), `/whatsapp`, `/reports`, `/settings/templates`, `/settings/preferences` |
 
 `ScreenPlaceholder` is temporary. Remove it when the last route gets its real screen.
 

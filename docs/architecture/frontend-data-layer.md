@@ -84,6 +84,8 @@ Each feature has the same files under `features/<feature>/api/`:
 | communications | `useCommunicationList`, `useCommunicationQuery` |
 | notifications | `useNotificationList`, `useUnreadNotificationCount`, `useMarkNotificationRead`, `useMarkAllNotificationsRead` |
 | account | `useCurrentUserProfile` (`GET /me`), `useUpdateProfile` (`PATCH /me`) |
+| company | `useCompanyProfile`, `useUpdateCompany` (`PATCH /companies/{id}`: profile and monitoring settings), `useOnboardingChecklist` |
+| audit | `useAuditLogList` (`GET /audit-logs`, newest first; audit readers only) |
 
 API sources follow the same rules:
 

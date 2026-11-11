@@ -330,7 +330,7 @@ The Python test suite also checks that its extraction contract exactly matches t
   caller's own token. The worker's service-role client always filters by company explicitly.
 - **Protected storage:** private buckets for statements and lease documents, with per-company path policies.
 - **Audit:** append-only audit log, with database triggers on lease verification, statement and extraction
-  changes, monitoring events and message approvals.
+  changes, monitoring events, message approvals, invitations, company settings and membership changes.
 - **Data protection:** LeaseGuard processes commercially sensitive information. Deployments must be reviewed
   against South African data-protection requirements, including **POPIA**.
 
@@ -349,7 +349,8 @@ LeaseGuard is in active MVP development on the path to a single-property pilot.
 | Background worker: daily lease, arrears and arrangement monitoring; statement extraction; WhatsApp delivery of approved messages | In place |
 | Create and edit endpoints for properties, units, tenants, leases and payment arrangements | Planned |
 | Web app shell, navigation, sign-in, workspace switching and profile management (edit profile, change password) | In place |
-| Web app management screens | In progress: the property list is complete and every feature's data source is wired to the API; most other screens are still placeholders |
+| Authentication and company management (PRD module 1): sign-in, workspaces, users and invitations, roles, company details, notice periods and reminder timing, audit log | In place. Companies are registered by a Nexus operator (`pnpm platform:create-company`) |
+| Web app management screens | In progress: the property list is complete and every feature's data source is wired to the API; the portfolio, statement, monitoring and arrangement screens are still placeholders |
 | Statement review and correction workflow | Planned |
 | WhatsApp webhooks, inbound replies, templates and opt-out handling | Planned |
 | Weekly owner summaries and supported owner questions | Planned |

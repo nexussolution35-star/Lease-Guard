@@ -2,8 +2,8 @@ import { screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { AuthContextValue } from '@/features/auth/authContext'
-import { resetWorkspace } from '@/test/accountFixtures'
-import { resetAppApi, respondWith } from '@/test/appApi'
+import { membership, NEXUS_ID, profileWith, resetWorkspace } from '@/test/accountFixtures'
+import { appApi, resetAppApi, respondWith } from '@/test/appApi'
 import { sampleRecord } from '@/test/fakeApi'
 import { signedInAuth } from '@/test/authFixtures'
 import { renderApp } from '@/test/renderApp'
@@ -99,5 +99,107 @@ describe('app routes', () => {
     await renderApp('/reports/not-a-report')
     expect(await screen.findByRole('heading', { level: 1, name: 'Report not found' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Back to reports' })).toHaveAttribute('href', '/reports')
+  })
+})
+
+describe('settings (module 1)', () => {
+  const COMPANY = {
+    id: NEXUS_ID,
+    name: 'Test Properties (Pty) Ltd',
+    tradingName: 'Test Properties',
+    address: { line1: '10 Test Street', suburb: 'Rosebank', city: 'Johannesburg', province: 'Gauteng', postalCode: '2196', country: 'South Africa' },
+    contactEmail: 'office@test.co.za',
+    contactPhone: '+27 11 555 0100',
+    status: 'active',
+    initials: 'TP',
+    whatsapp: { connectionStatus: 'not_configured', numberCount: 0, connectedNumberCount: 0 },
+    settings: {
+      leaseExpiryNoticeDays: [180, 90, 30],
+      renewalDeadlineWarningDays: [90, 30],
+      guaranteeExpiryNoticeDays: [60, 30],
+      paymentReminderOffsetsDays: { initial: 7, overdue: 14, followUp: 21 },
+      installmentReminderLeadDays: 3,
+      ownerSummaryWeekday: 'monday',
+      timezone: 'Africa/Johannesburg',
+    },
+    createdAt: '2026-10-01T08:00:00+02:00',
+    updatedAt: '2026-10-01T08:00:00+02:00',
+  }
+  const AUDIT_ENTRY = {
+    id: 'e0000000-0000-4000-8000-000000000001',
+    companyId: NEXUS_ID,
+    action: 'verify',
+    entityType: 'lease',
+    entityId: 'a1b2c3d4-0000-4000-8000-0000000000aa',
+    summary: 'Lease LSE-0042 verified',
+    occurredAt: '2026-11-10T09:15:00+02:00',
+    createdAt: '2026-11-10T09:15:00+02:00',
+    updatedAt: '2026-11-10T09:15:00+02:00',
+  }
+  const emptyPage = { items: [], total: 0, page: 1, pageSize: 25 }
+
+  function signInAs(role: 'company_admin' | 'property_manager' | 'property_owner' | 'read_only') {
+    respondWith('GET', '/api/v1/me', 200, profileWith([membership(NEXUS_ID, { isDefault: true, role, name: COMPANY.name, initials: 'TP' })]))
+  }
+
+  beforeEach(() => {
+    respondWith('GET', `/api/v1/companies/${NEXUS_ID}`, 200, COMPANY)
+    respondWith('GET', '/api/v1/users', 200, emptyPage)
+    respondWith('GET', '/api/v1/audit-logs', 200, { ...emptyPage, items: [AUDIT_ENTRY], total: 1 })
+  })
+
+  it('lets a company admin edit the company, and sends the active company with the request', async () => {
+    signInAs('company_admin')
+    await renderApp('/settings/company')
+    const form = await screen.findByRole('form', { name: 'Company details' })
+    expect(within(form).getByLabelText(/Registered name/)).toHaveValue('Test Properties (Pty) Ltd')
+    const request = appApi.requests.find((r) => new URL(r.url).pathname === `/api/v1/companies/${NEXUS_ID}`)
+    expect(request?.headers.get('x-company-id')).toBe(NEXUS_ID)
+  })
+
+  it('shows the company read-only to a property manager', async () => {
+    signInAs('property_manager')
+    await renderApp('/settings/company')
+    expect(await screen.findByText(/Only company admins can change them/)).toBeInTheDocument()
+    expect(screen.queryByRole('form', { name: 'Company details' })).not.toBeInTheDocument()
+  })
+
+  it('shows notice periods and reminder timing', async () => {
+    signInAs('read_only')
+    await renderApp('/settings/notifications')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Notifications' })).toBeInTheDocument()
+    expect(await screen.findByText('180, 90, 30 days before')).toBeInTheDocument()
+  })
+
+  it('explains the roles and marks the signed-in user’s role', async () => {
+    signInAs('read_only')
+    await renderApp('/settings/roles')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Roles' })).toBeInTheDocument()
+    expect(await screen.findByRole('columnheader', { name: /Read only\s*\(your role\)/ })).toBeInTheDocument()
+  })
+
+  it('shows the audit log to an audit reader', async () => {
+    signInAs('read_only')
+    await renderApp('/settings/audit?action=verify')
+    expect(await screen.findByText('Lease LSE-0042 verified')).toBeInTheDocument()
+    const request = appApi.requests.find((r) => new URL(r.url).pathname === '/api/v1/audit-logs')
+    expect(new URL(request?.url ?? 'http://x').searchParams.get('action')).toBe('verify')
+  })
+
+  it('does not ask the API for the audit log as a property owner', async () => {
+    signInAs('property_owner')
+    await renderApp('/settings/audit')
+    expect(await screen.findByText('The audit log is not available for your role')).toBeInTheDocument()
+    expect(appApi.requests.some((r) => new URL(r.url).pathname === '/api/v1/audit-logs')).toBe(false)
+  })
+
+  it('has no placeholder left on the module 1 settings screens', async () => {
+    signInAs('company_admin')
+    for (const path of ['/settings/company', '/settings/notifications', '/settings/roles', '/settings/audit', '/settings/users']) {
+      const view = await renderApp(path)
+      await screen.findByRole('heading', { level: 1 })
+      expect(screen.queryByText('Screen coming in the next stage')).not.toBeInTheDocument()
+      view.unmount()
+    }
   })
 })
