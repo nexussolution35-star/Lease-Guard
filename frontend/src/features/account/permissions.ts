@@ -15,3 +15,11 @@ export function isCompanyAdmin(role: UserRole | null | undefined): boolean {
 export function isCompanyWriter(role: UserRole | null | undefined): boolean {
   return role === 'company_admin' || role === 'property_manager'
 }
+
+/**
+ * Audit readers see the workspace's audit log: everyone except property owners. Mirrors the API's
+ * AUDIT_READER_ROLES and the database's `auditors_read` policy.
+ */
+export function canReadAuditLog(role: UserRole | null | undefined): boolean {
+  return role === 'company_admin' || role === 'property_manager' || role === 'read_only'
+}
