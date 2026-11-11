@@ -1,5 +1,5 @@
 import { COMPANY_ID_HEADER, compactQuery, isApiError, unwrap, type ApiClient } from '@leaseguard/api-client'
-import type { Communication } from '@leaseguard/domain'
+import type { Communication, CommunicationAnalytics } from '@leaseguard/domain'
 
 import { isUuid } from '@/lib/data/ids'
 import { listSearchTerm } from '@/lib/data/listParams'
@@ -9,7 +9,8 @@ import type { ApprovalDecisionResult, CommunicationSource, PendingApproval } fro
 /**
  * Communications from the LeaseGuard API (`GET /api/v1/communications`,
  * `GET /api/v1/communications/{communicationId}`) and the approval queue (`GET /api/v1/communications/approvals`,
- * `POST …/{communicationId}/approve`, `POST …/{communicationId}/reject`).
+ * `POST …/{communicationId}/approve`, `POST …/{communicationId}/reject`) and the analytics
+ * (`GET /api/v1/communications/analytics`).
  */
 export function createApiCommunicationSource(api: ApiClient): CommunicationSource {
   return {
@@ -83,6 +84,16 @@ export function createApiCommunicationSource(api: ApiClient): CommunicationSourc
         }),
       )
       return result
+    },
+
+    async analytics(companyId, params) {
+      const figures: CommunicationAnalytics = await unwrap(
+        api.GET('/api/v1/communications/analytics', {
+          params: { query: compactQuery({ from: params.from, to: params.to }) },
+          headers: { [COMPANY_ID_HEADER]: companyId },
+        }),
+      )
+      return figures
     },
   }
 }

@@ -8,7 +8,7 @@ import {
   ApiTags,
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger'
-import type { Communication } from '@leaseguard/domain'
+import type { Communication, CommunicationAnalytics } from '@leaseguard/domain'
 
 import { CompanyScoped, WRITER_ROLES } from '../../common/decorators/company-scoped.decorator'
 import { CurrentCompany } from '../../common/decorators/current-company.decorator'
@@ -18,10 +18,12 @@ import type { Page } from '../../common/http/pagination'
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe'
 import type { CompanyContext } from '../../common/request-context'
 import type { DbClient } from '../../infrastructure/database/rls-client.factory'
+import { CommunicationAnalyticsService } from './communication-analytics.service'
 import type { ApprovalDecisionResult, PendingApproval } from './communications.mapper'
 import {
   approvalQueueQuerySchema,
   approveCommunicationBodySchema,
+  communicationAnalyticsQuerySchema,
   communicationListQuerySchema,
   rejectCommunicationBodySchema,
 } from './communications.schemas'
@@ -30,6 +32,8 @@ import {
   ApprovalDecisionResultDto,
   ApprovalQueueQueryDto,
   ApproveCommunicationBodyDto,
+  CommunicationAnalyticsDto,
+  CommunicationAnalyticsQueryDto,
   CommunicationDto,
   CommunicationListQueryDto,
   CommunicationPageDto,
@@ -46,6 +50,7 @@ export class CommunicationsController {
   constructor(
     private readonly communications: CommunicationsService,
     private readonly approvals: MessageApprovalsService,
+    private readonly analytics: CommunicationAnalyticsService,
   ) {}
 
   @Get()
@@ -75,6 +80,28 @@ export class CommunicationsController {
     @Query(new ZodValidationPipe(approvalQueueQuerySchema)) query: ApprovalQueueQueryDto,
   ): Promise<Page<PendingApproval>> {
     return this.communications.listPendingApprovals(db, company.companyId, query)
+  }
+
+  // Declared before `:communicationId` so the literal path is matched first.
+  @Get('analytics')
+  @CompanyScoped()
+  @ApiOperation({
+    operationId: 'getCommunicationAnalytics',
+    summary: "The active company's WhatsApp communication figures over a date range",
+    description:
+      'Every member of the company. South African calendar days, both inclusive; without dates the last 30 days, at ' +
+      'most 366 days (400 otherwise). Messages count on the day they were recorded, by their current status; ' +
+      'handovers on the day they were opened; AI agent runs on the day their message arrived. Only WhatsApp ' +
+      'messages count; test messages are not communications. Computed by the database as the caller, so another ' +
+      "company's records never count.",
+  })
+  @ApiOkResponse({ type: CommunicationAnalyticsDto })
+  getAnalytics(
+    @UserDb() db: DbClient,
+    @CurrentCompany() company: CompanyContext,
+    @Query(new ZodValidationPipe(communicationAnalyticsQuerySchema)) query: CommunicationAnalyticsQueryDto,
+  ): Promise<CommunicationAnalytics> {
+    return this.analytics.figures(db, company.companyId, query)
   }
 
   @Get(':communicationId')

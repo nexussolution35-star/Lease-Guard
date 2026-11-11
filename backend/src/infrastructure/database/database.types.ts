@@ -1399,6 +1399,11 @@ isOneToOne: false
 "claim_communication":
 { Args: { "p_communication_id": string,"p_company_id": string }; Returns: string
                            },
+"communication_analytics":
+{ Args: { "p_company_id": string,"p_from": string,"p_to": string }; Returns: {
+              "agent_replies": number,"delivered_messages": number,"failed_messages": number,"handovers_by_agent": number,"handovers_opened": number,"inbound_messages": number,"out_of_hours_messages": number,"outbound_messages": number,"read_messages": number,"suggested_replies": number
+            }[]
+                           },
 "complete_whatsapp_agent_run":
 { Args: { "p_cache_creation_input_tokens": number,"p_cache_read_input_tokens": number,"p_category": string,"p_company_id": string,"p_confidence": number,"p_error_message": string,"p_handover_reason": string,"p_input_tokens": number,"p_latency_ms": number,"p_model": string,"p_out_of_hours_since": string,"p_outcome": string,"p_output_tokens": number,"p_reply_text": string,"p_run_id": string,"p_stop_reason": string,"p_suggested_reply": string }; Returns: {
               "handover_id": string,"notified": number,"outcome": string,"reply_communication_id": string,"run_outcome": string

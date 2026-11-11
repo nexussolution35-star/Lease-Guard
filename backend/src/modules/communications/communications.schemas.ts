@@ -1,4 +1,4 @@
-import { CHANNELS, DELIVERY_STATUSES, MESSAGE_TYPES, RECIPIENT_TYPES } from '@leaseguard/domain'
+import { CHANNELS, DELIVERY_STATUSES, isValidISODate, MESSAGE_TYPES, RECIPIENT_TYPES } from '@leaseguard/domain'
 import { z } from 'zod'
 
 import { listQuerySchema, pageQuerySchema, SORT_DIRECTIONS } from '../../common/http/pagination'
@@ -58,3 +58,15 @@ export const rejectCommunicationBodySchema = z.object({
   note: z.string().trim().min(1, 'A reason is required to reject a message').max(NOTE_MAX_LENGTH),
 })
 export type RejectCommunicationBody = z.infer<typeof rejectCommunicationBodySchema>
+
+const isoDate = z.string().refine(isValidISODate, 'must be a calendar date (YYYY-MM-DD)')
+
+/**
+ * Communication analytics: South African calendar days, both inclusive. Without dates the last 30 days; the range
+ * itself (order, at most 366 days) is checked once the defaults are applied (CommunicationAnalyticsService).
+ */
+export const communicationAnalyticsQuerySchema = z.object({
+  from: isoDate.optional(),
+  to: isoDate.optional(),
+})
+export type CommunicationAnalyticsQuery = z.infer<typeof communicationAnalyticsQuerySchema>

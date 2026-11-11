@@ -169,3 +169,7 @@ _Avoid_: Ping, sample message
 **WhatsApp activation**:
 A company admin's recorded decision that the company is live on WhatsApp, refused until every required WhatsApp setup step is verified.
 _Avoid_: Go-live switch, enabling WhatsApp (which reads as connecting a number)
+
+**Communication analytics**:
+A company's WhatsApp figures over a range of South African calendar days: messages received and sent (with how many WhatsApp reported delivered, read or failed), handovers opened, and the AI agent's answers, out-of-hours messages and suggested replies; only that company's own records count, and test messages never do.
+_Avoid_: Reports (which are portfolio reports), statistics, insights

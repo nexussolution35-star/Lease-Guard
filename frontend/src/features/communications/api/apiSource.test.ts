@@ -102,4 +102,17 @@ describe('createApiCommunicationSource', () => {
       messages: ['The company WhatsApp account is not connected', 'WhatsApp template "statement" is not approved by Meta'],
     })
   })
+  it('reads the analytics for the explicit company and range, and only the dates that are set', async () => {
+    const figures = { from: '2026-10-01', to: '2026-10-31', inbound: 3, outbound: 2, delivered: 2, read: 1, failed: 0, handovers: 1, agentHandovers: 1, agentReplies: 1, outOfHoursMessages: 0, suggestedReplies: 1 }
+    const fetch = fakeFetch(200, figures)
+    expect(await sourceWith(fetch).analytics(TEST_COMPANY_ID, { from: '2026-10-01', to: '2026-10-31' })).toEqual(figures)
+    expect(urlOf(fetch)).toEqual({ pathname: '/api/v1/communications/analytics', query: { from: '2026-10-01', to: '2026-10-31' } })
+    expect(requestAt(fetch).headers.get('x-company-id')).toBe(TEST_COMPANY_ID)
+
+    const defaults = fakeFetch(200, figures)
+    await sourceWith(defaults).analytics(TEST_COMPANY_ID, {})
+    expect(urlOf(defaults).query).toEqual({})
+
+    await expect(sourceWith(forbiddenFetch()).analytics(TEST_COMPANY_ID, {})).rejects.toBeInstanceOf(ApiError)
+  })
 })

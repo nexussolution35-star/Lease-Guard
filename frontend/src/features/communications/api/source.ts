@@ -1,5 +1,15 @@
 import type { CommunicationSortField } from '@leaseguard/api-client'
-import type { Channel, Communication, DeliveryStatus, EntityId, MessageApproval, MessageType, RecipientType } from '@leaseguard/domain'
+import type {
+  Channel,
+  Communication,
+  CommunicationAnalytics,
+  DeliveryStatus,
+  EntityId,
+  ISODate,
+  MessageApproval,
+  MessageType,
+  RecipientType,
+} from '@leaseguard/domain'
 
 import type { ListParams, Page } from '@/lib/data/listParams'
 
@@ -37,6 +47,15 @@ export interface ApprovalQueueParams {
 }
 
 /**
+ * The range asked for communication analytics: South African calendar days, both inclusive. Without dates the API
+ * answers for the last 30 days; the answer names the range it used.
+ */
+export interface CommunicationAnalyticsParams {
+  from?: ISODate
+  to?: ISODate
+}
+
+/**
  * Where communications come from. Same contract as `PropertySource`: the company is explicit, lists
  * resolve to API-shaped pages and `get` resolves to null when the record is not in that company.
  */
@@ -52,4 +71,6 @@ export interface CommunicationSource {
   approve(companyId: EntityId, communicationId: EntityId, note?: string): Promise<ApprovalDecisionResult>
   /** Company writers: reject with a reason (required); the message is never sent. */
   reject(companyId: EntityId, communicationId: EntityId, reason: string): Promise<ApprovalDecisionResult>
+  /** Every member: the company's WhatsApp figures over the range (400 for a reversed or over-long range). */
+  analytics(companyId: EntityId, params: CommunicationAnalyticsParams): Promise<CommunicationAnalytics>
 }

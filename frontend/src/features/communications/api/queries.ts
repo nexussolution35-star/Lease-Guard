@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient, type UseMutationResult, type UseQueryResult } from '@tanstack/react-query'
-import type { EntityId, Communication } from '@leaseguard/domain'
+import type { EntityId, Communication, CommunicationAnalytics } from '@leaseguard/domain'
 
 import type { Page } from '@/lib/data/listParams'
 import { useCompanyQuery } from '@/lib/data/queries'
@@ -7,13 +7,27 @@ import { createEntityKeys } from '@/lib/data/queryKeys'
 import { useActiveCompanyId } from '@/lib/data/useActiveCompanyId'
 
 import { getCommunicationSource } from './selectSource'
-import type { ApprovalDecisionResult, ApprovalQueueParams, CommunicationListParams, PendingApproval } from './source'
+import type { ApprovalDecisionResult, ApprovalQueueParams, CommunicationAnalyticsParams, CommunicationListParams, PendingApproval } from './source'
 
 export const communicationKeys = createEntityKeys('communications')
 
 /** The approval queue, under the communications prefix so a decision refreshes it with every message list. */
 export const approvalQueueKeys = {
   list: (companyId: EntityId, params: ApprovalQueueParams) => [...communicationKeys.company(companyId), 'approvals', params] as const,
+}
+
+/** Communication analytics, under the communications prefix so a decision or a new message refreshes them too. */
+export const communicationAnalyticsKeys = {
+  range: (companyId: EntityId, params: CommunicationAnalyticsParams) => [...communicationKeys.company(companyId), 'analytics', params] as const,
+}
+
+/** The active workspace's WhatsApp figures over the range (the last 30 days without dates). */
+export function useCommunicationAnalytics(params: CommunicationAnalyticsParams, options: { enabled?: boolean } = {}): UseQueryResult<CommunicationAnalytics> {
+  return useCompanyQuery(
+    (companyId) => communicationAnalyticsKeys.range(companyId, params),
+    (companyId) => getCommunicationSource().analytics(companyId, params),
+    { keepPrevious: true, enabled: options.enabled ?? true },
+  )
 }
 
 export function useCommunicationList(params: CommunicationListParams): UseQueryResult<Page<Communication>> {

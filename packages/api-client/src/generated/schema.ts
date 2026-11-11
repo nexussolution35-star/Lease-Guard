@@ -689,6 +689,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/communications/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The active company's WhatsApp communication figures over a date range
+         * @description Every member of the company. South African calendar days, both inclusive; without dates the last 30 days, at most 366 days (400 otherwise). Messages count on the day they were recorded, by their current status; handovers on the day they were opened; AI agent runs on the day their message arrived. Only WhatsApp messages count; test messages are not communications. Computed by the database as the caller, so another company's records never count.
+         */
+        get: operations["getCommunicationAnalytics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/communications/{communicationId}": {
         parameters: {
             query?: never;
@@ -2646,6 +2666,38 @@ export interface components {
             page: number;
             pageSize: number;
         };
+        CommunicationAnalyticsDto: {
+            /**
+             * Format: date
+             * @description First South African calendar day included
+             */
+            from: string;
+            /**
+             * Format: date
+             * @description Last South African calendar day included
+             */
+            to: string;
+            /** @description WhatsApp messages received from tenants, owners and contacts */
+            inbound: number;
+            /** @description WhatsApp messages handed for sending: queued, sent, delivered, read or failed (not drafts, approval requests or rejected messages) */
+            outbound: number;
+            /** @description Outbound messages WhatsApp reported delivered (read ones included) */
+            delivered: number;
+            /** @description Outbound messages WhatsApp reported read */
+            read: number;
+            /** @description Outbound messages that failed */
+            failed: number;
+            /** @description Handovers opened, by the AI agent or a member */
+            handovers: number;
+            /** @description Handovers the AI agent opened */
+            agentHandovers: number;
+            /** @description Answers the AI agent sent to contacts */
+            agentReplies: number;
+            /** @description Out-of-hours messages the AI agent sent to contacts */
+            outOfHoursMessages: number;
+            /** @description Suggested replies the AI agent drafted for staff (internal, never sent) */
+            suggestedReplies: number;
+        };
         ApproveCommunicationBodyDto: {
             /** @description Optional note kept with the approval */
             note?: string;
@@ -3543,6 +3595,7 @@ export type ApprovalDecision = components['schemas']['ApprovalDecision'];
 export type MessageApprovalDto = components['schemas']['MessageApprovalDto'];
 export type PendingApprovalDto = components['schemas']['PendingApprovalDto'];
 export type PendingApprovalPage = components['schemas']['PendingApprovalPage'];
+export type CommunicationAnalyticsDto = components['schemas']['CommunicationAnalyticsDto'];
 export type ApproveCommunicationBodyDto = components['schemas']['ApproveCommunicationBodyDto'];
 export type ApprovalDecisionResultDto = components['schemas']['ApprovalDecisionResultDto'];
 export type RejectCommunicationBodyDto = components['schemas']['RejectCommunicationBodyDto'];
@@ -6127,6 +6180,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PendingApprovalPage"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getCommunicationAnalytics: {
+        parameters: {
+            query?: {
+                /** @description First South African calendar day included. Default: 29 days before `to`, or before today without `to` */
+                from?: string;
+                /** @description Last South African calendar day included. Default: today (South Africa) */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunicationAnalyticsDto"];
                 };
             };
             /** @description Invalid request or missing X-Company-Id header */

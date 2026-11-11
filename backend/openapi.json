@@ -3983,6 +3983,96 @@
         ]
       }
     },
+    "/api/v1/communications/analytics": {
+      "get": {
+        "description": "Every member of the company. South African calendar days, both inclusive; without dates the last 30 days, at most 366 days (400 otherwise). Messages count on the day they were recorded, by their current status; handovers on the day they were opened; AI agent runs on the day their message arrived. Only WhatsApp messages count; test messages are not communications. Computed by the database as the caller, so another company's records never count.",
+        "operationId": "getCommunicationAnalytics",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "First South African calendar day included. Default: 29 days before `to`, or before today without `to`",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Last South African calendar day included. Default: today (South Africa)",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunicationAnalyticsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "The active company's WhatsApp communication figures over a date range",
+        "tags": [
+          "communications"
+        ]
+      }
+    },
     "/api/v1/communications/{communicationId}": {
       "get": {
         "operationId": "getCommunication",
@@ -12250,6 +12340,85 @@
           "total",
           "page",
           "pageSize"
+        ]
+      },
+      "CommunicationAnalyticsDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date",
+            "description": "First South African calendar day included"
+          },
+          "to": {
+            "type": "string",
+            "format": "date",
+            "description": "Last South African calendar day included"
+          },
+          "inbound": {
+            "type": "number",
+            "minimum": 0,
+            "description": "WhatsApp messages received from tenants, owners and contacts"
+          },
+          "outbound": {
+            "type": "number",
+            "minimum": 0,
+            "description": "WhatsApp messages handed for sending: queued, sent, delivered, read or failed (not drafts, approval requests or rejected messages)"
+          },
+          "delivered": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Outbound messages WhatsApp reported delivered (read ones included)"
+          },
+          "read": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Outbound messages WhatsApp reported read"
+          },
+          "failed": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Outbound messages that failed"
+          },
+          "handovers": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Handovers opened, by the AI agent or a member"
+          },
+          "agentHandovers": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Handovers the AI agent opened"
+          },
+          "agentReplies": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Answers the AI agent sent to contacts"
+          },
+          "outOfHoursMessages": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Out-of-hours messages the AI agent sent to contacts"
+          },
+          "suggestedReplies": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Suggested replies the AI agent drafted for staff (internal, never sent)"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "inbound",
+          "outbound",
+          "delivered",
+          "read",
+          "failed",
+          "handovers",
+          "agentHandovers",
+          "agentReplies",
+          "outOfHoursMessages",
+          "suggestedReplies"
         ]
       },
       "ApproveCommunicationBodyDto": {

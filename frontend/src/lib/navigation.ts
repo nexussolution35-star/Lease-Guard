@@ -149,6 +149,7 @@ export type BreadcrumbResolvers = Readonly<Record<string, (segment: string) => s
 const STATIC_SEGMENT_LABELS: Readonly<Record<string, string>> = {
   upload: 'Upload',
   approvals: 'Approvals',
+  analytics: 'Analytics',
   conversations: 'Conversations',
   company: 'Company',
   users: 'Users',

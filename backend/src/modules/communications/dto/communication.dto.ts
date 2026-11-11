@@ -7,6 +7,7 @@ import {
   MESSAGE_TYPES,
   RECIPIENT_TYPES,
   type ApprovalDecision,
+  type CommunicationAnalytics,
   type Channel,
   type Communication,
   type DeliveryStatus,
@@ -26,6 +27,7 @@ import {
   COMMUNICATION_SORT_FIELDS,
   type approvalQueueQuerySchema,
   type approveCommunicationBodySchema,
+  type communicationAnalyticsQuerySchema,
   type communicationListQuerySchema,
   type rejectCommunicationBodySchema,
 } from '../communications.schemas'
@@ -168,4 +170,31 @@ assertSchemaMatchesDto<z.infer<typeof rejectCommunicationBodySchema>, RejectComm
 export class ApprovalDecisionResultDto implements ApprovalDecisionResult {
   @ApiProperty({ type: MessageApprovalDto }) approval!: MessageApprovalDto
   @ApiProperty({ type: CommunicationDto }) communication!: CommunicationDto
+}
+
+export class CommunicationAnalyticsQueryDto {
+  @ApiPropertyOptional({ format: 'date', description: 'First South African calendar day included. Default: 29 days before `to`, or before today without `to`' })
+  from?: string
+
+  @ApiPropertyOptional({ format: 'date', description: 'Last South African calendar day included. Default: today (South Africa)' })
+  to?: string
+}
+
+assertSchemaMatchesDto<z.infer<typeof communicationAnalyticsQuerySchema>, CommunicationAnalyticsQueryDto>(true)
+
+/** Same shape as the domain `CommunicationAnalytics`. */
+export class CommunicationAnalyticsDto implements CommunicationAnalytics {
+  @ApiProperty({ format: 'date', description: 'First South African calendar day included' }) from!: string
+  @ApiProperty({ format: 'date', description: 'Last South African calendar day included' }) to!: string
+  @ApiProperty({ minimum: 0, description: 'WhatsApp messages received from tenants, owners and contacts' }) inbound!: number
+  @ApiProperty({ minimum: 0, description: 'WhatsApp messages handed for sending: queued, sent, delivered, read or failed (not drafts, approval requests or rejected messages)' })
+  outbound!: number
+  @ApiProperty({ minimum: 0, description: 'Outbound messages WhatsApp reported delivered (read ones included)' }) delivered!: number
+  @ApiProperty({ minimum: 0, description: 'Outbound messages WhatsApp reported read' }) read!: number
+  @ApiProperty({ minimum: 0, description: 'Outbound messages that failed' }) failed!: number
+  @ApiProperty({ minimum: 0, description: 'Handovers opened, by the AI agent or a member' }) handovers!: number
+  @ApiProperty({ minimum: 0, description: 'Handovers the AI agent opened' }) agentHandovers!: number
+  @ApiProperty({ minimum: 0, description: 'Answers the AI agent sent to contacts' }) agentReplies!: number
+  @ApiProperty({ minimum: 0, description: 'Out-of-hours messages the AI agent sent to contacts' }) outOfHoursMessages!: number
+  @ApiProperty({ minimum: 0, description: 'Suggested replies the AI agent drafted for staff (internal, never sent)' }) suggestedReplies!: number
 }
