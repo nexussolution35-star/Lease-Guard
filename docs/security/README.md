@@ -168,7 +168,8 @@ the WhatsApp Business account of the company that owns the message.
 
 `audit_logs` is append-only (UPDATE, DELETE and TRUNCATE are rejected by trigger). Database triggers
 record lease verification, statement verification and changes, extraction review and field
-corrections, monitoring event status changes and message approval decisions, stamping the actor from
+corrections, monitoring event status changes, message approval decisions, invitations, changes to a
+company's details and monitoring settings, member role changes and member removal, stamping the actor from
 `auth.uid()` so the client cannot forge it. The log is readable by `company_admin`, `property_manager`
 and `read_only` members, not by property owners. See [Database](../database/README.md#audit).
 

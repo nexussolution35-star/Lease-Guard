@@ -39,6 +39,7 @@ Applied in file-name order. Every schema change is a new migration; existing fil
 | `20261110100400_whatsapp_business_accounts_and_numbers.sql` | Several WhatsApp Business Accounts and numbers per company: `whatsapp_accounts` renamed `whatsapp_phone_numbers` (unique per company and phone number id; Meta status columns written by the service role only; the credential reference no longer readable by signed-in users), new `whatsapp_business_accounts` (members read; written by the service role and by the trigger that records a number's account). See `docs/integrations/whatsapp.md` |
 | `20261110100700_whatsapp_number_verification.sql` | Number verification: `whatsapp_number_verification_steps` and `whatsapp_message_templates` (members read; service role writes), `whatsapp_phone_numbers.registration_blocked_until`, `finish_whatsapp_number_verification` and `sync_whatsapp_message_templates` (service role only), `disconnect_whatsapp_number` (company admins, `SECURITY DEFINER`). See `docs/integrations/whatsapp.md` |
 | `20261111100500_whatsapp_number_import.sql` | Number import (ticket 15): `import_whatsapp_number` (service role only, `SECURITY DEFINER`; the operator command `pnpm whatsapp:import-test-number`) stores Nexus Solution's test-number token in Vault for one company and records its account and number pending verification; `whatsapp_phone_numbers.operator_imported_at` (members read); `store_whatsapp_onboarding_token` redefined to clear the stamp and delete an imported token a later signup replaced; `remove_whatsapp_business_account_access` redefined so the admins' notification tells them to have an imported number imported again. See `docs/integrations/whatsapp.md` |
+| `20261111100600_audit_company_and_membership_changes.sql` | Audit triggers for company configuration and membership management: `audit_change` on `companies` (one row per update, with the changed profile or settings columns), `audit_role_change` and `audit_removal` on `company_users` (a removal is audited only when a signed-in user did it, not for cascades) |
 
 ## Row Level Security model
 
@@ -100,6 +101,10 @@ TRUNCATE. Rows are written by:
   approval decisions. BEFORE triggers stamp the actor from `auth.uid()` so a client cannot forge it;
   when there is no signed-in user (the worker), the supplied actor columns are kept and the audit row
   has no actor.
+- **Company and membership triggers** (`20261111100600_audit_company_and_membership_changes.sql`): a
+  change to a company's details or monitoring settings (the changed columns, before and after; notice
+  days as `180, 90, 30`), a member's role change and a member's removal by a signed-in user.
+  Invitations are audited by `20261109101900_company_invitations.sql`.
 - **Members** recording their own action (`actor_user_id` must equal `auth.uid()`).
 
 ## Product guards in the database
@@ -175,6 +180,7 @@ Run after the seed is loaded; the tests use seeded users.
 | --- | --- |
 | `company_isolation.test.sql` | RLS isolation per company and role, anon has no access, `job_runs` closed, cross-company composite foreign keys, read-only and owner roles cannot write |
 | `audited_rules.test.sql` | Audit rows for audited changes, actor stamping, append-only audit log, database-level product guards |
+| `company_and_membership_audit.test.sql` | Audit rows for company details, monitoring settings, role changes and member removal; nothing recorded for refused or no-op updates, other companies or cascades |
 | `worker_idempotency.test.sql` | Dedupe-key constraints, `job_runs` tracking columns, statement-processing columns |
 | `dedupe_key_guard.test.sql` | Writers can create and update events but never set or change a dedupe key |
 
