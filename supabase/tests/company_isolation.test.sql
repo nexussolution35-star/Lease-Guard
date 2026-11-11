@@ -4,7 +4,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 \ir fixtures/two_companies.psql
-select plan(37);
+select plan(38);
 
 -- ------------------------------------------------------------------ helpers (rolled back with the test)
 create schema tests;
@@ -169,8 +169,13 @@ select throws_ok(
   '23503', null, 'a lease cannot reference a unit from another company'
 );
 select throws_ok(
-  $$update public.properties set company_id = tests.company('KP') where company_id = tests.company('NS')$$,
+  $$update public.units set company_id = tests.company('KP') where company_id = tests.company('NS')$$,
   '23514', null, 'a record cannot be moved to another company'
+);
+-- A property's company is not even a writable column for signed-in users.
+select throws_ok(
+  $$update public.properties set company_id = tests.company('KP') where company_id = tests.company('NS')$$,
+  '42501', null, 'a property cannot be moved to another company'
 );
 
 -- ------------------------------------------------------------------ read-only and owner roles cannot write
@@ -179,7 +184,7 @@ select throws_ok(
   $$insert into public.properties (company_id, name, code, type, address_line1, suburb, city, province,
       postal_code, gross_lettable_area_sqm, manager_user_id, accounting_system)
     values (tests.company('NS'), 'X', 'XX', 'retail', 'X', 'X', 'X', 'Gauteng', '2000', 100,
-      tests.uid('kabelo.molefe@nexussolution.co.za'), 'MRI')$$,
+      tests.uid('naledi.vdmerwe@nexussolution.co.za'), 'MRI')$$,
   '42501', null, 'read_only cannot insert'
 );
 update public.tenants set notes = 'changed by read_only';

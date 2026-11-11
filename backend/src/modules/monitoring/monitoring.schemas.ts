@@ -10,8 +10,12 @@ import { listQuerySchema } from '../../common/http/pagination'
 
 export const MONITORING_EVENT_SORT_FIELDS = ['identifiedOn', 'dueDate', 'priority', 'createdAt'] as const
 
+const queryBoolean = z.enum(['true', 'false']).transform((value) => value === 'true')
+
 export const monitoringEventListQuerySchema = listQuerySchema(MONITORING_EVENT_SORT_FIELDS, {
   status: z.enum(MONITORING_EVENT_STATUSES).optional(),
+  /** true: still needs attention (new, under review, action required, in progress); false: resolved or dismissed. */
+  open: queryBoolean.optional(),
   priority: z.enum(EVENT_PRIORITIES).optional(),
   type: z.enum(MONITORING_EVENT_TYPES).optional(),
   propertyId: z.uuid().optional(),

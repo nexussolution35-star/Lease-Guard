@@ -1618,6 +1618,103 @@
         "tags": [
           "properties"
         ]
+      },
+      "post": {
+        "description": "The manager must be a company admin or property manager of the company; the owner, if any, a member. The code is upper-cased, unique in the company and fixed once created. The database records the audit entry.",
+        "operationId": "createProperty",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePropertyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The code is already used in this company",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The manager or owner does not qualify",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Create a property (company admins and property managers)",
+        "tags": [
+          "properties"
+        ]
       }
     },
     "/api/v1/properties/{propertyId}": {
@@ -1702,6 +1799,298 @@
           }
         ],
         "summary": "Get one property",
+        "tags": [
+          "properties"
+        ]
+      },
+      "patch": {
+        "description": "Omitted fields are unchanged. The code cannot change. An archived property must be restored first (422).",
+        "operationId": "updateProperty",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePropertyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Archived, or the manager or owner does not qualify",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Change a property (company admins and property managers)",
+        "tags": [
+          "properties"
+        ]
+      }
+    },
+    "/api/v1/properties/{propertyId}/archive": {
+      "post": {
+        "description": "An archived property is kept with its history and is read-only until restored. Refused (409) while the property has a lease that has not ended. Archiving an archived property returns it unchanged.",
+        "operationId": "archiveProperty",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The property has leases that have not ended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Archive a property (company admins and property managers)",
+        "tags": [
+          "properties"
+        ]
+      }
+    },
+    "/api/v1/properties/{propertyId}/restore": {
+      "post": {
+        "description": "The property becomes active again. Restoring a property that is not archived returns it unchanged.",
+        "operationId": "restoreProperty",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Restore an archived property (company admins and property managers)",
         "tags": [
           "properties"
         ]
@@ -3174,6 +3563,15 @@
             "in": "query",
             "schema": {
               "$ref": "#/components/schemas/MonitoringEventStatus"
+            }
+          },
+          {
+            "name": "open",
+            "required": false,
+            "in": "query",
+            "description": "true: events that still need attention (new, under review, action required, in progress); false: resolved or dismissed",
+            "schema": {
+              "type": "boolean"
             }
           },
           {
@@ -9920,6 +10318,176 @@
           "page",
           "pageSize"
         ]
+      },
+      "EditablePropertyStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "under_development"
+        ],
+        "description": "active when omitted"
+      },
+      "PropertyAddressInputDto": {
+        "type": "object",
+        "properties": {
+          "line1": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "line2": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 200,
+            "description": "Empty or null clears it"
+          },
+          "suburb": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "province": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SAProvince"
+              }
+            ]
+          },
+          "postalCode": {
+            "type": "string",
+            "pattern": "^[0-9]{4}$"
+          }
+        },
+        "required": [
+          "line1",
+          "suburb",
+          "city",
+          "province",
+          "postalCode"
+        ]
+      },
+      "CreatePropertyDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9]{2,8}$",
+            "description": "Upper-cased; unique in the company; fixed once created (lease references use it)"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PropertyType"
+              }
+            ]
+          },
+          "status": {
+            "description": "active when omitted",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EditablePropertyStatus"
+              }
+            ]
+          },
+          "address": {
+            "$ref": "#/components/schemas/PropertyAddressInputDto"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "grossLettableAreaSqm": {
+            "type": "number",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "description": "Gross lettable area in square metres, at most two decimals"
+          },
+          "managerUserId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A company admin or property manager of the company"
+          },
+          "ownerUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "A member of the company"
+          },
+          "accountingSystem": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StatementSource"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "code",
+          "type",
+          "address",
+          "grossLettableAreaSqm",
+          "managerUserId",
+          "accountingSystem"
+        ]
+      },
+      "UpdatePropertyDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PropertyType"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EditablePropertyStatus"
+              }
+            ]
+          },
+          "address": {
+            "$ref": "#/components/schemas/PropertyAddressInputDto"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "grossLettableAreaSqm": {
+            "type": "number",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          },
+          "managerUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ownerUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "null removes the owner"
+          },
+          "accountingSystem": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StatementSource"
+              }
+            ]
+          }
+        }
       },
       "UnitSortField": {
         "type": "string",

@@ -1,5 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common'
-import { canTransition, type EntityId, type MonitoringEvent } from '@leaseguard/domain'
+import { canTransition, OPEN_EVENT_STATUSES, TERMINAL_EVENT_STATUSES, type EntityId, type MonitoringEvent } from '@leaseguard/domain'
 
 import { httpErrorFromDatabase, unwrapDatabase } from '../../common/http/database-errors'
 import { emptyPageWithTotal, isPageOutOfRange, rangeFor, searchFilter, toPage, type Page } from '../../common/http/pagination'
@@ -25,6 +25,7 @@ export class MonitoringService {
     const filtered = () => {
       let request = db.from('monitoring_events').select('*', { count: 'exact' }).eq('company_id', companyId)
       if (query.status) request = request.eq('status', query.status)
+      if (query.open !== undefined) request = request.in('status', [...(query.open ? OPEN_EVENT_STATUSES : TERMINAL_EVENT_STATUSES)])
       if (query.priority) request = request.eq('priority', query.priority)
       if (query.type) request = request.eq('type', query.type)
       if (query.propertyId) request = request.eq('property_id', query.propertyId)

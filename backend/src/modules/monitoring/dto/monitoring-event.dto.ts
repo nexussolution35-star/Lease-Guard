@@ -73,6 +73,12 @@ export class MonitoringEventListQueryDto extends PageQueryDto {
   @ApiPropertyOptional({ enum: MONITORING_EVENT_STATUSES, enumName: 'MonitoringEventStatus' })
   status?: MonitoringEventStatus
 
+  @ApiPropertyOptional({
+    type: Boolean,
+    description: 'true: events that still need attention (new, under review, action required, in progress); false: resolved or dismissed',
+  })
+  open?: boolean
+
   @ApiPropertyOptional({ enum: EVENT_PRIORITIES, enumName: 'EventPriority' })
   priority?: EventPriority
 

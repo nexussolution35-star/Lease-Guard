@@ -91,6 +91,16 @@ describe('MonitoringService', () => {
     expect(callsTo(queries[0]!, 'order')[0]).toEqual(['priority', { ascending: false }])
   })
 
+  it('filters open events (still needing attention) and closed ones', async () => {
+    const { client, queries } = fakeDb(() => ({ data: [], error: null, count: 0 }))
+    await service.list(client, COMPANY, monitoringEventListQuerySchema.parse({ open: 'true', propertyId: LEASE }))
+    await service.list(client, COMPANY, monitoringEventListQuerySchema.parse({ open: 'false' }))
+    expect(callsTo(queries[0]!, 'in')).toEqual([['status', ['new', 'under_review', 'action_required', 'in_progress']]])
+    expect(callsTo(queries[0]!, 'eq')).toContainEqual(['property_id', LEASE])
+    expect(callsTo(queries[1]!, 'in')).toEqual([['status', ['resolved', 'dismissed']]])
+    expect(monitoringEventListQuerySchema.safeParse({ open: 'yes' }).success).toBe(false)
+  })
+
   it('sorts events without a due date last only for the nullable due_date column', async () => {
     for (const [sort, direction, expected] of [
       ['dueDate', 'desc', ['due_date', { ascending: false, nullsFirst: false }]],

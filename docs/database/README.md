@@ -40,6 +40,7 @@ Applied in file-name order. Every schema change is a new migration; existing fil
 | `20261110100700_whatsapp_number_verification.sql` | Number verification: `whatsapp_number_verification_steps` and `whatsapp_message_templates` (members read; service role writes), `whatsapp_phone_numbers.registration_blocked_until`, `finish_whatsapp_number_verification` and `sync_whatsapp_message_templates` (service role only), `disconnect_whatsapp_number` (company admins, `SECURITY DEFINER`). See `docs/integrations/whatsapp.md` |
 | `20261111100500_whatsapp_number_import.sql` | Number import (ticket 15): `import_whatsapp_number` (service role only, `SECURITY DEFINER`; the operator command `pnpm whatsapp:import-test-number`) stores Nexus Solution's test-number token in Vault for one company and records its account and number pending verification; `whatsapp_phone_numbers.operator_imported_at` (members read); `store_whatsapp_onboarding_token` redefined to clear the stamp and delete an imported token a later signup replaced; `remove_whatsapp_business_account_access` redefined so the admins' notification tells them to have an imported number imported again. See `docs/integrations/whatsapp.md` |
 | `20261111100600_audit_company_and_membership_changes.sql` | Audit triggers for company configuration and membership management: `audit_change` on `companies` (one row per update, with the changed profile or settings columns), `audit_role_change` and `audit_removal` on `company_users` (a removal is audited only when a signed-in user did it, not for cascades) |
+| `20261111100700_property_management.sql` | Property management: signed-in writers lose DELETE and get column grants (code, company and timestamps fixed after creation); `private.guard_property_change` (manager is a company admin or property manager; an archived property is read-only; no archive while a lease is draft, pending verification, active or expiring; nothing starts archived); `private.audit_property_change` (create, update, archive, restore) |
 
 ## Row Level Security model
 
@@ -180,6 +181,7 @@ Run after the seed is loaded; the tests use seeded users.
 | --- | --- |
 | `company_isolation.test.sql` | RLS isolation per company and role, anon has no access, `job_runs` closed, cross-company composite foreign keys, read-only and owner roles cannot write |
 | `audited_rules.test.sql` | Audit rows for audited changes, actor stamping, append-only audit log, database-level product guards |
+| `property_management.test.sql` | Property create, edit, archive and restore: column grants, no hard delete, manager role, archive rule, read-only archived property, audit rows, other roles and companies |
 | `company_and_membership_audit.test.sql` | Audit rows for company details, monitoring settings, role changes and member removal; nothing recorded for refused or no-op updates, other companies or cascades |
 | `worker_idempotency.test.sql` | Dedupe-key constraints, `job_runs` tracking columns, statement-processing columns |
 | `dedupe_key_guard.test.sql` | Writers can create and update events but never set or change a dedupe key |

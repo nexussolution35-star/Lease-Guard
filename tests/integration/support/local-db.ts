@@ -1,7 +1,7 @@
 import { localSql } from '../../fixtures/local-db.ts'
 
 /** Tables whose rows the suite reads as whole-row snapshots. */
-export type SnapshotTable = 'leases' | 'monitoring_events'
+export type SnapshotTable = 'leases' | 'monitoring_events' | 'properties'
 
 export type RowSnapshot = Readonly<Record<string, unknown>>
 

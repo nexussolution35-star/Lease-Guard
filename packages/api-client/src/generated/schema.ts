@@ -317,7 +317,11 @@ export interface paths {
         /** List properties in the active company */
         get: operations["listProperties"];
         put?: never;
-        post?: never;
+        /**
+         * Create a property (company admins and property managers)
+         * @description The manager must be a company admin or property manager of the company; the owner, if any, a member. The code is upper-cased, unique in the company and fixed once created. The database records the audit entry.
+         */
+        post: operations["createProperty"];
         delete?: never;
         options?: never;
         head?: never;
@@ -335,6 +339,50 @@ export interface paths {
         get: operations["getProperty"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a property (company admins and property managers)
+         * @description Omitted fields are unchanged. The code cannot change. An archived property must be restored first (422).
+         */
+        patch: operations["updateProperty"];
+        trace?: never;
+    };
+    "/api/v1/properties/{propertyId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive a property (company admins and property managers)
+         * @description An archived property is kept with its history and is read-only until restored. Refused (409) while the property has a lease that has not ended. Archiving an archived property returns it unchanged.
+         */
+        post: operations["archiveProperty"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/properties/{propertyId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore an archived property (company admins and property managers)
+         * @description The property becomes active again. Restoring a property that is not archived returns it unchanged.
+         */
+        post: operations["restoreProperty"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1923,6 +1971,59 @@ export interface components {
             total: number;
             page: number;
             pageSize: number;
+        };
+        /**
+         * @description active when omitted
+         * @enum {string}
+         */
+        EditablePropertyStatus: "active" | "under_development";
+        PropertyAddressInputDto: {
+            line1: string;
+            /** @description Empty or null clears it */
+            line2?: string | null;
+            suburb: string;
+            city: string;
+            province: components["schemas"]["SAProvince"];
+            postalCode: string;
+        };
+        CreatePropertyDto: {
+            name: string;
+            /** @description Upper-cased; unique in the company; fixed once created (lease references use it) */
+            code: string;
+            type: components["schemas"]["PropertyType"];
+            /** @description active when omitted */
+            status?: components["schemas"]["EditablePropertyStatus"];
+            address: components["schemas"]["PropertyAddressInputDto"];
+            description?: string;
+            /** @description Gross lettable area in square metres, at most two decimals */
+            grossLettableAreaSqm: number;
+            /**
+             * Format: uuid
+             * @description A company admin or property manager of the company
+             */
+            managerUserId: string;
+            /**
+             * Format: uuid
+             * @description A member of the company
+             */
+            ownerUserId?: string | null;
+            accountingSystem: components["schemas"]["StatementSource"];
+        };
+        UpdatePropertyDto: {
+            name?: string;
+            type?: components["schemas"]["PropertyType"];
+            status?: components["schemas"]["EditablePropertyStatus"];
+            address?: components["schemas"]["PropertyAddressInputDto"];
+            description?: string;
+            grossLettableAreaSqm?: number;
+            /** Format: uuid */
+            managerUserId?: string;
+            /**
+             * Format: uuid
+             * @description null removes the owner
+             */
+            ownerUserId?: string | null;
+            accountingSystem?: components["schemas"]["StatementSource"];
         };
         /** @enum {string} */
         UnitSortField: "unitNumber" | "floorAreaSqm" | "occupancyStatus" | "createdAt";
@@ -3519,6 +3620,10 @@ export type PropertyType = components['schemas']['PropertyType'];
 export type StatementSource = components['schemas']['StatementSource'];
 export type PropertyDto = components['schemas']['PropertyDto'];
 export type PropertyPage = components['schemas']['PropertyPage'];
+export type EditablePropertyStatus = components['schemas']['EditablePropertyStatus'];
+export type PropertyAddressInputDto = components['schemas']['PropertyAddressInputDto'];
+export type CreatePropertyDto = components['schemas']['CreatePropertyDto'];
+export type UpdatePropertyDto = components['schemas']['UpdatePropertyDto'];
 export type UnitSortField = components['schemas']['UnitSortField'];
 export type OccupancyStatus = components['schemas']['OccupancyStatus'];
 export type UnitType = components['schemas']['UnitType'];
@@ -4800,7 +4905,301 @@ export interface operations {
             };
         };
     };
+    createProperty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePropertyDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PropertyDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The code is already used in this company */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The manager or owner does not qualify */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     getProperty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                propertyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PropertyDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    updateProperty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                propertyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePropertyDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PropertyDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Archived, or the manager or owner does not qualify */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    archiveProperty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                propertyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PropertyDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The property has leases that have not ended */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    restoreProperty: {
         parameters: {
             query?: never;
             header?: never;
@@ -5758,6 +6157,8 @@ export interface operations {
                 direction?: components["schemas"]["SortDirection"];
                 sort?: components["schemas"]["MonitoringEventSortField"];
                 status?: components["schemas"]["MonitoringEventStatus"];
+                /** @description true: events that still need attention (new, under review, action required, in progress); false: resolved or dismissed */
+                open?: boolean;
                 priority?: components["schemas"]["EventPriority"];
                 type?: components["schemas"]["MonitoringEventType"];
                 propertyId?: string;
