@@ -9,7 +9,7 @@
 # Extra arguments are passed to the underlying tool, e.g. `pnpm python:test -k parsers`.
 # `setup` uses $PYTHON when set (default python3); the service requires Python 3.14 or newer
 # (pyproject.toml requires-python). The dev port comes from DOCUMENT_PROCESSING_URL, read from the
-# environment or else the repository-root .env, and defaults to 8000.
+# environment or else backend/.env, and defaults to 8000.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -27,9 +27,9 @@ require_venv() {
     die "no virtual environment at ${VENV_DIR#"$REPO_ROOT"/}; run \`pnpm python:setup\` first"
 }
 
-# Value of KEY in the repository-root .env (last assignment wins), without sourcing the file.
+# Value of KEY in backend/.env (last assignment wins), without sourcing the file.
 env_file_value() {
-  local key="$1" file="$REPO_ROOT/.env" line value=""
+  local key="$1" file="$REPO_ROOT/backend/.env" line value=""
   [[ -f "$file" ]] || return 0
   while IFS= read -r line || [[ -n "$line" ]]; do
     if [[ "$line" =~ ^[[:space:]]*(export[[:space:]]+)?${key}[[:space:]]*=(.*)$ ]]; then

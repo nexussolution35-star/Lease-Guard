@@ -24,7 +24,7 @@ export function FormSection({
       className={cn('min-w-0 space-y-4 border-0 p-0', className)}
     >
       <legend className="text-base font-semibold text-foreground">{title}</legend>
-      {description ? <p className="-mt-2 text-sm text-muted-foreground">{description}</p> : null}
+      {description ? <p className="-mt-2 text-xs text-muted-foreground italic">{description}</p> : null}
       <div className={cn('grid gap-4', columns === 2 && 'sm:grid-cols-2')}>{children}</div>
     </fieldset>
   )

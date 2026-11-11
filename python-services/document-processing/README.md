@@ -56,7 +56,7 @@ regenerate `openapi.json`.
 
 ## Configuration
 
-Settings come from the repository-root `.env` (see `/.env.example`) when run from the repository,
+Settings come from `backend/.env` (see `backend/.env.example`) when run from the repository,
 and from the process environment otherwise (for example in the container).
 
 | Variable | Default | Meaning |

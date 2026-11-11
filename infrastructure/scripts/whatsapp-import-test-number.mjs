@@ -13,7 +13,7 @@
 //
 // The command reads SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, REDIS_URL, QUEUE_PREFIX, WHATSAPP_ACCESS_TOKEN,
 // WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_BUSINESS_MESSAGING_ACCOUNT_ID from the process environment, falling back to
-// the repository-root .env only for those keys. This wrapper reads no environment file. `--help` lists every option.
+// backend/.env only for those keys. This wrapper reads no environment file. `--help` lists every option.
 
 import { spawn } from 'node:child_process'
 import { existsSync, rmSync } from 'node:fs'

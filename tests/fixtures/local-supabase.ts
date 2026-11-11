@@ -26,7 +26,7 @@ export function isLocalUrl(value: string): boolean {
 
 /**
  * The suites create and delete data, so they only ever talk to services on this machine. The values
- * come from the Supabase CLI, never from the repository-root `.env` (which may point at a hosted project).
+ * come from the Supabase CLI, never from `backend/.env` (which may point at a hosted project).
  */
 export function assertLocal(name: string, value: string): void {
   if (!isLocalUrl(value)) {

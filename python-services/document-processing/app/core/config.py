@@ -1,4 +1,4 @@
-"""Service configuration, read from the repository-root `.env` and the process environment."""
+"""Service configuration, read from `backend/.env` (the server settings) and the process environment."""
 
 import logging
 from functools import lru_cache
@@ -31,13 +31,13 @@ LOG_LEVELS: dict[str, int] = {
 
 
 def _repo_root_env_file() -> Path | None:
-    """Every LeaseGuard app reads the one `.env` at the repository root (see `.env.example`).
+    """LeaseGuard's server processes read `backend/.env` (see `backend/.env.example`).
 
     Inside the container there is no repository, so settings come from the environment only.
     """
     for parent in Path(__file__).resolve().parents:
         if (parent / "pnpm-workspace.yaml").is_file():
-            return parent / ".env"
+            return parent / "backend" / ".env"
     return None
 
 

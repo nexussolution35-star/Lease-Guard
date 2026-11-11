@@ -1,10 +1,10 @@
 import { SA_PROVINCES, type SAProvince } from '@leaseguard/domain'
 
-/** One address component as the Places API (New) returns it on `Place.addressComponents`. */
+/** One address component as Places API (New) returns it (`Place.addressComponents`). */
 export interface GoogleAddressComponent {
-  longText: string | null
-  shortText: string | null
-  types: readonly string[]
+  longText?: string | null
+  shortText?: string | null
+  types?: readonly string[]
 }
 
 /**
@@ -47,17 +47,13 @@ export function provinceFromGoogle(...names: (string | null | undefined)[]): SAP
 
 /**
  * Maps a place's address components to LeaseGuard's address fields: street number and route as the first line
- * (falling back to the place's name or the first part of the formatted address, e.g. for a shopping centre), the
- * suburb (sublocality or neighbourhood), the city (locality, else the district), the province and a four-digit
- * postal code.
+ * (falling back to the first part of the formatted address, e.g. for a named building), the suburb (sublocality or
+ * neighbourhood), the city (locality, else the district), the province and a four-digit postal code.
  */
-export function addressFromGoogle(
-  components: readonly GoogleAddressComponent[],
-  fallback: { displayName?: string | null; formattedAddress?: string | null } = {},
-): SuggestedAddress {
+export function addressFromGoogle(components: readonly GoogleAddressComponent[], formattedAddress?: string | null): SuggestedAddress {
   const find = (...types: string[]) => {
     for (const type of types) {
-      const component = components.find((c) => c.types.includes(type))
+      const component = components.find((c) => c.types?.includes(type))
       if (component) return component
     }
     return undefined
@@ -65,7 +61,7 @@ export function addressFromGoogle(
   const text = (component: GoogleAddressComponent | undefined) => component?.longText?.trim() || component?.shortText?.trim() || undefined
 
   const street = [text(find('street_number')), text(find('route'))].filter(Boolean).join(' ')
-  const line1 = street || fallback.displayName?.trim() || fallback.formattedAddress?.split(',')[0]?.trim() || ''
+  const line1 = street || formattedAddress?.split(',')[0]?.trim() || ''
   const suburb = text(find('sublocality_level_1', 'sublocality', 'neighborhood'))
   const city = text(find('locality', 'postal_town', 'administrative_area_level_2'))
   const region = find('administrative_area_level_1')
@@ -74,9 +70,9 @@ export function addressFromGoogle(
   const postalCode = postal && /^[0-9]{4}$/.test(postal) ? postal : undefined
 
   return {
-    line1,
-    ...(suburb && suburb !== city ? { suburb } : {}),
-    ...(city ? { city } : {}),
+    line1: line1.slice(0, 200),
+    ...(suburb && suburb !== city ? { suburb: suburb.slice(0, 100) } : {}),
+    ...(city ? { city: city.slice(0, 100) } : {}),
     ...(province ? { province } : {}),
     ...(postalCode ? { postalCode } : {}),
   }

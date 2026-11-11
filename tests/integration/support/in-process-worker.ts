@@ -67,9 +67,9 @@ function fileLogger(file: string): LoggerLike {
   return { log: write('info'), error: write('error'), warn: write('warn'), debug: write('debug'), verbose: write('verbose') }
 }
 
-/** Every worker setting from .env.example, then the overrides: the root .env is never read. */
+/** Every worker setting from backend/.env.example, then the overrides: backend/.env is never read. */
 function workerEnvironment(overrides: Readonly<Record<string, string>>): Record<string, string> {
-  const example = parseEnv(readFileSync(path.join(REPO_ROOT, '.env.example'), 'utf8'))
+  const example = parseEnv(readFileSync(path.join(REPO_ROOT, 'backend', '.env.example'), 'utf8'))
   const env: Record<string, string> = {}
   for (const key of WORKER_ENV_KEYS) env[key] = overrides[key] ?? example[key] ?? ''
   return env

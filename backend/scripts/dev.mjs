@@ -15,8 +15,8 @@
  *    shell shim and the compiler it launches stop together) and exits only after they have exited.
  *
  * The output directories sit directly under backend/, at the same depth as dist/, because compiled
- * code resolves paths relative to itself (config/env.ts finds the repository-root .env as
- * `<outDir>/config/../../../.env`).
+ * code resolves paths relative to itself (config/env.ts finds backend/.env as
+ * `<outDir>/config/../../.env`).
  */
 import { spawn } from 'node:child_process'
 import { rmSync } from 'node:fs'

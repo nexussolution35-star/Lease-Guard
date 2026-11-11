@@ -11,15 +11,17 @@ import { exposedSecretsMessage, findExposedSecrets, SERVER_ONLY_SETTINGS } from 
 // so the frontend compiles them directly without a separate build step.
 const WORKSPACE_SOURCE_CONDITION = '@leaseguard/source'
 
-// One `.env` for every process lives at the repository root; only VITE_* variables reach the
-// browser and are validated in src/services/api/config.ts.
-const ENV_DIR = path.resolve(import.meta.dirname, '..')
+// The web app's own `frontend/.env` holds public VITE_* values only; they are validated in
+// src/services/api/config.ts. Server settings and secrets live in `backend/.env`, which the web app never
+// reads except to compare values below.
+const ENV_DIR = import.meta.dirname
+const BACKEND_ENV_DIR = path.resolve(import.meta.dirname, '../backend')
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   // Refuse to serve or build when a VITE_* variable holds a server-only secret: it would be bundled. The
   // server-only settings are loaded here only to compare values; they never reach the bundle.
-  const serverSecrets = loadEnv(mode, ENV_DIR, [...SERVER_ONLY_SETTINGS])
+  const serverSecrets = loadEnv(mode, BACKEND_ENV_DIR, [...SERVER_ONLY_SETTINGS])
   const exposed = findExposedSecrets(loadEnv(mode, ENV_DIR, 'VITE_'), serverSecrets)
   if (exposed.length > 0) throw new Error(`Refusing to start: ${exposedSecretsMessage(exposed)}`)
 

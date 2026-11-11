@@ -8862,6 +8862,189 @@
           "audit"
         ]
       }
+    },
+    "/api/v1/address-suggestions/status": {
+      "get": {
+        "operationId": "getAddressSuggestionsStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressSuggestionsStatusDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Whether address suggestions are available",
+        "tags": [
+          "address-suggestions"
+        ]
+      }
+    },
+    "/api/v1/address-suggestions": {
+      "post": {
+        "description": "Per user: 30 a minute and 600 a day; refusals are 429 with Retry-After.",
+        "operationId": "searchAddresses",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddressSearchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressSuggestionListDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not set up, Google unavailable, or the limits cannot be checked\n\nAuthentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Suggest South African addresses for the text typed so far",
+        "tags": [
+          "address-suggestions"
+        ]
+      }
+    },
+    "/api/v1/address-suggestions/resolve": {
+      "post": {
+        "description": "Ends the lookup session. Per user: 10 a minute and 150 a day; refusals are 429 with Retry-After.",
+        "operationId": "resolveAddress",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddressResolveDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestedAddressDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The address of a chosen suggestion",
+        "tags": [
+          "address-suggestions"
+        ]
+      }
     }
   },
   "info": {
@@ -15215,6 +15398,118 @@
           "total",
           "page",
           "pageSize"
+        ]
+      },
+      "AddressSuggestionsStatusDto": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "description": "False when the deployment has no Google Maps key: address fields are plain inputs"
+          }
+        },
+        "required": [
+          "available"
+        ]
+      },
+      "AddressSearchDto": {
+        "type": "object",
+        "properties": {
+          "input": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 200,
+            "description": "The address text typed so far"
+          },
+          "sessionToken": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{16,64}$",
+            "description": "One per lookup (a UUID); the same token for the searches and the resolve"
+          }
+        },
+        "required": [
+          "input",
+          "sessionToken"
+        ]
+      },
+      "AddressSuggestionDto": {
+        "type": "object",
+        "properties": {
+          "placeId": {
+            "type": "string"
+          },
+          "primary": {
+            "type": "string",
+            "description": "The place, e.g. \"Sandton City\""
+          },
+          "secondary": {
+            "type": "string",
+            "description": "Where it is, e.g. \"Rivonia Road, Sandhurst, Sandton\""
+          }
+        },
+        "required": [
+          "placeId",
+          "primary"
+        ]
+      },
+      "AddressSuggestionListDto": {
+        "type": "object",
+        "properties": {
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AddressSuggestionDto"
+            }
+          }
+        },
+        "required": [
+          "suggestions"
+        ]
+      },
+      "AddressResolveDto": {
+        "type": "object",
+        "properties": {
+          "placeId": {
+            "type": "string",
+            "description": "The placeId of a suggestion"
+          },
+          "sessionToken": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{16,64}$"
+          }
+        },
+        "required": [
+          "placeId",
+          "sessionToken"
+        ]
+      },
+      "SuggestedAddressDto": {
+        "type": "object",
+        "properties": {
+          "line1": {
+            "type": "string",
+            "description": "Street number and name, or the place name"
+          },
+          "suburb": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "province": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SAProvince"
+              }
+            ]
+          },
+          "postalCode": {
+            "type": "string",
+            "pattern": "^[0-9]{4}$"
+          }
+        },
+        "required": [
+          "line1"
         ]
       }
     }

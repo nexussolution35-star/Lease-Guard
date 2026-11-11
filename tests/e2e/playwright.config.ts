@@ -10,7 +10,7 @@ import { E2E_API_URL, E2E_WEB_PORT, E2E_WEB_URL } from './support/env.ts'
 /**
  * The real stack: the LeaseGuard API (built from backend/ into backend/.dev-e2e) and the Vite dev
  * server, both pointed at the LOCAL Supabase stack only. Refuses to start when Supabase is not local;
- * the repository-root .env (which may name a hosted project) is never used for these processes.
+ * backend/.env and frontend/.env (which may name a hosted project) are never used for these processes.
  */
 const supabase = resolveLocalSupabaseSync()
 
@@ -62,7 +62,7 @@ export default defineConfig({
       stderr: 'pipe',
     },
     {
-      // Process variables override the root .env for Vite, so the browser only ever talks to local services.
+      // Process variables override frontend/.env for Vite, so the browser only ever talks to local services.
       // Vite's own binary (not through pnpm), so stopping it on SIGTERM is not reported as a failure.
       command: `node node_modules/vite/bin/vite.js --port ${E2E_WEB_PORT} --strictPort`,
       cwd: path.join(REPO_ROOT, 'frontend'),
@@ -71,9 +71,6 @@ export default defineConfig({
         VITE_API_URL: E2E_API_URL,
         VITE_SUPABASE_URL: supabase.url,
         VITE_SUPABASE_ANON_KEY: supabase.anonKey,
-        // No Google address suggestions in browser tests (no external calls, no billing). Set
-        // E2E_GOOGLE_MAPS_API_KEY to try them against Google on purpose.
-        VITE_GOOGLE_MAPS_API_KEY: process.env.E2E_GOOGLE_MAPS_API_KEY ?? '',
       },
       // Never test a server this run did not start.
       reuseExistingServer: false,

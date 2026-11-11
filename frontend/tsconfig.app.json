@@ -9,8 +9,7 @@
     "module": "esnext",
     "types": [
       "vite/client",
-      "vitest/globals",
-      "google.maps"
+      "vitest/globals"
     ],
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,

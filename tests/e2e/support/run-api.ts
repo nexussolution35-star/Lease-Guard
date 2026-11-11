@@ -41,6 +41,8 @@ const env = apiEnvironment(BUILD, {
   SUPABASE_ANON_KEY: supabase.anonKey,
   REDIS_URL: E2E_REDIS_URL,
   QUEUE_PREFIX: queuePrefix,
+  // Address suggestions stay off (no Google calls, no billing) unless E2E_GOOGLE_MAPS_API_KEY is set on purpose.
+  ...(process.env.E2E_GOOGLE_MAPS_API_KEY ? { GOOGLE_MAPS_API_KEY: process.env.E2E_GOOGLE_MAPS_API_KEY } : {}),
 })
 const baseEnv: Record<string, string> = {}
 for (const key of ['PATH', 'HOME', 'TMPDIR', 'LANG']) {

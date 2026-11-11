@@ -62,10 +62,9 @@ describe('getAppConfig', () => {
     expect(getAppConfig(parseAppConfig(ENV)).apiUrl).toBe('http://127.0.0.1:3000')
   })
 
-  it('passes an optional Google Maps key through, and leaves it out when blank', () => {
-    const withKey = parseAppConfig({ ...ENV, VITE_GOOGLE_MAPS_API_KEY: ' browser-key ' })
-    expect(withKey.ok && withKey.config.googleMapsApiKey).toBe('browser-key')
-    const blank = parseAppConfig({ ...ENV, VITE_GOOGLE_MAPS_API_KEY: '' })
-    expect(blank.ok && blank.config).not.toHaveProperty('googleMapsApiKey')
+  it('refuses a Google Maps key in the web app: it belongs to the server (GOOGLE_MAPS_API_KEY in backend/.env)', () => {
+    const result = parseAppConfig({ ...ENV, VITE_GOOGLE_MAPS_API_KEY: 'any-value' })
+    expect(result.ok).toBe(false)
+    expect(!result.ok && result.issues[0]).toMatch(/VITE_GOOGLE_MAPS_API_KEY holds a server-only secret/)
   })
 })

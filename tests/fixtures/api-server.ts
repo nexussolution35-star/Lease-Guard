@@ -70,11 +70,11 @@ function apiEnvKeys(build: ApiBuild): readonly string[] {
 
 /**
  * Explicit API environment: `overrides` (local Supabase, Redis, queue prefix, port) and every other
- * API variable from .env.example. The process gets nothing else that LeaseGuard reads, so the root
- * `.env` is never consulted (the API only loads keys that are not already set).
+ * API variable from backend/.env.example. The process gets nothing else that LeaseGuard reads, so
+ * backend/.env is never consulted (the API only loads keys that are not already set).
  */
 export function apiEnvironment(build: ApiBuild, overrides: Readonly<Record<string, string>>): Record<string, string> {
-  const example = parseEnv(readFileSync(path.join(REPO_ROOT, '.env.example'), 'utf8'))
+  const example = parseEnv(readFileSync(path.join(REPO_ROOT, 'backend', '.env.example'), 'utf8'))
   const env: Record<string, string> = {}
   const missing: string[] = []
   for (const key of apiEnvKeys(build)) {
@@ -82,7 +82,7 @@ export function apiEnvironment(build: ApiBuild, overrides: Readonly<Record<strin
     if (value === undefined) missing.push(key)
     else env[key] = value
   }
-  if (missing.length > 0) throw new Error(`No value for API variable(s) ${missing.join(', ')} (not in .env.example)`)
+  if (missing.length > 0) throw new Error(`No value for API variable(s) ${missing.join(', ')} (not in backend/.env.example)`)
   return env
 }
 

@@ -106,8 +106,10 @@ with `POST /api/v1/notifications/{id}/read` and `POST /api/v1/notifications/read
 
 ## Environment
 
-Vite reads the single repository-root `.env` (`envDir` is the repository root; see `../.env.example`). Only
-`VITE_*` variables reach the browser; never put secrets in them.
+Vite reads `frontend/.env` (`envDir` is this folder; see `.env.example`), which holds public values only. Only
+`VITE_*` variables reach the browser; never put secrets in them. Server settings and secrets live in
+`backend/.env`; the build refuses a `VITE_*` value that holds one of them. Address suggestions need no
+frontend setting: the API calls Google with its own server-only key.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |

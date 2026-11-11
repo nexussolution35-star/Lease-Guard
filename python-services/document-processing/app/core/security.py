@@ -12,7 +12,7 @@ from app.core.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
-_bearer = HTTPBearer(auto_error=False, description="DOCUMENT_PROCESSING_TOKEN from the root .env")
+_bearer = HTTPBearer(auto_error=False, description="DOCUMENT_PROCESSING_TOKEN from backend/.env")
 
 
 def require_token(

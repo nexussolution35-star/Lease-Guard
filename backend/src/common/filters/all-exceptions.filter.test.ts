@@ -1,11 +1,13 @@
 import { type ArgumentsHost, BadRequestException, ForbiddenException, Logger } from '@nestjs/common'
 import { describe, expect, it, vi } from 'vitest'
 
+import { TooManyRequestsException } from '../http/too-many-requests.exception'
 import { AllExceptionsFilter, type ApiErrorBody } from './all-exceptions.filter'
 
-function run(exception: unknown, url = '/api/v1/leases'): { status: number; body: ApiErrorBody } {
+function run(exception: unknown, url = '/api/v1/leases', headers: Record<string, string> = {}): { status: number; body: ApiErrorBody } {
   const sent: { status: number; body: ApiErrorBody } = { status: 0, body: {} as ApiErrorBody }
   const response = {
+    setHeader: (name: string, value: string) => (headers[name] = value),
     status: (code: number) => {
       sent.status = code
       return { json: (body: ApiErrorBody) => (sent.body = body) }
@@ -22,6 +24,14 @@ function run(exception: unknown, url = '/api/v1/leases'): { status: number; body
 }
 
 describe('AllExceptionsFilter', () => {
+  it('sends Retry-After with a 429 that says how long to wait', () => {
+    const headers: Record<string, string> = {}
+    const { status, body } = run(new TooManyRequestsException('Too many address lookups.', 42), '/api/v1/address-suggestions', headers)
+    expect(status).toBe(429)
+    expect(body).toMatchObject({ statusCode: 429, error: 'Too Many Requests', message: 'Too many address lookups.' })
+    expect(headers).toEqual({ 'Retry-After': '42' })
+  })
+
   it('keeps the status and message of HTTP exceptions', () => {
     expect(run(new ForbiddenException('You do not have access to this company'))).toEqual({
       status: 403,

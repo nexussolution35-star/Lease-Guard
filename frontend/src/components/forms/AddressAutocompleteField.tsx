@@ -5,8 +5,13 @@ import type { FieldPath, FieldValues } from 'react-hook-form'
 import { FormControl, FormDescription, FormField as RHFFormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
-import type { SuggestedAddress } from '@/services/maps/addressFromGoogle'
-import { getAddressSuggestionSource, type AddressSuggestion, type AddressSuggestionSource } from '@/services/maps/addressSuggestions'
+import {
+  AddressLookupError,
+  getAddressSuggestionSource,
+  type AddressSuggestion,
+  type AddressSuggestionSource,
+  type SuggestedAddress,
+} from '@/services/maps/addressSuggestions'
 import { cn } from '@/lib/utils'
 
 import { fieldIdFor } from './fieldId'
@@ -24,16 +29,20 @@ export interface AddressAutocompleteFieldProps<TFieldValues extends FieldValues,
   placeholder?: string
   autoComplete?: string
   maxLength?: number
-  /** Defaults to the configured Google Places source; null (no key) makes this a plain text field. Tests pass a fake. */
-  source?: AddressSuggestionSource | null
+  /** Defaults to LeaseGuard's API (which calls Google with a server-only key). Tests pass a fake. */
+  source?: AddressSuggestionSource
 }
 
-type Lookup = { state: 'idle' } | { state: 'loading' } | { state: 'ready'; items: AddressSuggestion[] } | { state: 'failed' }
+type Lookup = { state: 'idle' } | { state: 'loading' } | { state: 'ready'; items: AddressSuggestion[] } | { state: 'failed'; message: string }
+
+const FAILED = 'Address suggestions are unavailable. Type the address in full.'
+const failure = (error: unknown) => (error instanceof AddressLookupError ? error.message : FAILED)
 
 /**
- * The first address line with address suggestions from Google Maps as the user types (South Africa). Choosing a
- * suggestion fills this line and calls `onAddressSelect` for the rest. Keyboard: arrows move, Enter chooses, Escape
- * closes. Without a Google Maps key it is a plain text field.
+ * The first address line with address suggestions from Google Maps as the user types (South Africa), through
+ * LeaseGuard's API: the Google key never reaches the browser. Choosing a suggestion fills this line and calls
+ * `onAddressSelect` for the rest. Keyboard: arrows move, Enter chooses, Escape closes. When the deployment has no
+ * suggestions (no key on the server) it is a plain text field.
  */
 export function AddressAutocompleteField<TFieldValues extends FieldValues, TName extends FieldPath<TFieldValues>>({
   control,
@@ -52,7 +61,19 @@ export function AddressAutocompleteField<TFieldValues extends FieldValues, TName
 }: AddressAutocompleteFieldProps<TFieldValues, TName>) {
   const controlId = id ?? fieldIdFor(name)
   const listId = useId()
-  const source = sourceProp === undefined ? getAddressSuggestionSource() : sourceProp
+  const candidate = sourceProp ?? getAddressSuggestionSource()
+  // Suggestions only once the API says they are available; until then (and without them) a plain text field.
+  const [enabled, setEnabled] = useState(false)
+  useEffect(() => {
+    let current = true
+    void candidate.available().then((available) => {
+      if (current) setEnabled(available)
+    })
+    return () => {
+      current = false
+    }
+  }, [candidate])
+  const source = enabled ? candidate : null
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const [lookup, setLookup] = useState<Lookup>({ state: 'idle' })
@@ -72,8 +93,8 @@ export function AddressAutocompleteField<TFieldValues extends FieldValues, TName
           setLookup({ state: 'ready', items })
           setActive(-1)
         },
-        () => {
-          if (request === latest.current) setLookup({ state: 'failed' })
+        (error: unknown) => {
+          if (request === latest.current) setLookup({ state: 'failed', message: failure(error) })
         },
       )
     }, DEBOUNCE_MS)
@@ -96,8 +117,8 @@ export function AddressAutocompleteField<TFieldValues extends FieldValues, TName
             field.onChange(address.line1 || suggestion.primary)
             onAddressSelect(address)
             setFilled(true)
-          } catch {
-            setLookup({ state: 'failed' })
+          } catch (error) {
+            setLookup({ state: 'failed', message: failure(error) })
             setOpen(true)
           }
         }
@@ -140,7 +161,6 @@ export function AddressAutocompleteField<TFieldValues extends FieldValues, TName
                         if (event.target.value.trim().length < MIN_QUERY_LENGTH) setLookup({ state: 'idle' })
                       }}
                       onKeyDown={onKeyDown}
-                      onFocus={() => source?.prepare?.()}
                       onBlur={() => {
                         field.onBlur()
                         setOpen(false)
@@ -184,7 +204,7 @@ export function AddressAutocompleteField<TFieldValues extends FieldValues, TName
                   ) : null}
                   {lookup.state === 'failed' ? (
                     <li className="px-2 py-2 text-sm text-muted-foreground" role="presentation">
-                      Address suggestions are unavailable. Type the address in full.
+                      {lookup.message}
                     </li>
                   ) : null}
                   {lookup.state === 'ready' && items.length === 0 ? (

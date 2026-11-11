@@ -5,7 +5,7 @@
 # Build from the repository root (the backend depends on the @leaseguard/domain workspace package):
 #   docker build -f backend/Dockerfile -t leaseguard-backend .
 #
-# Configuration is read from the environment at run time (see .env.example and
+# Configuration is read from the environment at run time (see backend/.env.example and
 # infrastructure/deployment/README.md); no .env file or secret is ever copied into the image.
 # Works with BuildKit and with the legacy builder (no BuildKit-only syntax).
 

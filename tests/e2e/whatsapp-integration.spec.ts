@@ -8,7 +8,7 @@ import { e2eContext, e2eUser, e2eWorld } from './support/world.ts'
 // The verification and inbox tests below add numbers to company A; the first test expects none, so this file runs in order.
 test.describe.configure({ mode: 'serial' })
 
-// The e2e API runs with the .env.example values: no Meta app settings and no worker, so the page must
+// The e2e API runs with the backend/.env.example values: no Meta app settings and no worker, so the page must
 // say what is missing and never show a number as connected.
 test.describe('Settings → Integrations → WhatsApp', () => {
   test('shows a company admin what LeaseGuard needs from Meta, and no connected number', async ({ page }) => {

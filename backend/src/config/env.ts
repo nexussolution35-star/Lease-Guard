@@ -5,8 +5,11 @@ import { z } from 'zod'
 
 import { WHATSAPP_ACCESS_TOKEN_KEY } from '../infrastructure/whatsapp/access-token-reference'
 
-/** Repository-root `.env`, shared by every LeaseGuard process. Variables already set in the process win. */
-export const ROOT_ENV_FILE = resolve(__dirname, '../../../.env')
+/**
+ * `backend/.env`: every server setting and secret (API, worker, operator tooling, document processing). The web app has
+ * its own `frontend/.env` with public values only. Variables already set in the process win.
+ */
+export const BACKEND_ENV_FILE = resolve(__dirname, '../../.env')
 
 /** pino levels. The Python service maps these to its own logging levels, so one value serves both. */
 export const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'] as const
@@ -67,13 +70,28 @@ const apiEnvObject = sharedSchema.extend({
       z.string().regex(/^v\d+\.\d+$/, 'a Graph API version such as v27.0').optional(),
     )
     .transform((value) => value ?? 'v27.0'),
+  /**
+   * Address suggestions (Google Places API (New)). The key is server-only: the API calls Google, the browser never
+   * sees it (the web app's build refuses a VITE_ copy). Optional: without it address fields are plain inputs.
+   */
+  GOOGLE_MAPS_API_KEY: optionalText,
+  /** Places API base URL. Plain http only for a loopback host outside production (a fake in tests). */
+  GOOGLE_PLACES_API_URL: z
+    .preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), z.url({ protocol: /^https?$/ }).optional())
+    .transform((value) => value ?? 'https://places.googleapis.com'),
+  /** Cost ceiling: address searches and place lookups allowed per day across every user of this deployment. */
+  ADDRESS_LOOKUP_DAILY_LIMIT: z
+    .preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), z.coerce.number().int().min(1).max(1_000_000).optional())
+    .transform((value) => value ?? 5000),
 })
 const apiEnvShape = apiEnvObject.shape
 const apiEnvSchema = apiEnvObject.superRefine((env, ctx) => {
-  const url = new URL(env.WHATSAPP_GRAPH_API_URL)
-  const loopback = url.hostname === '127.0.0.1' || url.hostname === 'localhost' || url.hostname === '[::1]'
-  if (url.protocol === 'http:' && (env.NODE_ENV === 'production' || !loopback)) {
-    ctx.addIssue({ code: 'custom', path: ['WHATSAPP_GRAPH_API_URL'], message: 'must be an https URL (http only for a loopback host outside production)' })
+  for (const name of ['WHATSAPP_GRAPH_API_URL', 'GOOGLE_PLACES_API_URL'] as const) {
+    const url = new URL(env[name])
+    const loopback = url.hostname === '127.0.0.1' || url.hostname === 'localhost' || url.hostname === '[::1]'
+    if (url.protocol === 'http:' && (env.NODE_ENV === 'production' || !loopback)) {
+      ctx.addIssue({ code: 'custom', path: [name], message: 'must be an https URL (http only for a loopback host outside production)' })
+    }
   }
 })
 
@@ -159,7 +177,7 @@ export class InvalidEnvironmentError extends Error {
       ...invalid,
     ]
     super(
-      `Invalid LeaseGuard ${processName} configuration (set these in ${ROOT_ENV_FILE} or the process environment; see .env.example):\n${lines.join('\n')}`,
+      `Invalid LeaseGuard ${processName} configuration (set these in ${BACKEND_ENV_FILE} or the process environment; see backend/.env.example):\n${lines.join('\n')}`,
     )
     this.name = 'InvalidEnvironmentError'
   }
@@ -181,7 +199,7 @@ function parseEnv<S extends z.ZodType>(processName: string, schema: S, source: N
 /**
  * Copies only `keys` from an env file into `target`, never overriding values already set.
  *
- * Least privilege: the shared root `.env` also holds secrets other processes need (for example the
+ * Least privilege: the shared `backend/.env` also holds secrets other processes need (for example the
  * service-role key, which only the worker may hold). Each process imports just the variables its own
  * schema declares, so the API process never has the service-role key in its environment.
  */
@@ -214,22 +232,22 @@ export const NUMBER_IMPORT_ENV_KEYS: readonly string[] = Object.keys(numberImpor
 
 /** API configuration. Throws InvalidEnvironmentError listing every missing or invalid variable. */
 export function loadApiEnv(source?: NodeJS.ProcessEnv): ApiEnv {
-  if (!source) loadEnvFileKeys(ROOT_ENV_FILE, API_ENV_KEYS)
+  if (!source) loadEnvFileKeys(BACKEND_ENV_FILE, API_ENV_KEYS)
   return parseEnv('API', apiEnvSchema, source ?? process.env)
 }
 
 /** Worker configuration. Needs no API-only variables. */
 export function loadWorkerEnv(source?: NodeJS.ProcessEnv): WorkerEnv {
-  if (!source) loadEnvFileKeys(ROOT_ENV_FILE, WORKER_ENV_KEYS, process.env, WHATSAPP_ACCESS_TOKEN_KEY)
+  if (!source) loadEnvFileKeys(BACKEND_ENV_FILE, WORKER_ENV_KEYS, process.env, WHATSAPP_ACCESS_TOKEN_KEY)
   return parseEnv('worker', workerEnvSchema, source ?? process.env)
 }
 
 /**
  * The number import command's configuration: its own keys from the process environment, falling back to the env file
- * (the repository-root `.env` by default) only when one of them is missing there, and then only for its own keys.
+ * (`backend/.env` by default) only when one of them is missing there, and then only for its own keys.
  * Throws InvalidEnvironmentError naming every missing or invalid variable, never a value.
  */
-export function loadNumberImportEnv({ env = process.env, file = ROOT_ENV_FILE }: { env?: NodeJS.ProcessEnv; file?: string } = {}): NumberImportEnv {
+export function loadNumberImportEnv({ env = process.env, file = BACKEND_ENV_FILE }: { env?: NodeJS.ProcessEnv; file?: string } = {}): NumberImportEnv {
   const source: NodeJS.ProcessEnv = Object.fromEntries(NUMBER_IMPORT_ENV_KEYS.filter((key) => env[key]?.trim()).map((key) => [key, env[key]]))
   if (NUMBER_IMPORT_ENV_KEYS.some((key) => source[key] === undefined)) loadEnvFileKeys(file, NUMBER_IMPORT_ENV_KEYS, source)
   return parseEnv('number import', numberImportEnvSchema, source)

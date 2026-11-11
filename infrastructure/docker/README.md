@@ -14,7 +14,8 @@ Supabase is not in the compose file. It runs through the Supabase CLI (`pnpm db:
 containers reach it at `host.docker.internal:54321`.
 
 ```sh
-cp .env.example .env            # once; fill in the keys printed by `pnpm db:status`
+cp backend/.env.example backend/.env      # once; fill in the keys printed by `pnpm db:status`
+cp frontend/.env.example frontend/.env    # once; the web app's public values
 pnpm db:start                   # Supabase
 pnpm docker:config              # validate docker-compose.yml
 pnpm docker:nginx-check         # nginx -t and cache/compression headers for nginx/frontend.conf
@@ -29,7 +30,7 @@ The host ports are the ones `pnpm dev` uses, so run either the containers or `pn
 containers with `API_HOST_PORT`, `DOCUMENT_PROCESSING_HOST_PORT` and `FRONTEND_HOST_PORT` (in `.env`
 or the shell).
 
-Configuration comes from the root `.env`. Inside containers the host names differ, so the compose
+Configuration comes from `backend/.env` and, for the frontend image's build arguments, `frontend/.env`. Inside containers the host names differ, so the compose
 file sets `REDIS_URL=redis://redis:6379`, `SUPABASE_URL=http://host.docker.internal:54321` and
 `DOCUMENT_PROCESSING_URL=http://document-processing:8000`. The API and the document-processing
 service receive only their own variables; the worker receives the whole `.env` because it also needs

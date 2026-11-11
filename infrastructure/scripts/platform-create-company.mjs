@@ -17,7 +17,7 @@
 //   --yes                 with --hosted and no terminal: proceed without asking
 //
 // It uses the service role (SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY, and WEB_APP_URL for the default
-// redirect) from the process environment, falling back to the repository-root .env (only those keys are
+// redirect) from the process environment, falling back to backend/.env (only those keys are
 // read). Keys are never printed. The steps match the worker's 'user-invitations' processor: the
 // company_invitations row (invited_by_user_id NULL = operator), then the invitee is looked up in Supabase
 // Auth by email: a new or unconfirmed user gets the invitation email (inviteUserByEmail), a confirmed user
@@ -34,7 +34,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs, parseEnv } from 'node:util'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-const ENV_FILE = resolve(ROOT, '.env')
+const ENV_FILE = resolve(ROOT, 'backend/.env')
 const ENV_KEYS = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'WEB_APP_URL']
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]', 'host.docker.internal'])
 const ACCEPT_PATH = '/auth/accept'
@@ -126,7 +126,7 @@ export function isHostedUrl(url) {
 /** The invitation redirect base: --redirect-url, else WEB_APP_URL + /auth/accept. */
 export function redirectUrlFor(explicit, webAppUrl, hosted) {
   const raw = explicit?.trim() || (webAppUrl?.trim() ? `${webAppUrl.trim().replace(/\/+$/, '')}${ACCEPT_PATH}` : '')
-  if (!raw) throw new UsageError('set WEB_APP_URL (see .env.example) or pass --redirect-url')
+  if (!raw) throw new UsageError('set WEB_APP_URL (see backend/.env.example) or pass --redirect-url')
   let url
   try {
     url = new URL(raw)
@@ -296,7 +296,7 @@ async function main() {
     return
   }
 
-  // The root .env is only read when the process environment lacks one of the keys.
+  // backend/.env is only read when the process environment lacks one of the keys.
   const needsFile = ENV_KEYS.some((key) => !process.env[key]?.trim())
   const fileValues = needsFile && existsSync(ENV_FILE) ? parseEnv(readFileSync(ENV_FILE, 'utf8')) : {}
   const env = Object.fromEntries(ENV_KEYS.map((key) => [key, (process.env[key] ?? fileValues[key] ?? '').trim()]))

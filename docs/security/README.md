@@ -54,7 +54,8 @@ The frontend's workspace switching is a convenience. It is not a security bounda
 
 ## Least-privilege configuration
 
-All processes share one contract (`.env.example`, copied to the root `.env`), but each process loads
+The server processes share one contract (`backend/.env.example`, copied to `backend/.env`; the web app has its own
+`frontend/.env` with public values only), but each process loads
 only what its own schema declares:
 
 | Process | Loader | What it loads |
@@ -74,7 +75,7 @@ whose role is `service_role`. It is applied twice: `frontend/vite.config.ts` ref
 and `frontend/src/services/api/config.ts` renders the configuration error screen instead of the app.
 
 **Docker Compose** (local development) mirrors this for the API and the document-processing service,
-which receive only their own variables. The `worker` service receives the whole root `.env`
+which receive only their own variables. The `worker` service receives the whole `backend/.env`
 (`env_file`), because it also needs one WhatsApp token variable per connected company
 (`WHATSAPP_ACCESS_TOKEN_<company uuid without dashes, uppercase>`); the worker process itself still
 loads only its schema's variables (and those token variables) when it reads the `.env` file directly.
@@ -104,7 +105,7 @@ Images contain no `.env` file (root `.dockerignore`) and run as non-root users (
   (`backend/src/infrastructure/whatsapp/registration-pins.ts`).
 - **Nexus Solution's test number (number import, ticket 15).** `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` and
   `WHATSAPP_BUSINESS_MESSAGING_ACCOUNT_ID` are loaded by the operator command `pnpm whatsapp:import-test-number` only
-  (`loadNumberImportEnv`: its own seven keys, from the process environment, reading the root `.env` only when one is
+  (`loadNumberImportEnv`: its own seven keys, from the process environment, reading `backend/.env` only when one is
   missing), never by the API or the worker. The command uses the service-role key, like `platform:create-company`,
   and hands the token to `public.import_whatsapp_number` (service role only), which stores it in Vault as
   `whatsapp_access_token:<company id>:import:<uuid>` for the named company only. Every line it prints has the token

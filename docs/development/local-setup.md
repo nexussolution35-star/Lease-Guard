@@ -9,8 +9,8 @@ The hosted Supabase project is the system of record: its schema comes only from 
 (applied with `pnpm db:push:remote`, see [database](../database/README.md#applying-migrations-to-a-hosted-project)).
 The local stack is for development and tests only.
 
-The root `.env` decides where the API, the worker and the web app connect: `SUPABASE_URL` and
-`VITE_SUPABASE_URL` are either the local stack (`http://127.0.0.1:54321`) or a hosted project
+`backend/.env` (server settings) and `frontend/.env` (the web app's public values) decide where the API, the
+worker and the web app connect: `SUPABASE_URL` (backend) and `VITE_SUPABASE_URL` (frontend) are either the local stack (`http://127.0.0.1:54321`) or a hosted project
 (`https://<ref>.supabase.co`). The keys must belong to the same project as the URL.
 
 - `pnpm db:status` prints the **local** stack's URL and keys. Use them when `.env` should point at
@@ -96,7 +96,8 @@ shorter than 32 characters.
 `VITE_API_URL`, `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are required; other `VITE_*` variables
 are ignored. If a `VITE_*` variable
 holds a Supabase secret or service-role key, `pnpm dev:frontend` and the frontend build refuse to run.
-Vite reads the root `.env`; restart the dev server after changing it.
+Vite reads `frontend/.env`; restart the dev server after changing it. A `VITE_*` copy of any server-only
+setting (for example `VITE_GOOGLE_MAPS_API_KEY`) is refused.
 
 ## Document processing without OCR
 

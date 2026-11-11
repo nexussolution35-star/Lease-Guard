@@ -239,7 +239,7 @@ async function freeInitials(taken: Set<string>): Promise<string> {
   }
 }
 
-/** Runs the operator command against the LOCAL stack only (explicit environment: the root .env is never read). */
+/** Runs the operator command against the LOCAL stack only (explicit environment: backend/.env is never read). */
 function platformCreateCompany(args: string[]): Promise<string> {
   const ctx = integration()
   return new Promise((resolve, reject) => {

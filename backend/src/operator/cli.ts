@@ -28,7 +28,7 @@ Options:
   -h, --help                 show this help
 
 Reads SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, REDIS_URL, QUEUE_PREFIX and the three test-number settings from the
-process environment, falling back to the repository-root .env only for those keys. The token is never printed.
+process environment, falling back to backend/.env only for those keys. The token is never printed.
 Re-running is safe: the same token is kept, a newer token replaces the stored one. See docs/integrations/whatsapp.md.`
 
 export class UsageError extends Error {}

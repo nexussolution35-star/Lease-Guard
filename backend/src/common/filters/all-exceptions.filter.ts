@@ -4,6 +4,7 @@ import type { Response } from 'express'
 
 import { redactUrl } from '../logging/redact-url'
 import type { LeaseGuardRequest } from '../request-context'
+import { TooManyRequestsException } from '../http/too-many-requests.exception'
 
 /** Error body returned by every failing API request. */
 export interface ApiErrorBody {
@@ -40,6 +41,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.error(`Unhandled error on ${request.method} ${redactUrl(request.url)} [request ${requestId}]: ${detail}`)
     }
 
+    if (exception instanceof TooManyRequestsException) response.setHeader('Retry-After', String(exception.retryAfterSeconds))
     const body: ApiErrorBody = { statusCode, error: STATUS_CODES[statusCode] ?? 'Error', message, requestId }
     response.status(statusCode).json(body)
   }

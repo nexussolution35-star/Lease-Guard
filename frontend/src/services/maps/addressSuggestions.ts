@@ -1,8 +1,10 @@
-import { importLibrary, setOptions } from '@googlemaps/js-api-loader'
+import { isApiError, unwrap, type ApiClient, type SuggestedAddressDto } from '@leaseguard/api-client'
 
-import { getAppConfig } from '@/services/api/config'
+import { describeApiError } from '@/lib/data/apiErrors'
+import { getApiClient } from '@/services/api/client'
 
-import { addressFromGoogle, type SuggestedAddress } from './addressFromGoogle'
+/** The address of a chosen suggestion; parts Google does not know are absent. */
+export type SuggestedAddress = SuggestedAddressDto
 
 /** One suggestion in the list: the place's name and, when known, where it is. */
 export interface AddressSuggestion {
@@ -11,89 +13,79 @@ export interface AddressSuggestion {
   secondary?: string
 }
 
-/** Address suggestions as a user types. Implemented with Google Places; tests pass a fake. */
+/** Address suggestions as a user types. Through LeaseGuard's API; tests pass a fake. */
 export interface AddressSuggestionSource {
-  /** Starts loading what suggestions need (e.g. when the field is focused), so the first ones arrive sooner. Not billed. */
-  prepare?(): void
-  /** Suggestions for the typed text (South Africa only). */
+  /** Whether this deployment offers suggestions (the API has a Google Maps key). False on any error. */
+  available(): Promise<boolean>
+  /** Suggestions for the typed text (South Africa only). Rejects with AddressLookupError. */
   suggest(input: string): Promise<AddressSuggestion[]>
-  /** The address fields of a suggestion from the latest `suggest` call; ends the lookup session. */
+  /** The address of a suggestion; ends the lookup session. Rejects with AddressLookupError. */
   resolve(suggestion: AddressSuggestion): Promise<SuggestedAddress>
 }
 
-let placesLibrary: Promise<google.maps.PlacesLibrary> | undefined
+/** A refused or failed lookup, with words for the user (e.g. the rate limit's "wait a moment"). */
+export class AddressLookupError extends Error {}
 
-function loadPlaces(apiKey: string): Promise<google.maps.PlacesLibrary> {
-  if (!placesLibrary) {
-    setOptions({ key: apiKey, v: 'weekly', language: 'en', region: 'ZA' })
-    placesLibrary = importLibrary('places').catch((error: unknown) => {
-      // Let a later attempt try again (e.g. the network was down).
-      placesLibrary = undefined
-      throw error
-    })
+const FALLBACK = 'Address suggestions are unavailable right now. Type the address in full.'
+
+function lookupError(error: unknown): AddressLookupError {
+  if (isApiError(error) && (error.status === 429 || error.status === 503)) {
+    return new AddressLookupError(error.messages.join(' ') || FALLBACK)
   }
-  return placesLibrary
+  return new AddressLookupError(describeApiError(error, FALLBACK))
 }
 
 /**
- * Google Places API (New) suggestions restricted to South Africa. One session token covers the typing and the
- * lookup of the chosen place (Google bills it as one session); a new one starts with the next lookup.
+ * Suggestions from LeaseGuard's API, which calls Google Places with a key only the server holds. One session token
+ * (a UUID) covers the searches and the resolve of one lookup, so Google bills them as one session.
  */
-export function createGoogleAddressSource(apiKey: string): AddressSuggestionSource {
-  let sessionToken: google.maps.places.AutocompleteSessionToken | undefined
-  let predictions = new Map<string, google.maps.places.PlacePrediction>()
+export function createApiAddressSource(api: ApiClient): AddressSuggestionSource {
+  let availability: Promise<boolean> | undefined
+  let sessionToken: string | undefined
 
   return {
-    prepare() {
-      // Loading the script is free; only suggestion and place requests are billed. A failure shows on the next suggest.
-      loadPlaces(apiKey).catch(() => undefined)
+    available() {
+      // Any failure, even a synchronous one, means "no suggestions": the field stays a plain input.
+      availability ??= Promise.resolve()
+        .then(() => unwrap(api.GET('/api/v1/address-suggestions/status')))
+        .then(
+        (status) => status.available,
+        () => {
+          // Try again next time (e.g. the API was briefly unreachable).
+          availability = undefined
+          return false
+        },
+      )
+      return availability
     },
 
     async suggest(input) {
-      const { AutocompleteSessionToken, AutocompleteSuggestion } = await loadPlaces(apiKey)
-      sessionToken ??= new AutocompleteSessionToken()
-      const { suggestions } = await AutocompleteSuggestion.fetchAutocompleteSuggestions({
-        input,
-        sessionToken,
-        includedRegionCodes: ['za'],
-        language: 'en',
-        region: 'za',
-      })
-      predictions = new Map()
-      const items: AddressSuggestion[] = []
-      for (const suggestion of suggestions) {
-        const prediction = suggestion.placePrediction
-        if (!prediction) continue
-        predictions.set(prediction.placeId, prediction)
-        const secondary = prediction.secondaryText?.toString()
-        items.push({ id: prediction.placeId, primary: (prediction.mainText ?? prediction.text).toString(), ...(secondary ? { secondary } : {}) })
+      sessionToken ??= crypto.randomUUID()
+      try {
+        const { suggestions } = await unwrap(api.POST('/api/v1/address-suggestions', { body: { input, sessionToken } }))
+        return suggestions.map((s) => ({ id: s.placeId, primary: s.primary, ...(s.secondary ? { secondary: s.secondary } : {}) }))
+      } catch (error) {
+        throw lookupError(error)
       }
-      return items
     },
 
     async resolve(suggestion) {
-      const prediction = predictions.get(suggestion.id)
-      if (!prediction) throw new Error('That suggestion is no longer available. Type the address again.')
-      const place = prediction.toPlace()
+      const token = sessionToken ?? crypto.randomUUID()
+      // The resolve ends the session either way; the next lookup starts a new one.
+      sessionToken = undefined
       try {
-        await place.fetchFields({ fields: ['addressComponents', 'formattedAddress', 'displayName'] })
-      } finally {
-        // fetchFields ends the session; the next lookup starts a new one.
-        sessionToken = undefined
-        predictions = new Map()
+        return await unwrap(api.POST('/api/v1/address-suggestions/resolve', { body: { placeId: suggestion.id, sessionToken: token } }))
+      } catch (error) {
+        throw lookupError(error)
       }
-      return addressFromGoogle(place.addressComponents ?? [], { displayName: place.displayName, formattedAddress: place.formattedAddress })
     },
   }
 }
 
-let source: AddressSuggestionSource | null | undefined
+let source: AddressSuggestionSource | undefined
 
-/** The address suggestion source of this build, or null when no Google Maps key is configured. */
-export function getAddressSuggestionSource(): AddressSuggestionSource | null {
-  if (source === undefined) {
-    const apiKey = getAppConfig().googleMapsApiKey
-    source = apiKey ? createGoogleAddressSource(apiKey) : null
-  }
+/** The address suggestion source of this app (LeaseGuard's API), created on first use. */
+export function getAddressSuggestionSource(): AddressSuggestionSource {
+  source ??= createApiAddressSource(getApiClient())
   return source
 }

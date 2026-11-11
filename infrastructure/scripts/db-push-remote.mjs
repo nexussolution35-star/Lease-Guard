@@ -6,7 +6,7 @@
 //   pnpm db:push:remote -- --apply --yes applies without asking (non-interactive use)
 //
 // Reads SUPABASE_URL, SUPABASE_DB_PASSWORD and the optional SUPABASE_DB_POOLER_URL from the process
-// environment, falling back to the repository-root .env (only those keys are read).
+// environment, falling back to backend/.env (only those keys are read).
 //
 // By default it connects to the direct database host db.<ref>.supabase.co, which resolves to IPv6
 // only. On an IPv4-only network or container, set SUPABASE_DB_POOLER_URL to the session-pooler
@@ -27,7 +27,7 @@ import { fileURLToPath } from 'node:url'
 import { parseEnv } from 'node:util'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-const ENV_FILE = resolve(ROOT, '.env')
+const ENV_FILE = resolve(ROOT, 'backend/.env')
 const SUPABASE_BIN = resolve(ROOT, 'node_modules/.bin/supabase')
 const PASSWORD_PLACEHOLDERS = new Set(['[YOUR-PASSWORD]', '[PASSWORD]'])
 
@@ -75,7 +75,7 @@ function connection() {
 }
 
 const { user, host, port, password } = connection()
-if (!password) fail('SUPABASE_DB_PASSWORD is not set (the database password of the hosted project; see .env.example)')
+if (!password) fail('SUPABASE_DB_PASSWORD is not set (the database password of the hosted project; see backend/.env.example)')
 if (!existsSync(SUPABASE_BIN)) fail('the Supabase CLI is missing; run pnpm install')
 
 const args = process.argv.slice(2)

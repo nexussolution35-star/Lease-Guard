@@ -14,7 +14,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "oxlint src",
     "test": "vitest run",
-    "openapi:generate": "pnpm run build && node --env-file=../.env.example dist/generate-openapi.js"
+    "openapi:generate": "pnpm run build && node --env-file=.env.example dist/generate-openapi.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",

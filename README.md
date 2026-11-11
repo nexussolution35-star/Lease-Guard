@@ -214,12 +214,13 @@ The web app always runs against Supabase Auth and the LeaseGuard API; there is n
 
 ```bash
 pnpm install
-cp .env.example .env
+cp backend/.env.example backend/.env     # server settings and secrets
+cp frontend/.env.example frontend/.env   # the web app's public VITE_* values
 
 # 1. Database, auth and storage (local Supabase; applies the migrations)
 pnpm db:start
-pnpm db:status                # copy the anon key to SUPABASE_ANON_KEY and VITE_SUPABASE_ANON_KEY,
-                              # and the service-role key to SUPABASE_SERVICE_ROLE_KEY in .env
+pnpm db:status                # copy the anon key to SUPABASE_ANON_KEY (backend/.env) and VITE_SUPABASE_ANON_KEY
+                              # (frontend/.env), and the service-role key to SUPABASE_SERVICE_ROLE_KEY (backend/.env)
 
 # 2. Redis for background jobs, published on the host for `pnpm dev`
 docker run -d --name leaseguard-redis-dev -p 127.0.0.1:6379:6379 redis:7.4.12

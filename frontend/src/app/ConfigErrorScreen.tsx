@@ -4,7 +4,7 @@ export interface ConfigErrorScreenProps {
   issues: readonly string[]
 }
 
-/** Startup error when the frontend environment (root `.env`, VITE_* variables) is invalid. */
+/** Startup error when the frontend environment (`frontend/.env`, VITE_* variables) is invalid. */
 export function ConfigErrorScreen({ issues }: ConfigErrorScreenProps) {
   return (
     <main className="flex min-h-svh items-center justify-center bg-background px-4 py-10 text-foreground">

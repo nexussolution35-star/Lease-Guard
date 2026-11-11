@@ -9,6 +9,8 @@ import type { ApiEnv } from './config/env'
 import { DatabaseModule } from './infrastructure/database/database.module'
 import { HealthModule } from './infrastructure/health/health.module'
 import { QueuesModule } from './infrastructure/queues/queues.module'
+import { RateLimitModule } from './infrastructure/rate-limit/rate-limit.module'
+import { AddressSuggestionsModule } from './modules/address-suggestions/address-suggestions.module'
 import { ArrangementsModule } from './modules/arrangements/arrangements.module'
 import { AuditModule } from './modules/audit/audit.module'
 import { AuthModule } from './modules/auth/auth.module'
@@ -39,6 +41,7 @@ export class AppModule {
         loggingModule(env.LOG_LEVEL),
         DatabaseModule,
         QueuesModule,
+        RateLimitModule,
         HealthModule,
         // Business modules
         AuthModule,
@@ -59,6 +62,7 @@ export class AppModule {
         WhatsAppAgentModule,
         NotificationsModule,
         AuditModule,
+        AddressSuggestionsModule,
       ],
       providers: [
         // Every route requires a verified Supabase user unless marked @Public().

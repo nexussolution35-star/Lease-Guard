@@ -36,7 +36,7 @@ async function bootstrap(): Promise<void> {
   app.enableCors({
     origin: env.API_CORS_ORIGINS,
     allowedHeaders: ['Authorization', 'Content-Type', COMPANY_ID_HEADER, REQUEST_ID_HEADER],
-    exposedHeaders: [REQUEST_ID_HEADER],
+    exposedHeaders: [REQUEST_ID_HEADER, 'Retry-After'],
   })
   // Meta signs the webhook's raw bytes: that route reads its body unparsed (and up to 3 MB) before Nest's JSON
   // parser, which is registered when the app initialises and then skips the already-read request.

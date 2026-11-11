@@ -33,7 +33,7 @@ to start. It never skips tests or passes vacuously.
 
 ### How the environment is chosen
 
-The suite writes and deletes data, so it never trusts the repository-root `.env` (which may point at a
+The suite writes and deletes data, so it never trusts `backend/.env` (which may point at a
 hosted project):
 
 - Supabase URL, anon key and service-role key come from `supabase status -o env` (the CLI pinned in the
@@ -45,7 +45,7 @@ hosted project):
 - The API process gets an explicit environment: every variable it reads (`API_ENV_KEYS` from
   `backend/src/config/env.ts`) is set, using the local Supabase URL and anon key, `REDIS_URL`, a unique
   `QUEUE_PREFIX` (`lg-it-<pid>`) and `.env.example` defaults for the rest. Process variables win over
-  `.env`, so the root `.env` is never read. The API never receives the service-role key.
+  `.env`, so `backend/.env` is never read. The API never receives the service-role key.
 - The setup creates this run's world (below), waits for `GET /health/ready`, signs in the world's users
   once through local Supabase Auth (local Auth rate-limits sign-ins) and hands URLs, tokens and the
   world to the tests with Vitest `provide`/`inject`.
@@ -90,7 +90,7 @@ API output goes to `tests/test-results/integration/api.log`.
 | `approvals.test.ts` | on a tenant message the test creates (requested by a property manager): `read_only` 403 and the message stays pending; the requester approves their own request (200, recorded as the approver, exactly one `message-delivery` job in the run's queue prefix); approving again 409 with no second job; rejecting the approved message 409 |
 | `users-and-invitations.test.ts` | every member lists company A's members (only A's membership); the active-admin count filter; an admin changing their own role or removing themselves 403; other roles 403; an admin changes another member's role and back; removing a member still named on records 409; invite (email lower-cased, `pending`), duplicate 409, resend, revoke, revoke or resend again 409; inviting an existing member 409; invitations refused to other roles and to a non-member company (403). Invitations it creates are deleted in `afterAll` |
 | `whatsapp-acceptance-two-businesses.test.ts` | The acceptance scenario of the WhatsApp work (ticket 14), end to end; see below |
-| `whatsapp-test-number-import.test.ts` | The number import (ticket 15): runs the operator command `whatsapp:import-test-number` from this run's build (`backend/.dev-integration/operator/import-whatsapp-test-number.js`) with only its own seven settings, all local (so the root `.env` is never read), against the world's company A. Dry run by default (nothing written), `--apply` refused without a terminal unless `--yes`, an unknown company and a number company B has connected refused (B named), then the import: the token in Vault for A only (never printed, never in the job), the account and number pending verification and marked imported; the worker's real number verification runs in the test process (`support/in-process-worker.ts`, own queue prefix `<run prefix>-import`) against the fake Graph API and connects it; the integration page's API shows it connected with every step passed and `operatorImportedAt`, and B's members never see it; re-running leaves a connected number alone; a newer token replaces the stored one (old secret deleted) and the number is verified again with it. Its rows, Vault secrets and Redis keys are deleted in `afterAll`; worker log `test-results/integration/worker-test-number-import.log` |
+| `whatsapp-test-number-import.test.ts` | The number import (ticket 15): runs the operator command `whatsapp:import-test-number` from this run's build (`backend/.dev-integration/operator/import-whatsapp-test-number.js`) with only its own seven settings, all local (so `backend/.env` is never read), against the world's company A. Dry run by default (nothing written), `--apply` refused without a terminal unless `--yes`, an unknown company and a number company B has connected refused (B named), then the import: the token in Vault for A only (never printed, never in the job), the account and number pending verification and marked imported; the worker's real number verification runs in the test process (`support/in-process-worker.ts`, own queue prefix `<run prefix>-import`) against the fake Graph API and connects it; the integration page's API shows it connected with every step passed and `operatorImportedAt`, and B's members never see it; re-running leaves a connected number alone; a newer token replaces the stored one (old secret deleted) and the number is verified again with it. Its rows, Vault secrets and Redis keys are deleted in `afterAll`; worker log `test-results/integration/worker-test-number-import.log` |
 
 ### Acceptance scenario: two businesses stay apart
 
@@ -100,7 +100,7 @@ prerequisites as the suite (local Supabase, local Redis); nothing else to config
 
 - **Its own businesses.** It does not use the world: it creates *Atlas Properties* and *Baobab Estates* through the
   operator command `infrastructure/scripts/platform-create-company.mjs` (run with only the local `SUPABASE_URL`,
-  `SUPABASE_SERVICE_ROLE_KEY` and `WEB_APP_URL` in its environment, so it never reads the root `.env`; unused initials
+  `SUPABASE_SERVICE_ROLE_KEY` and `WEB_APP_URL` in its environment, so it never reads `backend/.env`; unused initials
   are picked because the command refuses existing ones) and each admin, whose confirmed account the test created,
   accepts the invitation through the API. A tenant of Atlas is inserted with the service role.
 - **Its own API process** of this run's build (`backend/.dev-integration`), with a test Meta app (app id, Embedded
@@ -150,7 +150,7 @@ prerequisites as the suite (local Supabase, local Redis); nothing else to config
 ### How the environment is chosen
 
 The suite refuses to run unless Supabase is local: the Playwright config reads `supabase status -o env`
-(never the root `.env`) and stops when the URL is not on this machine. Playwright then starts two web
+(never `backend/.env`) and stops when the URL is not on this machine. Playwright then starts two web
 servers and never reuses one that is already running (`reuseExistingServer: false`):
 
 - **API** (`node tests/e2e/support/run-api.ts`): builds `@leaseguard/domain` if stale and compiles the API
@@ -159,7 +159,7 @@ servers and never reuses one that is already running (`reuseExistingServer: fals
   every other variable from `.env.example`). Its log is `tests/test-results/e2e/api.log`. When Playwright
   stops it (SIGTERM), it stops the API, deletes the run's Redis keys and removes `backend/.dev-e2e`.
 - **Web**: `vite --port 5199 --strictPort` (the frontend's own Vite binary) with `VITE_API_URL=http://127.0.0.1:3955` and the local
-  `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in the process environment (they override the root `.env`).
+  `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in the process environment (they override `frontend/.env`).
 
 `global-setup.ts` creates this run's world with `createWorld` (label `e2e`: unique emails and company
 names, random passwords) and destroys it, with a cleanup check, when the run ends. Tests sign in through

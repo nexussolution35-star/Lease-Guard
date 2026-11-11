@@ -5,8 +5,8 @@ import { exposedSecretsMessage, findExposedSecrets } from './exposedSecrets'
 /**
  * Frontend runtime configuration, validated once at startup from `import.meta.env`.
  *
- * Vite reads the single repository-root `.env` (see `envDir` in vite.config.ts) and only exposes
- * `VITE_*` variables to the browser. Nothing here is secret: the Supabase anon key is public and
+ * Vite reads `frontend/.env` (see `envDir` in vite.config.ts), which holds public values only, and exposes
+ * only `VITE_*` variables to the browser. Nothing here is secret: the Supabase anon key is public and
  * subject to Row Level Security. Other `VITE_*` variables are ignored, so an extra entry in a
  * developer's `.env` never prevents startup.
  */
@@ -16,11 +16,6 @@ export interface AppConfig {
   supabaseUrl: string
   /** Public anon key (browser-safe; RLS applies). */
   supabaseAnonKey: string
-  /**
-   * Browser key for Google Maps address suggestions (Maps JavaScript API + Places API (New)). Optional: without it,
-   * address fields are plain inputs. Public by nature; restrict it to LeaseGuard's web origins in Google Cloud.
-   */
-  googleMapsApiKey?: string
 }
 
 export type ConfigResult = { ok: true; config: AppConfig } | { ok: false; issues: string[] }
@@ -41,7 +36,6 @@ const envSchema = z.object({
   VITE_API_URL: httpUrl('VITE_API_URL'),
   VITE_SUPABASE_URL: httpUrl('VITE_SUPABASE_URL'),
   VITE_SUPABASE_ANON_KEY: z.preprocess(blankToUndefined, z.string({ error: 'VITE_SUPABASE_ANON_KEY is required' }).trim()),
-  VITE_GOOGLE_MAPS_API_KEY: z.preprocess(blankToUndefined, z.string().trim().optional()),
 })
 
 /** Validate a Vite env object. Pure, so tests can pass any environment. */
@@ -52,14 +46,13 @@ export function parseAppConfig(env: Readonly<Record<string, unknown>>): ConfigRe
 
   const parsed = envSchema.safeParse(env)
   if (!parsed.success) return { ok: false, issues: parsed.error.issues.map((issue) => issue.message) }
-  const { VITE_API_URL, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_GOOGLE_MAPS_API_KEY } = parsed.data
+  const { VITE_API_URL, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY } = parsed.data
   return {
     ok: true,
     config: {
       apiUrl: VITE_API_URL.replace(/\/+$/, ''),
       supabaseUrl: VITE_SUPABASE_URL.replace(/\/+$/, ''),
       supabaseAnonKey: VITE_SUPABASE_ANON_KEY,
-      ...(VITE_GOOGLE_MAPS_API_KEY ? { googleMapsApiKey: VITE_GOOGLE_MAPS_API_KEY } : {}),
     },
   }
 }

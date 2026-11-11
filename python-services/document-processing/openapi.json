@@ -475,7 +475,7 @@
     },
     "securitySchemes": {
       "HTTPBearer": {
-        "description": "DOCUMENT_PROCESSING_TOKEN from the root .env",
+        "description": "DOCUMENT_PROCESSING_TOKEN from backend/.env",
         "scheme": "bearer",
         "type": "http"
       }

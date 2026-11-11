@@ -1524,6 +1524,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/address-suggestions/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether address suggestions are available */
+        get: operations["getAddressSuggestionsStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/address-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Suggest South African addresses for the text typed so far
+         * @description Per user: 30 a minute and 600 a day; refusals are 429 with Retry-After.
+         */
+        post: operations["searchAddresses"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/address-suggestions/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The address of a chosen suggestion
+         * @description Ends the lookup session. Per user: 10 a minute and 150 a day; refusals are 429 with Retry-After.
+         */
+        post: operations["resolveAddress"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3565,6 +3622,39 @@ export interface components {
             page: number;
             pageSize: number;
         };
+        AddressSuggestionsStatusDto: {
+            /** @description False when the deployment has no Google Maps key: address fields are plain inputs */
+            available: boolean;
+        };
+        AddressSearchDto: {
+            /** @description The address text typed so far */
+            input: string;
+            /** @description One per lookup (a UUID); the same token for the searches and the resolve */
+            sessionToken: string;
+        };
+        AddressSuggestionDto: {
+            placeId: string;
+            /** @description The place, e.g. "Sandton City" */
+            primary: string;
+            /** @description Where it is, e.g. "Rivonia Road, Sandhurst, Sandton" */
+            secondary?: string;
+        };
+        AddressSuggestionListDto: {
+            suggestions: components["schemas"]["AddressSuggestionDto"][];
+        };
+        AddressResolveDto: {
+            /** @description The placeId of a suggestion */
+            placeId: string;
+            sessionToken: string;
+        };
+        SuggestedAddressDto: {
+            /** @description Street number and name, or the place name */
+            line1: string;
+            suburb?: string;
+            city?: string;
+            province?: components["schemas"]["SAProvince"];
+            postalCode?: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -3781,6 +3871,12 @@ export type AuditAction = components['schemas']['AuditAction'];
 export type FieldChangeDto = components['schemas']['FieldChangeDto'];
 export type AuditLogDto = components['schemas']['AuditLogDto'];
 export type AuditLogPage = components['schemas']['AuditLogPage'];
+export type AddressSuggestionsStatusDto = components['schemas']['AddressSuggestionsStatusDto'];
+export type AddressSearchDto = components['schemas']['AddressSearchDto'];
+export type AddressSuggestionDto = components['schemas']['AddressSuggestionDto'];
+export type AddressSuggestionListDto = components['schemas']['AddressSuggestionListDto'];
+export type AddressResolveDto = components['schemas']['AddressResolveDto'];
+export type SuggestedAddressDto = components['schemas']['SuggestedAddressDto'];
 export type $defs = Record<string, never>;
 export interface operations {
     HealthController_liveness: {
@@ -9918,6 +10014,145 @@ export interface operations {
             };
             /** @description Not a member of the company, or role not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getAddressSuggestionsStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressSuggestionsStatusDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    searchAddresses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddressSearchDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressSuggestionListDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /**
+             * @description Not set up, Google unavailable, or the limits cannot be checked
+             *
+             *     Authentication or database unavailable
+             */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    resolveAddress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddressResolveDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestedAddressDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

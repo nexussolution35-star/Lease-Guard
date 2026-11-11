@@ -36,6 +36,7 @@ export const SERVER_ONLY_SETTINGS = [
   'WHATSAPP_APP_SECRET',
   'WHATSAPP_WEBHOOK_VERIFY_TOKEN',
   'ANTHROPIC_API_KEY',
+  'GOOGLE_MAPS_API_KEY',
 ] as const
 const SERVER_ONLY_PREFIXES = ['WHATSAPP_ACCESS_TOKEN'] as const
 // Anthropic API keys start with this prefix.
@@ -75,7 +76,7 @@ export function findExposedSecrets(
 export function exposedSecretsMessage(names: readonly string[]): string {
   return (
     `${names.join(', ')} ${names.length === 1 ? 'holds' : 'hold'} a server-only secret (a Supabase secret or service-role key, ` +
-    'the Meta app secret, the webhook verify token, a WhatsApp access token or the Anthropic API key). ' +
+    'the Meta app secret, the webhook verify token, a WhatsApp access token, the Anthropic API key or the Google Maps key). ' +
     'VITE_* variables are bundled into the browser; use the public anon/publishable key only.'
   )
 }

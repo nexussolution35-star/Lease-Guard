@@ -18,7 +18,7 @@
 //
 // Reads SUPABASE_URL, SUPABASE_ACCESS_TOKEN (a personal access token: Dashboard > Account > Access
 // Tokens), WEB_APP_URL and SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SENDER_EMAIL,
-// SMTP_SENDER_NAME from the process environment, falling back to the repository-root .env (only those
+// SMTP_SENDER_NAME from the process environment, falling back to backend/.env (only those
 // keys are read). Secrets are never printed: the SMTP password is shown as "(set)" and templates by size.
 //
 // The sender's domain (leaseguard.com) must be verified with the SMTP provider (SPF and DKIM records in
@@ -31,7 +31,7 @@ import { fileURLToPath } from 'node:url'
 import { parseEnv } from 'node:util'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-const ENV_FILE = resolve(ROOT, '.env')
+const ENV_FILE = resolve(ROOT, 'backend/.env')
 const TEMPLATES = resolve(ROOT, 'supabase/templates')
 const API = 'https://api.supabase.com/v1'
 const DEFAULT_SENDER_EMAIL = 'noreply@leaseguard.com'
@@ -51,7 +51,7 @@ const read = (name) => (process.env[name] ?? fileValues[name] ?? '').trim()
 const ref = /^https:\/\/([a-z0-9]{20})\.supabase\.co\/?$/.exec(read('SUPABASE_URL'))?.[1]
 if (!ref) fail('SUPABASE_URL must be a hosted project URL such as https://<project-ref>.supabase.co')
 const token = read('SUPABASE_ACCESS_TOKEN')
-if (!token) fail('SUPABASE_ACCESS_TOKEN is not set (Dashboard > Account > Access Tokens; see .env.example)')
+if (!token) fail('SUPABASE_ACCESS_TOKEN is not set (Dashboard > Account > Access Tokens; see backend/.env.example)')
 
 let webAppUrl
 try {
@@ -126,7 +126,7 @@ function desiredSettings(current) {
     console.log("      Supabase's test sender stays in use and only delivers to the project team's addresses.\n")
     return desired
   }
-  if (missing.length > 0) fail(`custom SMTP needs ${missing.join(', ')} as well (see .env.example)`)
+  if (missing.length > 0) fail(`custom SMTP needs ${missing.join(', ')} as well (see backend/.env.example)`)
 
   const senderEmail = read('SMTP_SENDER_EMAIL') || DEFAULT_SENDER_EMAIL
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(senderEmail)) fail('SMTP_SENDER_EMAIL is not an email address')

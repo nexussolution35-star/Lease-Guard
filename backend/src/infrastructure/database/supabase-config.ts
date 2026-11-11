@@ -1,7 +1,7 @@
 /** Thrown when a Supabase key is still empty (for example before `supabase start` in local dev). */
 export class SupabaseNotConfiguredError extends Error {
   constructor(variable: 'SUPABASE_ANON_KEY' | 'SUPABASE_SERVICE_ROLE_KEY') {
-    super(`${variable} is not set; start Supabase and copy the key into the repository-root .env`)
+    super(`${variable} is not set; start Supabase and copy the key into backend/.env`)
     this.name = 'SupabaseNotConfiguredError'
   }
 }

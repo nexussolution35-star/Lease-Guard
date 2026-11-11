@@ -23,7 +23,7 @@ const COMPANY_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const VAULT_SECRET_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /**
- * Names of the per-company token variables the worker loads from the root .env. The names depend on
+ * Names of the per-company token variables the worker loads from backend/.env. The names depend on
  * data, so config/env.ts matches them by this pattern.
  */
 export const WHATSAPP_ACCESS_TOKEN_KEY = new RegExp(`^${ENV_VARIABLE_PREFIX}[0-9A-F]{32}$`)

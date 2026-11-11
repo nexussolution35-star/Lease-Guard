@@ -7,18 +7,19 @@
 #
 # Supabase is not part of this file. By default the containers use the local Supabase CLI stack
 # (`pnpm db:start`) on the host at host.docker.internal:54321. To use a hosted Supabase project, set
-# DOCKER_SUPABASE_URL in .env to its https://<ref>.supabase.co URL (with the matching keys in .env).
+# DOCKER_SUPABASE_URL in backend/.env to its https://<ref>.supabase.co URL (with the matching keys there).
 #
-# Configuration comes from the repository-root .env (copy .env.example). Compose reads that file for
-# the ${VARIABLE} values below; host names that differ inside containers are overridden here.
+# Configuration comes from backend/.env (server settings; copy backend/.env.example) and frontend/.env
+# (the web app's public VITE_* values; copy frontend/.env.example). infrastructure/scripts/compose.sh passes
+# both to Compose for the ${VARIABLE} values below; host names that differ inside containers are overridden here.
 # Least privilege, as in backend/src/config/env.ts: the API and the document-processing service get
-# only the variables they use. The worker receives the whole .env because its WhatsApp access tokens
+# only the variables they use. The worker receives the whole backend/.env because its WhatsApp access tokens
 # are referenced by name from the database (`secret://env/WHATSAPP_ACCESS_TOKEN…`), so the set of
 # variables it needs is not fixed here.
 #
 # Published ports bind to 127.0.0.1 only. They default to the ports `pnpm dev` uses, so stop one
 # before starting the other, or move these with API_HOST_PORT, DOCUMENT_PROCESSING_HOST_PORT and
-# FRONTEND_HOST_PORT in .env. Redis is not published: the containers use it on the compose network,
+# FRONTEND_HOST_PORT in backend/.env. Redis is not published: the containers use it on the compose network,
 # and the host keeps its own Redis on 6379 for `pnpm dev`.
 
 name: leaseguard
@@ -75,9 +76,12 @@ services:
     environment:
       <<: *backend-shared-env
       API_PORT: "3000"
-      # The Vite dev server origin from .env plus the containerised frontend (profile "frontend").
+      # The Vite dev server origin from backend/.env plus the containerised frontend (profile "frontend").
       API_CORS_ORIGINS: ${API_CORS_ORIGINS:-http://localhost:5173},http://localhost:${FRONTEND_HOST_PORT:-8080},http://127.0.0.1:${FRONTEND_HOST_PORT:-8080}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
+      # Address suggestions: the key stays on the API (server-only); the browser never receives it.
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
+      ADDRESS_LOOKUP_DAILY_LIMIT: ${ADDRESS_LOOKUP_DAILY_LIMIT:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -98,7 +102,7 @@ services:
     image: leaseguard-backend:local
     command: ["node", "dist/worker.js"]
     env_file:
-      - path: .env
+      - path: backend/.env
         required: false
     environment:
       <<: *backend-shared-env
@@ -128,7 +132,6 @@ services:
         VITE_API_URL: http://127.0.0.1:${API_HOST_PORT:-3000}
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-http://127.0.0.1:54321}
         VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
-        VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY:-}
     image: leaseguard-frontend:local
     ports:
       - "127.0.0.1:${FRONTEND_HOST_PORT:-8080}:8080"

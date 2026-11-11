@@ -17,7 +17,7 @@ import { type InProcessWorker, startInProcessWorker } from './support/in-process
 /**
  * The number import (ticket 15) end to end on the local stack: the operator command `whatsapp:import-test-number`
  * (this run's build, `backend/.dev-integration/operator/import-whatsapp-test-number.js`, with an explicit local
- * environment, so the root `.env` is never read) connects "the installation's test number" to the world's company A.
+ * environment, so `backend/.env` is never read) connects "the installation's test number" to the world's company A.
  * The worker's real number verification runs in this process on the command's queue prefix against the fake Graph
  * API (support/fake-meta-graph.ts), so the number becomes connected only after LeaseGuard verified it. Nothing calls
  * Meta. Asserted: dry run by default, confirmation (--yes without a terminal), the token only in Vault for company A
@@ -53,7 +53,7 @@ let queuePrefix: string
 const companyA = () => world().companies.a.id
 const companyB = () => world().companies.b.id
 
-/** Runs the operator command without a terminal and with ONLY its own settings (the root .env is never read). */
+/** Runs the operator command without a terminal and with ONLY its own settings (backend/.env is never read). */
 function importCommand(args: string[], settings: { token?: string; phoneNumberId?: string } = {}): Promise<{ code: number; output: string }> {
   const ctx = integration()
   return new Promise((resolve, reject) => {

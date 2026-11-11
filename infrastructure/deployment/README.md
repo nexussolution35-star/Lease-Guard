@@ -80,14 +80,17 @@ documents each variable. Give each process only its own variables.
 | `WHATSAPP_ACCESS_TOKEN_<COMPANY ID>` | | yes | | **secret**, one per connected company; see below |
 
 Frontend `VITE_*` values (`VITE_API_URL`, `VITE_SUPABASE_URL`,
-`VITE_SUPABASE_ANON_KEY` and the optional `VITE_GOOGLE_MAPS_API_KEY`) are build arguments compiled into the JavaScript bundle. They are public by
+`VITE_SUPABASE_ANON_KEY`) are build arguments compiled into the JavaScript bundle. They are public by
 nature: never put a secret in a `VITE_*` variable. Changing them requires rebuilding the frontend
 image.
 
-`VITE_GOOGLE_MAPS_API_KEY` turns on address suggestions (Google Places API (New), South Africa only). It is
-a browser key, visible to anyone who loads the app: in Google Cloud restrict it to the app's origins
-(HTTP referrers) and to the Maps JavaScript API and Places API (New), and set a quota. While someone types
-an address, that text is sent to Google; nothing else is. Without the key, address fields are plain inputs.
+`GOOGLE_MAPS_API_KEY` (API only, server-side) turns on address suggestions (Google Places API (New), South
+Africa only). Browsers never receive it: they call `POST /api/v1/address-suggestions`, and the web app's build
+refuses a `VITE_` copy. In Google Cloud restrict the key to the Places API (New) and to the API servers'
+outgoing IP addresses, and set a quota. Per user the API allows 30 searches a minute and 600 a day, and 10
+place lookups a minute and 150 a day; `ADDRESS_LOOKUP_DAILY_LIMIT` (default 5000) caps the whole deployment.
+Counters live in Redis; when Redis is unreachable, lookups are refused rather than sent uncounted. Typed
+address text is sent to Google; nothing else is. Without the key, address fields are plain inputs.
 
 ## Secrets
 
@@ -128,7 +131,7 @@ pnpm db:push:remote -- --apply --yes   # applies without asking (non-interactive
 ```
 
 The script targets the project named by `SUPABASE_URL` and connects with `SUPABASE_DB_PASSWORD`
-(process environment or the root `.env`); the password is never printed and the seed is never pushed.
+(process environment or `backend/.env`); the password is never printed and the seed is never pushed.
 By default it connects to the direct host `db.<project-ref>.supabase.co`, which is **IPv6-only**. On an
 IPv4-only network, container or CI runner, set `SUPABASE_DB_POOLER_URL` to the dashboard's session-pooler
 string (`postgresql://postgres.<project-ref>:[YOUR-PASSWORD]@aws-0-<region>.pooler.supabase.com:5432/postgres`;

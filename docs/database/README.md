@@ -200,7 +200,7 @@ apply migrations first. Commit the regenerated file with the migration.
 
 ## Applying migrations to a hosted project
 
-The hosted project named by `SUPABASE_URL` in the root `.env` is the system of record. Apply
+The hosted project named by `SUPABASE_URL` in `backend/.env` is the system of record. Apply
 migrations to it with:
 
 ```sh
@@ -225,5 +225,5 @@ outside `*.pooler.supabase.com`, or the transaction pooler (port 6543).
 - Never pass `--include-seed`, and never run `supabase/seed.sql` against a hosted project: it contains
   demo users with a published password.
 - Apply migrations before rolling out API and worker versions that depend on them.
-- Check which project your root `.env` points at before running anything (see
+- Check which project your `backend/.env` points at before running anything (see
   [local setup](../development/local-setup.md#which-supabase-am-i-using)).
