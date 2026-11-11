@@ -49,6 +49,12 @@ export interface JobPayloads {
    * `payloadSha256` (hex SHA-256 of the raw body) is the job id, so Meta's retries of the same body are one job.
    */
   'whatsapp-webhook': { payloadSha256: string; body: string; receivedAt: ISODateTime }
+  /**
+   * Run the company's AI agent on one inbound WhatsApp message (ticket 10). Enqueued by the webhook processor for
+   * every message it recorded (and again for a duplicate, in case an earlier attempt stopped before enqueueing): the
+   * job id and the one run per message (start_whatsapp_agent_run) make repeats harmless.
+   */
+  'whatsapp-agent': { companyId: EntityId; communicationId: EntityId }
 }
 
 export type QueueName = keyof JobPayloads
@@ -67,6 +73,7 @@ const JOB_KEY_FIELDS: { readonly [Q in QueueName]: readonly (keyof JobPayloads[Q
   'user-invitations': ['companyId', 'invitationId'],
   'whatsapp-number-verification': ['companyId', 'numberId'],
   'whatsapp-webhook': ['payloadSha256'],
+  'whatsapp-agent': ['companyId', 'communicationId'],
 }
 
 export const QUEUE_NAMES = Object.keys(JOB_KEY_FIELDS) as QueueName[]

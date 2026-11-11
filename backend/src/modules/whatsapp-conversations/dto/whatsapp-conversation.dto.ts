@@ -1,9 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import {
+  AGENT_MESSAGE_CATEGORIES,
+  AGENT_RUN_OUTCOMES,
+  type AgentMessageCategory,
+  type AgentRunOutcome,
   HANDOVER_REQUESTERS,
   HANDOVER_STATUSES,
   type HandoverRequester,
   type HandoverStatus,
+  type WhatsAppAgentRun,
   type WhatsAppConversation,
   type WhatsAppConversationContact,
   type WhatsAppConversationSummary,
@@ -72,9 +77,41 @@ export class WhatsAppConversationSummaryDto implements WhatsAppConversationSumma
   @ApiProperty({ format: 'date-time' }) updatedAt!: string
 }
 
-/** A conversation with its latest messages (up to 200), oldest first. */
+/** What the company's AI agent did with one inbound message (ticket 10). Same shape as the domain `WhatsAppAgentRun`. */
+export class WhatsAppAgentRunDto implements WhatsAppAgentRun {
+  @ApiProperty({ format: 'uuid' }) id!: string
+  @ApiProperty({ format: 'uuid' }) companyId!: string
+  @ApiProperty({ format: 'uuid' }) conversationId!: string
+  @ApiProperty({ format: 'uuid', description: 'The inbound message the run handled' }) communicationId!: string
+  @ApiProperty({ enum: ['started', 'completed'], description: 'started: still running (or retrying)' }) status!: 'started' | 'completed'
+  @ApiPropertyOptional({
+    enum: AGENT_RUN_OUTCOMES,
+    enumName: 'AgentRunOutcome',
+    description:
+      'replied: answered a contact; out_of_hours: sent the out-of-hours message and handed over; handed_over: a person takes it; ignored: nothing to answer; not_configured: the agent is not set up',
+  })
+  outcome?: AgentRunOutcome
+  @ApiPropertyOptional({ enum: AGENT_MESSAGE_CATEGORIES, enumName: 'AgentMessageCategory' }) category?: AgentMessageCategory
+  @ApiPropertyOptional({ minimum: 0, maximum: 1 }) confidence?: number
+  @ApiPropertyOptional({ description: 'Why a person must respond' }) handoverReason?: string
+  @ApiPropertyOptional({ description: 'INTERNAL, for staff only: what the agent would have answered. Never sent.' }) suggestedReply?: string
+  @ApiPropertyOptional({ format: 'uuid', description: 'The message the agent sent' }) replyCommunicationId?: string
+  @ApiPropertyOptional() model?: string
+  @ApiPropertyOptional() inputTokens?: number
+  @ApiPropertyOptional() outputTokens?: number
+  @ApiPropertyOptional() cacheReadInputTokens?: number
+  @ApiPropertyOptional() cacheCreationInputTokens?: number
+  @ApiPropertyOptional() latencyMs?: number
+  @ApiPropertyOptional({ format: 'date-time' }) completedAt?: string
+  @ApiProperty({ format: 'date-time' }) createdAt!: string
+  @ApiProperty({ format: 'date-time' }) updatedAt!: string
+}
+
+/** A conversation with its latest messages (up to 200) and AI agent runs, oldest first. */
 export class WhatsAppConversationDto extends WhatsAppConversationSummaryDto implements WhatsAppConversation {
   @ApiProperty({ type: [CommunicationDto] }) messages!: CommunicationDto[]
+  @ApiProperty({ type: [WhatsAppAgentRunDto], description: 'What the AI agent did with each inbound message; suggested replies are internal' })
+  agentRuns!: WhatsAppAgentRunDto[]
 }
 
 export const WhatsAppConversationPageDto = createPageDto(WhatsAppConversationSummaryDto, 'WhatsAppConversationPage')

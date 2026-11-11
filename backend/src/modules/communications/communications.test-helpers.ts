@@ -60,6 +60,7 @@ export function approvalRow(overrides: Partial<MessageApprovalRow> = {}): Messag
     requested_at: TS,
     decision: 'pending',
     decided_by_user_id: null,
+    decided_by_agent_run_id: null,
     decided_at: null,
     reason: null,
     created_at: TS,

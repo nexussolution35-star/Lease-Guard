@@ -2551,13 +2551,21 @@ export interface components {
             companyId: string;
             /** Format: uuid */
             communicationId: string;
-            /** Format: uuid */
-            requestedByUserId: string;
+            /**
+             * Format: uuid
+             * @description Absent only for the AI agent's own reply to a contact
+             */
+            requestedByUserId?: string;
             /** Format: date-time */
             requestedAt: string;
             decision: components["schemas"]["ApprovalDecision"];
             /** Format: uuid */
             decidedByUserId?: string;
+            /**
+             * Format: uuid
+             * @description The AI agent run that approved its own reply to a contact (never a tenant message)
+             */
+            decidedByAgentRunId?: string;
             /** Format: date-time */
             decidedAt?: string;
             /** @description Note recorded with the decision; always present for a rejection */
@@ -2862,6 +2870,56 @@ export interface components {
             page: number;
             pageSize: number;
         };
+        /**
+         * @description replied: answered a contact; out_of_hours: sent the out-of-hours message and handed over; handed_over: a person takes it; ignored: nothing to answer; not_configured: the agent is not set up
+         * @enum {string}
+         */
+        AgentRunOutcome: "replied" | "out_of_hours" | "handed_over" | "ignored" | "not_configured";
+        /** @enum {string} */
+        AgentMessageCategory: "faq" | "business_info" | "document_request" | "complaint" | "payment_or_arrangement" | "dispute" | "lease_question" | "other";
+        WhatsAppAgentRunDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            companyId: string;
+            /** Format: uuid */
+            conversationId: string;
+            /**
+             * Format: uuid
+             * @description The inbound message the run handled
+             */
+            communicationId: string;
+            /**
+             * @description started: still running (or retrying)
+             * @enum {string}
+             */
+            status: "started" | "completed";
+            /** @description replied: answered a contact; out_of_hours: sent the out-of-hours message and handed over; handed_over: a person takes it; ignored: nothing to answer; not_configured: the agent is not set up */
+            outcome?: components["schemas"]["AgentRunOutcome"];
+            category?: components["schemas"]["AgentMessageCategory"];
+            confidence?: number;
+            /** @description Why a person must respond */
+            handoverReason?: string;
+            /** @description INTERNAL, for staff only: what the agent would have answered. Never sent. */
+            suggestedReply?: string;
+            /**
+             * Format: uuid
+             * @description The message the agent sent
+             */
+            replyCommunicationId?: string;
+            model?: string;
+            inputTokens?: number;
+            outputTokens?: number;
+            cacheReadInputTokens?: number;
+            cacheCreationInputTokens?: number;
+            latencyMs?: number;
+            /** Format: date-time */
+            completedAt?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
         WhatsAppConversationDto: {
             /** Format: uuid */
             id: string;
@@ -2891,6 +2949,8 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             messages: components["schemas"]["CommunicationDto"][];
+            /** @description What the AI agent did with each inbound message; suggested replies are internal */
+            agentRuns: components["schemas"]["WhatsAppAgentRunDto"][];
         };
         AssignHandoverBodyDto: {
             /**
@@ -3359,6 +3419,9 @@ export type HandoverRequester = components['schemas']['HandoverRequester'];
 export type WhatsAppHandoverDto = components['schemas']['WhatsAppHandoverDto'];
 export type WhatsAppConversationSummaryDto = components['schemas']['WhatsAppConversationSummaryDto'];
 export type WhatsAppConversationPage = components['schemas']['WhatsAppConversationPage'];
+export type AgentRunOutcome = components['schemas']['AgentRunOutcome'];
+export type AgentMessageCategory = components['schemas']['AgentMessageCategory'];
+export type WhatsAppAgentRunDto = components['schemas']['WhatsAppAgentRunDto'];
 export type WhatsAppConversationDto = components['schemas']['WhatsAppConversationDto'];
 export type AssignHandoverBodyDto = components['schemas']['AssignHandoverBodyDto'];
 export type ResolveHandoverBodyDto = components['schemas']['ResolveHandoverBodyDto'];

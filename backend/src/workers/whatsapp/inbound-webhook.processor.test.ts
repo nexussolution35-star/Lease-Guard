@@ -8,6 +8,7 @@ import type { ProcessorRuntime } from '../jobs/processor-runtime'
 import type { Clock } from '../shared/clock'
 import { WorkerDatabaseError } from '../shared/db'
 import type { WorkerEnv } from '../../config/env'
+import type { QueueName } from '../../infrastructure/queues/queue-registry'
 import { WhatsAppApiError } from '../../infrastructure/whatsapp/whatsapp-channels'
 import { DatabaseAccountEventStore, DatabaseInboundMessageStore, StatusesNotYetRecordedError, WhatsAppWebhookProcessor } from './inbound-webhook.processor'
 
@@ -41,14 +42,21 @@ const body = JSON.stringify({
 function harness(answer: (query: RecordedQuery) => FakeResult) {
   const db = fakeDb(answer)
   const channels = new FakeWhatsAppChannels({ receivingNumbers: { '1110001': { companyId: COMPANY, numberId: NUMBER } } })
+  const enqueued: [QueueName, unknown[]][] = []
   const processor = new WhatsAppWebhookProcessor(
     {} as ProcessorRuntime,
     { get: () => db.client } as unknown as ServiceRoleClientFactory,
     channels,
     { now: () => NOW } as Clock,
     { WHATSAPP_APP_ID: '1234' } as WorkerEnv,
+    {
+      enqueueAll: async (queue: QueueName, payloads: readonly unknown[]) => {
+        enqueued.push([queue, [...payloads]])
+        return payloads.map(() => 'job')
+      },
+    } as never,
   )
-  return { processor, queries: db.queries, channels }
+  return { processor, queries: db.queries, channels, enqueued }
 }
 
 const ok = (data: unknown = null): FakeResult => ({ data, error: null })
@@ -84,6 +92,26 @@ describe('WhatsAppWebhookProcessor', () => {
     const update = queries.at(-1)!
     expect(callsTo(update, 'update')[0]![0]).toMatchObject({ processing_status: 'processed', processed_at: NOW.toISOString(), error_message: null })
     expect(callsTo(update, 'eq')).toEqual([['id', EVENT]])
+  })
+
+  it("queues the company's AI agent for each recorded message, and again for a duplicate (a retried payload)", async () => {
+    const MESSAGE = '9c1d2c1e-0000-4000-8000-000000000001'
+    for (const outcome of ['recorded', 'duplicate'] as const) {
+      const { processor, enqueued } = harness((q) => {
+        if (q.table === 'whatsapp_webhook_events' && callsTo(q, 'select').length > 0) return ok({ id: EVENT, processing_status: 'received' })
+        if (q.table === 'rpc:record_whatsapp_inbound_message') return ok([{ outcome, communication_id: MESSAGE }])
+        return ok()
+      })
+      await processor.process(job(), FIRST)
+      expect(enqueued).toEqual([['whatsapp-agent', [{ companyId: COMPANY, communicationId: MESSAGE }]]])
+    }
+    const { processor, enqueued } = harness((q) => {
+      if (q.table === 'whatsapp_webhook_events' && callsTo(q, 'select').length > 0) return ok({ id: EVENT, processing_status: 'received' })
+      if (q.table === 'rpc:record_whatsapp_inbound_message') return ok([{ outcome: 'unknown_number', communication_id: null }])
+      return ok()
+    })
+    await processor.process(job(), FIRST)
+    expect(enqueued).toEqual([['whatsapp-agent', []]])
   })
 
   it('skips a payload whose event was already processed (a re-delivered job)', async () => {

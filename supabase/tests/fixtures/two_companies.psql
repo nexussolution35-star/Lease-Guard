@@ -232,6 +232,14 @@ values
   ('20000000-0000-4000-8000-000000000001', '90000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000003', now() - interval '30 days', 'approved', '10000000-0000-4000-8000-000000000003', now() - interval '30 days'),
   ('20000000-0000-4000-8000-000000000002', '90000000-0000-4000-8000-000000000005', '10000000-0000-4000-8000-000000000002', now(), 'pending', null, null);
 
+-- One AI agent run per company (worker-written; members read), on a message of the company's fixture conversation.
+insert into public.whatsapp_agent_runs (company_id, conversation_id, communication_id, status, outcome, category, confidence, handover_reason, suggested_reply, model, completed_at)
+select w.company_id, w.id, m.id, 'completed', 'handed_over', 'faq', 0.9, 'Fixture handover', 'Fixture suggestion', 'claude-opus-5-5', now()
+from public.whatsapp_conversations w
+join public.communications m on m.company_id = w.company_id
+  and m.id in ('90000000-0000-4000-8000-000000000004', '90000000-0000-4000-8000-000000000005')
+where w.contact_id in ('96000000-0000-4000-8000-000000000001', '96000000-0000-4000-8000-000000000002');
+
 insert into public.notifications (company_id, user_id, type, severity, title, body)
 values
   ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000003', 'approval_request', 'info', 'Approval requested', 'A message awaits approval'),

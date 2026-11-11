@@ -126,12 +126,14 @@ select set_eq(
     ('sent', 'read', 'provider_status', 'system'), ('sent', 'failed', 'provider_status', 'system'),
     ('delivered', 'read', 'provider_status', 'system'), ('failed', 'sent', 'record_sent', 'system'),
     ('rejected', 'sent', 'record_sent', 'system'),
+    -- The AI agent's own reply to a contact (20261111100100), only inside complete_whatsapp_agent_run.
+    ('pending_approval', 'approved', 'agent_approve', 'system'),
     ('draft', 'pending_approval', 'submit', 'user'), ('pending_approval', 'approved', 'decide', 'user'),
     ('pending_approval', 'rejected', 'decide', 'user'), ('approved', 'rejected', 'stop', 'user'),
     ('queued', 'rejected', 'stop', 'user'), ('failed', 'rejected', 'stop', 'user'),
     ('rejected', 'draft', 'reopen', 'user'), ('rejected', 'pending_approval', 'reopen', 'user')$$,
   'the transition table is exactly the documented state machine (backend/src/messaging/communication-lifecycle.ts)');
-select is((select count(*) from tests.forbidden where actor = 'system'), 79::bigint, 'the backend has 79 forbidden moves to try');
+select is((select count(*) from tests.forbidden where actor = 'system'), 78::bigint, 'the backend has 78 forbidden moves to try');
 select is((select count(*) from tests.forbidden where actor = 'user'), 82::bigint, 'signed-in users have 82 forbidden moves to try');
 select ok(not exists (select 1 from private.communication_status_transitions where from_status = 'received' or to_status = 'received'),
   'an inbound received message never changes status');

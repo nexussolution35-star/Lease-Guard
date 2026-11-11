@@ -11825,7 +11825,8 @@
           },
           "requestedByUserId": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "Absent only for the AI agent's own reply to a contact"
           },
           "requestedAt": {
             "type": "string",
@@ -11841,6 +11842,11 @@
           "decidedByUserId": {
             "type": "string",
             "format": "uuid"
+          },
+          "decidedByAgentRunId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The AI agent run that approved its own reply to a contact (never a tenant message)"
           },
           "decidedAt": {
             "type": "string",
@@ -11863,7 +11869,6 @@
           "id",
           "companyId",
           "communicationId",
-          "requestedByUserId",
           "requestedAt",
           "decision",
           "createdAt",
@@ -12651,6 +12656,132 @@
           "pageSize"
         ]
       },
+      "AgentRunOutcome": {
+        "type": "string",
+        "enum": [
+          "replied",
+          "out_of_hours",
+          "handed_over",
+          "ignored",
+          "not_configured"
+        ],
+        "description": "replied: answered a contact; out_of_hours: sent the out-of-hours message and handed over; handed_over: a person takes it; ignored: nothing to answer; not_configured: the agent is not set up"
+      },
+      "AgentMessageCategory": {
+        "type": "string",
+        "enum": [
+          "faq",
+          "business_info",
+          "document_request",
+          "complaint",
+          "payment_or_arrangement",
+          "dispute",
+          "lease_question",
+          "other"
+        ]
+      },
+      "WhatsAppAgentRunDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "conversationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "communicationId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The inbound message the run handled"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "started",
+              "completed"
+            ],
+            "description": "started: still running (or retrying)"
+          },
+          "outcome": {
+            "description": "replied: answered a contact; out_of_hours: sent the out-of-hours message and handed over; handed_over: a person takes it; ignored: nothing to answer; not_configured: the agent is not set up",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentRunOutcome"
+              }
+            ]
+          },
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentMessageCategory"
+              }
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "handoverReason": {
+            "type": "string",
+            "description": "Why a person must respond"
+          },
+          "suggestedReply": {
+            "type": "string",
+            "description": "INTERNAL, for staff only: what the agent would have answered. Never sent."
+          },
+          "replyCommunicationId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The message the agent sent"
+          },
+          "model": {
+            "type": "string"
+          },
+          "inputTokens": {
+            "type": "number"
+          },
+          "outputTokens": {
+            "type": "number"
+          },
+          "cacheReadInputTokens": {
+            "type": "number"
+          },
+          "cacheCreationInputTokens": {
+            "type": "number"
+          },
+          "latencyMs": {
+            "type": "number"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "conversationId",
+          "communicationId",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
       "WhatsAppConversationDto": {
         "type": "object",
         "properties": {
@@ -12708,6 +12839,13 @@
             "items": {
               "$ref": "#/components/schemas/CommunicationDto"
             }
+          },
+          "agentRuns": {
+            "description": "What the AI agent did with each inbound message; suggested replies are internal",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppAgentRunDto"
+            }
           }
         },
         "required": [
@@ -12719,7 +12857,8 @@
           "lastMessageAt",
           "createdAt",
           "updatedAt",
-          "messages"
+          "messages",
+          "agentRuns"
         ]
       },
       "AssignHandoverBodyDto": {

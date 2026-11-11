@@ -1,3 +1,4 @@
+import type { WhatsAppAgentRun } from './agent.js'
 import type { Communication } from './communication.js'
 import type { CompanyScoped, EntityId, ISODateTime } from './common.js'
 
@@ -62,4 +63,9 @@ export interface WhatsAppConversationSummary extends CompanyScoped {
 /** A conversation with its messages, oldest first. */
 export interface WhatsAppConversation extends WhatsAppConversationSummary {
   messages: Communication[]
+  /**
+   * What the company's AI agent did with the conversation's messages (ticket 10), oldest first. Each run's suggested
+   * reply is internal: shown to staff, never sent.
+   */
+  agentRuns?: WhatsAppAgentRun[]
 }

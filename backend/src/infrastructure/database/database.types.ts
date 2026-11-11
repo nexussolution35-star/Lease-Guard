@@ -372,17 +372,23 @@ isOneToOne: false
                   ]
                 },"message_approvals": {
                   Row: {
-                    "communication_id": string,"company_id": string,"created_at": string,"decided_at": string | null,"decided_by_user_id": string | null,"decision": Database["public"]['Enums']["approval_decision"],"id": string,"reason": string | null,"requested_at": string,"requested_by_user_id": string,"updated_at": string
+                    "communication_id": string,"company_id": string,"created_at": string,"decided_at": string | null,"decided_by_agent_run_id": string | null,"decided_by_user_id": string | null,"decision": Database["public"]['Enums']["approval_decision"],"id": string,"reason": string | null,"requested_at": string,"requested_by_user_id": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "communication_id": string,"company_id": string,"created_at"?: string,"decided_at"?: string | null,"decided_by_user_id"?: string | null,"decision"?: Database["public"]['Enums']["approval_decision"],"id"?: string,"reason"?: string | null,"requested_at"?: string,"requested_by_user_id": string,"updated_at"?: string
+                    "communication_id": string,"company_id": string,"created_at"?: string,"decided_at"?: string | null,"decided_by_agent_run_id"?: string | null,"decided_by_user_id"?: string | null,"decision"?: Database["public"]['Enums']["approval_decision"],"id"?: string,"reason"?: string | null,"requested_at"?: string,"requested_by_user_id"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "communication_id"?: string,"company_id"?: string,"created_at"?: string,"decided_at"?: string | null,"decided_by_user_id"?: string | null,"decision"?: Database["public"]['Enums']["approval_decision"],"id"?: string,"reason"?: string | null,"requested_at"?: string,"requested_by_user_id"?: string,"updated_at"?: string
+                    "communication_id"?: string,"company_id"?: string,"created_at"?: string,"decided_at"?: string | null,"decided_by_agent_run_id"?: string | null,"decided_by_user_id"?: string | null,"decision"?: Database["public"]['Enums']["approval_decision"],"id"?: string,"reason"?: string | null,"requested_at"?: string,"requested_by_user_id"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
+      foreignKeyName: "message_approvals_agent_run_fk"
+      columns: ["company_id","decided_by_agent_run_id"]
+isOneToOne: false
+      referencedRelation: "whatsapp_agent_runs"
+      referencedColumns: ["company_id","id"]
+    },{
       foreignKeyName: "message_approvals_communication_fk"
       columns: ["company_id","communication_id"]
 isOneToOne: false
@@ -948,6 +954,50 @@ isOneToOne: true
       referencedColumns: ["company_id","user_id"]
     }
                   ]
+                },"whatsapp_agent_runs": {
+                  Row: {
+                    "cache_creation_input_tokens": number | null,"cache_read_input_tokens": number | null,"category": string | null,"communication_id": string,"company_id": string,"completed_at": string | null,"confidence": number | null,"conversation_id": string,"created_at": string,"error_message": string | null,"handover_id": string | null,"handover_reason": string | null,"id": string,"input_tokens": number | null,"latency_ms": number | null,"model": string | null,"outcome": string | null,"output_tokens": number | null,"reply_communication_id": string | null,"status": string,"stop_reason": string | null,"suggested_reply": string | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cache_creation_input_tokens"?: number | null,"cache_read_input_tokens"?: number | null,"category"?: string | null,"communication_id": string,"company_id": string,"completed_at"?: string | null,"confidence"?: number | null,"conversation_id": string,"created_at"?: string,"error_message"?: string | null,"handover_id"?: string | null,"handover_reason"?: string | null,"id"?: string,"input_tokens"?: number | null,"latency_ms"?: number | null,"model"?: string | null,"outcome"?: string | null,"output_tokens"?: number | null,"reply_communication_id"?: string | null,"status"?: string,"stop_reason"?: string | null,"suggested_reply"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "cache_creation_input_tokens"?: number | null,"cache_read_input_tokens"?: number | null,"category"?: string | null,"communication_id"?: string,"company_id"?: string,"completed_at"?: string | null,"confidence"?: number | null,"conversation_id"?: string,"created_at"?: string,"error_message"?: string | null,"handover_id"?: string | null,"handover_reason"?: string | null,"id"?: string,"input_tokens"?: number | null,"latency_ms"?: number | null,"model"?: string | null,"outcome"?: string | null,"output_tokens"?: number | null,"reply_communication_id"?: string | null,"status"?: string,"stop_reason"?: string | null,"suggested_reply"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "whatsapp_agent_runs_communication_fk"
+      columns: ["company_id","communication_id"]
+isOneToOne: true
+      referencedRelation: "communications"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "whatsapp_agent_runs_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "whatsapp_agent_runs_conversation_fk"
+      columns: ["company_id","conversation_id"]
+isOneToOne: false
+      referencedRelation: "whatsapp_conversations"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "whatsapp_agent_runs_handover_fk"
+      columns: ["company_id","handover_id"]
+isOneToOne: false
+      referencedRelation: "whatsapp_handovers"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "whatsapp_agent_runs_reply_fk"
+      columns: ["company_id","reply_communication_id"]
+isOneToOne: false
+      referencedRelation: "communications"
+      referencedColumns: ["company_id","id"]
+    }
+                  ]
                 },"whatsapp_business_accounts": {
                   Row: {
                     "access_token_reference": string | null,"business_account_id": string,"company_id": string,"created_at": string,"id": string,"name": string | null,"updated_at": string
@@ -1311,6 +1361,11 @@ isOneToOne: false
 "claim_communication":
 { Args: { "p_communication_id": string,"p_company_id": string }; Returns: string
                            },
+"complete_whatsapp_agent_run":
+{ Args: { "p_cache_creation_input_tokens": number,"p_cache_read_input_tokens": number,"p_category": string,"p_company_id": string,"p_confidence": number,"p_error_message": string,"p_handover_reason": string,"p_input_tokens": number,"p_latency_ms": number,"p_model": string,"p_out_of_hours_since": string,"p_outcome": string,"p_output_tokens": number,"p_reply_text": string,"p_run_id": string,"p_stop_reason": string,"p_suggested_reply": string }; Returns: {
+              "handover_id": string,"notified": number,"outcome": string,"reply_communication_id": string,"run_outcome": string
+            }[]
+                           },
 "decide_communication":
 { Args: { "p_approval_id": string,"p_communication_id": string,"p_company_id": string,"p_decision": Database["public"]['Enums']["approval_decision"],"p_note"?: string }; Returns: string
                            },
@@ -1393,6 +1448,11 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"start_whatsapp_agent_run":
+{ Args: { "p_communication_id": string,"p_company_id": string }; Returns: {
+              "conversation_id": string,"outcome": string,"reply_communication_id": string,"run_id": string
+            }[]
+                           },
 "start_whatsapp_onboarding":
 { Args: { "p_company_id": string }; Returns: {
               "expires_at": string,"session_id": string,"state": string

@@ -165,6 +165,33 @@ describe('ConversationsInbox', () => {
     expect(fakeSource.get).toHaveBeenCalledWith(NEXUS_ID, TENANT_CONVERSATION.id)
   })
 
+  it("shows what the AI agent did: a tenant's internal suggestion (never sent) and a contact's answer", async () => {
+    const run = { companyId: NEXUS_ID, conversationId: THREAD.id, status: 'completed' as const, createdAt: '2026-11-10T08:00:02+02:00', updatedAt: '2026-11-10T08:00:02+02:00' }
+    fakeSource.get.mockResolvedValue({
+      ...THREAD,
+      messages: [message({}), message({ id: 'm-3', direction: 'outbound', recipientType: 'contact', status: 'sent', body: 'Basement P2.' })],
+      agentRuns: [
+        {
+          ...run,
+          id: 'r-1',
+          communicationId: 'm-1',
+          outcome: 'handed_over',
+          handoverReason: 'Message from a tenant: tenants are never answered automatically',
+          suggestedReply: 'We will resend your statement today.',
+        },
+        { ...run, id: 'r-2', communicationId: 'm-9', outcome: 'replied', replyCommunicationId: 'm-3' },
+      ],
+    })
+    await renderInbox({ page: 1, pageSize: 25, conversation: TENANT_CONVERSATION.id })
+    const messages = await screen.findByRole('list', { name: 'Messages' })
+    const note = within(messages).getByRole('note')
+    expect(note).toHaveTextContent('The AI agent asked for a person')
+    expect(note).toHaveTextContent('Reason: Message from a tenant: tenants are never answered automatically')
+    expect(note).toHaveTextContent('Suggested reply (internal, not sent)')
+    expect(note).toHaveTextContent('We will resend your statement today.')
+    expect(within(messages).getByText('Sent by the AI agent')).toBeInTheDocument()
+  })
+
   it("says when WhatsApp did not share the contact's number", async () => {
     fakeSource.get.mockResolvedValue({ ...NUMBERLESS_CONVERSATION, messages: [message({ recipientType: 'contact', body: 'Hello' })] })
     await renderInbox({ page: 1, pageSize: 25, conversation: NUMBERLESS_CONVERSATION.id })

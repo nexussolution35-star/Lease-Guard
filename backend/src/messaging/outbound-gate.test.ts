@@ -349,6 +349,18 @@ describe('checkOutbound and checkContactReply: replies to WhatsApp contacts', ()
     return result.deliverable ? [] : result.blockers
   }
 
+  it("delivers the AI agent's own approved reply to a contact (ticket 10)", async () => {
+    const agentApproval = { ...approved, decided_by_user_id: null, decided_by_agent_run_id: 'run-1' }
+    await expect(replyBlockers({ approvals: [agentApproval] })).resolves.toEqual([])
+  })
+
+  it('never accepts an agent approval for a tenant message', async () => {
+    const agentApproval = { ...approved, decided_by_user_id: null, decided_by_agent_run_id: 'run-1' }
+    expect(await blockers({ approvals: [agentApproval] })).toContain(
+      'Only a reply to a contact can be approved by the AI agent; a person approves this message',
+    )
+  })
+
   it("delivers an approved reply inside the window as free text, from the conversation's number", async () => {
     const result = await verdict()
     expect(result.deliverable).toBe(true)

@@ -1,8 +1,14 @@
 import { AGENT_LANGUAGES, AGENT_PERMITTED_ACTIONS, type EntityId, KNOWLEDGE_DOCUMENT_MIME_TYPES, WEEKDAYS } from '@leaseguard/domain'
 import { z } from 'zod'
 
-import type { DbClient } from '../infrastructure/database/rls-client.factory'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+import type { Database } from '../infrastructure/database/database.types'
 import { MessagingReadError } from './read-error'
+
+// The same type as the API's and the worker's DbClient, spelled out so the module depends only on the schema types (as
+// communication-lifecycle.ts), which lets the integration tests drive it against local Postgres.
+type DbClient = SupabaseClient<Database>
 
 /**
  * What one company's AI agent may know (ticket 09; used by the agent runtime, ticket 10): its configuration, the

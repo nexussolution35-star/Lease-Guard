@@ -87,6 +87,10 @@ const DOMAIN_ONLY: Readonly<Record<string, string>> = {
   AGENT_LANGUAGES: 'whatsapp_agent_configs.languages is text[] with a check constraint (20261111100000), not an enum',
   KNOWLEDGE_STATUSES: 'whatsapp_knowledge_*.status is text with a check constraint (20261111100000), not an enum',
   KNOWLEDGE_DOCUMENT_MIME_TYPES: 'whatsapp_knowledge_documents.mime_type is text with a check constraint (20261111100000), not an enum',
+  AGENT_ACTIONS: "the model's proposed action (structured output); never stored",
+  AGENT_MESSAGE_CATEGORIES: 'whatsapp_agent_runs.category is text with a check constraint (20261111100100), not an enum',
+  AGENT_RUN_OUTCOMES: 'whatsapp_agent_runs.outcome is text with a check constraint (20261111100100), not an enum',
+  RESTRICTED_CONTACT_TOPICS: 'agent content guard; never stored',
 }
 
 /**

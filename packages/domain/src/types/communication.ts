@@ -110,10 +110,13 @@ export type ApprovalDecision = (typeof APPROVAL_DECISIONS)[number]
 
 export interface MessageApproval extends CompanyScoped {
   communicationId: EntityId
-  requestedByUserId: EntityId
+  /** Absent only for the AI agent's own reply to a contact, which no person requested. */
+  requestedByUserId?: EntityId
   requestedAt: ISODateTime
   decision: ApprovalDecision
   decidedByUserId?: EntityId
+  /** The AI agent run that approved its own reply to a contact (never a tenant message) under the company's auto-reply. */
+  decidedByAgentRunId?: EntityId
   decidedAt?: ISODateTime
   reason?: string
 }

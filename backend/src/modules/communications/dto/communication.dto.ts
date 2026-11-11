@@ -116,10 +116,12 @@ export class MessageApprovalDto implements MessageApproval {
   @ApiProperty({ format: 'uuid' }) id!: string
   @ApiProperty({ format: 'uuid' }) companyId!: string
   @ApiProperty({ format: 'uuid' }) communicationId!: string
-  @ApiProperty({ format: 'uuid' }) requestedByUserId!: string
+  @ApiPropertyOptional({ format: 'uuid', description: "Absent only for the AI agent's own reply to a contact" }) requestedByUserId?: string
   @ApiProperty({ format: 'date-time' }) requestedAt!: string
   @ApiProperty({ enum: APPROVAL_DECISIONS, enumName: 'ApprovalDecision' }) decision!: ApprovalDecision
   @ApiPropertyOptional({ format: 'uuid' }) decidedByUserId?: string
+  @ApiPropertyOptional({ format: 'uuid', description: 'The AI agent run that approved its own reply to a contact (never a tenant message)' })
+  decidedByAgentRunId?: string
   @ApiPropertyOptional({ format: 'date-time' }) decidedAt?: string
   @ApiPropertyOptional({ description: 'Note recorded with the decision; always present for a rejection' }) reason?: string
   @ApiProperty({ format: 'date-time' }) createdAt!: string

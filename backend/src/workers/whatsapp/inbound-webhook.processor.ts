@@ -10,6 +10,7 @@ import type { JobPayloads } from '../../infrastructure/queues/queue-registry'
 import { type MetaPhoneNumber, WhatsAppApiError, WhatsAppChannels } from '../../infrastructure/whatsapp/whatsapp-channels'
 import { recordProviderStatus } from '../../messaging/communication-lifecycle'
 import { isFinalAttempt, type JobAttempt, ProcessorRuntime } from '../jobs/processor-runtime'
+import { WorkerQueues } from '../queues/worker-queues'
 import { Clock } from '../shared/clock'
 import { unwrap, WorkerDatabaseError } from '../shared/db'
 import {
@@ -39,6 +40,12 @@ const RECORD_OUTCOMES: readonly MessageRecordOutcome[] = ['recorded', 'duplicate
  * company, finds or creates the contact, links a same-company tenant and threads the conversation.
  */
 export class DatabaseInboundMessageStore implements InboundMessageStore {
+  /**
+   * Every message this store recorded, or found already recorded (a retry may come after an attempt that recorded it
+   * but stopped before its agent run was queued): the messages the company's AI agent runs on.
+   */
+  readonly forAgent: { companyId: EntityId; communicationId: EntityId }[] = []
+
   constructor(private readonly db: DbClient) {}
 
   async record(owner: ReceivingNumber, message: InboundMessage): Promise<MessageRecordOutcome> {
@@ -59,6 +66,10 @@ export class DatabaseInboundMessageStore implements InboundMessageStore {
     const outcome = data?.[0]?.outcome
     if (!RECORD_OUTCOMES.includes(outcome as MessageRecordOutcome)) {
       throw new Error(`record_whatsapp_inbound_message returned an unexpected outcome: ${String(outcome)}`)
+    }
+    const communicationId = data?.[0]?.communication_id
+    if ((outcome === 'recorded' || outcome === 'duplicate') && communicationId) {
+      this.forAgent.push({ companyId: owner.companyId, communicationId })
     }
     return outcome as MessageRecordOutcome
   }
@@ -240,6 +251,7 @@ export class WhatsAppWebhookProcessor implements OnModuleInit {
     private readonly channels: WhatsAppChannels,
     private readonly clock: Clock,
     @Inject(WORKER_ENV) private readonly env: Pick<WorkerEnv, 'WHATSAPP_APP_ID'>,
+    private readonly queues: Pick<WorkerQueues, 'enqueueAll'>,
   ) {}
 
   onModuleInit(): void {
@@ -276,13 +288,16 @@ export class WhatsAppWebhookProcessor implements OnModuleInit {
     }
 
     let outcomes: RoutingOutcome[]
+    const messages = new DatabaseInboundMessageStore(db)
     try {
       outcomes = await routeWebhookPayload(payload, {
         numbers: this.channels,
-        store: new DatabaseInboundMessageStore(db),
+        store: messages,
         statuses: { record: (update) => recordProviderStatus(db, update) },
         accounts: accountEvents({ store: new DatabaseAccountEventStore(db, this.channels), appId: this.env.WHATSAPP_APP_ID }),
       })
+      // The company's AI agent runs on each message (ticket 10), once per message whatever the retries.
+      await this.queues.enqueueAll('whatsapp-agent', messages.forAgent)
       const waiting = isFinalAttempt(attempt) ? [] : outcomes.filter((o) => this.mayStillBeSent(o))
       if (waiting.length > 0) throw new StatusesNotYetRecordedError(waiting.length)
     } catch (error) {

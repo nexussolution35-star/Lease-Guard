@@ -104,3 +104,67 @@ export interface KnowledgeDocument extends CompanyScoped, KnowledgeReview {
   mimeType: KnowledgeDocumentMimeType
   sizeBytes: number
 }
+
+/**
+ * What the agent decides about one inbound message (ticket 10). The model proposes; the agent policy
+ * (rules/agentPolicy.ts) decides what actually happens, so the business controls what the AI can say.
+ */
+export const AGENT_ACTIONS = ['reply', 'handover', 'ignore'] as const
+export type AgentAction = (typeof AGENT_ACTIONS)[number]
+
+export const AGENT_MESSAGE_CATEGORIES = [
+  'faq',
+  'business_info',
+  'document_request',
+  'complaint',
+  'payment_or_arrangement',
+  'dispute',
+  'lease_question',
+  'other',
+] as const
+export type AgentMessageCategory = (typeof AGENT_MESSAGE_CATEGORIES)[number]
+
+export interface AgentDecision {
+  action: AgentAction
+  /** The reply the model proposes (to send, or as an internal suggestion for staff). */
+  replyText?: string
+  handoverReason?: string
+  category: AgentMessageCategory
+  /** 0 to 1. */
+  confidence: number
+}
+
+/**
+ * What one agent run did with an inbound message:
+ * - `replied`: an answer was sent to a contact;
+ * - `out_of_hours`: the out-of-hours message was sent and the conversation handed to a person;
+ * - `handed_over`: a person takes it (always for tenants, complaints, payments, disputes, refusals, errors, low confidence);
+ * - `ignored`: nothing to answer (e.g. "thank you");
+ * - `not_configured`: the company has not set up its agent, so nothing ran.
+ */
+export const AGENT_RUN_OUTCOMES = ['replied', 'out_of_hours', 'handed_over', 'ignored', 'not_configured'] as const
+export type AgentRunOutcome = (typeof AGENT_RUN_OUTCOMES)[number]
+
+/** One agent run, as staff see it in the conversation. The suggested reply is internal: never sent. */
+export interface WhatsAppAgentRun extends CompanyScoped {
+  conversationId: EntityId
+  /** The inbound message the run handled. */
+  communicationId: EntityId
+  status: 'started' | 'completed'
+  outcome?: AgentRunOutcome
+  category?: AgentMessageCategory
+  confidence?: number
+  handoverReason?: string
+  /** Internal, for staff only: what the agent would have answered. */
+  suggestedReply?: string
+  /** The message the agent sent (answer or out-of-hours message). */
+  replyCommunicationId?: EntityId
+  model?: string
+  inputTokens?: number
+  outputTokens?: number
+  cacheReadInputTokens?: number
+  cacheCreationInputTokens?: number
+  latencyMs?: number
+  createdAt: ISODateTime
+  completedAt?: ISODateTime
+}

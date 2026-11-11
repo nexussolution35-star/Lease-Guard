@@ -145,3 +145,15 @@ _Avoid_: Escalation contact, agent owner
 **Auto-reply**:
 A company's choice to let its AI agent answer contacts on its own; off until a company admin turns it on, and never applies to tenants.
 _Avoid_: Automation, autopilot
+
+**Agent run**:
+What the AI agent did with one inbound message: answered it, sent the out-of-hours message, handed it to a person, or found nothing to answer; there is at most one per message.
+_Avoid_: Agent job, AI call
+
+**Suggested reply**:
+The answer the AI agent drafted for staff when it hands a message to a person; internal, never sent.
+_Avoid_: Draft (a draft is an unsent message or knowledge item), auto-reply
+
+**Out-of-hours message**:
+The company's message the AI agent sends a contact who writes outside operating hours, at most once per closed period and 24 hours, never to a tenant.
+_Avoid_: Away message, auto-response

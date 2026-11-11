@@ -96,6 +96,10 @@ const workerEnvSchema = sharedSchema
     WHATSAPP_APP_SECRET: optionalText,
     /** Anthropic API key for the AI agent runtime. Optional; worker only (the API never loads it). */
     ANTHROPIC_API_KEY: optionalText,
+    /** How much effort the AI agent's model spends per message (output_config.effort). Default low: short FAQ answers. */
+    WHATSAPP_AGENT_EFFORT: z
+      .preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), z.enum(['low', 'medium', 'high']).optional())
+      .transform((value) => value ?? 'low'),
     /**
      * Public URL of the web app (origin plus optional base path, no trailing slash needed). Invitation
      * emails link to `${WEB_APP_URL}/auth/accept?invitation=<id>`, which the Supabase Auth redirect allow-list must

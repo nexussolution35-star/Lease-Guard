@@ -6,12 +6,21 @@ import { emptyPageWithTotal, isPageOutOfRange, rangeFor, toPage, type Page } fro
 import type { DbClient } from '../../infrastructure/database/rls-client.factory'
 import { toCommunication } from '../communications/communications.mapper'
 import { memberNames } from './member-names'
-import { assigneeIds, CONVERSATION_SELECT, type ConversationRow, HANDOVER_COLUMNS, toConversationSummary } from './whatsapp-conversations.mapper'
+import {
+  AGENT_RUN_COLUMNS,
+  type AgentRunRow,
+  assigneeIds,
+  CONVERSATION_SELECT,
+  type ConversationRow,
+  HANDOVER_COLUMNS,
+  toAgentRun,
+  toConversationSummary,
+} from './whatsapp-conversations.mapper'
 import { type ConversationListQuery, THREAD_MESSAGE_LIMIT } from './whatsapp-conversations.schemas'
 
 /**
  * The active company's WhatsApp inbox (ticket 05; handovers ticket 07): conversations, most recent first, each with
- * its unresolved handover, and each conversation's messages. Every query names the company explicitly; Row Level
+ * its unresolved handover, and each conversation's messages and AI agent runs (ticket 10). Every query names the company explicitly; Row Level
  * Security enforces the same, so a conversation of another company is simply not found.
  */
 @Injectable()
@@ -46,7 +55,7 @@ export class WhatsAppConversationsService {
   }
 
   async get(db: DbClient, companyId: EntityId, conversationId: EntityId): Promise<WhatsAppConversation> {
-    const [conversation, messages] = await Promise.all([
+    const [conversation, messages, runs] = await Promise.all([
       db
         .from('whatsapp_conversations')
         .select(`${CONVERSATION_SELECT}, handovers:whatsapp_handovers!whatsapp_handovers_conversation_fk(${HANDOVER_COLUMNS})`)
@@ -62,16 +71,26 @@ export class WhatsAppConversationsService {
         .order('created_at', { ascending: false })
         .order('id', { ascending: false })
         .limit(THREAD_MESSAGE_LIMIT),
+      db
+        .from('whatsapp_agent_runs')
+        .select(AGENT_RUN_COLUMNS)
+        .eq('company_id', companyId)
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .limit(THREAD_MESSAGE_LIMIT),
     ])
     if (conversation.error) throw httpErrorFromDatabase(conversation.error, 'Get WhatsApp conversation')
     if (!conversation.data) throw new NotFoundException('Conversation not found')
     if (messages.error) throw httpErrorFromDatabase(messages.error, 'List conversation messages')
+    if (runs.error) throw httpErrorFromDatabase(runs.error, "List the AI agent's runs")
     const row = conversation.data as unknown as ConversationRow
     const thread = (messages.data ?? []).slice().reverse().map((message) => toCommunication(message))
     const names = await memberNames(db, assigneeIds(row.handovers ?? []))
     return {
       ...toConversationSummary({ ...row, messages: thread.length > 0 ? [{ body: thread[thread.length - 1]!.body }] : [] }, names),
       messages: thread,
+      agentRuns: ((runs.data ?? []) as unknown as AgentRunRow[]).slice().reverse().map(toAgentRun),
     }
   }
 }

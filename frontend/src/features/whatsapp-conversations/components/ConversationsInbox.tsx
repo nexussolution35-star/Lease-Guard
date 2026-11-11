@@ -1,6 +1,6 @@
-import { Info, MessageCircle } from 'lucide-react'
+import { Bot, Info, MessageCircle } from 'lucide-react'
 import { useId } from 'react'
-import type { Communication, EntityId } from '@leaseguard/domain'
+import type { Communication, EntityId, WhatsAppAgentRun } from '@leaseguard/domain'
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { AppLink, DataTablePagination, DateDisplay, EmptyState, ErrorState, LoadingState, NoActiveWorkspace, StatusBadge } from '@/components/shared'
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 
 import { useConversation, useConversationList } from '../api/queries'
 import type { ConversationFilter, WhatsAppConversation, WhatsAppConversationSummary } from '../api/source'
+import { agentReplyIds, agentRunSummary, runsByMessage } from '../agentRun'
 import { handoverStatusText } from '../handover'
 import { HandoverPanel } from './HandoverPanel'
 import { ReplyBox } from './ReplyBox'
@@ -239,9 +240,30 @@ function ConversationThread({ id, onClose }: { id: EntityId | undefined; onClose
   )
 }
 
+/** What the AI agent did with an inbound message, for staff only; its suggested reply was never sent. */
+function AgentRunNote({ run }: { run: WhatsAppAgentRun }) {
+  return (
+    <div className="mt-2 rounded-md border border-dashed border-border bg-background px-3 py-2 text-xs text-muted-foreground" role="note">
+      <p className="flex items-center gap-1.5 font-medium text-foreground">
+        <Bot className="size-3.5" aria-hidden="true" />
+        {agentRunSummary(run)}
+      </p>
+      {run.handoverReason ? <p className="mt-1">Reason: {run.handoverReason}</p> : null}
+      {run.suggestedReply ? (
+        <div className="mt-2">
+          <p className="font-medium text-foreground">Suggested reply (internal, not sent)</p>
+          <p className="mt-0.5 whitespace-pre-wrap break-words">{run.suggestedReply}</p>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function Thread({ conversation }: { conversation: WhatsAppConversation }) {
   const headingId = useId()
   const { contact } = conversation
+  const runs = runsByMessage(conversation.agentRuns)
+  const agentReplies = agentReplyIds(conversation.agentRuns)
   return (
     <section aria-labelledby={headingId}>
       <CardHeader>
@@ -273,6 +295,7 @@ function Thread({ conversation }: { conversation: WhatsAppConversation }) {
           <ol className="flex flex-col gap-3" aria-label="Messages">
             {conversation.messages.map((message) => {
               const inbound = message.direction === 'inbound'
+              const run = inbound ? runs.get(message.id) : undefined
               return (
                 <li key={message.id} className={cn('flex', inbound ? 'justify-start' : 'justify-end')}>
                   <div
@@ -283,10 +306,17 @@ function Thread({ conversation }: { conversation: WhatsAppConversation }) {
                   >
                     <p className="sr-only">{inbound ? 'Received' : 'Sent'}</p>
                     <p className="whitespace-pre-wrap break-words">{message.body}</p>
-                    <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                    <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <DateDisplay value={messageTime(message)} style="datetime" />
                       {inbound ? null : <StatusBadge status={message.status} />}
+                      {agentReplies.has(message.id) ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Bot className="size-3.5" aria-hidden="true" />
+                          Sent by the AI agent
+                        </span>
+                      ) : null}
                     </p>
+                    {run ? <AgentRunNote run={run} /> : null}
                   </div>
                 </li>
               )

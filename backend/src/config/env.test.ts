@@ -105,6 +105,10 @@ describe('loadWorkerEnv', () => {
   it('reads the optional Anthropic API key; blank means unset', () => {
     expect(loadWorkerEnv({ ...worker, ANTHROPIC_API_KEY: ' ' }).ANTHROPIC_API_KEY).toBeUndefined()
     expect(loadWorkerEnv({ ...worker, ANTHROPIC_API_KEY: 'sk-ant-test' }).ANTHROPIC_API_KEY).toBe('sk-ant-test')
+    // The agent's effort: low unless set; only low, medium or high.
+    expect(loadWorkerEnv(worker).WHATSAPP_AGENT_EFFORT).toBe('low')
+    expect(loadWorkerEnv({ ...worker, WHATSAPP_AGENT_EFFORT: 'medium' }).WHATSAPP_AGENT_EFFORT).toBe('medium')
+    expect(() => loadWorkerEnv({ ...worker, WHATSAPP_AGENT_EFFORT: 'max' })).toThrow()
   })
 
   it('does not require API-only variables', () => {
@@ -195,6 +199,8 @@ describe('loadEnvFileKeys', () => {
     }
     expect(WORKER_ENV_KEYS).toContain('ANTHROPIC_API_KEY')
     expect(API_ENV_KEYS).not.toContain('ANTHROPIC_API_KEY')
+    expect(WORKER_ENV_KEYS).toContain('WHATSAPP_AGENT_EFFORT')
+    expect(API_ENV_KEYS).not.toContain('WHATSAPP_AGENT_EFFORT')
   })
 
   it('ignores a missing file', () => {

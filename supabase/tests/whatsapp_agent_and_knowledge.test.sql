@@ -38,7 +38,7 @@ select has_table('public', 'whatsapp_knowledge_documents', 'knowledge documents 
 select is(
   (select count(*) from pg_class c join pg_namespace n on n.oid = c.relnamespace
    where n.nspname = 'public' and c.relname like any (array['whatsapp_agent_%', 'whatsapp_knowledge_%']) and c.relkind = 'r' and c.relrowsecurity),
-  5::bigint, 'row level security is enabled on all five tables');
+  6::bigint, 'row level security is enabled on all five tables and the agent runs (ticket 10)');
 select col_is_pk('public', 'whatsapp_agent_configs', 'company_id', 'one configuration per company');
 select ok(not has_table_privilege('anon', 'public.whatsapp_knowledge_faqs', 'select')
           and not has_table_privilege('anon', 'public.whatsapp_agent_configs', 'select'), 'anon reads nothing');

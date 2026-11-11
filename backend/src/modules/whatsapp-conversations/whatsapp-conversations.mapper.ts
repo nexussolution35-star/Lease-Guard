@@ -1,4 +1,14 @@
-import type { EntityId, HandoverRequester, HandoverStatus, WhatsAppConversationContact, WhatsAppConversationSummary, WhatsAppHandover } from '@leaseguard/domain'
+import type {
+  AgentMessageCategory,
+  AgentRunOutcome,
+  EntityId,
+  HandoverRequester,
+  HandoverStatus,
+  WhatsAppAgentRun,
+  WhatsAppConversationContact,
+  WhatsAppConversationSummary,
+  WhatsAppHandover,
+} from '@leaseguard/domain'
 
 import type { Tables } from '../../infrastructure/database/database.types'
 
@@ -100,6 +110,41 @@ export function toConversationSummary(row: ConversationRow, names: MemberNames =
     lastMessageAt: row.last_message_at,
     ...(lastPreview ? { lastMessagePreview: lastPreview } : {}),
     ...(handover ? { handover: toHandover(handover, names) } : {}),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+export type AgentRunRow = Tables<'whatsapp_agent_runs'>
+
+/** Every agent run column but the safe error text, which only the worker's logs need. */
+export const AGENT_RUN_COLUMNS =
+  'id, company_id, conversation_id, communication_id, status, outcome, category, confidence, handover_reason, suggested_reply, ' +
+  'reply_communication_id, model, input_tokens, output_tokens, cache_read_input_tokens, cache_creation_input_tokens, latency_ms, ' +
+  'completed_at, created_at, updated_at'
+
+/** Database row → domain `WhatsAppAgentRun`. */
+export function toAgentRun(row: Omit<AgentRunRow, 'error_message' | 'handover_id' | 'stop_reason'>): WhatsAppAgentRun {
+  const optional = <K extends string, V>(key: K, value: V | null): { [P in K]?: V } => (value === null ? {} : ({ [key]: value } as { [P in K]: V }))
+  return {
+    id: row.id,
+    companyId: row.company_id,
+    conversationId: row.conversation_id,
+    communicationId: row.communication_id,
+    status: row.status === 'completed' ? 'completed' : 'started',
+    ...optional('outcome', row.outcome as AgentRunOutcome | null),
+    ...optional('category', row.category as AgentMessageCategory | null),
+    ...optional('confidence', row.confidence === null ? null : Number(row.confidence)),
+    ...optional('handoverReason', row.handover_reason),
+    ...optional('suggestedReply', row.suggested_reply),
+    ...optional('replyCommunicationId', row.reply_communication_id),
+    ...optional('model', row.model),
+    ...optional('inputTokens', row.input_tokens),
+    ...optional('outputTokens', row.output_tokens),
+    ...optional('cacheReadInputTokens', row.cache_read_input_tokens),
+    ...optional('cacheCreationInputTokens', row.cache_creation_input_tokens),
+    ...optional('latencyMs', row.latency_ms),
+    ...optional('completedAt', row.completed_at),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }

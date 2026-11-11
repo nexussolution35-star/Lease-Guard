@@ -7,7 +7,8 @@
  * - the delivery worker asks immediately before claiming a message, and fails it with the blockers;
  * - the reply endpoint asks `checkContactReply` before a member's reply to a WhatsApp contact is written, with
  *   the same contact rules `checkOutbound` applies before it is sent (ticket 07);
- * - next: a per-business AI agent can ask before it requests approval for a draft.
+ * - the company's AI agent's replies to contacts (ticket 10) are approved by their agent run, and pass the same checks
+ *   before the delivery worker claims them (an agent approval counts only for a contact message).
  *
  * Interface: `checkOutbound(db, message, today, options)` returns either the delivery (what the
  * deliverer needs next: recipient, attachment to upload, the WhatsApp message) or every blocker as a
@@ -86,7 +87,7 @@ export type OutboundVerdict =
   | { readonly deliverable: false; readonly blockers: readonly string[] }
 
 type CommunicationRow = Tables<'communications'>
-type ApprovalRow = Pick<Tables<'message_approvals'>, 'id' | 'decision' | 'requested_at' | 'decided_by_user_id'>
+type ApprovalRow = Pick<Tables<'message_approvals'>, 'id' | 'decision' | 'requested_at' | 'decided_by_user_id' | 'decided_by_agent_run_id'>
 
 /** The approval the gate judges: the recorded governing one, or the caller's own decision to grant it. */
 type GoverningApproval = { decision: ApprovalRow['decision']; approverRecorded: boolean } | undefined
@@ -106,7 +107,11 @@ export async function checkOutbound(
 ): Promise<OutboundVerdict> {
   const [communicationResult, approvalsResult] = await Promise.all([
     db.from('communications').select('*').eq('company_id', companyId).eq('id', communicationId).maybeSingle(),
-    db.from('message_approvals').select('id, decision, requested_at, decided_by_user_id').eq('company_id', companyId).eq('communication_id', communicationId),
+    db
+      .from('message_approvals')
+      .select('id, decision, requested_at, decided_by_user_id, decided_by_agent_run_id')
+      .eq('company_id', companyId)
+      .eq('communication_id', communicationId),
   ])
   const communication = readOrThrow(communicationResult, 'Load message', null)
   if (!communication) return blocked(['The message was not found'])
@@ -115,9 +120,14 @@ export async function checkOutbound(
   }
 
   const recorded = currentApproval(readOrThrow(approvalsResult, 'Load message approvals', []))
+  // The company's AI agent approves only its own replies to contacts (ticket 10); a person approves everything else.
+  const agentApproved = recorded !== undefined && Boolean(recorded.decided_by_agent_run_id) && !recorded.decided_by_user_id
   const approval: GoverningApproval = options.asIfApproved
     ? { decision: 'approved', approverRecorded: true }
-    : recorded && { decision: recorded.decision, approverRecorded: recorded.decided_by_user_id !== null }
+    : recorded && {
+        decision: recorded.decision,
+        approverRecorded: recorded.decided_by_user_id !== null || (agentApproved && communication.recipient_type === 'contact'),
+      }
 
   const thread = communication.recipient_type === 'contact' ? await loadReplyThread(db, companyId, communication.conversation_id) : undefined
   const [recipient, channel, template] = await Promise.all([
@@ -133,7 +143,9 @@ export async function checkOutbound(
     // Every outbound message needs an approval that names its approver; tenant approval is judged
     // with the tenant's eligibility below (canSendTenantMessage owns that hard constraint).
     ...(communication.recipient_type !== 'tenant' ? optional(approvalBlocker(approval)) : []),
-    ...(approval?.decision === 'approved' && !approval.approverRecorded ? ['The message approval does not record who approved it'] : []),
+    ...(approval?.decision === 'approved' && !approval.approverRecorded
+      ? [agentApproved ? 'Only a reply to a contact can be approved by the AI agent; a person approves this message' : 'The message approval does not record who approved it']
+      : []),
     ...recipient,
     ...checkOutboundMessage(communication.body, communication.recipient_type).errors,
     ...channel,

@@ -23,7 +23,12 @@ describe('queue registry', () => {
       'user-invitations',
       'whatsapp-number-verification',
       'whatsapp-webhook',
+      'whatsapp-agent',
     ])
+  })
+
+  it('keys an agent run by its company and inbound message', () => {
+    expect(jobIdFor('whatsapp-agent', { companyId: 'C1', communicationId: 'M1' })).toBe('whatsapp-agent.c1.m1')
   })
 
   it('keys a webhook payload by its SHA-256 and removes it from Redis once routed', () => {

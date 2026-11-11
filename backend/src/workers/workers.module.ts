@@ -6,6 +6,7 @@ import type { WorkerEnv } from '../config/env'
 import { WORKER_ENV } from '../config/tokens'
 import { SupabaseAuthAdmin } from '../infrastructure/auth/auth-admin.client'
 import { ServiceRoleClientFactory } from '../infrastructure/database/service-role-client.factory'
+import { AnthropicAgentLlm } from '../messaging/anthropic-agent-llm'
 import { DocumentProcessingClient } from '../infrastructure/document-processing/document-processing.client'
 import { createWhatsAppChannels } from '../infrastructure/whatsapp/database-whatsapp-channels'
 import { WhatsAppChannels } from '../infrastructure/whatsapp/whatsapp-channels'
@@ -21,6 +22,7 @@ import { WorkerQueues } from './queues/worker-queues'
 import { MonitoringDispatchProcessor } from './scheduling/monitoring-dispatch.processor'
 import { MonitoringScheduler } from './scheduling/monitoring-scheduler'
 import { Clock } from './shared/clock'
+import { AGENT_LLM, WhatsAppAgentProcessor } from './whatsapp/agent-reply.processor'
 import { WhatsAppWebhookProcessor } from './whatsapp/inbound-webhook.processor'
 import { WhatsAppNumberVerificationProcessor } from './whatsapp/number-verification.processor'
 import { StatementFiles } from './shared/statement-files'
@@ -48,6 +50,13 @@ const clientProviders: Provider[] = [
         env.WHATSAPP_APP_ID && env.WHATSAPP_APP_SECRET ? { appId: env.WHATSAPP_APP_ID, appSecret: env.WHATSAPP_APP_SECRET } : null,
       ),
   },
+  {
+    // The AI agent's model (worker only). Without ANTHROPIC_API_KEY every message is handed to a person.
+    provide: AGENT_LLM,
+    inject: [WORKER_ENV],
+    useFactory: (env: WorkerEnv) =>
+      env.ANTHROPIC_API_KEY ? new AnthropicAgentLlm({ apiKey: env.ANTHROPIC_API_KEY, effort: env.WHATSAPP_AGENT_EFFORT }) : null,
+  },
 ]
 
 /** One processor per queue in the registry (QUEUE_NAMES); each starts its BullMQ worker in onModuleInit. */
@@ -61,6 +70,7 @@ const processors: Provider[] = [
   UserInvitationProcessor,
   WhatsAppNumberVerificationProcessor,
   WhatsAppWebhookProcessor,
+  WhatsAppAgentProcessor,
 ]
 
 /**
