@@ -47,9 +47,12 @@ COPY frontend frontend
 ARG VITE_API_URL=
 ARG VITE_SUPABASE_URL=
 ARG VITE_SUPABASE_ANON_KEY=
+# Optional browser key for address suggestions; restrict it to the app's origins in Google Cloud.
+ARG VITE_GOOGLE_MAPS_API_KEY=
 ENV VITE_API_URL=${VITE_API_URL} \
     VITE_SUPABASE_URL=${VITE_SUPABASE_URL} \
-    VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+    VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY} \
+    VITE_GOOGLE_MAPS_API_KEY=${VITE_GOOGLE_MAPS_API_KEY}
 # Generates the route tree, type-checks and bundles into frontend/dist.
 RUN pnpm --filter "@leaseguard/frontend" build
 

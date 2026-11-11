@@ -80,9 +80,14 @@ documents each variable. Give each process only its own variables.
 | `WHATSAPP_ACCESS_TOKEN_<COMPANY ID>` | | yes | | **secret**, one per connected company; see below |
 
 Frontend `VITE_*` values (`VITE_API_URL`, `VITE_SUPABASE_URL`,
-`VITE_SUPABASE_ANON_KEY`) are build arguments compiled into the JavaScript bundle. They are public by
+`VITE_SUPABASE_ANON_KEY` and the optional `VITE_GOOGLE_MAPS_API_KEY`) are build arguments compiled into the JavaScript bundle. They are public by
 nature: never put a secret in a `VITE_*` variable. Changing them requires rebuilding the frontend
 image.
+
+`VITE_GOOGLE_MAPS_API_KEY` turns on address suggestions (Google Places API (New), South Africa only). It is
+a browser key, visible to anyone who loads the app: in Google Cloud restrict it to the app's origins
+(HTTP referrers) and to the Maps JavaScript API and Places API (New), and set a quota. While someone types
+an address, that text is sent to Google; nothing else is. Without the key, address fields are plain inputs.
 
 ## Secrets
 

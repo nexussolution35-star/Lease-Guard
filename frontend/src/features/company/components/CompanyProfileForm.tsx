@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 
-import { FormActions, FormSection, SelectField, TextField, zodResolver } from '@/components/forms'
+import { AddressAutocompleteField, FormActions, FormSection, SelectField, TextField, zodResolver } from '@/components/forms'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Form } from '@/components/ui/form'
 import { describeApiError } from '@/lib/data/apiErrors'
@@ -72,7 +72,21 @@ export function CompanyProfileForm({ company }: CompanyProfileFormProps) {
           <TextField control={form.control} name="vatNumber" label="VAT number" inputMode="numeric" maxLength={30} />
         </FormSection>
         <FormSection title="Address">
-          <TextField control={form.control} name="line1" label="Street address" autoComplete="address-line1" maxLength={200} required className="sm:col-span-2" />
+          <AddressAutocompleteField
+            control={form.control}
+            name="line1"
+            label="Street address"
+            maxLength={200}
+            required
+            className="sm:col-span-2"
+            onAddressSelect={(address) => {
+              const fill = { shouldDirty: true, shouldValidate: true } as const
+              if (address.suburb) form.setValue('suburb', address.suburb, fill)
+              if (address.city) form.setValue('city', address.city, fill)
+              if (address.province) form.setValue('province', address.province, fill)
+              if (address.postalCode) form.setValue('postalCode', address.postalCode, fill)
+            }}
+          />
           <TextField control={form.control} name="line2" label="Building, floor or suite" autoComplete="address-line2" maxLength={200} className="sm:col-span-2" />
           <TextField control={form.control} name="suburb" label="Suburb" maxLength={100} required />
           <TextField control={form.control} name="city" label="City or town" autoComplete="address-level2" maxLength={100} required />

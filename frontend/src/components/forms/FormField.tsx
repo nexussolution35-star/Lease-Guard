@@ -63,7 +63,7 @@ export function FormField({
       </Label>
       {control}
       {description ? (
-        <p id={descriptionId} className="text-sm text-muted-foreground">
+        <p id={descriptionId} className="text-xs text-muted-foreground italic">
           {description}
         </p>
       ) : null}

@@ -5,7 +5,7 @@ import { useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 
-import { FormSection, NumberField, SelectField, TextAreaField, TextField, zodResolver, type FieldOption } from '@/components/forms'
+import { AddressAutocompleteField, FormSection, NumberField, SelectField, TextAreaField, TextField, zodResolver, type FieldOption } from '@/components/forms'
 import { FormDialog } from '@/components/shared'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Form } from '@/components/ui/form'
@@ -153,7 +153,21 @@ export function PropertyFormDialog({ open, onOpenChange, property, onSaved }: Pr
             <TextAreaField control={form.control} name="description" label="Description" rows={3} maxLength={2000} className="sm:col-span-2" />
           </FormSection>
           <FormSection title="Address">
-            <TextField control={form.control} name="line1" label="Street address" autoComplete="address-line1" maxLength={200} required className="sm:col-span-2" />
+            <AddressAutocompleteField
+              control={form.control}
+              name="line1"
+              label="Street address"
+              maxLength={200}
+              required
+              className="sm:col-span-2"
+              onAddressSelect={(address) => {
+                const fill = { shouldDirty: true, shouldValidate: true } as const
+                if (address.suburb) form.setValue('suburb', address.suburb, fill)
+                if (address.city) form.setValue('city', address.city, fill)
+                if (address.province) form.setValue('province', address.province, fill)
+                if (address.postalCode) form.setValue('postalCode', address.postalCode, fill)
+              }}
+            />
             <TextField control={form.control} name="line2" label="Building or complex" autoComplete="address-line2" maxLength={200} className="sm:col-span-2" />
             <TextField control={form.control} name="suburb" label="Suburb" maxLength={100} required />
             <TextField control={form.control} name="city" label="City or town" autoComplete="address-level2" maxLength={100} required />

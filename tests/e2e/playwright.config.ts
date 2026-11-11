@@ -71,6 +71,9 @@ export default defineConfig({
         VITE_API_URL: E2E_API_URL,
         VITE_SUPABASE_URL: supabase.url,
         VITE_SUPABASE_ANON_KEY: supabase.anonKey,
+        // No Google address suggestions in browser tests (no external calls, no billing). Set
+        // E2E_GOOGLE_MAPS_API_KEY to try them against Google on purpose.
+        VITE_GOOGLE_MAPS_API_KEY: process.env.E2E_GOOGLE_MAPS_API_KEY ?? '',
       },
       // Never test a server this run did not start.
       reuseExistingServer: false,
