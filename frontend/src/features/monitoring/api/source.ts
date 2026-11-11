@@ -11,6 +11,8 @@ export const MONITORING_EVENT_SORT_FIELDS = ['identifiedOn', 'dueDate', 'priorit
 /** Filters accepted by `GET /api/v1/monitoring/events`, each a single optional value. */
 export interface MonitoringEventListParams extends ListParams<MonitoringEventSortField> {
   status?: MonitoringEventStatus
+  /** true: still needs attention (new, under review, action required, in progress); false: resolved or dismissed. */
+  open?: boolean
   priority?: EventPriority
   type?: MonitoringEventType
   propertyId?: EntityId

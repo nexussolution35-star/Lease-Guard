@@ -14,6 +14,9 @@ import { E2E_API_URL, E2E_WEB_PORT, E2E_WEB_URL } from './support/env.ts'
  */
 const supabase = resolveLocalSupabaseSync()
 
+/** Specs that create or archive the world's portfolio records (see the projects below). */
+const WRITES_PORTFOLIO = '**/property-management.spec.ts'
+
 export default defineConfig({
   testDir: '.',
   testMatch: '**/*.spec.ts',
@@ -31,7 +34,21 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } }],
+  projects: [
+    {
+      name: 'chromium',
+      testIgnore: WRITES_PORTFOLIO,
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
+    // Specs that add or archive portfolio records run after every other spec: several specs assert the
+    // world's exact property lists, and files in the first project run in parallel.
+    {
+      name: 'chromium-portfolio-writes',
+      testMatch: WRITES_PORTFOLIO,
+      dependencies: ['chromium'],
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
+  ],
   webServer: [
     {
       // Builds and runs the API; on stop it removes backend/.dev-e2e and the run's Redis keys.

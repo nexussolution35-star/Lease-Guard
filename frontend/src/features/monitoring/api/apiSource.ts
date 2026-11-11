@@ -23,6 +23,7 @@ export function createApiMonitoringEventSource(api: ApiClient): MonitoringEventS
               sort: params.sort,
               direction: params.direction,
               status: params.status,
+              open: params.open,
               priority: params.priority,
               type: params.type,
               propertyId: params.propertyId,
