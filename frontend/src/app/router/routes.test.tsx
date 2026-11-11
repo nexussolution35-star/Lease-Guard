@@ -57,6 +57,16 @@ describe('app routes', () => {
     expect(screen.getByRole('button', { name: 'Workspace: Test Properties. Switch workspace' })).toBeInTheDocument()
   })
 
+  it('links the Communications sections to each other, analytics included', async () => {
+    await renderApp('/communications')
+    const sections = await screen.findByRole('navigation', { name: 'Communications' })
+    expect(within(sections).getByRole('link', { name: 'Messages', current: 'page' })).toBeInTheDocument()
+    expect(within(sections).getByRole('link', { name: 'Approvals' })).toHaveAttribute('href', '/communications/approvals')
+    const analytics = within(sections).getByRole('link', { name: 'Analytics' })
+    expect(analytics).toHaveAttribute('href', '/communications/analytics')
+    expect(analytics).not.toHaveAttribute('aria-current')
+  })
+
   it('shows a detail record of the active workspace from the API', async () => {
     respondWith('GET', `/api/v1/properties/${PROPERTY_ID}`, 200, { ...sampleRecord('properties'), id: PROPERTY_ID, name: 'Riverside Mall' })
     await renderApp(`/properties/${PROPERTY_ID}`)
