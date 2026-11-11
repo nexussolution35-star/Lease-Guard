@@ -37,10 +37,36 @@ export function memberActionError(action: 'role' | 'remove', error: unknown): Me
   return { title, description: describeApiError(error, 'Try again in a moment.') }
 }
 
-/** Toast copy for a failed invitation action (create errors are shown on the form instead). */
+/**
+ * Toast copy for a failed revoke or resend. 409: the invitation was accepted, declined or revoked meanwhile (the
+ * API says which); 404: it no longer exists; 403: the caller is no longer a company admin. The list is refreshed
+ * after every attempt, so the copy says so.
+ */
 export function invitationActionError(action: 'revoke' | 'resend', error: unknown): MemberErrorCopy {
-  return {
-    title: action === 'revoke' ? 'Could not revoke the invitation' : 'Could not resend the invitation',
-    description: describeApiError(error, 'Try again in a moment.'),
+  const title = action === 'revoke' ? 'Could not revoke the invitation' : 'Could not resend the invitation'
+  if (isApiError(error)) {
+    if (error.status === 409) {
+      return { title, description: `${describeApiError(error, 'This invitation was already accepted, declined or revoked.')} The list has been refreshed.` }
+    }
+    if (error.isNotFound) return { title, description: 'This invitation no longer exists. The list has been refreshed.' }
+    if (error.isForbidden) return { title, description: 'Only company admins can manage invitations.' }
   }
+  return { title, description: describeApiError(error, 'Try again in a moment.') }
+}
+
+export interface InviteErrorCopy {
+  /** `email` when the address is the problem (open invitation or existing member), otherwise the whole form. */
+  field: 'email' | 'root'
+  message: string
+}
+
+/** Where and how the invite form shows a failed `POST /invitations`. */
+export function inviteError(error: unknown): InviteErrorCopy {
+  if (isApiError(error)) {
+    if (error.status === 409) {
+      return { field: 'email', message: describeApiError(error, 'This email already has an open invitation or belongs to a member of the company.') }
+    }
+    if (error.isForbidden) return { field: 'root', message: 'Only company admins can invite people.' }
+  }
+  return { field: 'root', message: describeApiError(error, 'The invitation could not be created. Try again in a moment.') }
 }

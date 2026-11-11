@@ -19,12 +19,20 @@ export const memberKeys = createEntityKeys('members')
 export const companyInvitationKeys = createEntityKeys('company-invitations')
 
 /** A page of the active workspace's members. */
-export function useMemberList(params: MemberListParams): UseQueryResult<Page<CompanyMember>> {
+export function useMemberList(params: MemberListParams, options: { enabled?: boolean } = {}): UseQueryResult<Page<CompanyMember>> {
   return useCompanyQuery(
     (companyId) => memberKeys.list(companyId, params),
     (companyId) => getUserSource().listMembers(companyId, params),
-    { keepPrevious: true },
+    { keepPrevious: true, ...options },
   )
+}
+
+/**
+ * How many active company admins the workspace has (one row is fetched; the total counts them), or undefined while
+ * unknown. Lets Settings → Users explain the last-admin rule before anyone tries; the database enforces it.
+ */
+export function useActiveAdminCount(options: { enabled?: boolean } = {}): number | undefined {
+  return useMemberList({ page: 1, pageSize: 1, role: 'company_admin', status: 'active' }, options).data?.total
 }
 
 /** A page of the active workspace's invitations (company admins only; disable it for other roles). */
