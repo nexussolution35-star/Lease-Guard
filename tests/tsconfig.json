@@ -7,6 +7,8 @@
     // same supabase-js declarations on both sides.
     "module": "preserve",
     "moduleResolution": "bundler",
+    // The integration suite drives the worker's processors in process (NestJS legacy decorators).
+    "experimentalDecorators": true,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

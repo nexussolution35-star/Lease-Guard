@@ -9,6 +9,9 @@ export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
   // Keep Vite/Vitest caches in the package's node_modules, not in a node_modules under integration/.
   cacheDir: fileURLToPath(new URL('../node_modules/.vite/integration', import.meta.url)),
+  // The acceptance scenario runs the worker's processors in this process; their NestJS decorators (legacy, with
+  // parameter decorators) must compile. The processors are constructed by hand, so no decorator metadata is needed.
+  oxc: { decorator: { legacy: true } },
   resolve: { conditions: [WORKSPACE_SOURCE] },
   ssr: { resolve: { conditions: [WORKSPACE_SOURCE] } },
   test: {

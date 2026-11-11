@@ -462,9 +462,32 @@ async function removeStorageObjects(db: SupabaseClient, companyIds: readonly str
  * entries themselves are never touched.
  */
 export async function destroyWorld(supabase: LocalSupabase, world: World): Promise<WorldCleanupReport> {
+  return destroyRecords(supabase, recordsOf(world))
+}
+
+/**
+ * Companies and Auth users a test created itself, outside the world (e.g. through the operator's
+ * `platform:create-company` script); removed and checked exactly like the world's.
+ */
+export interface CreatedRecords {
+  /** Names the records in error messages. */
+  label: string
+  companyIds: readonly string[]
+  userIds: readonly string[]
+}
+
+function recordsOf(world: World): CreatedRecords {
+  return {
+    label: `World ${world.runId}`,
+    companyIds: Object.values(world.companies ?? {}).map((c) => c.id),
+    userIds: Object.values(world.users ?? {}).map((u) => u.id),
+  }
+}
+
+/** What destroyWorld does, for any companies and users: see destroyWorld. */
+export async function destroyRecords(supabase: LocalSupabase, records: CreatedRecords): Promise<WorldCleanupReport> {
   const db = serviceRoleClient(supabase)
-  const companyIds = Object.values(world.companies ?? {}).map((c) => c.id)
-  const userIds = Object.values(world.users ?? {}).map((u) => u.id)
+  const { companyIds, userIds } = records
   const report: WorldCleanupReport = { storageObjectsRemoved: 0, companiesDeleted: 0, companiesArchived: 0, usersDeleted: 0, usersDeactivated: 0 }
 
   if (companyIds.length > 0) {
@@ -531,14 +554,17 @@ end $cleanup$`)
     report.usersDeactivated += 1
   }
 
-  await assertWorldGone(world)
+  await assertRecordsGone(records)
   return report
 }
 
 /** Throws unless nothing of the world remains except audit entries and audit-pinned shells. */
 export async function assertWorldGone(world: World): Promise<void> {
-  const companyIds = Object.values(world.companies ?? {}).map((c) => c.id)
-  const userIds = Object.values(world.users ?? {}).map((u) => u.id)
+  await assertRecordsGone(recordsOf(world))
+}
+
+async function assertRecordsGone(records: CreatedRecords): Promise<void> {
+  const { companyIds, userIds } = records
   const problems: string[] = []
 
   if (companyIds.length > 0) {
@@ -570,7 +596,7 @@ export async function assertWorldGone(world: World): Promise<void> {
     const memberships = await count(`select count(*)::int as n from public.company_users where user_id = any(${ids})`)
     if (memberships > 0) problems.push(`${memberships} membership(s) left`)
   }
-  if (problems.length > 0) throw new Error(`World ${world.runId} was not cleaned up: ${problems.join('; ')}`)
+  if (problems.length > 0) throw new Error(`${records.label} was not cleaned up: ${problems.join('; ')}`)
 }
 
 /** A fresh random UUID, for tests that need an id that exists nowhere. */

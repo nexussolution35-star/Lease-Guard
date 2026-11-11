@@ -89,6 +89,39 @@ API output goes to `tests/test-results/integration/api.log`.
 | `whatsapp-integration.test.ts` | several business accounts and numbers per company (added with the service role, removed in `afterAll`): any member lists their own company's accounts and numbers with statuses; another company's are never listed (403 for a company the caller is not in; a member of both sees only the active company's); through PostgREST with a member's own sign-in another company's rows are invisible and `access_token_reference` is refused (42501); the company resource carries a number summary without the credential reference; capabilities are public-safe (all off with `.env.example`, each missing setting named with its process; 401 without a token) |
 | `approvals.test.ts` | on a tenant message the test creates (requested by a property manager): `read_only` 403 and the message stays pending; the requester approves their own request (200, recorded as the approver, exactly one `message-delivery` job in the run's queue prefix); approving again 409 with no second job; rejecting the approved message 409 |
 | `users-and-invitations.test.ts` | every member lists company A's members (only A's membership); the active-admin count filter; an admin changing their own role or removing themselves 403; other roles 403; an admin changes another member's role and back; removing a member still named on records 409; invite (email lower-cased, `pending`), duplicate 409, resend, revoke, revoke or resend again 409; inviting an existing member 409; invitations refused to other roles and to a non-member company (403). Invitations it creates are deleted in `afterAll` |
+| `whatsapp-acceptance-two-businesses.test.ts` | The acceptance scenario of the WhatsApp work (ticket 14), end to end; see below |
+
+### Acceptance scenario: two businesses stay apart
+
+`whatsapp-acceptance-two-businesses.test.ts` runs with the rest of the suite (`pnpm test:integration`; on its own:
+`pnpm --filter @leaseguard/tests exec vitest run --config integration/vitest.config.ts whatsapp-acceptance`). Same
+prerequisites as the suite (local Supabase, local Redis); nothing else to configure. It takes about a minute.
+
+- **Its own businesses.** It does not use the world: it creates *Atlas Properties* and *Baobab Estates* through the
+  operator command `infrastructure/scripts/platform-create-company.mjs` (run with only the local `SUPABASE_URL`,
+  `SUPABASE_SERVICE_ROLE_KEY` and `WEB_APP_URL` in its environment, so it never reads the root `.env`; unused initials
+  are picked because the command refuses existing ones) and each admin, whose confirmed account the test created,
+  accepts the invitation through the API. A tenant of Atlas is inserted with the service role.
+- **Its own API process** of this run's build (`backend/.dev-integration`), with a test Meta app (app id, Embedded
+  Signup configuration id, app secret, webhook verify token; none of them real), `WHATSAPP_GRAPH_API_URL` pointing at
+  the fake Graph server, and its own queue prefix `<run prefix>-acceptance`. Log:
+  `tests/test-results/integration/api-acceptance.log`.
+- **The worker in the test process** (`integration/support/in-process-worker.ts`): the worker's real processors for
+  number verification, webhooks, the AI agent, message delivery and test messages, built by hand as `WorkersModule`
+  wires them, consuming that queue prefix on the local Redis with the service role of the local stack. The agent's
+  model is `FakeAgentLlm` (answers only from its prompt's knowledge, records every prompt) and the channels use the
+  fake Graph server; the worker env gets an unresolvable Graph URL, so nothing can reach Meta. The processors' NestJS
+  decorators are why `integration/vitest.config.ts` compiles legacy decorators and `tsconfig.json` sets
+  `experimentalDecorators`. Log: `tests/test-results/integration/worker-acceptance.log` (job outcomes, ids only).
+- **The fake Graph API** (`integration/support/fake-meta-graph.ts`) on 127.0.0.1: code exchange, `debug_token`, phone
+  numbers, `subscribed_apps`, register, templates and sending, per business; a business token used on another
+  business's account or number is refused (403) and recorded, and every request is kept for assertions.
+- **Webhooks** are signed with the test app secret and posted to the API exactly as Meta would; the test waits for the
+  worker to finish each payload (`whatsapp_webhook_events`).
+- **Cleanup** (`afterAll`): the worker, API and fake server are stopped; the webhook events and their job runs (stored
+  without a company), the companies' Vault secrets and the prefix's Redis keys are deleted; the companies and users go
+  through `destroyRecords` (`fixtures/world.ts`, the world's own cleanup and check), so companies and users pinned by
+  audit entries are left archived or deactivated, like the world's.
 
 ### Cleanup rules
 
