@@ -91,6 +91,9 @@ const DOMAIN_ONLY: Readonly<Record<string, string>> = {
   AGENT_MESSAGE_CATEGORIES: 'whatsapp_agent_runs.category is text with a check constraint (20261111100100), not an enum',
   AGENT_RUN_OUTCOMES: 'whatsapp_agent_runs.outcome is text with a check constraint (20261111100100), not an enum',
   RESTRICTED_CONTACT_TOPICS: 'agent content guard; never stored',
+  WHATSAPP_SETUP_STEPS: 'computed by whatsapp_setup_status (20261111100200); never stored',
+  WHATSAPP_SETUP_STATES: 'computed by whatsapp_setup_status (20261111100200); never stored',
+  WHATSAPP_TEST_MESSAGE_STATUSES: 'whatsapp_test_messages.status is text with a check constraint (20261111100200), not an enum',
 }
 
 /**

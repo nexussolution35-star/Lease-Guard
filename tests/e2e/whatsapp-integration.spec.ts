@@ -224,3 +224,116 @@ test.describe('WhatsApp conversations inbox', () => {
     }
   })
 })
+
+// WhatsApp setup (ticket 11): the ten steps come from the API's verified facts. No worker and no Meta run in e2e, so
+// the test message's send and Meta's delivered status are recorded as the worker would record them.
+test.describe('WhatsApp setup', () => {
+  test('shows a company admin the setup steps on the WhatsApp page and a summary on the dashboard', async ({ page }) => {
+    await signIn(page, e2eUser('admin'), '/settings/integrations/whatsapp')
+    const setup = page.getByRole('region', { name: 'WhatsApp setup' })
+    await expect(setup.getByRole('progressbar', { name: /of 10 steps done/ })).toBeVisible()
+    await expect(setup.getByRole('listitem')).toHaveCount(10)
+    const meta = setup.getByRole('listitem').filter({ hasText: 'Meta account connected' })
+    await expect(meta.getByText('Action needed')).toBeVisible()
+    await expect(setup.getByRole('button', { name: 'Activate WhatsApp' })).toBeDisabled()
+
+    await page.goto('/')
+    const summary = page.getByRole('region', { name: 'WhatsApp setup' })
+    await expect(summary.getByText(/of 10 steps done/)).toBeVisible()
+    await summary.getByRole('link', { name: 'Open the WhatsApp setup' }).click()
+    await expect(page).toHaveURL(/\/settings\/integrations\/whatsapp$/)
+  })
+
+  test('shows no setup summary on the dashboard to a member who is not a company admin', async ({ page }) => {
+    await signIn(page, e2eUser('readOnly'), '/')
+    await expect(pageHeading(page)).toHaveText('Dashboard')
+    await expect(page.getByRole('region', { name: 'WhatsApp setup' })).toHaveCount(0)
+  })
+
+  test('sends a test message and activates WhatsApp once Meta reports it delivered', async ({ page }) => {
+    const db = serviceRoleClient(e2eContext().supabase)
+    const companyId = e2eWorld().companies.a.id
+    const unique = `${Date.now()}`
+    const accountId = `${unique}7`
+    const phoneId = `${unique}8`
+    const wamid = `wamid.e2e-setup-${unique}`
+    const throwOn = (what: string, result: { error: { message: string } | null }) => {
+      if (result.error) throw new Error(`${what}: ${result.error.message}`)
+    }
+    try {
+      // What number verification records once Meta confirmed everything (no worker and no Meta in e2e).
+      throwOn('account', await db.from('whatsapp_business_accounts').insert({ company_id: companyId, business_account_id: accountId }))
+      throwOn(
+        'number',
+        await db.from('whatsapp_phone_numbers').insert({
+          company_id: companyId,
+          business_account_id: accountId,
+          phone_number_id: phoneId,
+          display_name: 'Atlas Leasing',
+          display_number: '+27 11 555 0177',
+          connection_status: 'connected',
+          webhook_configured: true,
+          last_verified_at: new Date().toISOString(),
+        }),
+      )
+      throwOn(
+        'template',
+        await db.from('whatsapp_message_templates').insert({
+          company_id: companyId,
+          business_account_id: accountId,
+          meta_template_id: `${unique}9`,
+          name: 'hello_world',
+          language: 'en_US',
+          category: 'UTILITY',
+          status: 'APPROVED',
+        }),
+      )
+
+      await signIn(page, e2eUser('admin'), '/settings/integrations/whatsapp')
+      const setup = page.getByRole('region', { name: 'WhatsApp setup' })
+      const testStep = setup.getByRole('listitem').filter({ hasText: 'Test message successful' })
+      await expect(testStep.getByText('Action needed')).toBeVisible()
+      await testStep.getByRole('button', { name: 'Send test message' }).click()
+
+      const dialog = page.getByRole('dialog', { name: 'Send a test message' })
+      await dialog.getByRole('combobox', { name: /Send from/ }).click()
+      await page.getByRole('option', { name: /\+27 11 555 0177/ }).click()
+      await dialog.getByRole('combobox', { name: /Approved template/ }).click()
+      await page.getByRole('option', { name: /hello_world/ }).click()
+      await dialog.getByRole('textbox', { name: /Your WhatsApp number/ }).fill('082 999 0177')
+      await dialog.getByRole('button', { name: 'Send test message' }).click()
+      await expect(dialog).toHaveCount(0)
+      await expect(setup.getByText('Latest test message: Queued')).toBeVisible()
+      await expect(testStep.getByText('Waiting on Meta')).toBeVisible()
+      await expect(setup.getByRole('button', { name: 'Activate WhatsApp' })).toBeDisabled()
+
+      // The worker sends it; Meta's status webhook then reports it delivered.
+      throwOn(
+        'sent',
+        await db
+          .from('whatsapp_test_messages')
+          .update({ status: 'sent', provider_message_id: wamid, sent_at: new Date().toISOString() })
+          .eq('company_id', companyId)
+          .eq('to_number', '+27829990177'),
+      )
+      const delivered = await db.rpc('record_whatsapp_test_message_status', {
+        p_company_id: companyId,
+        p_provider_message_id: wamid,
+        p_status: 'delivered',
+        p_occurred_at: new Date().toISOString(),
+      })
+      throwOn('delivered', delivered)
+
+      // The page polls while it waits on Meta.
+      await expect(testStep.getByText('Done')).toBeVisible({ timeout: 15_000 })
+      await setup.getByRole('button', { name: 'Activate WhatsApp' }).click()
+      await expect(setup.getByText(/WhatsApp is active since/)).toBeVisible()
+    } finally {
+      await db.from('companies').update({ whatsapp_activated_at: null, whatsapp_activated_by_user_id: null }).eq('id', companyId)
+      await db.from('whatsapp_test_messages').delete().eq('company_id', companyId)
+      await db.from('whatsapp_message_templates').delete().eq('business_account_id', accountId)
+      await db.from('whatsapp_phone_numbers').delete().eq('phone_number_id', phoneId)
+      await db.from('whatsapp_business_accounts').delete().eq('business_account_id', accountId)
+    }
+  })
+})

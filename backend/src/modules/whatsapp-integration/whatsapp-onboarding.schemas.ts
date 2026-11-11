@@ -51,3 +51,11 @@ export const registerNumberBodySchema = z.strictObject({
   pin: z.string().regex(/^[0-9]{6}$/, 'a 6-digit PIN'),
 })
 export type RegisterNumberBody = z.infer<typeof registerNumberBodySchema>
+
+/** A company admin's test message: a connected number, an approved template of its account, a non-tenant E.164 number. */
+export const sendTestMessageBodySchema = z.strictObject({
+  numberId: z.uuid(),
+  templateId: z.uuid(),
+  to: z.string().trim().regex(/^\+[1-9][0-9]{7,14}$/, 'a WhatsApp number in international format, e.g. +27821234567'),
+})
+export type SendTestMessageBody = z.infer<typeof sendTestMessageBodySchema>

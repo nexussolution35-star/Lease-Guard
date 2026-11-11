@@ -172,14 +172,14 @@ isOneToOne: false
                   ]
                 },"companies": {
                   Row: {
-                    "address_line1": string,"address_line2": string | null,"city": string,"contact_email": string,"contact_phone": string,"country": string,"created_at": string,"guarantee_expiry_notice_days": (number)[],"id": string,"initials": string,"installment_reminder_lead_days": number,"lease_expiry_notice_days": (number)[],"name": string,"owner_summary_weekday": Database["public"]['Enums']["weekday"],"payment_reminder_follow_up_days": number,"payment_reminder_initial_days": number,"payment_reminder_overdue_days": number,"postal_code": string,"province": Database["public"]['Enums']["sa_province"],"registration_number": string | null,"renewal_deadline_warning_days": (number)[],"status": Database["public"]['Enums']["company_status"],"suburb": string,"timezone": string,"trading_name": string | null,"updated_at": string,"vat_number": string | null
+                    "address_line1": string,"address_line2": string | null,"city": string,"contact_email": string,"contact_phone": string,"country": string,"created_at": string,"guarantee_expiry_notice_days": (number)[],"id": string,"initials": string,"installment_reminder_lead_days": number,"lease_expiry_notice_days": (number)[],"name": string,"owner_summary_weekday": Database["public"]['Enums']["weekday"],"payment_reminder_follow_up_days": number,"payment_reminder_initial_days": number,"payment_reminder_overdue_days": number,"postal_code": string,"province": Database["public"]['Enums']["sa_province"],"registration_number": string | null,"renewal_deadline_warning_days": (number)[],"status": Database["public"]['Enums']["company_status"],"suburb": string,"timezone": string,"trading_name": string | null,"updated_at": string,"vat_number": string | null,"whatsapp_activated_at": string | null,"whatsapp_activated_by_user_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "address_line1": string,"address_line2"?: string | null,"city": string,"contact_email": string,"contact_phone": string,"country"?: string,"created_at"?: string,"guarantee_expiry_notice_days"?: (number)[],"id"?: string,"initials": string,"installment_reminder_lead_days"?: number,"lease_expiry_notice_days"?: (number)[],"name": string,"owner_summary_weekday"?: Database["public"]['Enums']["weekday"],"payment_reminder_follow_up_days"?: number,"payment_reminder_initial_days"?: number,"payment_reminder_overdue_days"?: number,"postal_code": string,"province": Database["public"]['Enums']["sa_province"],"registration_number"?: string | null,"renewal_deadline_warning_days"?: (number)[],"status"?: Database["public"]['Enums']["company_status"],"suburb": string,"timezone"?: string,"trading_name"?: string | null,"updated_at"?: string,"vat_number"?: string | null
+                    "address_line1": string,"address_line2"?: string | null,"city": string,"contact_email": string,"contact_phone": string,"country"?: string,"created_at"?: string,"guarantee_expiry_notice_days"?: (number)[],"id"?: string,"initials": string,"installment_reminder_lead_days"?: number,"lease_expiry_notice_days"?: (number)[],"name": string,"owner_summary_weekday"?: Database["public"]['Enums']["weekday"],"payment_reminder_follow_up_days"?: number,"payment_reminder_initial_days"?: number,"payment_reminder_overdue_days"?: number,"postal_code": string,"province": Database["public"]['Enums']["sa_province"],"registration_number"?: string | null,"renewal_deadline_warning_days"?: (number)[],"status"?: Database["public"]['Enums']["company_status"],"suburb": string,"timezone"?: string,"trading_name"?: string | null,"updated_at"?: string,"vat_number"?: string | null,"whatsapp_activated_at"?: string | null,"whatsapp_activated_by_user_id"?: string | null
                   }
                   Update: {
-                    "address_line1"?: string,"address_line2"?: string | null,"city"?: string,"contact_email"?: string,"contact_phone"?: string,"country"?: string,"created_at"?: string,"guarantee_expiry_notice_days"?: (number)[],"id"?: string,"initials"?: string,"installment_reminder_lead_days"?: number,"lease_expiry_notice_days"?: (number)[],"name"?: string,"owner_summary_weekday"?: Database["public"]['Enums']["weekday"],"payment_reminder_follow_up_days"?: number,"payment_reminder_initial_days"?: number,"payment_reminder_overdue_days"?: number,"postal_code"?: string,"province"?: Database["public"]['Enums']["sa_province"],"registration_number"?: string | null,"renewal_deadline_warning_days"?: (number)[],"status"?: Database["public"]['Enums']["company_status"],"suburb"?: string,"timezone"?: string,"trading_name"?: string | null,"updated_at"?: string,"vat_number"?: string | null
+                    "address_line1"?: string,"address_line2"?: string | null,"city"?: string,"contact_email"?: string,"contact_phone"?: string,"country"?: string,"created_at"?: string,"guarantee_expiry_notice_days"?: (number)[],"id"?: string,"initials"?: string,"installment_reminder_lead_days"?: number,"lease_expiry_notice_days"?: (number)[],"name"?: string,"owner_summary_weekday"?: Database["public"]['Enums']["weekday"],"payment_reminder_follow_up_days"?: number,"payment_reminder_initial_days"?: number,"payment_reminder_overdue_days"?: number,"postal_code"?: string,"province"?: Database["public"]['Enums']["sa_province"],"registration_number"?: string | null,"renewal_deadline_warning_days"?: (number)[],"status"?: Database["public"]['Enums']["company_status"],"suburb"?: string,"timezone"?: string,"trading_name"?: string | null,"updated_at"?: string,"vat_number"?: string | null,"whatsapp_activated_at"?: string | null,"whatsapp_activated_by_user_id"?: string | null
                   }
                   Relationships: [
                     
@@ -1320,6 +1320,38 @@ isOneToOne: false
       referencedColumns: ["company_id","business_account_id"]
     }
                   ]
+                },"whatsapp_test_messages": {
+                  Row: {
+                    "company_id": string,"created_at": string,"delivered_at": string | null,"failed_at": string | null,"failure_reason": string | null,"id": string,"may_have_been_sent": boolean,"number_id": string,"provider_message_id": string | null,"read_at": string | null,"requested_by_user_id": string | null,"sent_at": string | null,"status": string,"template_language": string,"template_name": string,"to_number": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "company_id": string,"created_at"?: string,"delivered_at"?: string | null,"failed_at"?: string | null,"failure_reason"?: string | null,"id"?: string,"may_have_been_sent"?: boolean,"number_id": string,"provider_message_id"?: string | null,"read_at"?: string | null,"requested_by_user_id"?: string | null,"sent_at"?: string | null,"status"?: string,"template_language": string,"template_name": string,"to_number": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "company_id"?: string,"created_at"?: string,"delivered_at"?: string | null,"failed_at"?: string | null,"failure_reason"?: string | null,"id"?: string,"may_have_been_sent"?: boolean,"number_id"?: string,"provider_message_id"?: string | null,"read_at"?: string | null,"requested_by_user_id"?: string | null,"sent_at"?: string | null,"status"?: string,"template_language"?: string,"template_name"?: string,"to_number"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "whatsapp_test_messages_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "whatsapp_test_messages_number_fk"
+      columns: ["company_id","number_id"]
+isOneToOne: false
+      referencedRelation: "whatsapp_phone_numbers"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "whatsapp_test_messages_requested_by_fk"
+      columns: ["company_id","requested_by_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    }
+                  ]
                 },"whatsapp_webhook_events": {
                   Row: {
                     "created_at": string,"error_message": string | null,"id": string,"outcomes": NonNullable<Json>,"payload": NonNullable<Json>,"payload_sha256": string,"processed_at": string | null,"processing_status": string,"received_at": string,"updated_at": string
@@ -1340,13 +1372,19 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "accept_company_invitation":
+            "abandon_whatsapp_test_message":
+{ Args: { "p_company_id": string,"p_reason": string,"p_test_message_id": string }; Returns: boolean
+                           },
+"accept_company_invitation":
 { Args: { "p_invitation_id": string }; Returns: string
                            },
 "accept_whatsapp_handover":
 { Args: { "p_company_id": string,"p_conversation_id": string }; Returns: {
               "handover_id": string,"outcome": string
             }[]
+                           },
+"activate_company_whatsapp":
+{ Args: { "p_company_id": string }; Returns: string
                            },
 "apply_whatsapp_template_status":
 { Args: { "p_business_account_id": string,"p_category": string,"p_language": string,"p_meta_template_id": string,"p_name": string,"p_occurred_at"?: string,"p_reason": string,"p_status": string }; Returns: {
@@ -1365,6 +1403,9 @@ isOneToOne: false
 { Args: { "p_cache_creation_input_tokens": number,"p_cache_read_input_tokens": number,"p_category": string,"p_company_id": string,"p_confidence": number,"p_error_message": string,"p_handover_reason": string,"p_input_tokens": number,"p_latency_ms": number,"p_model": string,"p_out_of_hours_since": string,"p_outcome": string,"p_output_tokens": number,"p_reply_text": string,"p_run_id": string,"p_stop_reason": string,"p_suggested_reply": string }; Returns: {
               "handover_id": string,"notified": number,"outcome": string,"reply_communication_id": string,"run_outcome": string
             }[]
+                           },
+"deactivate_company_whatsapp":
+{ Args: { "p_company_id": string }; Returns: boolean
                            },
 "decide_communication":
 { Args: { "p_approval_id": string,"p_communication_id": string,"p_company_id": string,"p_decision": Database["public"]['Enums']["approval_decision"],"p_note"?: string }; Returns: string
@@ -1405,6 +1446,9 @@ isOneToOne: false
 "record_whatsapp_onboarding_result":
 { Args: { "p_business_portfolio_id"?: string,"p_company_id": string,"p_current_step"?: string,"p_embedded_signup_version"?: string,"p_error_message"?: string,"p_event": string,"p_is_on_business_app"?: boolean,"p_messaging_account_ids"?: (string)[],"p_meta_error_code"?: string,"p_meta_error_message"?: string,"p_meta_session_id"?: string,"p_phone_number_id"?: string,"p_session_id": string,"p_state": string,"p_status": Database["public"]['Enums']["whatsapp_onboarding_status"] }; Returns: string
                            },
+"record_whatsapp_test_message_status":
+{ Args: { "p_company_id": string,"p_failure_reason"?: string,"p_occurred_at": string,"p_provider_message_id": string,"p_status": string }; Returns: string
+                           },
 "release_communication_claim":
 { Args: { "p_claim": string,"p_communication_id": string,"p_company_id": string }; Returns: boolean
                            },
@@ -1416,6 +1460,11 @@ isOneToOne: false
 "reply_to_whatsapp_contact":
 { Args: { "p_body": string,"p_company_id": string,"p_conversation_id": string }; Returns: {
               "communication_id": string,"outcome": string
+            }[]
+                           },
+"request_whatsapp_test_message":
+{ Args: { "p_company_id": string,"p_number_id": string,"p_template_id": string,"p_to_number": string }; Returns: {
+              "outcome": string,"test_message_id": string
             }[]
                            },
 "resolve_whatsapp_handover":
@@ -1475,6 +1524,11 @@ isOneToOne: false
 "whatsapp_business_account_holders":
 { Args: { "p_business_account_id": string }; Returns: {
               "company_id": string
+            }[]
+                           },
+"whatsapp_setup_status":
+{ Args: { "p_company_id": string }; Returns: {
+              "required": boolean,"state": string,"step": string,"step_order": number
             }[]
                            }
           }

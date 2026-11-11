@@ -55,6 +55,11 @@ export interface JobPayloads {
    * job id and the one run per message (start_whatsapp_agent_run) make repeats harmless.
    */
   'whatsapp-agent': { companyId: EntityId; communicationId: EntityId }
+  /**
+   * Send one WhatsApp test message (ticket 11): a company admin's approved Meta template from a connected number to a
+   * number they entered. Enqueued by the API after request_whatsapp_test_message; Meta's status webhook completes it.
+   */
+  'whatsapp-test-message': { companyId: EntityId; testMessageId: EntityId }
 }
 
 export type QueueName = keyof JobPayloads
@@ -74,6 +79,7 @@ const JOB_KEY_FIELDS: { readonly [Q in QueueName]: readonly (keyof JobPayloads[Q
   'whatsapp-number-verification': ['companyId', 'numberId'],
   'whatsapp-webhook': ['payloadSha256'],
   'whatsapp-agent': ['companyId', 'communicationId'],
+  'whatsapp-test-message': ['companyId', 'testMessageId'],
 }
 
 export const QUEUE_NAMES = Object.keys(JOB_KEY_FIELDS) as QueueName[]

@@ -28,6 +28,8 @@ export const companyRow: CompanyRow = {
   installment_reminder_lead_days: 3,
   owner_summary_weekday: 'monday',
   timezone: 'Africa/Johannesburg',
+  whatsapp_activated_at: null,
+  whatsapp_activated_by_user_id: null,
   created_at: '2026-01-01T08:00:00+00:00',
   updated_at: '2026-11-01T08:00:00+00:00',
 }

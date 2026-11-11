@@ -68,12 +68,12 @@ select is(
   0::bigint,
   'anon has no privileges on any public table'
 );
-select is((select count(*) from tests.company_tables()), 35::bigint, 'all 35 end-user company-owned tables are covered');
+select is((select count(*) from tests.company_tables()), 36::bigint, 'all 36 end-user company-owned tables are covered');
 select is(
   (select count(*) from (select tbl from tests.expected
                          where tbl <> 'companies' and n > 0 and company_id in (tests.company('NS'), tests.company('KP'))
                          group by tbl having count(distinct company_id) = 2) x),
-  35::bigint,
+  36::bigint,
   'the fixtures populate every company-owned table for both companies'
 );
 select is(
@@ -111,7 +111,7 @@ select is(
   (select array_agg(e.tbl order by e.tbl)
    from tests.expected e
    left join tests.visible_counts() v on v.tbl = e.tbl and v.company_id = e.company_id
-   where e.company_id = tests.company('NS') and e.tbl not in ('notifications', 'company_invitations', 'whatsapp_onboarding_sessions')
+   where e.company_id = tests.company('NS') and e.tbl not in ('notifications', 'company_invitations', 'whatsapp_onboarding_sessions', 'whatsapp_test_messages')
      and v.n is distinct from e.n),
   null,
   'Nexus member sees every Nexus row in every table'
@@ -152,7 +152,7 @@ select is(
   (select array_agg(e.tbl order by e.tbl)
    from tests.expected e
    left join tests.visible_counts() v on v.tbl = e.tbl and v.company_id = e.company_id
-   where e.tbl not in ('notifications', 'company_invitations', 'whatsapp_onboarding_sessions') and e.company_id in (tests.company('NS'), tests.company('KP'))
+   where e.tbl not in ('notifications', 'company_invitations', 'whatsapp_onboarding_sessions', 'whatsapp_test_messages') and e.company_id in (tests.company('NS'), tests.company('KP'))
      and v.n is distinct from e.n),
   null,
   'shared manager sees every row of both companies'

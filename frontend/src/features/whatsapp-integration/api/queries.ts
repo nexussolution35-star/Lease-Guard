@@ -21,6 +21,10 @@ import type {
   WhatsAppOnboardingCompletion,
   WhatsAppOnboardingResult,
   WhatsAppOnboardingSession,
+  WhatsAppActivation,
+  WhatsAppSetup,
+  WhatsAppTestMessage,
+  WhatsAppTestMessageRequest,
 } from './source'
 
 export const whatsAppAccountKeys = createEntityKeys('whatsapp-business-account')
@@ -76,7 +80,11 @@ export function useVerifyWhatsAppNumber(): UseMutationResult<WhatsAppVerificatio
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ numberId }) => getWhatsAppIntegrationSource().verifyNumber(companyId(), numberId),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: whatsAppAccountKeys.all }),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: whatsAppAccountKeys.all }),
+        queryClient.invalidateQueries({ queryKey: whatsAppSetupKeys.all }),
+      ]),
   })
 }
 
@@ -86,7 +94,11 @@ export function useRegisterWhatsAppNumber(): UseMutationResult<WhatsAppVerificat
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ numberId, pin }) => getWhatsAppIntegrationSource().registerNumber(companyId(), numberId, pin),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: whatsAppAccountKeys.all }),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: whatsAppAccountKeys.all }),
+        queryClient.invalidateQueries({ queryKey: whatsAppSetupKeys.all }),
+      ]),
   })
 }
 
@@ -100,7 +112,47 @@ export function useDisconnectWhatsAppNumber(): UseMutationResult<WhatsAppDisconn
       Promise.all([
         queryClient.invalidateQueries({ queryKey: whatsAppAccountKeys.all }),
         queryClient.invalidateQueries({ queryKey: onboardingKeys.all }),
+        queryClient.invalidateQueries({ queryKey: whatsAppSetupKeys.all }),
       ]),
+  })
+}
+
+export const whatsAppSetupKeys = createEntityKeys('whatsapp-setup')
+
+/**
+ * Whether Meta may still change the setup without anyone clicking: a test message on its way, a verification or a
+ * signup in progress. The setup is then refreshed every few seconds.
+ */
+export function isSetupWaitingOnMeta(setup: WhatsAppSetup | undefined): boolean {
+  return (setup?.steps ?? []).some((step) => step.state === 'waiting_on_meta' && step.step !== 'message_templates')
+}
+
+/** The active company's ten WhatsApp setup steps and activation; polled while LeaseGuard waits on Meta. */
+export function useWhatsAppSetup(options: { enabled?: boolean } = {}): UseQueryResult<WhatsAppSetup> {
+  return useCompanyQuery(
+    (companyId) => whatsAppSetupKeys.company(companyId),
+    (companyId) => getWhatsAppIntegrationSource().getSetup(companyId),
+    { ...options, refetchInterval: (query) => (isSetupWaitingOnMeta(query.state.data) ? VERIFICATION_POLL_MS : false) },
+  )
+}
+
+/** Company admins: send a test message; the setup then polls until Meta reports it delivered (or it fails). */
+export function useSendWhatsAppTestMessage(): UseMutationResult<WhatsAppTestMessage, Error, WhatsAppTestMessageRequest> {
+  const companyId = useActiveCompanyOrThrow()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (request) => getWhatsAppIntegrationSource().sendTestMessage(companyId(), request),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: whatsAppSetupKeys.all }),
+  })
+}
+
+/** Company admins: activate (true) or deactivate (false) WhatsApp for the company. */
+export function useSetWhatsAppActivation(): UseMutationResult<WhatsAppActivation, Error, { active: boolean }> {
+  const companyId = useActiveCompanyOrThrow()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ active }) => (active ? getWhatsAppIntegrationSource().activate(companyId()) : getWhatsAppIntegrationSource().deactivate(companyId())),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: whatsAppSetupKeys.all }),
   })
 }
 
@@ -149,6 +201,7 @@ export function useCompleteWhatsAppSignup(): UseMutationResult<
       Promise.all([
         queryClient.invalidateQueries({ queryKey: whatsAppAccountKeys.all }),
         queryClient.invalidateQueries({ queryKey: onboardingKeys.all }),
+        queryClient.invalidateQueries({ queryKey: whatsAppSetupKeys.all }),
       ]),
   })
 }

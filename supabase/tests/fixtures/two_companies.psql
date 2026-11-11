@@ -73,6 +73,13 @@ values
   ('20000000-0000-4000-8000-000000000001', 'waba-ns', '900000000001', 'monthly_statement', 'en_ZA', 'UTILITY', 'APPROVED'),
   ('20000000-0000-4000-8000-000000000002', 'waba-kp', '900000000002', 'monthly_statement', 'en_ZA', 'UTILITY', 'PENDING');
 
+-- One failed test message per company (ticket 11; company admins read them, only the backend writes them).
+insert into public.whatsapp_test_messages (company_id, number_id, template_name, template_language, to_number, status, failure_reason, failed_at, requested_by_user_id)
+select n.company_id, n.id, 'hello_world', 'en_US', '+27829990000', 'failed', 'Fixture: not sent', now(),
+       case when n.company_id = '20000000-0000-4000-8000-000000000001' then '10000000-0000-4000-8000-000000000001'::uuid end
+from public.whatsapp_phone_numbers n
+where n.company_id in ('20000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000002');
+
 -- ------------------------------------------------------------------ portfolio
 insert into public.properties (id, company_id, name, code, type, address_line1, suburb, city, province, postal_code, gross_lettable_area_sqm, manager_user_id, owner_user_id, accounting_system)
 values

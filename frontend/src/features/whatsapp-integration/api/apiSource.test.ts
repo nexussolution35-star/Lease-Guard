@@ -60,4 +60,28 @@ describe('createApiWhatsAppIntegrationSource', () => {
     const fetch = fakeFetch(403, { statusCode: 403, error: 'Forbidden', message: 'Not a member', requestId: null })
     await expect(createApiWhatsAppIntegrationSource(fakeApiClient(fetch)).listBusinessAccounts(TEST_COMPANY_ID)).rejects.toBeInstanceOf(ApiError)
   })
+
+  it('reads the setup, sends a test message and (de)activates WhatsApp for the active company', async () => {
+    const setup = fakeFetch(200, { steps: [], completedSteps: 0, totalSteps: 10, readyForActivation: false, activation: { active: false } })
+    await createApiWhatsAppIntegrationSource(fakeApiClient(setup)).getSetup(TEST_COMPANY_ID)
+    expect(urlOf(setup).pathname).toBe('/api/v1/integrations/whatsapp/setup')
+    expect(requestAt(setup).headers.get('X-Company-Id')).toBe(TEST_COMPANY_ID)
+
+    const send = fakeFetch(202, { id: 't-1', status: 'queued' })
+    const request = { numberId: 'n-1', templateId: 'tpl-1', to: '+27829990001' }
+    await createApiWhatsAppIntegrationSource(fakeApiClient(send)).sendTestMessage(TEST_COMPANY_ID, request)
+    expect(urlOf(send).pathname).toBe('/api/v1/integrations/whatsapp/test-messages')
+    expect(requestAt(send).method).toBe('POST')
+    expect(await requestAt(send).json()).toEqual(request)
+
+    const activate = fakeFetch(200, { active: true })
+    await createApiWhatsAppIntegrationSource(fakeApiClient(activate)).activate(TEST_COMPANY_ID)
+    expect(urlOf(activate).pathname).toBe('/api/v1/integrations/whatsapp/activation')
+    expect(requestAt(activate).method).toBe('POST')
+
+    const deactivate = fakeFetch(200, { active: false })
+    await createApiWhatsAppIntegrationSource(fakeApiClient(deactivate)).deactivate(TEST_COMPANY_ID)
+    expect(requestAt(deactivate).method).toBe('DELETE')
+    expect(requestAt(deactivate).headers.get('X-Company-Id')).toBe(TEST_COMPANY_ID)
+  })
 })

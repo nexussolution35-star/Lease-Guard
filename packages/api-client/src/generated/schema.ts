@@ -906,6 +906,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/whatsapp/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The active company's ten WhatsApp setup steps and its activation
+         * @description Each step is done only when LeaseGuard verified it (Meta's answers recorded during signup and number verification, Meta's delivered or read status of a test message, LeaseGuard's own records), with what to do next. Every member may read it; the latest test message is included for company admins only.
+         */
+        get: operations["getWhatsAppSetup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/whatsapp/test-messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a test message from a connected number (company admins)
+         * @description Sends an approved Meta template of the number's account, without parameters, to the number entered (never a tenant of the company). The worker sends it; the setup step completes only when Meta reports it delivered or read. At most 10 per company per hour.
+         */
+        post: operations["sendWhatsAppTestMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/whatsapp/activation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Activate WhatsApp for the company (company admins)
+         * @description Refused with 409 until every required setup step is verified; the database refuses it too, whoever asks.
+         */
+        post: operations["activateWhatsApp"];
+        /** Mark WhatsApp as not active for the company (company admins) */
+        delete: operations["deactivateWhatsApp"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/webhooks/whatsapp": {
         parameters: {
             query?: never;
@@ -2770,6 +2831,96 @@ export interface components {
             tokenRemoved: boolean;
             message: string;
         };
+        /** @enum {string} */
+        WhatsAppSetupStep: "business_profile" | "meta_account" | "business_account" | "phone_number" | "webhook" | "message_templates" | "ai_agent" | "knowledge_base" | "test_message" | "ready_for_activation";
+        /**
+         * @description done: verified; action_needed: a company admin acts next; waiting_on_meta: LeaseGuard waits for Meta; blocked: an earlier step first
+         * @enum {string}
+         */
+        WhatsAppSetupState: "done" | "action_needed" | "waiting_on_meta" | "blocked";
+        WhatsAppSetupStepDto: {
+            step: components["schemas"]["WhatsAppSetupStep"];
+            /** @description Required for activation (the AI agent and knowledge base are recommended only) */
+            required: boolean;
+            /** @description done: verified; action_needed: a company admin acts next; waiting_on_meta: LeaseGuard waits for Meta; blocked: an earlier step first */
+            state: components["schemas"]["WhatsAppSetupState"];
+            title: string;
+            /** @description What is verified, or what to do next */
+            guidance: string;
+        };
+        WhatsAppActivationDto: {
+            active: boolean;
+            /** Format: date-time */
+            activatedAt?: string;
+            /** Format: uuid */
+            activatedByUserId?: string;
+        };
+        /**
+         * @description Only delivered or read (Meta's status webhook) completes the setup step
+         * @enum {string}
+         */
+        WhatsAppTestMessageStatus: "queued" | "sending" | "sent" | "delivered" | "read" | "failed";
+        WhatsAppTestMessageDto: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: uuid
+             * @description The company number it is sent from
+             */
+            numberId: string;
+            /** @description Meta's template name */
+            templateName: string;
+            /** @description Meta language code, e.g. en_ZA */
+            templateLanguage: string;
+            /** @description E.164 recipient; never a tenant of the company */
+            toNumber: string;
+            /** @description Only delivered or read (Meta's status webhook) completes the setup step */
+            status: components["schemas"]["WhatsAppTestMessageStatus"];
+            /** @description Why it failed (Meta's code and title, or LeaseGuard's reason) */
+            failureReason?: string;
+            /** @description The outcome of the send is unknown; check the phone before sending another */
+            mayHaveBeenSent: boolean;
+            /** Format: uuid */
+            requestedByUserId?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            sentAt?: string;
+            /** Format: date-time */
+            deliveredAt?: string;
+            /** Format: date-time */
+            readAt?: string;
+            /** Format: date-time */
+            failedAt?: string;
+        };
+        WhatsAppSetupDto: {
+            /** @description The ten steps, in order */
+            steps: components["schemas"]["WhatsAppSetupStepDto"][];
+            completedSteps: number;
+            totalSteps: number;
+            /** @description Every required step is verified; a company admin may activate WhatsApp */
+            readyForActivation: boolean;
+            activation: components["schemas"]["WhatsAppActivationDto"];
+            /** @description The latest test message (company admins only) */
+            latestTestMessage?: components["schemas"]["WhatsAppTestMessageDto"];
+        };
+        SendWhatsAppTestMessageDto: {
+            /**
+             * Format: uuid
+             * @description A connected number of the company
+             */
+            numberId: string;
+            /**
+             * Format: uuid
+             * @description An APPROVED template of the number's WhatsApp Business Account (from message-templates)
+             */
+            templateId: string;
+            /**
+             * @description Recipient in international format; not a tenant of the company
+             * @example +27821234567
+             */
+            to: string;
+        };
         WhatsAppWebhookReceiptDto: {
             /** @enum {boolean} */
             received: true;
@@ -3411,6 +3562,14 @@ export type WhatsAppMessageTemplateDto = components['schemas']['WhatsAppMessageT
 export type WhatsAppVerificationRequestDto = components['schemas']['WhatsAppVerificationRequestDto'];
 export type RegisterWhatsAppNumberDto = components['schemas']['RegisterWhatsAppNumberDto'];
 export type WhatsAppDisconnectResultDto = components['schemas']['WhatsAppDisconnectResultDto'];
+export type WhatsAppSetupStep = components['schemas']['WhatsAppSetupStep'];
+export type WhatsAppSetupState = components['schemas']['WhatsAppSetupState'];
+export type WhatsAppSetupStepDto = components['schemas']['WhatsAppSetupStepDto'];
+export type WhatsAppActivationDto = components['schemas']['WhatsAppActivationDto'];
+export type WhatsAppTestMessageStatus = components['schemas']['WhatsAppTestMessageStatus'];
+export type WhatsAppTestMessageDto = components['schemas']['WhatsAppTestMessageDto'];
+export type WhatsAppSetupDto = components['schemas']['WhatsAppSetupDto'];
+export type SendWhatsAppTestMessageDto = components['schemas']['SendWhatsAppTestMessageDto'];
 export type WhatsAppWebhookReceiptDto = components['schemas']['WhatsAppWebhookReceiptDto'];
 export type ConversationFilter = components['schemas']['ConversationFilter'];
 export type WhatsAppConversationContactDto = components['schemas']['WhatsAppConversationContactDto'];
@@ -6750,6 +6909,279 @@ export interface operations {
             };
             /** @description No such number in the active company */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getWhatsAppSetup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppSetupDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    sendWhatsAppTestMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendWhatsAppTestMessageDto"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppTestMessageDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description No such number, or no such template in the number's account */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The number is not connected */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The template is not approved by Meta, or the number is a tenant's */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description 10 test messages in the last hour */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /**
+             * @description Background processing is unavailable (the test message is marked failed)
+             *
+             *     Authentication or database unavailable
+             */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    activateWhatsApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppActivationDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description A required setup step is not verified */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    deactivateWhatsApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppActivationDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

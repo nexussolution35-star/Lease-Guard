@@ -157,3 +157,15 @@ _Avoid_: Draft (a draft is an unsent message or knowledge item), auto-reply
 **Out-of-hours message**:
 The company's message the AI agent sends a contact who writes outside operating hours, at most once per closed period and 24 hours, never to a tenant.
 _Avoid_: Away message, auto-response
+
+**WhatsApp setup**:
+A company's ten steps to WhatsApp readiness (business profile, Meta account, WhatsApp Business Account, phone number, webhook, message templates, AI agent, knowledge base, test message, ready for activation); a step is done only when LeaseGuard has verified it, and the AI agent and knowledge base are recommended rather than required.
+_Avoid_: Onboarding (on its own, which reads as the company's setup checklist), health check
+
+**Test message**:
+An approved WhatsApp template a company admin sends from a connected business number to a number they enter, never a tenant's, to prove the channel end to end; it counts only once Meta reports it delivered or read, and it is not a communication.
+_Avoid_: Ping, sample message
+
+**WhatsApp activation**:
+A company admin's recorded decision that the company is live on WhatsApp, refused until every required WhatsApp setup step is verified.
+_Avoid_: Go-live switch, enabling WhatsApp (which reads as connecting a number)

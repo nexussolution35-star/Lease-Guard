@@ -24,7 +24,12 @@ describe('queue registry', () => {
       'whatsapp-number-verification',
       'whatsapp-webhook',
       'whatsapp-agent',
+      'whatsapp-test-message',
     ])
+  })
+
+  it('keys a test message by its company and id, so a repeated request never sends it twice', () => {
+    expect(jobIdFor('whatsapp-test-message', { companyId: 'C1', testMessageId: 'T1' })).toBe('whatsapp-test-message.c1.t1')
   })
 
   it('keys an agent run by its company and inbound message', () => {

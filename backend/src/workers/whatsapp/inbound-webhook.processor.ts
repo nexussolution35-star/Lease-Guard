@@ -13,6 +13,7 @@ import { isFinalAttempt, type JobAttempt, ProcessorRuntime } from '../jobs/proce
 import { WorkerQueues } from '../queues/worker-queues'
 import { Clock } from '../shared/clock'
 import { unwrap, WorkerDatabaseError } from '../shared/db'
+import { recordTestMessageStatus } from './test-message-store'
 import {
   type AccessRemoval,
   type AccessRemovalEvent,
@@ -293,7 +294,13 @@ export class WhatsAppWebhookProcessor implements OnModuleInit {
       outcomes = await routeWebhookPayload(payload, {
         numbers: this.channels,
         store: messages,
-        statuses: { record: (update) => recordProviderStatus(db, update) },
+        // A status for no communication may be a company admin's test message (ticket 11).
+        statuses: {
+          record: async (update) => {
+            const outcome = await recordProviderStatus(db, update)
+            return outcome === 'not_found' ? recordTestMessageStatus(db, update) : outcome
+          },
+        },
         accounts: accountEvents({ store: new DatabaseAccountEventStore(db, this.channels), appId: this.env.WHATSAPP_APP_ID }),
       })
       // The company's AI agent runs on each message (ticket 10), once per message whatever the retries.

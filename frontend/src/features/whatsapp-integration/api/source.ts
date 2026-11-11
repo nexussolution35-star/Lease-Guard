@@ -1,5 +1,9 @@
 import type {
   CompleteWhatsAppOnboardingDto,
+  SendWhatsAppTestMessageDto,
+  WhatsAppActivationDto,
+  WhatsAppSetupDto,
+  WhatsAppTestMessageDto,
   WhatsAppBusinessAccountDto,
   WhatsAppCapabilitiesDto,
   WhatsAppDisconnectResultDto,
@@ -33,6 +37,14 @@ export type WhatsAppOnboardingCompletion = CompleteWhatsAppOnboardingDto
 /** The outcome, written for the admin. Never a token. */
 export type WhatsAppOnboardingResult = WhatsAppOnboardingResultDto
 
+/** The company's ten WhatsApp setup steps (verified facts only), its activation and (admins) the latest test message. */
+export type WhatsAppSetup = WhatsAppSetupDto
+export type WhatsAppSetupStepStatus = WhatsAppSetup['steps'][number]
+export type WhatsAppActivation = WhatsAppActivationDto
+export type WhatsAppTestMessage = WhatsAppTestMessageDto
+/** A company admin's test message: a connected number, an approved template of its account, the recipient (E.164). */
+export type WhatsAppTestMessageRequest = SendWhatsAppTestMessageDto
+
 export interface WhatsAppIntegrationSource {
   /** Not company-scoped: the same for every company of the deployment. */
   getCapabilities(): Promise<WhatsAppCapabilities>
@@ -50,4 +62,12 @@ export interface WhatsAppIntegrationSource {
   registerNumber(companyId: EntityId, numberId: EntityId, pin: string): Promise<WhatsAppVerificationRequest>
   /** Company admins: disconnect a number; its stored token is removed. */
   disconnectNumber(companyId: EntityId, numberId: EntityId): Promise<WhatsAppDisconnectResult>
+  /** Every member: the ten setup steps and the activation. */
+  getSetup(companyId: EntityId): Promise<WhatsAppSetup>
+  /** Company admins: send a test message; it completes the setup step only once Meta reports it delivered. */
+  sendTestMessage(companyId: EntityId, request: WhatsAppTestMessageRequest): Promise<WhatsAppTestMessage>
+  /** Company admins: activate WhatsApp (refused until every required step is verified). */
+  activate(companyId: EntityId): Promise<WhatsAppActivation>
+  /** Company admins: mark WhatsApp as not active. */
+  deactivate(companyId: EntityId): Promise<WhatsAppActivation>
 }

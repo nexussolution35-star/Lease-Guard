@@ -51,5 +51,17 @@ export function createApiWhatsAppIntegrationSource(api: ApiClient): WhatsAppInte
         }),
       )
     },
+    getSetup(companyId) {
+      return unwrap(api.GET('/api/v1/integrations/whatsapp/setup', { headers: { [COMPANY_ID_HEADER]: companyId } }))
+    },
+    sendTestMessage(companyId, request) {
+      return unwrap(api.POST('/api/v1/integrations/whatsapp/test-messages', { headers: { [COMPANY_ID_HEADER]: companyId }, body: request }))
+    },
+    activate(companyId) {
+      return unwrap(api.POST('/api/v1/integrations/whatsapp/activation', { headers: { [COMPANY_ID_HEADER]: companyId } }))
+    },
+    deactivate(companyId) {
+      return unwrap(api.DELETE('/api/v1/integrations/whatsapp/activation', { headers: { [COMPANY_ID_HEADER]: companyId } }))
+    },
   }
 }

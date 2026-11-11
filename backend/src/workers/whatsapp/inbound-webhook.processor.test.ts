@@ -174,10 +174,28 @@ describe('WhatsAppWebhookProcessor: delivery statuses', () => {
     })
   })
 
-  it('retries a recent status whose message is not recorded yet (the status overtook the send), without finishing the event', async () => {
+  it("applies a status that matches no communication to the company's test message (ticket 11)", async () => {
     const { processor, queries } = harness((q) => {
       if (stored(q)) return ok({ id: EVENT, processing_status: 'received' })
       if (q.table === 'rpc:record_communication_provider_status') return ok('not_found')
+      if (q.table === 'rpc:record_whatsapp_test_message_status') return ok('advanced')
+      return ok()
+    })
+    const result = await processor.process(job(statusBody(NOW.getTime() / 1000 - 5)), FIRST)
+    expect(result).toMatchObject({ outcome: 'processed', outcomes: [{ companyId: COMPANY, statusId: 'wamid.OUT', outcome: 'advanced' }] })
+    const rpc = queries.find((q) => q.table === 'rpc:record_whatsapp_test_message_status')!
+    expect(callsTo(rpc, 'rpc')[0]![0]).toEqual({
+      p_company_id: COMPANY,
+      p_provider_message_id: 'wamid.OUT',
+      p_status: 'delivered',
+      p_occurred_at: new Date(NOW.getTime() - 5000).toISOString(),
+    })
+  })
+
+  it('retries a recent status whose message is not recorded yet (the status overtook the send), without finishing the event', async () => {
+    const { processor, queries } = harness((q) => {
+      if (stored(q)) return ok({ id: EVENT, processing_status: 'received' })
+      if (q.table === 'rpc:record_communication_provider_status' || q.table === 'rpc:record_whatsapp_test_message_status') return ok('not_found')
       return ok()
     })
     await expect(processor.process(job(statusBody(NOW.getTime() / 1000 - 5)), FIRST)).rejects.toBeInstanceOf(StatusesNotYetRecordedError)
@@ -187,7 +205,7 @@ describe('WhatsAppWebhookProcessor: delivery statuses', () => {
   it('records the status as not found on the last attempt, and at once for a status too old to be waiting for its send', async () => {
     const answer = (q: RecordedQuery): FakeResult => {
       if (stored(q)) return ok({ id: EVENT, processing_status: 'received' })
-      if (q.table === 'rpc:record_communication_provider_status') return ok('not_found')
+      if (q.table === 'rpc:record_communication_provider_status' || q.table === 'rpc:record_whatsapp_test_message_status') return ok('not_found')
       return ok()
     }
     await expect(harness(answer).processor.process(job(statusBody(NOW.getTime() / 1000 - 5)), LAST)).resolves.toMatchObject({

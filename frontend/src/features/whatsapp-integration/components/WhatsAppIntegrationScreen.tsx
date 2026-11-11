@@ -18,6 +18,7 @@ import type { WhatsAppBusinessAccount, WhatsAppCapabilities, WhatsAppPhoneNumber
 import { ConnectWhatsAppBusiness } from './ConnectWhatsAppBusiness'
 import { MessageTemplatesCard } from './MessageTemplatesCard'
 import { NumberActions, VerificationSteps } from './NumberVerification'
+import { WhatsAppSetupProgress } from './WhatsAppSetupProgress'
 
 const CAPABILITIES: readonly { id: WhatsAppCapability; label: string; description: string }[] = [
   {
@@ -299,6 +300,7 @@ export function WhatsAppIntegrationScreen() {
           You can view the WhatsApp status. Only company admins can connect or change WhatsApp numbers.
         </p>
       )}
+      <WhatsAppSetupProgress isAdmin={isAdmin} />
       <MetaSetup />
       {isAdmin ? <ConnectWhatsAppBusiness capabilities={capabilities.data} /> : null}
       <div className="space-y-3">

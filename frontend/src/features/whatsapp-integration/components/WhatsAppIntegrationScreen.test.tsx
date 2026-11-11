@@ -18,6 +18,7 @@ const fakeSource = vi.hoisted(() => ({
   verifyNumber: vi.fn<WhatsAppIntegrationSource['verifyNumber']>(),
   registerNumber: vi.fn<WhatsAppIntegrationSource['registerNumber']>(),
   disconnectNumber: vi.fn<WhatsAppIntegrationSource['disconnectNumber']>(),
+  getSetup: vi.fn<WhatsAppIntegrationSource['getSetup']>(),
 }))
 vi.mock('../api/selectSource', () => ({ getWhatsAppIntegrationSource: () => fakeSource }))
 
@@ -116,6 +117,13 @@ beforeEach(() => {
   fakeSource.verifyNumber.mockReset()
   fakeSource.registerNumber.mockReset()
   fakeSource.disconnectNumber.mockReset()
+  fakeSource.getSetup.mockReset().mockResolvedValue({
+    steps: [{ step: 'business_profile', required: true, state: 'done', title: 'Business profile', guidance: 'Filled in.' }],
+    completedSteps: 1,
+    totalSteps: 10,
+    readyForActivation: false,
+    activation: { active: false },
+  })
 })
 
 describe('WhatsAppIntegrationScreen', () => {
@@ -214,6 +222,12 @@ describe('WhatsAppIntegrationScreen', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /try again/i }))
     expect(await screen.findByRole('region', { name: 'Nexus Leasing' })).toBeInTheDocument()
+  })
+
+  it('shows the WhatsApp setup steps at the top of the page', async () => {
+    await renderScreen()
+    const setup = await screen.findByRole('region', { name: 'WhatsApp setup' })
+    expect(within(setup).getByText('Business profile')).toBeInTheDocument()
   })
 
   it('shows when the setup status cannot be loaded', async () => {

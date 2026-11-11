@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Param, ParseUUIDPipe, Post } from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Inject, Param, ParseUUIDPipe, Post } from '@nestjs/common'
 import {
   ApiAcceptedResponse,
   ApiConflictResponse,
@@ -9,8 +9,9 @@ import {
   ApiOperation,
   ApiServiceUnavailableResponse,
   ApiTags,
+  ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger'
-import type { WhatsAppBusinessAccount, WhatsAppMessageTemplate } from '@leaseguard/domain'
+import type { WhatsAppActivation, WhatsAppBusinessAccount, WhatsAppMessageTemplate, WhatsAppSetup, WhatsAppTestMessage } from '@leaseguard/domain'
 
 import { Authenticated, CompanyScoped } from '../../common/decorators/company-scoped.decorator'
 import { CurrentCompany } from '../../common/decorators/current-company.decorator'
@@ -34,8 +35,10 @@ import { CompleteWhatsAppOnboardingDto, WhatsAppOnboardingResultDto, WhatsAppOnb
 import { type WhatsAppCapabilities, whatsAppCapabilities } from './whatsapp-capabilities'
 import { WhatsAppIntegrationService } from './whatsapp-integration.service'
 import { type DisconnectResult, type VerificationRequest, WhatsAppNumbersService } from './whatsapp-numbers.service'
-import { completeOnboardingBodySchema, registerNumberBodySchema } from './whatsapp-onboarding.schemas'
+import { SendWhatsAppTestMessageDto, WhatsAppActivationDto, WhatsAppSetupDto, WhatsAppTestMessageDto } from './dto/whatsapp-setup.dto'
+import { completeOnboardingBodySchema, registerNumberBodySchema, sendTestMessageBodySchema } from './whatsapp-onboarding.schemas'
 import { type OnboardingResult, type OnboardingSessionStart, WhatsAppOnboardingService } from './whatsapp-onboarding.service'
+import { WhatsAppSetupService } from './whatsapp-setup.service'
 
 /**
  * Settings → Integrations → WhatsApp: what this deployment is configured for, and the active company's
@@ -48,6 +51,7 @@ export class WhatsAppIntegrationController {
     private readonly integration: WhatsAppIntegrationService,
     private readonly onboarding: WhatsAppOnboardingService,
     private readonly numbers: WhatsAppNumbersService,
+    private readonly setup: WhatsAppSetupService,
     private readonly worker: WorkerCapabilitiesReader,
     @Inject(API_ENV) private readonly env: ApiEnv,
   ) {}
@@ -201,5 +205,67 @@ export class WhatsAppIntegrationController {
     @Param('numberId', new ParseUUIDPipe()) numberId: string,
   ): Promise<DisconnectResult> {
     return this.numbers.disconnect(db, company.companyId, numberId)
+  }
+
+  @Get('setup')
+  @CompanyScoped()
+  @ApiOperation({
+    operationId: 'getWhatsAppSetup',
+    summary: "The active company's ten WhatsApp setup steps and its activation",
+    description:
+      "Each step is done only when LeaseGuard verified it (Meta's answers recorded during signup and number verification, " +
+      "Meta's delivered or read status of a test message, LeaseGuard's own records), with what to do next. Every member may " +
+      'read it; the latest test message is included for company admins only.',
+  })
+  @ApiOkResponse({ type: WhatsAppSetupDto })
+  getSetup(@UserDb() db: DbClient, @CurrentCompany() company: CompanyContext): Promise<WhatsAppSetup> {
+    return this.setup.status(db, company)
+  }
+
+  @Post('test-messages')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @CompanyScoped({ roles: ['company_admin'] })
+  @ApiOperation({
+    operationId: 'sendWhatsAppTestMessage',
+    summary: 'Send a test message from a connected number (company admins)',
+    description:
+      "Sends an approved Meta template of the number's account, without parameters, to the number entered (never a tenant of " +
+      "the company). The worker sends it; the setup step completes only when Meta reports it delivered or read. At most 10 per " +
+      'company per hour.',
+  })
+  @ApiAcceptedResponse({ type: WhatsAppTestMessageDto })
+  @ApiNotFoundResponse({ type: ApiErrorDto, description: "No such number, or no such template in the number's account" })
+  @ApiConflictResponse({ type: ApiErrorDto, description: 'The number is not connected' })
+  @ApiUnprocessableEntityResponse({ type: ApiErrorDto, description: "The template is not approved by Meta, or the number is a tenant's" })
+  @ApiTooManyRequestsResponse({ type: ApiErrorDto, description: '10 test messages in the last hour' })
+  @ApiServiceUnavailableResponse({ type: ApiErrorDto, description: 'Background processing is unavailable (the test message is marked failed)' })
+  sendTestMessage(
+    @UserDb() db: DbClient,
+    @CurrentCompany() company: CompanyContext,
+    @Body(new ZodValidationPipe(sendTestMessageBodySchema)) body: SendWhatsAppTestMessageDto,
+  ): Promise<WhatsAppTestMessage> {
+    return this.setup.sendTestMessage(db, company.companyId, sendTestMessageBodySchema.parse(body))
+  }
+
+  @Post('activation')
+  @HttpCode(HttpStatus.OK)
+  @CompanyScoped({ roles: ['company_admin'] })
+  @ApiOperation({
+    operationId: 'activateWhatsApp',
+    summary: 'Activate WhatsApp for the company (company admins)',
+    description: 'Refused with 409 until every required setup step is verified; the database refuses it too, whoever asks.',
+  })
+  @ApiOkResponse({ type: WhatsAppActivationDto })
+  @ApiConflictResponse({ type: ApiErrorDto, description: 'A required setup step is not verified' })
+  activate(@UserDb() db: DbClient, @CurrentCompany() company: CompanyContext): Promise<WhatsAppActivation> {
+    return this.setup.activate(db, company.companyId)
+  }
+
+  @Delete('activation')
+  @CompanyScoped({ roles: ['company_admin'] })
+  @ApiOperation({ operationId: 'deactivateWhatsApp', summary: 'Mark WhatsApp as not active for the company (company admins)' })
+  @ApiOkResponse({ type: WhatsAppActivationDto })
+  deactivate(@UserDb() db: DbClient, @CurrentCompany() company: CompanyContext): Promise<WhatsAppActivation> {
+    return this.setup.deactivate(db, company.companyId)
   }
 }
