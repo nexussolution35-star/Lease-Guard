@@ -1,9 +1,20 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, stripSearchParams } from '@tanstack/react-router'
 
-import { ScreenPlaceholder } from '@/components/layout'
+import { AUDIT_DEFAULTS, auditSearchSchema } from '@/features/audit/auditSearch'
+import { AuditLogScreen } from '@/features/audit/components/AuditLogScreen'
 
 export const Route = createFileRoute('/settings/audit')({
-  component: function AuditLogScreen() {
-    return <ScreenPlaceholder title="Audit log" description="Every change made in this workspace." />
+  validateSearch: auditSearchSchema,
+  search: { middlewares: [stripSearchParams(AUDIT_DEFAULTS)] },
+  component: function AuditLogRoute() {
+    const search = Route.useSearch()
+    const navigate = Route.useNavigate()
+    return (
+      <AuditLogScreen
+        search={search}
+        onFiltersChange={(filters) => void navigate({ search: { ...filters, page: AUDIT_DEFAULTS.page, pageSize: search.pageSize }, replace: true })}
+        onPageChange={(page) => void navigate({ search: { ...search, page }, replace: true })}
+      />
+    )
   },
 })
