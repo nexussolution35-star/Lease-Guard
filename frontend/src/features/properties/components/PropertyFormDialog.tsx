@@ -135,7 +135,7 @@ export function PropertyFormDialog({ open, onOpenChange, property, onSaved }: Pr
           </Alert>
         ) : null}
         <div className="space-y-6">
-          <FormSection title="Property">
+          <FormSection title="Name, type and size">
             <TextField control={form.control} name="name" label="Name" maxLength={200} required className="sm:col-span-2" />
             <TextField
               control={form.control}
@@ -160,7 +160,7 @@ export function PropertyFormDialog({ open, onOpenChange, property, onSaved }: Pr
             <SelectField control={form.control} name="province" label="Province" options={PROVINCE_OPTIONS} required />
             <TextField control={form.control} name="postalCode" label="Postal code" autoComplete="postal-code" inputMode="numeric" maxLength={4} required />
           </FormSection>
-          <FormSection title="People and statements" description="The manager receives this property's monitoring events.">
+          <FormSection title="Management and statements" description="The manager receives this property's monitoring events.">
             <SelectField
               control={form.control}
               name="managerUserId"

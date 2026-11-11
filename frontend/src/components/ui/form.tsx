@@ -80,7 +80,9 @@ function FormItem({ className, ...props }: React.ComponentProps<"div">) {
     <FormItemContext.Provider value={{ id }}>
       <div
         data-slot="form-item"
-        className={cn("grid gap-2", className)}
+        // content-start: in a multi-column form row stretched by a taller neighbour (one with a description or an
+        // error), the label and control keep their natural height, so controls line up across the row.
+        className={cn("grid content-start gap-2", className)}
         {...props}
       />
     </FormItemContext.Provider>
