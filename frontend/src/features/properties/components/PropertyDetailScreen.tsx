@@ -160,7 +160,7 @@ export function PropertyDetailScreen({ property }: PropertyDetailScreenProps) {
     <section className="space-y-6">
       <PageHeader
         title={property.name}
-        description={`${property.code} · ${labelFor(property.type)} · ${property.address.city}, ${property.address.province}`}
+        description={`${property.code} · ${labelFor(property.type)}`}
         status={<StatusBadge status={property.status} />}
         actions={actions}
         className="pb-0"
@@ -194,9 +194,7 @@ export function PropertyDetailScreen({ property }: PropertyDetailScreenProps) {
         </CardHeader>
         <CardContent>
           <InformationGrid columns={3}>
-            <InformationItem label="Code" value={<span className="font-mono">{property.code}</span>} hint="Used in lease references; fixed once the property exists." />
-            <InformationItem label="Type" value={labelFor(property.type)} />
-            <InformationItem label="Gross lettable area" value={area(property.grossLettableAreaSqm)} />
+            <InformationItem label="Gross lettable area" value={<span className="tabular-nums">{area(property.grossLettableAreaSqm)}</span>} />
             <InformationItem
               label="Address"
               value={

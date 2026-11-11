@@ -101,7 +101,7 @@ export function PropertyListScreen({ params, onParamsChange }: PropertyListScree
     </Button>
   ) : null
   const header = (
-    <PageHeader title="Properties" description="Properties in this workspace with occupancy and monitoring status." actions={addButton} />
+    <PageHeader title="Properties" description="Every property in this workspace. Open one to see its units, active leases and the monitoring events that need attention." actions={addButton} />
   )
 
   if (isAwaitingWorkspace(query)) {

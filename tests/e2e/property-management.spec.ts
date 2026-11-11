@@ -42,8 +42,8 @@ test.describe('property management', () => {
     // The new property opens on its own screen, managed by the person who added it.
     await expect(pageHeading(page)).toHaveText(name())
     await expect(page).toHaveURL(/\/properties\/[0-9a-f-]{36}$/)
+    await expect(page.getByRole('main').getByText(`${code()} · Office`)).toBeVisible()
     const details = page.getByRole('region', { name: 'Details' })
-    await expect(details).toContainText(code())
     await expect(details).toContainText(manager.fullName)
     await expect(page.getByRole('region', { name: 'Units' })).toContainText('No units yet')
 
