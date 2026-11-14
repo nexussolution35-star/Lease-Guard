@@ -17,7 +17,7 @@ export function WorkspaceSwitcherTrigger({ initials, name, collapsed, className 
     <DropdownMenuTrigger
       aria-label={`Workspace: ${name}. Switch workspace`}
       className={cn(
-        'flex w-full items-center gap-2 rounded-md border border-border bg-background p-1.5 text-left text-sm transition-colors',
+        'flex w-full items-center gap-2 rounded-md border border-border bg-card p-1.5 text-left text-sm transition-colors',
         'hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
         collapsed && 'justify-center border-transparent bg-transparent p-1',
         className,

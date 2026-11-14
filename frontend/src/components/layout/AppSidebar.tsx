@@ -18,7 +18,7 @@ export function AppSidebar({ collapsed = false, onToggleCollapsed, className }: 
       aria-label="Sidebar"
       data-collapsed={collapsed ? 'true' : 'false'}
       className={cn(
-        'sticky top-0 h-svh shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200',
+        'sticky top-0 h-svh shrink-0 flex-col border-r border-border bg-muted/50 transition-[width] duration-200',
         collapsed ? 'w-16' : 'w-64',
         className,
       )}

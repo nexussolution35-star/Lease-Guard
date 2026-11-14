@@ -25,7 +25,9 @@ export function SidebarNavigationItem({ item, active, collapsed = false, onNavig
       className={cn(
         'group relative flex h-9 items-center gap-3 rounded-md px-2.5 text-sm font-medium text-muted-foreground transition-colors',
         'hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
-        active && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary',
+        // Active page: raised row, heavier label and a green bar, so it never relies on colour alone.
+        active &&
+          'bg-card font-semibold text-foreground shadow-xs before:absolute before:inset-y-1.5 before:left-0 before:w-0.75 before:rounded-full before:bg-primary hover:bg-card [&>svg]:text-primary',
         collapsed && 'justify-center px-0',
         className,
       )}
