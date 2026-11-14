@@ -67,10 +67,10 @@ export function MetricCard({
       {isLoading ? (
         <div role="status" aria-busy="true">
           <span className="sr-only">Loading {label}</span>
-          <Skeleton className="h-7 w-24" />
+          <Skeleton className="h-9 w-24" />
         </div>
       ) : (
-        <div className={cn('text-2xl font-semibold tracking-tight tabular-nums', tone !== 'neutral' && TONE_TEXT_CLASSES[tone])}>
+        <div className={cn('text-3xl font-semibold tracking-tight tabular-nums', tone !== 'neutral' && TONE_TEXT_CLASSES[tone])}>
           {value}
         </div>
       )}
