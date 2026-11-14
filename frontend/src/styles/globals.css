@@ -14,29 +14,26 @@
 
 /* Semantic design tokens. Components must reference these, never raw palette values. */
 :root {
-  /* Teal palette: #031716 ink, #032F30 deep, #0A7075 primary, #0C969C bright, #6BA3BE soft blue, #274D60 slate.
-     The palette has no light colours, so light surfaces are near-white tints of it. */
-  --background: #f6fafa;
-  --foreground: #031716;
-  --card: #ffffff;
+  --background: oklch(0.985 0.002 250);
+  --foreground: oklch(0.2 0.02 255);
+  --card: oklch(1 0 0);
   --card-foreground: var(--foreground);
-  --muted: #eaf1f2;
-  --muted-foreground: #274d60;
-  --border: #d3e0e2;
+  --muted: oklch(0.955 0.005 250);
+  --muted-foreground: oklch(0.5 0.02 255);
+  --border: oklch(0.9 0.006 250);
   --input: var(--border);
-  --ring: #0c969c;
-  --primary: #0a7075;
-  --primary-foreground: #ffffff;
-  --secondary: #e4eeef;
+  --ring: oklch(0.55 0.15 255);
+  --primary: oklch(0.42 0.14 255);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.94 0.01 250);
   --secondary-foreground: var(--foreground);
-  --accent: #dceeef;
+  --accent: oklch(0.93 0.03 255);
   --accent-foreground: var(--foreground);
-  --destructive: oklch(0.52 0.19 27);
+  --destructive: oklch(0.55 0.2 25);
   --destructive-foreground: oklch(0.99 0 0);
-  /* Status colours are dark enough to be read as text on their own 10% tints. */
-  --success: oklch(0.5 0.13 150);
-  --warning: oklch(0.52 0.13 65);
-  --info: #274d60;
+  --success: oklch(0.6 0.15 150);
+  --warning: oklch(0.75 0.16 75);
+  --info: oklch(0.6 0.12 240);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
   --radius: 0.5rem;
@@ -44,42 +41,32 @@
 
 :root:not([data-theme="light"]) {
   @media (prefers-color-scheme: dark) {
-    --background: #031716;
-    --foreground: #eaf4f4;
-    --card: #032f30;
-    --muted: #063a3b;
-    /* Lighter than #6BA3BE and #0C969C so text keeps 4.5:1 on the deep teal surfaces. */
-    --muted-foreground: #8fbdd3;
-    --border: #274d60;
-    --ring: #0c969c;
-    --primary: #14a8ae;
-    --primary-foreground: #031716;
-    --secondary: #0a4244;
-    --accent: #274d60;
-    --destructive: oklch(0.7 0.19 25);
-    --success: oklch(0.76 0.14 150);
-    --warning: oklch(0.88 0.13 85);
-    --info: #9cc6da;
+    --background: oklch(0.17 0.015 255);
+    --foreground: oklch(0.95 0.005 250);
+    --card: oklch(0.22 0.015 255);
+    --muted: oklch(0.27 0.015 255);
+    --muted-foreground: oklch(0.7 0.015 250);
+    --border: oklch(0.32 0.015 255);
+    --primary: oklch(0.7 0.13 255);
+    --primary-foreground: oklch(0.15 0.02 255);
+    --secondary: oklch(0.28 0.015 255);
+    --accent: oklch(0.32 0.04 255);
+    --destructive: oklch(0.65 0.19 25);
   }
 }
 
 :root[data-theme="dark"] {
-  --background: #031716;
-  --foreground: #eaf4f4;
-  --card: #032f30;
-  --muted: #063a3b;
-  /* Lighter than #6BA3BE and #0C969C so text keeps 4.5:1 on the deep teal surfaces. */
-  --muted-foreground: #8fbdd3;
-  --border: #274d60;
-  --ring: #0c969c;
-  --primary: #14a8ae;
-  --primary-foreground: #031716;
-  --secondary: #0a4244;
-  --accent: #274d60;
-  --destructive: oklch(0.7 0.19 25);
-  --success: oklch(0.76 0.14 150);
-  --warning: oklch(0.88 0.13 85);
-  --info: #9cc6da;
+  --background: oklch(0.17 0.015 255);
+  --foreground: oklch(0.95 0.005 250);
+  --card: oklch(0.22 0.015 255);
+  --muted: oklch(0.27 0.015 255);
+  --muted-foreground: oklch(0.7 0.015 250);
+  --border: oklch(0.32 0.015 255);
+  --primary: oklch(0.7 0.13 255);
+  --primary-foreground: oklch(0.15 0.02 255);
+  --secondary: oklch(0.28 0.015 255);
+  --accent: oklch(0.32 0.04 255);
+  --destructive: oklch(0.65 0.19 25);
 }
 
 @theme inline {
