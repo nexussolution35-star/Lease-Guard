@@ -14,26 +14,28 @@
 
 /* Semantic design tokens. Components must reference these, never raw palette values. */
 :root {
-  --background: oklch(0.985 0.002 250);
-  --foreground: oklch(0.2 0.02 255);
-  --card: oklch(1 0 0);
+  /* Evergreen on warm neutral: green carries brand and actions, amber is kept for warnings. */
+  --background: oklch(0.985 0.004 90);
+  --foreground: oklch(0.21 0.015 160);
+  --card: oklch(0.998 0.002 90);
   --card-foreground: var(--foreground);
-  --muted: oklch(0.955 0.005 250);
-  --muted-foreground: oklch(0.5 0.02 255);
-  --border: oklch(0.9 0.006 250);
+  --muted: oklch(0.955 0.006 90);
+  --muted-foreground: oklch(0.47 0.015 120);
+  --border: oklch(0.9 0.008 90);
   --input: var(--border);
-  --ring: oklch(0.55 0.15 255);
-  --primary: oklch(0.42 0.14 255);
+  --ring: oklch(0.55 0.11 160);
+  --primary: oklch(0.4 0.09 160);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.94 0.01 250);
+  --secondary: oklch(0.94 0.008 90);
   --secondary-foreground: var(--foreground);
-  --accent: oklch(0.93 0.03 255);
+  --accent: oklch(0.94 0.025 160);
   --accent-foreground: var(--foreground);
-  --destructive: oklch(0.55 0.2 25);
+  --destructive: oklch(0.52 0.19 27);
   --destructive-foreground: oklch(0.99 0 0);
-  --success: oklch(0.6 0.15 150);
-  --warning: oklch(0.75 0.16 75);
-  --info: oklch(0.6 0.12 240);
+  /* Status colours are dark enough to be read as text on their own 10% tints. */
+  --success: oklch(0.5 0.13 150);
+  --warning: oklch(0.52 0.13 65);
+  --info: oklch(0.5 0.12 240);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
   --radius: 0.5rem;
@@ -41,32 +43,40 @@
 
 :root:not([data-theme="light"]) {
   @media (prefers-color-scheme: dark) {
-    --background: oklch(0.17 0.015 255);
-    --foreground: oklch(0.95 0.005 250);
-    --card: oklch(0.22 0.015 255);
-    --muted: oklch(0.27 0.015 255);
-    --muted-foreground: oklch(0.7 0.015 250);
-    --border: oklch(0.32 0.015 255);
-    --primary: oklch(0.7 0.13 255);
-    --primary-foreground: oklch(0.15 0.02 255);
-    --secondary: oklch(0.28 0.015 255);
-    --accent: oklch(0.32 0.04 255);
-    --destructive: oklch(0.65 0.19 25);
+    --background: oklch(0.17 0.012 160);
+    --foreground: oklch(0.95 0.005 90);
+    --card: oklch(0.21 0.012 160);
+    --muted: oklch(0.26 0.012 160);
+    --muted-foreground: oklch(0.72 0.012 120);
+    --border: oklch(0.31 0.012 160);
+    --ring: oklch(0.7 0.12 160);
+    --primary: oklch(0.74 0.12 160);
+    --primary-foreground: oklch(0.16 0.02 160);
+    --secondary: oklch(0.27 0.012 160);
+    --accent: oklch(0.3 0.035 160);
+    --destructive: oklch(0.7 0.19 25);
+    --success: oklch(0.76 0.14 150);
+    --warning: oklch(0.88 0.13 85);
+    --info: oklch(0.76 0.1 240);
   }
 }
 
 :root[data-theme="dark"] {
-  --background: oklch(0.17 0.015 255);
-  --foreground: oklch(0.95 0.005 250);
-  --card: oklch(0.22 0.015 255);
-  --muted: oklch(0.27 0.015 255);
-  --muted-foreground: oklch(0.7 0.015 250);
-  --border: oklch(0.32 0.015 255);
-  --primary: oklch(0.7 0.13 255);
-  --primary-foreground: oklch(0.15 0.02 255);
-  --secondary: oklch(0.28 0.015 255);
-  --accent: oklch(0.32 0.04 255);
-  --destructive: oklch(0.65 0.19 25);
+  --background: oklch(0.17 0.012 160);
+  --foreground: oklch(0.95 0.005 90);
+  --card: oklch(0.21 0.012 160);
+  --muted: oklch(0.26 0.012 160);
+  --muted-foreground: oklch(0.72 0.012 120);
+  --border: oklch(0.31 0.012 160);
+  --ring: oklch(0.7 0.12 160);
+  --primary: oklch(0.74 0.12 160);
+  --primary-foreground: oklch(0.16 0.02 160);
+  --secondary: oklch(0.27 0.012 160);
+  --accent: oklch(0.3 0.035 160);
+  --destructive: oklch(0.7 0.19 25);
+  --success: oklch(0.76 0.14 150);
+  --warning: oklch(0.88 0.13 85);
+  --info: oklch(0.76 0.1 240);
 }
 
 @theme inline {
