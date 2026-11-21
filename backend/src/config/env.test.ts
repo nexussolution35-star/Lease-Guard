@@ -37,7 +37,42 @@ const worker = {
   WEB_APP_URL: 'http://localhost:5173',
 }
 
+/** Production values: the hosted Supabase project, Redis with a password and the app on its public https address. */
+const productionShared = {
+  ...shared,
+  NODE_ENV: 'production',
+  SUPABASE_URL: 'https://abcdefghijklmnopqrst.supabase.co',
+  REDIS_URL: 'redis://:redis-password@redis:6379',
+}
+
+const productionWorker = {
+  ...worker,
+  ...productionShared,
+  SUPABASE_SERVICE_ROLE_KEY: 'service-role-key',
+  DOCUMENT_PROCESSING_URL: 'http://document-processing:8000',
+  DOCUMENT_PROCESSING_TOKEN: 'x'.repeat(64),
+  WEB_APP_URL: 'https://app.203.0.113.10.sslip.io',
+}
+
 describe('loadApiEnv', () => {
+  it('refuses development values in production: plain http, loopback origins, no anon key, Redis without a password', () => {
+    const production = { ...productionShared, API_PORT: '3000', API_CORS_ORIGINS: 'https://app.203.0.113.10.sslip.io', SUPABASE_ANON_KEY: 'anon-key' }
+    expect(loadApiEnv(production).API_CORS_ORIGINS).toEqual(['https://app.203.0.113.10.sslip.io'])
+    const load = () =>
+      loadApiEnv({
+        ...production,
+        SUPABASE_URL: 'http://abcdefghijklmnopqrst.supabase.co',
+        API_CORS_ORIGINS: 'https://app.example.co.za,http://localhost:5173',
+        SUPABASE_ANON_KEY: '',
+        REDIS_URL: 'redis://redis:6379',
+      })
+    expect(load).toThrow(/SUPABASE_URL: must be an https URL in production/)
+    expect(load).toThrow(/API_CORS_ORIGINS: every origin must be an https URL in production/)
+    expect(load).toThrow(/SUPABASE_ANON_KEY: must be set in production/)
+    expect(load).toThrow(/REDIS_URL: must include the Redis password in production/)
+    expect(() => loadApiEnv({ ...production, API_CORS_ORIGINS: 'https://127.0.0.1:8443' })).toThrow(/every origin must not be a loopback address/)
+  })
+
   it('parses API configuration and splits CORS origins', () => {
     const env = loadApiEnv({
       ...shared,
@@ -121,7 +156,27 @@ describe('loadWorkerEnv', () => {
 
   it('requires a long document-processing token in production', () => {
     expect(() => loadWorkerEnv({ ...worker, NODE_ENV: 'production' })).toThrow(/DOCUMENT_PROCESSING_TOKEN: must be at least 32/)
-    expect(loadWorkerEnv({ ...worker, NODE_ENV: 'production', DOCUMENT_PROCESSING_TOKEN: 'x'.repeat(32), WEB_APP_URL: 'https://app.example.co.za' }).NODE_ENV).toBe('production')
+    expect(loadWorkerEnv({ ...productionWorker, DOCUMENT_PROCESSING_TOKEN: 'x'.repeat(32) }).NODE_ENV).toBe('production')
+  })
+
+  it('refuses development values in production: plain http, loopback, no service-role key, Redis without a password', () => {
+    expect(loadWorkerEnv(productionWorker).WEB_APP_URL).toBe('https://app.203.0.113.10.sslip.io')
+    const load = () =>
+      loadWorkerEnv({
+        ...productionWorker,
+        SUPABASE_URL: 'http://127.0.0.1:54321',
+        SUPABASE_SERVICE_ROLE_KEY: ' ',
+        REDIS_URL: 'redis://redis:6379',
+        WEB_APP_URL: 'https://localhost:5173',
+      })
+    expect(load).toThrow(/SUPABASE_URL: must be an https URL in production/)
+    expect(load).toThrow(/SUPABASE_SERVICE_ROLE_KEY: must be set in production/)
+    expect(load).toThrow(/REDIS_URL: must include the Redis password in production/)
+    expect(load).toThrow(/WEB_APP_URL: must not be a loopback address in production/)
+    // The internal document-processing URL stays plain http on the private network.
+    expect(loadWorkerEnv({ ...productionWorker, DOCUMENT_PROCESSING_URL: 'http://document-processing:8000' }).DOCUMENT_PROCESSING_URL).toBe(
+      'http://document-processing:8000',
+    )
   })
 
   it('requires the web app URL, without a trailing slash, query or fragment', () => {
@@ -135,9 +190,8 @@ describe('loadWorkerEnv', () => {
   })
 
   it('requires an https web app URL in production', () => {
-    const production = { ...worker, NODE_ENV: 'production', DOCUMENT_PROCESSING_TOKEN: 'x'.repeat(32) }
-    expect(() => loadWorkerEnv(production)).toThrow(/WEB_APP_URL: must be an https URL in production/)
-    expect(loadWorkerEnv({ ...production, WEB_APP_URL: 'https://app.example.co.za' }).WEB_APP_URL).toBe('https://app.example.co.za')
+    expect(() => loadWorkerEnv({ ...productionWorker, WEB_APP_URL: 'http://app.example.co.za' })).toThrow(/WEB_APP_URL: must be an https URL in production/)
+    expect(loadWorkerEnv({ ...productionWorker, WEB_APP_URL: 'https://app.example.co.za' }).WEB_APP_URL).toBe('https://app.example.co.za')
   })
 
   it('rejects a queue prefix containing the BullMQ key separator', () => {

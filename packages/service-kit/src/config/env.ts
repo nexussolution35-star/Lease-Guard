@@ -33,6 +33,75 @@ export const corsOriginsSetting = z
   .transform((value) => value.split(',').map((origin) => origin.trim()).filter(Boolean))
   .pipe(z.array(z.url()).min(1))
 
+/** Hosts that only exist on the machine itself: never a public address in production. */
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '[::1]', '[::]'])
+
+export function isLoopbackHost(hostname: string): boolean {
+  return LOOPBACK_HOSTS.has(hostname.toLowerCase()) || hostname.toLowerCase().endsWith('.localhost')
+}
+
+/**
+ * What production refuses, by setting name. Each list names settings of the schema being refined; with
+ * `NODE_ENV=production` a value that only makes sense on a developer machine stops the process at startup
+ * (infrastructure/deployment/README.md, "Production configuration").
+ */
+export interface ProductionChecks {
+  /** A URL a browser or another network reaches: https, not a loopback host. */
+  httpsUrls?: readonly string[]
+  /** A list of browser origins (CORS): each https, none a loopback host. */
+  httpsOriginLists?: readonly string[]
+  /** Secrets and keys that must be set (an empty value is refused). */
+  requiredSecrets?: readonly string[]
+  /** Redis URLs that must carry a password. */
+  passwordedRedisUrls?: readonly string[]
+}
+
+/** The issue for one public URL in production, or undefined when it is acceptable. */
+function publicUrlIssue(value: string): string | undefined {
+  let url: URL
+  try {
+    url = new URL(value)
+  } catch {
+    return undefined // the setting's own schema reports a malformed URL
+  }
+  if (url.protocol !== 'https:') return 'must be an https URL in production'
+  if (isLoopbackHost(url.hostname)) return 'must not be a loopback address in production'
+  return undefined
+}
+
+/**
+ * Adds an issue to `ctx` for every production rule `env` breaks (see ProductionChecks). Does nothing outside
+ * production, so local development and tests keep their http, loopback and empty values. Use in a schema's
+ * `superRefine`; messages name the rule, never a value.
+ */
+export function checkProductionSettings(env: Readonly<Record<string, unknown>>, ctx: z.RefinementCtx, checks: ProductionChecks): void {
+  if (env.NODE_ENV !== 'production') return
+  for (const name of checks.httpsUrls ?? []) {
+    const value = env[name]
+    const message = typeof value === 'string' ? publicUrlIssue(value) : undefined
+    if (message) ctx.addIssue({ code: 'custom', path: [name], message })
+  }
+  for (const name of checks.httpsOriginLists ?? []) {
+    const value = env[name]
+    const origins = Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : []
+    const message = origins.map((origin) => publicUrlIssue(String(origin).trim())).find(Boolean)
+    if (message) ctx.addIssue({ code: 'custom', path: [name], message: `every origin ${message}` })
+  }
+  for (const name of checks.requiredSecrets ?? []) {
+    const value = env[name]
+    if (typeof value !== 'string' || value.trim() === '') ctx.addIssue({ code: 'custom', path: [name], message: 'must be set in production' })
+  }
+  for (const name of checks.passwordedRedisUrls ?? []) {
+    const value = env[name]
+    if (typeof value !== 'string') continue
+    try {
+      if (!new URL(value).password) ctx.addIssue({ code: 'custom', path: [name], message: 'must include the Redis password in production (redis://:<password>@host:6379)' })
+    } catch {
+      // the setting's own schema reports a malformed URL
+    }
+  }
+}
+
 export class InvalidEnvironmentError extends Error {
   /**
    * @param where tells the operator where the settings come from, e.g.

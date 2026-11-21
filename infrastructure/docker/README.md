@@ -55,6 +55,12 @@ otherwise runs Compose from the `docker:29-cli` image against the host daemon. T
 script lists the limitations of that fallback (repository files only, which host variables are
 forwarded, local daemon socket).
 
+## Production
+
+This file is the local development stack. Production runs `infrastructure/deployment/production/compose.yml` with the
+Caddy gateway and images from GitHub Container Registry; see `docs/deployment/README.md`. `pnpm docker:production-proof`
+runs that stack locally on test domains and removes it afterwards.
+
 ## Images
 
 See `infrastructure/deployment/README.md` for how the images are built and run in production. All

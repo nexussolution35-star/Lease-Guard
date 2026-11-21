@@ -45,6 +45,8 @@ COPY packages/domain/src packages/domain/src
 COPY packages/api-client/tsconfig.json packages/api-client/
 COPY packages/api-client/src packages/api-client/src
 COPY frontend frontend
+# vite.config.ts reads the gateway routing table (ADR 0003) for its dev/preview proxy, also during a build.
+COPY infrastructure/gateway/routes.json infrastructure/gateway/
 
 ARG VITE_API_URL=
 ARG VITE_SUPABASE_URL=

@@ -37,6 +37,8 @@ skills-lock.json
 .env
 .env.*
 !.env.example
+# Production deployment: each service's own settings (infrastructure/deployment/production/env/*.env.example)
+infrastructure/deployment/production/env/*.env
 
 # Python
 __pycache__/

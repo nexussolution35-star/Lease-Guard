@@ -1,0 +1,47 @@
+# Local proof run only (infrastructure/scripts/production-proof.sh), layered over compose.yml. Never on a server.
+#
+# Production refuses a plain-http Supabase URL, and the local Supabase CLI stack serves plain http on
+# host.docker.internal:54321. This file puts a TLS front on it (Caddy's local CA, as https://supabase.leaseguard.test)
+# and makes the Node services trust that CA, so the stack runs with its real production validation unchanged.
+
+services:
+  supabase-tls:
+    image: ${PROOF_CADDY_IMAGE:-caddy:2.10.2-alpine}
+    # Caddy keeps its CA files root-only; the public root certificate is copied, readable, to the shared volume.
+    command:
+      - sh
+      - -c
+      - >-
+        caddy reverse-proxy --from https://supabase.leaseguard.test --to http://host.docker.internal:54321
+        --change-host-header --internal-certs &
+        until [ -s /data/caddy/pki/authorities/local/root.crt ]; do sleep 0.5; done;
+        install -m 0644 /data/caddy/pki/authorities/local/root.crt /export/root.crt;
+        wait
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      default:
+        aliases:
+          - supabase.leaseguard.test
+    volumes:
+      - proof-ca:/export
+    healthcheck:
+      test: ["CMD", "test", "-s", "/export/root.crt"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  api: &trusts-proof-ca
+    environment:
+      NODE_EXTRA_CA_CERTS: /proof-ca/root.crt
+    volumes:
+      - proof-ca:/proof-ca:ro
+    depends_on:
+      supabase-tls:
+        condition: service_healthy
+  worker: *trusts-proof-ca
+  reports: *trusts-proof-ca
+  reports-worker: *trusts-proof-ca
+
+volumes:
+  proof-ca:

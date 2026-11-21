@@ -4,6 +4,11 @@ What exists today and what each process needs to run in production. Nothing here
 cloud vendor: any platform that runs OCI images, injects environment variables from a secret store
 and terminates TLS in front of HTTP services will do.
 
+**The supported production setup is one Docker host** with `infrastructure/deployment/production/compose.yml`, the
+Caddy gateway (automatic HTTPS) and images from GitHub Container Registry. Its runbook, from server setup and DNS to
+the Meta webhook, rollback and the go-live checklist, is `docs/deployment/README.md`. This file is the per-process
+reference.
+
 LeaseGuard is monitoring and communication only. No component collects, processes or holds payments,
 and none needs payment or banking credentials.
 
@@ -11,7 +16,8 @@ and none needs payment or banking credentials.
 
 | Process | Image (Dockerfile) | Command | Port | Health |
 | --- | --- | --- | --- | --- |
-| Gateway (nginx, HTTP) | `infrastructure/gateway/Dockerfile` | default | 8080 | `GET /healthz` |
+| Gateway, production (Caddy, HTTPS) | `infrastructure/gateway/caddy/Dockerfile` (context `infrastructure/gateway`) | default | 80, 443 (8081 internal health) | `GET /healthz` |
+| Gateway, local compose (nginx, HTTP) | `infrastructure/gateway/Dockerfile` | default | 8080 | `GET /healthz` |
 | API, the core service (NestJS, HTTP) | `backend/Dockerfile` | `node dist/main.js` (default) | `API_PORT` (3000) | `GET /health` liveness, `GET /health/ready` readiness |
 | Reports service (NestJS, HTTP) | `services/reports/Dockerfile` | `node dist/main.js` (default) | `REPORTS_PORT` (3100) | `GET /health` liveness, `GET /health/ready` readiness |
 | Worker (NestJS, BullMQ) | `backend/Dockerfile` (same image) | `node dist/worker.js` | none | no HTTP; process liveness only |
@@ -27,7 +33,8 @@ Build the Node images from the repository root (they depend on the `@leaseguard/
 ```sh
 docker build -f backend/Dockerfile -t leaseguard-backend:<version> .
 docker build -f services/reports/Dockerfile -t leaseguard-reports:<version> .
-docker build -t leaseguard-gateway:<version> infrastructure/gateway
+docker build -t leaseguard-gateway:<version> infrastructure/gateway                       # nginx (local compose)
+docker build -f infrastructure/gateway/caddy/Dockerfile -t leaseguard-gateway-caddy:<version> infrastructure/gateway
 docker build -f frontend/Dockerfile -t leaseguard-frontend:<version> \
   --build-arg VITE_API_URL=https://<gateway origin> \
   --build-arg VITE_SUPABASE_URL=https://<project>.supabase.co \
@@ -51,7 +58,12 @@ at `/api/docs` on the service).
   `infrastructure/gateway/routes.json`: `/api/v1/reports` and below it to the reports service, every other path to the
   core API. Build the frontend with `VITE_API_URL` set to the gateway's public origin. A service can move behind the
   gateway without a frontend rebuild.
-- **The gateway image** is nginx with `infrastructure/gateway/gateway.conf.template`. Set `CORE_UPSTREAM` and
+- **The production gateway** (`infrastructure/gateway/caddy`) is Caddy with automatic HTTPS for `APP_DOMAIN` and
+  `API_DOMAIN`. Its Caddyfile is rendered from `routes.json` when the image is built (`render-caddyfile.mjs`), so it
+  routes exactly what the Vite dev proxy routes; it finds replicas by DNS (passive health: a replica refusing
+  connections is skipped for 10 s; Caddy has no active checks for DNS-discovered upstreams), never caches, allows 4 MB bodies, keeps idle upstream connections for 60 s and redacts the webhook verify token from its
+  access log. `pnpm docker:production-proof` exercises it.
+- **The nginx gateway image** (local `docker-compose.yml`) is nginx with `infrastructure/gateway/gateway.conf.template`. Set `CORE_UPSTREAM` and
   `REPORTS_UPSTREAM` to each service's internal `host:port` (defaults `api:3000` and `reports:3100`); nginx resolves
   them when it starts, so start it after the services are resolvable. It never caches, allows 4 MB bodies (the core's
   WhatsApp webhook needs 3 MB), keeps idle upstream connections for 60 s (under the services' 65 s) and passes
@@ -82,6 +94,13 @@ concurrency is set in code (for example statement processing 2, message delivery
 document-processing service with statement-processing throughput.
 
 ## Configuration per process
+
+With `NODE_ENV=production` every Node process also refuses development values at startup
+(`checkProductionSettings` in `packages/service-kit/src/config/env.ts`): `SUPABASE_URL` and `WEB_APP_URL` must be
+https on a non-loopback host, every CORS origin (`API_CORS_ORIGINS`, `REPORTS_CORS_ORIGINS`) likewise, the API and
+reports need a non-empty `SUPABASE_ANON_KEY`, the workers a non-empty `SUPABASE_SERVICE_ROLE_KEY`, and every
+`REDIS_URL` must carry a password. Internal service URLs (`DOCUMENT_PROCESSING_URL`) stay plain http on the private
+network.
 
 The variables are validated at start-up by each process (`backend/src/config/env.ts`, `services/reports/src/config/env.ts`,
 `python-services/document-processing/app/core/config.py`, `frontend/src/services/api/config.ts`);
@@ -236,10 +255,12 @@ Not built yet, and needed before a second replica serves real traffic:
    record on every call. A user who sees a 502 or 504 and presses send again can send a tenant the
    same message twice.
 
-Self-hosting without a platform balancer has not been set up or tested. If it is ever needed, prefer
-a proxy with active health checks (HAProxy, Traefik or Caddy). Open-source nginx has passive checks
-only, so it cannot route on `/health/ready`, and it replays `PUT` and `DELETE` requests after a
-connection error unless `proxy_next_upstream off` is set for everything except `GET` and `HEAD`.
+Self-hosting uses the Caddy gateway (`infrastructure/gateway/caddy`), which follows these rules: least connections,
+no affinity, a retry on another replica only when no connection could be made or for a `GET`, and a 60 s idle
+timeout towards the services. Its health checks are passive (a replica refusing connections is skipped for 10 s):
+Caddy runs no active checks on replicas it discovers by DNS, so it cannot route on `/health/ready`. Docker restarts
+an unhealthy container. Routing on readiness needs static upstreams per replica or a platform balancer. Open-source nginx has passive checks only, so the nginx
+gateway is kept for local compose, not for production replicas.
 
 ### Caching
 

@@ -1,5 +1,6 @@
 import { resolve } from 'node:path'
 import {
+  checkProductionSettings,
   corsOriginsSetting,
   loadEnvFileKeys,
   parseServiceEnv,
@@ -21,11 +22,21 @@ const DEFAULT_CORS_ORIGINS = 'http://localhost:5173'
 const reportsEnvObject = z.object({
   ...serviceEnvShape,
   REPORTS_PORT: z.preprocess((value) => value ?? String(DEFAULT_REPORTS_PORT), portSetting),
-  // Safe outside development too: an unset value only lets the local dev server call the service.
+  // An unset value only lets the local dev server call the service; production refuses it (below).
   REPORTS_CORS_ORIGINS: z.preprocess((value) => value ?? DEFAULT_CORS_ORIGINS, corsOriginsSetting),
 })
 
-export type ReportsEnv = z.infer<typeof reportsEnvObject>
+/** Production refuses development values: plain http, loopback origins, an empty anon key, Redis without a password. */
+const reportsEnvSchema = reportsEnvObject.superRefine((env, ctx) =>
+  checkProductionSettings(env, ctx, {
+    httpsUrls: ['SUPABASE_URL'],
+    httpsOriginLists: ['REPORTS_CORS_ORIGINS'],
+    requiredSecrets: ['SUPABASE_ANON_KEY'],
+    passwordedRedisUrls: ['REDIS_URL'],
+  }),
+)
+
+export type ReportsEnv = z.infer<typeof reportsEnvSchema>
 
 /** Every variable the reports service reads. It never reads the service-role key or any other core secret. */
 export const REPORTS_ENV_KEYS: readonly string[] = Object.keys(reportsEnvObject.shape)
@@ -40,7 +51,7 @@ export function loadReportsEnv(source?: NodeJS.ProcessEnv): ReportsEnv {
   }
   return parseServiceEnv(
     'reports',
-    reportsEnvObject,
+    reportsEnvSchema,
     source ?? process.env,
     `set these in ${REPORTS_ENV_FILE} or the process environment; see services/reports/.env.example`,
   )

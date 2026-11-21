@@ -1,5 +1,6 @@
 import { resolve } from 'node:path'
 import {
+  checkProductionSettings,
   corsOriginsSetting,
   InvalidEnvironmentError,
   loadEnvFileKeys,
@@ -90,6 +91,12 @@ const apiEnvObject = sharedSchema.extend({
 })
 const apiEnvShape = apiEnvObject.shape
 const apiEnvSchema = apiEnvObject.superRefine((env, ctx) => {
+  checkProductionSettings(env, ctx, {
+    httpsUrls: ['SUPABASE_URL'],
+    httpsOriginLists: ['API_CORS_ORIGINS'],
+    requiredSecrets: ['SUPABASE_ANON_KEY'],
+    passwordedRedisUrls: ['REDIS_URL'],
+  })
   for (const name of ['WHATSAPP_GRAPH_API_URL', 'GOOGLE_PLACES_API_URL'] as const) {
     const url = new URL(env[name])
     const loopback = url.hostname === '127.0.0.1' || url.hostname === 'localhost' || url.hostname === '[::1]'
@@ -133,9 +140,11 @@ const workerEnvSchema = sharedSchema
       .transform((value) => value.replace(/\/+$/, '')),
   })
   .superRefine((env, ctx) => {
-    if (env.NODE_ENV === 'production' && !env.WEB_APP_URL.startsWith('https://')) {
-      ctx.addIssue({ code: 'custom', path: ['WEB_APP_URL'], message: 'must be an https URL in production' })
-    }
+    checkProductionSettings(env, ctx, {
+      httpsUrls: ['SUPABASE_URL', 'WEB_APP_URL'],
+      requiredSecrets: ['SUPABASE_SERVICE_ROLE_KEY'],
+      passwordedRedisUrls: ['REDIS_URL'],
+    })
     if (env.NODE_ENV === 'production' && env.DOCUMENT_PROCESSING_TOKEN.length < 32) {
       ctx.addIssue({
         code: 'custom',

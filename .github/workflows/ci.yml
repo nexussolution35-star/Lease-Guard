@@ -1,0 +1,170 @@
+# LeaseGuard CI (runbook: docs/deployment/README.md).
+#
+#   checks   every push and pull request: install, typecheck, lint, unit tests (Node workspace and the Python service)
+#   images   pushes to develop and main: build every image and push it to GitHub Container Registry as
+#            ghcr.io/<owner>/leaseguard-<name>:<commit sha> and :<branch>
+#   deploy   pushes to main, only when the DEPLOY_* secrets exist: SSH to the server and run deploy.sh <commit sha>
+#
+# Database migrations are never applied here: see migrations.yml (manual, with approval).
+#
+# Repository variables (Settings > Secrets and variables > Actions > Variables), compiled into the web app's bundle
+# (public values, never secrets): APP_DOMAIN, API_DOMAIN, SUPABASE_URL, SUPABASE_ANON_KEY. Without API_DOMAIN the
+# frontend image is skipped with a warning.
+# Deploy secrets (optional): DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS; variable DEPLOY_PATH
+# (default /opt/leaseguard).
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    name: Typecheck, lint and unit tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      # The pnpm version comes from package.json (packageManager).
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+
+  python:
+    name: Document processing (ruff, pytest)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: python-services/document-processing
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng
+      - run: python -m pip install --upgrade pip && python -m pip install -e '.[dev]'
+      - run: python -m ruff check . && python -m ruff format --check .
+      - run: python -m pytest
+
+  images:
+    name: Image ${{ matrix.name }}
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    needs: [checks, python]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: gateway
+            context: infrastructure/gateway
+            dockerfile: infrastructure/gateway/caddy/Dockerfile
+          - name: backend
+            context: .
+            dockerfile: backend/Dockerfile
+          - name: reports
+            context: .
+            dockerfile: services/reports/Dockerfile
+          - name: frontend
+            context: .
+            dockerfile: frontend/Dockerfile
+          - name: document-processing
+            context: python-services/document-processing
+            dockerfile: python-services/document-processing/Dockerfile
+    steps:
+      - name: Frontend settings
+        id: frontend
+        if: matrix.name == 'frontend'
+        env:
+          API_DOMAIN: ${{ vars.API_DOMAIN }}
+        run: |
+          if [ -z "$API_DOMAIN" ]; then
+            echo "::warning::Repository variable API_DOMAIN is not set: the frontend image is not built (see docs/deployment/README.md)."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v5
+        if: steps.frontend.outputs.skip != 'true'
+      - uses: docker/setup-buildx-action@v3
+        if: steps.frontend.outputs.skip != 'true'
+      - uses: docker/login-action@v3
+        if: steps.frontend.outputs.skip != 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        if: steps.frontend.outputs.skip != 'true'
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/leaseguard-${{ matrix.name }}
+          tags: |
+            type=sha,format=long,prefix=
+            type=ref,event=branch
+      - uses: docker/build-push-action@v6
+        if: steps.frontend.outputs.skip != 'true'
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+          # Public web app settings only (ignored by the other images). The API URL follows API_DOMAIN.
+          build-args: |
+            VITE_API_URL=https://${{ vars.API_DOMAIN }}
+            VITE_SUPABASE_URL=${{ vars.SUPABASE_URL }}
+            VITE_SUPABASE_ANON_KEY=${{ vars.SUPABASE_ANON_KEY }}
+
+  deploy:
+    name: Deploy to the server
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [images]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    # Add required reviewers to this environment in GitHub to approve every production deploy.
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/leaseguard' }}
+    steps:
+      - name: Deploy secrets present?
+        id: secrets
+        run: |
+          if [ -n "$DEPLOY_HOST" ] && [ -n "$DEPLOY_USER" ] && [ -n "$DEPLOY_SSH_KEY" ] && [ -n "$DEPLOY_KNOWN_HOSTS" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY and DEPLOY_KNOWN_HOSTS are not all set: skipping the deploy."
+          fi
+      - name: Pull and restart on the server
+        if: steps.secrets.outputs.present == 'true'
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 600 ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_PATH' && ./deploy.sh '$GITHUB_SHA'"

@@ -18,8 +18,10 @@ export {
 
 // Configuration
 export {
+  checkProductionSettings,
   corsOriginsSetting,
   InvalidEnvironmentError,
+  isLoopbackHost,
   loadEnvFileKeys,
   LOG_LEVELS,
   optionalSetting,
@@ -27,6 +29,7 @@ export {
   portSetting,
   serviceEnvShape,
   type LogLevel,
+  type ProductionChecks,
 } from './config/env'
 
 // Authentication and company scoping

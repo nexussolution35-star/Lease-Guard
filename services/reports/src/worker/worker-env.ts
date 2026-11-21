@@ -1,4 +1,4 @@
-import { LOG_LEVELS, loadEnvFileKeys, parseServiceEnv } from '@leaseguard/service-kit'
+import { checkProductionSettings, LOG_LEVELS, loadEnvFileKeys, parseServiceEnv } from '@leaseguard/service-kit'
 import { z } from 'zod'
 
 import { CORE_ENV_FILE, REPORTS_ENV_FILE } from '../config/env'
@@ -10,7 +10,7 @@ import { CORE_ENV_FILE, REPORTS_ENV_FILE } from '../config/env'
  * service-role key, as the core worker does. It reads company data only through the reports_* functions (naming the
  * company), writes only reports_* tables and asks the core messaging pipeline to send by queue.
  */
-const workerEnvSchema = z.object({
+const workerEnvObject = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']),
   LOG_LEVEL: z.enum(LOG_LEVELS),
   SUPABASE_URL: z.url({ protocol: /^https?$/ }),
@@ -20,9 +20,14 @@ const workerEnvSchema = z.object({
   QUEUE_PREFIX: z.preprocess((value) => value ?? 'leaseguard', z.string().regex(/^[a-z0-9_-]+$/i, 'letters, digits, "-" and "_" only')),
 })
 
+/** Production refuses plain-http Supabase and Redis without a password. */
+const workerEnvSchema = workerEnvObject.superRefine((env, ctx) =>
+  checkProductionSettings(env, ctx, { httpsUrls: ['SUPABASE_URL'], passwordedRedisUrls: ['REDIS_URL'] }),
+)
+
 export type ReportsWorkerEnv = z.infer<typeof workerEnvSchema>
 
-export const REPORTS_WORKER_ENV_KEYS: readonly string[] = Object.keys(workerEnvSchema.shape)
+export const REPORTS_WORKER_ENV_KEYS: readonly string[] = Object.keys(workerEnvObject.shape)
 
 /** Reports worker configuration; in local development the missing settings are read from backend/.env. */
 export function loadReportsWorkerEnv(source?: NodeJS.ProcessEnv): ReportsWorkerEnv {

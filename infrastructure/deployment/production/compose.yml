@@ -1,0 +1,291 @@
+# LeaseGuard production stack on one Docker host (runbook: docs/deployment/README.md).
+#
+#   cp .env.example .env                     the deployment's shared settings (domains, images, shared secrets)
+#   for f in env/*.env.example; do cp "$f" "${f%.example}"; done    each service's own settings
+#   docker compose pull && docker compose up -d
+#
+# Every service runs from a versioned image in GitHub Container Registry (${IMAGE_REGISTRY}/leaseguard-<name>:${IMAGE_TAG},
+# built by .github/workflows/ci.yml). Supabase (database, auth, storage) stays hosted; nothing here stores business data
+# except Redis (queues, with an append-only file).
+#
+# Only the gateway publishes ports (80 and 443). It serves https://${APP_DOMAIN} (the web app) and
+# https://${API_DOMAIN} (every API path and the WhatsApp webhook) with Let's Encrypt certificates, and routes by path
+# from infrastructure/gateway/routes.json. The API, reports and workers scale with --scale or the *_REPLICAS settings;
+# the gateway finds every replica by DNS.
+#
+# Configuration: values used by more than one service, and everything derived from the domains, come from .env and
+# are set below by name (least privilege: each service receives only what it reads). Values only one service reads
+# live in env/<service>.env. `environment` wins over `env_file`, so the URLs and CORS origins always follow the
+# domains. Every Node process validates its settings at startup and refuses development values in production.
+
+name: leaseguard
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-service: &service
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+# Shared by the core API and worker (backend/src/config/env.ts).
+x-core-env: &core-env
+  NODE_ENV: production
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  SUPABASE_URL: ${SUPABASE_URL:?set SUPABASE_URL in .env}
+  SUPABASE_STATEMENTS_BUCKET: ${SUPABASE_STATEMENTS_BUCKET:-statements}
+  SUPABASE_LEASE_DOCUMENTS_BUCKET: ${SUPABASE_LEASE_DOCUMENTS_BUCKET:-lease-documents}
+  REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}@redis:6379
+  QUEUE_PREFIX: ${QUEUE_PREFIX:-leaseguard}
+  DOCUMENT_PROCESSING_MAX_FILE_MB: ${DOCUMENT_PROCESSING_MAX_FILE_MB:-20}
+  WHATSAPP_APP_ID: ${WHATSAPP_APP_ID:-}
+  WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
+  WHATSAPP_GRAPH_API_URL: ${WHATSAPP_GRAPH_API_URL:-https://graph.facebook.com}
+  WHATSAPP_GRAPH_API_VERSION: ${WHATSAPP_GRAPH_API_VERSION:-v27.0}
+
+x-node-health: &node-health
+  interval: 15s
+  timeout: 5s
+  start_period: 30s
+  retries: 4
+
+services:
+  gateway:
+    <<: *service
+    image: ${IMAGE_REGISTRY:?set IMAGE_REGISTRY in .env}/leaseguard-gateway:${IMAGE_TAG:?set IMAGE_TAG in .env}
+    # Binds 80 and 443 inside the container (Let's Encrypt's HTTP challenge and the redirect to https need them).
+    cap_add:
+      - NET_BIND_SERVICE
+    env_file:
+      - ${LEASEGUARD_ENV_DIR:-./env}/gateway.env
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?set APP_DOMAIN in .env}
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in .env}
+    ports:
+      - "${GATEWAY_HTTP_PORT:-80}:80"
+      - "${GATEWAY_HTTPS_PORT:-443}:443"
+      - "${GATEWAY_HTTPS_PORT:-443}:443/udp"
+    volumes:
+      # Certificates and the ACME account. Keep this volume: without it every certificate is issued again.
+      - gateway-data:/data
+      - gateway-config:/config
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8081/healthz"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 4
+    # Started, not healthy: the gateway finds replicas by DNS and checks their readiness itself, so it never waits on
+    # (or restarts with) one service.
+    depends_on:
+      api:
+        condition: service_started
+      reports:
+        condition: service_started
+      frontend:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: "${GATEWAY_CPUS:-0.5}"
+          memory: ${GATEWAY_MEMORY:-256M}
+
+  frontend:
+    <<: *service
+    image: ${IMAGE_REGISTRY}/leaseguard-frontend:${IMAGE_TAG}
+    # A static build: its public settings (API URL, Supabase URL and anon key) are compiled in by CI from the
+    # repository variables APP_DOMAIN, API_DOMAIN, SUPABASE_URL and SUPABASE_ANON_KEY. No env file.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 3s
+      start_period: 5s
+      retries: 4
+    deploy:
+      resources:
+        limits:
+          cpus: "${FRONTEND_CPUS:-0.25}"
+          memory: ${FRONTEND_MEMORY:-128M}
+
+  # The core service: HTTP API and the public WhatsApp webhook. Stateless; scale with API_REPLICAS.
+  api:
+    <<: *service
+    image: ${IMAGE_REGISTRY}/leaseguard-backend:${IMAGE_TAG}
+    env_file:
+      - ${LEASEGUARD_ENV_DIR:-./env}/api.env
+    environment:
+      <<: *core-env
+      API_PORT: "3000"
+      API_CORS_ORIGINS: https://${APP_DOMAIN}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?set SUPABASE_ANON_KEY in .env}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      <<: *node-health
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health', { signal: AbortSignal.timeout(4000) }).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+    deploy:
+      replicas: ${API_REPLICAS:-1}
+      resources:
+        limits:
+          cpus: "${API_CPUS:-1}"
+          memory: ${API_MEMORY:-768M}
+
+  # The core worker: every BullMQ queue (statements, monitoring, message delivery, WhatsApp). Scale with WORKER_REPLICAS.
+  worker:
+    <<: *service
+    image: ${IMAGE_REGISTRY}/leaseguard-backend:${IMAGE_TAG}
+    command: ["node", "dist/worker.js"]
+    env_file:
+      # Also each company's WHATSAPP_ACCESS_TOKEN_<COMPANY ID> (tokens kept in Supabase Vault need none).
+      - ${LEASEGUARD_ENV_DIR:-./env}/worker.env
+    environment:
+      <<: *core-env
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?set SUPABASE_SERVICE_ROLE_KEY in .env}
+      DOCUMENT_PROCESSING_URL: http://document-processing:8000
+      DOCUMENT_PROCESSING_TOKEN: ${DOCUMENT_PROCESSING_TOKEN:?set DOCUMENT_PROCESSING_TOKEN in .env}
+      WEB_APP_URL: https://${APP_DOMAIN}
+    depends_on:
+      redis:
+        condition: service_healthy
+      document-processing:
+        condition: service_healthy
+    # No HTTP: healthy while the process runs and reaches Redis, where its queues live.
+    healthcheck:
+      <<: *node-health
+      test: ["CMD", "node", "-e", "const R = require('ioredis'); const r = new R(process.env.REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: 0, connectTimeout: 4000 }); r.ping().then(() => process.exit(0), () => process.exit(1))"]
+    # Lets in-flight jobs finish: the worker closes its BullMQ workers on SIGTERM.
+    stop_grace_period: 30s
+    deploy:
+      replicas: ${WORKER_REPLICAS:-1}
+      resources:
+        limits:
+          cpus: "${WORKER_CPUS:-1}"
+          memory: ${WORKER_MEMORY:-1G}
+
+  # The reports service (ADR 0003): /api/v1/reports through the gateway. Anon key only. Scale with REPORTS_REPLICAS.
+  reports:
+    <<: *service
+    image: ${IMAGE_REGISTRY}/leaseguard-reports:${IMAGE_TAG}
+    env_file:
+      - ${LEASEGUARD_ENV_DIR:-./env}/reports.env
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      REPORTS_PORT: "3100"
+      REPORTS_CORS_ORIGINS: https://${APP_DOMAIN}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      <<: *node-health
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3100/health', { signal: AbortSignal.timeout(4000) }).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+    deploy:
+      replicas: ${REPORTS_REPLICAS:-1}
+      resources:
+        limits:
+          cpus: "${REPORTS_CPUS:-0.5}"
+          memory: ${REPORTS_MEMORY:-512M}
+
+  # The reports worker (R-07): weekly owner summaries, handed to the core worker by queue. Holds the service-role key.
+  reports-worker:
+    <<: *service
+    image: ${IMAGE_REGISTRY}/leaseguard-reports:${IMAGE_TAG}
+    command: ["node", "dist/worker.js"]
+    env_file:
+      - ${LEASEGUARD_ENV_DIR:-./env}/reports-worker.env
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      QUEUE_PREFIX: ${QUEUE_PREFIX:-leaseguard}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      <<: *node-health
+      test: ["CMD", "node", "-e", "const R = require('ioredis'); const r = new R(process.env.REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: 0, connectTimeout: 4000 }); r.ping().then(() => process.exit(0), () => process.exit(1))"]
+    stop_grace_period: 30s
+    deploy:
+      replicas: ${REPORTS_WORKER_REPLICAS:-1}
+      resources:
+        limits:
+          cpus: "${REPORTS_WORKER_CPUS:-0.5}"
+          memory: ${REPORTS_WORKER_MEMORY:-512M}
+
+  # Statement extraction (FastAPI, Tesseract OCR in the image). Reached by the worker only.
+  document-processing:
+    <<: *service
+    image: ${IMAGE_REGISTRY}/leaseguard-document-processing:${IMAGE_TAG}
+    env_file:
+      - ${LEASEGUARD_ENV_DIR:-./env}/document-processing.env
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DOCUMENT_PROCESSING_TOKEN: ${DOCUMENT_PROCESSING_TOKEN}
+      DOCUMENT_PROCESSING_MAX_FILE_MB: ${DOCUMENT_PROCESSING_MAX_FILE_MB:-20}
+    healthcheck:
+      # Readiness: 503 until the token is set; the body reports whether OCR is available.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 15s
+      retries: 4
+    deploy:
+      replicas: ${DOCUMENT_PROCESSING_REPLICAS:-1}
+      resources:
+        limits:
+          cpus: "${DOCUMENT_PROCESSING_CPUS:-1}"
+          memory: ${DOCUMENT_PROCESSING_MEMORY:-1G}
+
+  # Queues only. Password required, never evicts a key (BullMQ needs every job), append-only file, no published port.
+  redis:
+    image: redis:7.4.12
+    # The image's unprivileged redis user (it owns /data); the command below bypasses the image's own user switch.
+    user: redis
+    restart: unless-stopped
+    logging: *logging
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_MAXMEMORY: ${REDIS_MAXMEMORY:-512mb}
+    # The password goes into a config file read at start, so it never appears in the process list.
+    command:
+      - sh
+      - -c
+      - >-
+        umask 077 &&
+        printf 'requirepass "%s"\n' "$$REDIS_PASSWORD" > /tmp/redis.conf &&
+        exec redis-server /tmp/redis.conf
+        --appendonly yes --appendfsync everysec
+        --maxmemory "$$REDIS_MAXMEMORY" --maxmemory-policy noeviction
+        --protected-mode yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      start_period: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "${REDIS_CPUS:-0.5}"
+          memory: ${REDIS_MEMORY:-768M}
+
+volumes:
+  gateway-data:
+  gateway-config:
+  redis-data:

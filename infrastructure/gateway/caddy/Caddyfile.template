@@ -1,0 +1,115 @@
+# LeaseGuard production gateway (ADR 0003): Caddy with automatic HTTPS, one routing table for every service.
+#
+# GENERATED at image build by render-caddyfile.mjs from this template and ../routes.json (the table the Vite dev
+# proxy uses), so development and production route the same prefixes. Edit this template or routes.json, never the
+# rendered /etc/caddy/Caddyfile. Settings (environment, read when Caddy starts; in production from
+# infrastructure/deployment/production/.env and env/gateway.env):
+#   APP_DOMAIN    the web app's host name, e.g. app.203.0.113.10.sslip.io or app.leaseguard.co.za
+#   API_DOMAIN    every API path and the WhatsApp webhook, e.g. api.203.0.113.10.sslip.io
+#   GATEWAY_TLS   the email address Let's Encrypt registers the certificates under, or `internal` for Caddy's own
+#                 local CA (a proof run on test domains; browsers and Meta do not trust it)
+#
+# It never caches: every API response is per user and per company and the services send Cache-Control: no-store.
+# It passes request bodies through unchanged (the WhatsApp signature covers the exact bytes) and keeps the webhook's
+# verify token out of its access log.
+
+{
+	admin off
+	# Caddy's own logs as JSON lines on stdout, like every LeaseGuard process.
+	log {
+		output stdout
+		format json
+	}
+	servers {
+		timeouts {
+			read_header 10s
+			read_body 30s
+			idle 2m
+		}
+	}
+}
+
+# Every service upstream: replicas found by DNS every 5 s (docker compose --scale), least connections. Caddy runs no
+# active health checks for DNS-discovered upstreams, so health is passive: a replica that refuses a connection is
+# skipped for 10 s. Docker itself restarts a replica whose container health check fails.
+(upstream_policy) {
+	lb_policy least_conn
+	# Another replica is tried only when no connection could be made, or for a GET (Caddy's default lb_retry_match):
+	# a POST that reached a replica is never sent twice (it may have sent a WhatsApp message).
+	lb_try_duration 5s
+	lb_try_interval 250ms
+	fail_duration 10s
+	transport http {
+		dial_timeout 5s
+		# Shorter than the services' 65 s keep-alive (KEEP_ALIVE_TIMEOUT_MS in packages/service-kit), so a connection
+		# the service is closing is never reused.
+		keepalive 60s
+		response_header_timeout 60s
+	}
+}
+
+(edge) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	log {
+		output stdout
+		format filter {
+			# Meta's handshake carries the secret verify token in its query string.
+			request>uri query {
+				replace hub.verify_token REDACTED
+			}
+			request>headers>Cookie delete
+			wrap json
+		}
+	}
+}
+
+# The routing table: one handle per routes.json prefix (exactly the prefix and everything below it), then the default
+# service for every other path.
+(api_routes) {
+	# The largest request any service accepts: the core's WhatsApp webhook (3 MB raw body). Statement and lease files
+	# go straight to Supabase Storage, never through the gateway.
+	request_body {
+		max_size 4MB
+	}
+	# Liveness of the gateway itself; each service's /health and /health/ready stay on the service.
+	handle /healthz {
+		respond "ok" 200
+	}
+@@API_ROUTES@@
+}
+
+# Every API path and the permanent WhatsApp webhook: https://{$API_DOMAIN}/api/v1/webhooks/whatsapp
+{$API_DOMAIN} {
+	tls {$GATEWAY_TLS}
+	import edge
+	import api_routes
+}
+
+# The web app. API paths answer here too, so the app may also call its own origin.
+{$APP_DOMAIN} {
+	tls {$GATEWAY_TLS}
+	import edge
+	@api path /api/* /health /health/*
+	handle @api {
+		import api_routes
+	}
+	handle {
+		reverse_proxy {
+			dynamic a {
+				name {$FRONTEND_UPSTREAM_HOST:frontend}
+				port {$FRONTEND_UPSTREAM_PORT:8080}
+				refresh 5s
+			}
+			lb_try_duration 5s
+			fail_duration 10s
+		}
+	}
+}
+
+# Container health check only (never published): the gateway process is serving.
+http://:8081 {
+	respond /healthz "ok" 200
+}

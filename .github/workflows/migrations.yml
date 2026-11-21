@@ -1,0 +1,52 @@
+# Supabase migrations for the hosted project: manual only, never part of a push (runbook: docs/deployment/README.md).
+#
+# Run it from Actions > Migrations > Run workflow. `apply: false` (the default) lists the migrations that would be
+# applied; `apply: true` applies them. Give the `production-database` environment required reviewers in GitHub, so
+# every run waits for an approval.
+#
+# Variable: SUPABASE_URL (https://<project-ref>.supabase.co).
+# Secrets (environment production-database): SUPABASE_DB_PASSWORD, SUPABASE_DB_POOLER_URL (the session pooler
+# string: GitHub's runners have no IPv6, and the direct database host is IPv6-only).
+
+name: Migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Apply the pending migrations (false lists them only)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migrations-production
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Supabase db push (${{ inputs.apply && 'apply' || 'dry run' }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: production-database
+    env:
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_DB_POOLER_URL: ${{ secrets.SUPABASE_DB_POOLER_URL }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      # Only the root tooling (the pinned Supabase CLI).
+      - run: pnpm install --frozen-lockfile --filter leaseguard
+      - name: Dry run
+        if: ${{ !inputs.apply }}
+        run: pnpm db:push:remote
+      - name: Apply
+        if: ${{ inputs.apply }}
+        run: pnpm db:push:remote -- --apply --yes

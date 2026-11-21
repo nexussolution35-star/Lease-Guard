@@ -54,4 +54,22 @@ describe('reports configuration', () => {
     expect(SHARED_WITH_CORE_KEYS).not.toContain('SUPABASE_SERVICE_ROLE_KEY')
     expect(SHARED_WITH_CORE_KEYS.every((key) => REPORTS_ENV_KEYS.includes(key))).toBe(true)
   })
+
+  it('refuses development values in production: plain http, loopback origins, no anon key, Redis without a password', () => {
+    const production = {
+      ...VALID,
+      NODE_ENV: 'production',
+      SUPABASE_URL: 'https://abcdefghijklmnopqrst.supabase.co',
+      REDIS_URL: 'redis://:redis-password@redis:6379',
+      REPORTS_CORS_ORIGINS: 'https://app.203.0.113.10.sslip.io',
+    }
+    expect(loadReportsEnv(production).REPORTS_CORS_ORIGINS).toEqual(['https://app.203.0.113.10.sslip.io'])
+    // Production must name the app's origin: the development default (http://localhost:5173) is refused.
+    expect(() => loadReportsEnv({ ...production, REPORTS_CORS_ORIGINS: undefined })).toThrow(/REPORTS_CORS_ORIGINS: missing/)
+    expect(() => loadReportsEnv({ ...production, REPORTS_CORS_ORIGINS: 'http://localhost:5173' })).toThrow(/REPORTS_CORS_ORIGINS: every origin must be an https URL/)
+    const load = () => loadReportsEnv({ ...production, SUPABASE_URL: 'http://127.0.0.1:54321', SUPABASE_ANON_KEY: '', REDIS_URL: 'redis://redis:6379' })
+    expect(load).toThrow(/SUPABASE_URL: must be an https URL in production/)
+    expect(load).toThrow(/SUPABASE_ANON_KEY: must be set in production/)
+    expect(load).toThrow(/REDIS_URL: must include the Redis password in production/)
+  })
 })
