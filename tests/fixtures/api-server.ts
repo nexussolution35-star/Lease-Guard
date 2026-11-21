@@ -1,10 +1,10 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs'
-import { createRequire } from 'node:module'
 import { createServer } from 'node:net'
 import path from 'node:path'
 import { parseEnv } from 'node:util'
 
+import { envKeysFromBuild } from './build-env-keys.ts'
 import { BACKEND_ROOT, REPO_ROOT, TEST_OUTPUT_ROOT } from './paths.ts'
 
 /**
@@ -60,12 +60,7 @@ export function removeApiBuild(build: ApiBuild): void {
 
 /** The API's own list of the variables it reads (backend/src/config/env.ts), from the fresh build. */
 function apiEnvKeys(build: ApiBuild): readonly string[] {
-  const requireFromBuild = createRequire(path.join(BACKEND_ROOT, build.dirName, 'main.js'))
-  const envModule: unknown = requireFromBuild('./config/env.js')
-  if (typeof envModule !== 'object' || envModule === null || !('API_ENV_KEYS' in envModule) || !Array.isArray(envModule.API_ENV_KEYS)) {
-    throw new Error('backend config/env.js does not export API_ENV_KEYS')
-  }
-  return envModule.API_ENV_KEYS.filter((key): key is string => typeof key === 'string')
+  return envKeysFromBuild(path.join(BACKEND_ROOT, build.dirName), 'API_ENV_KEYS')
 }
 
 /**

@@ -1,9 +1,9 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs'
-import { createRequire } from 'node:module'
 import path from 'node:path'
 import { parseEnv } from 'node:util'
 
+import { envKeysFromBuild } from './build-env-keys.ts'
 import { REPO_ROOT, TEST_OUTPUT_ROOT } from './paths.ts'
 
 /**
@@ -60,15 +60,11 @@ export function removeReportsBuild(build: ReportsBuild): void {
  * services/reports/.env.example. Every variable is set, so neither services/reports/.env nor backend/.env is read.
  */
 export function reportsEnvironment(build: ReportsBuild, overrides: Readonly<Record<string, string>>): Record<string, string> {
-  const requireFromBuild = createRequire(path.join(REPORTS_ROOT, build.dirName, 'main.js'))
-  const envModule: unknown = requireFromBuild('./config/env.js')
-  if (typeof envModule !== 'object' || envModule === null || !('REPORTS_ENV_KEYS' in envModule) || !Array.isArray(envModule.REPORTS_ENV_KEYS)) {
-    throw new Error('services/reports config/env.js does not export REPORTS_ENV_KEYS')
-  }
+  const keys = envKeysFromBuild(path.join(REPORTS_ROOT, build.dirName), 'REPORTS_ENV_KEYS')
   const example = parseEnv(readFileSync(path.join(REPORTS_ROOT, '.env.example'), 'utf8'))
   const env: Record<string, string> = {}
   const missing: string[] = []
-  for (const key of envModule.REPORTS_ENV_KEYS.filter((value): value is string => typeof value === 'string')) {
+  for (const key of keys) {
     const value = overrides[key] ?? example[key]
     if (value === undefined) missing.push(key)
     else env[key] = value

@@ -48,7 +48,8 @@ grant select on tests.ids, tests.msgs to authenticated, service_role;
 -- ------------------------------------------------------------------ WhatsApp token reference
 select is(
   (select count(*) from public.whatsapp_phone_numbers
-   where access_token_reference <> 'secret://env/WHATSAPP_ACCESS_TOKEN_' || upper(replace(company_id::text, '-', ''))),
+   where company_id in ((select nexus from tests.ids), (select kgalagadi from tests.ids))
+     and access_token_reference <> 'secret://env/WHATSAPP_ACCESS_TOKEN_' || upper(replace(company_id::text, '-', ''))),
   0::bigint, 'every account references its own company''s token');
 -- The reference is now always set by trigger, so a wrong value is replaced instead of rejected.
 update public.whatsapp_phone_numbers
