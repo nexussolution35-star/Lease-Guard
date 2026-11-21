@@ -52,6 +52,19 @@ describe('monitoring event workflow in the database', () => {
     expect(await auditCount(event.id)).toBe(auditBefore)
   })
 
+  it('refuses a property manager who deletes or inserts an event through the Data API (delete and raise again would reopen it)', async () => {
+    const removed = await managerDataApi().from('monitoring_events').delete().eq('id', event.id)
+    expect(removed.error?.code).toBe('42501')
+    const copy = Object.fromEntries(
+      Object.entries(original).filter(([column]) => !['id', 'created_at', 'updated_at', 'dedupe_key'].includes(column)),
+    )
+    const inserted = await managerDataApi()
+      .from('monitoring_events')
+      .insert({ ...copy, title: 'Raised by hand', status: 'resolved' } as never)
+    expect(inserted.error?.code).toBe('42501')
+    expect(await snapshotRow('monitoring_events', event.id)).toEqual(original)
+  })
+
   it('allows exactly the moves of the domain workflow (EVENT_TRANSITIONS)', async () => {
     const rows = await localSql(
       `select f::text as "from", t::text as "to", private.monitoring_event_transition_allowed(f, t) as allowed

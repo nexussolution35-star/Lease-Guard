@@ -4,7 +4,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 \ir fixtures/two_companies.psql
-select plan(38);
+select plan(39);
 
 -- Rows for the portfolio-import tables the shared fixture leaves empty (their own suites count them), so
 -- every company-owned table is populated for both companies here.
@@ -206,7 +206,7 @@ select throws_ok(
   '42501', null, 'read_only cannot insert'
 );
 update public.tenants set notes = 'changed by read_only';
-delete from public.monitoring_events;
+select throws_ok($$delete from public.monitoring_events$$, '42501', null, 'read_only cannot delete monitoring events');
 
 select set_config('request.jwt.claims', tests.claims('pieter@bothafamilytrust.co.za'), true);
 select throws_ok(

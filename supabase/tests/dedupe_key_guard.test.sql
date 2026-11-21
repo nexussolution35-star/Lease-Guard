@@ -40,12 +40,12 @@ select throws_ok(
     from tests.ids$$,
   '42501', null, 'a writer cannot create an event with a dedupe key');
 
-select lives_ok(
+select throws_ok(
   $$insert into public.monitoring_events
       (company_id, type, property_id, title, description, identified_on, priority, recommended_action)
     select nexus, 'lease_expiry', nexus_property, 'Manual event', 'Raised by a person', '2026-11-09', 'medium', 'Check'
     from tests.ids$$,
-  'a writer can still create an event without a key');
+  '42501', null, 'nor without one: only background jobs raise events (20261122012000_monitoring_event_writes_service_only.sql)');
 
 select throws_ok(
   $$update public.monitoring_events set dedupe_key = 'test:guard:changed' where dedupe_key = 'test:guard:worker'$$,

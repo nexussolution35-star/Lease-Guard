@@ -71,6 +71,10 @@ select throws_ok(
       '20000000-0000-4000-8000-000000000001/' || gen_random_uuid() || '/x.pdf', 'application/pdf', 1, repeat('c', 64), 'MRI',
       '2026-11-30', '2026-11-01', '2026-11-30', '10000000-0000-4000-8000-000000000003')$$,
   '23514', null, 'a statement filed against a lease carries the lease''s tenant and unit');
+-- Only background jobs insert events (signed-in users hold no INSERT, 20261122012000_monitoring_event_writes_service_only.sql),
+-- so the event checks run as the service role.
+reset role;
+set local role service_role;
 select throws_ok(
   $$insert into public.monitoring_events (company_id, type, property_id, unit_id, tenant_id, lease_id, title, description,
       identified_on, priority, recommended_action)

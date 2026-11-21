@@ -7,7 +7,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 \ir fixtures/two_companies.psql
-select plan(38);
+select plan(44);
 
 create schema tests;
 grant usage on schema tests to authenticated, service_role;
@@ -61,6 +61,12 @@ select is(
 select ok(has_table_privilege('authenticated', 'public.monitoring_events', 'SELECT'), 'members still read events');
 select ok(not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'monitoring_events' and cmd = 'UPDATE'),
   'no update policy is left on monitoring_events');
+-- 20261122012000_monitoring_event_writes_service_only.sql: no insert or delete either (delete + insert would reopen an event).
+select ok(not has_table_privilege('authenticated', 'public.monitoring_events', 'INSERT')
+  and not has_table_privilege('authenticated', 'public.monitoring_events', 'DELETE'),
+  'signed-in users hold no INSERT or DELETE on monitoring_events (only background jobs raise and remove events)');
+select ok(not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'monitoring_events' and cmd in ('INSERT', 'DELETE')),
+  'no insert or delete policy is left on monitoring_events');
 select ok(has_function_privilege('authenticated', 'public.update_monitoring_event_status(uuid, uuid, public.monitoring_event_status, text)', 'EXECUTE'),
   'signed-in users may call update_monitoring_event_status');
 select ok(not has_function_privilege('anon', 'public.update_monitoring_event_status(uuid, uuid, public.monitoring_event_status, text)', 'EXECUTE'),
@@ -126,6 +132,14 @@ select ok((select (e).dismissal_reason = 'Billed correctly under the addendum' a
   from (select tests.event(dismiss) as e, naledi from tests.ids) x), 'the trimmed reason and who dismissed it are recorded');
 select throws_ok($$select public.update_monitoring_event_status(nexus, dismiss, 'new') from tests.ids$$,
   'P0001', null, 'a dismissed event cannot be reopened');
+select throws_ok($$delete from public.monitoring_events where id = (select dismiss from tests.ids)$$,
+  '42501', null, 'nor deleted, to be raised again');
+select throws_ok($$insert into public.monitoring_events (company_id, type, property_id, unit_id, tenant_id, lease_id, lease_reference, title,
+    description, calculation, identified_on, priority, recommended_action, status, resolved_by_user_id, resolved_at)
+  values ('20000000-0000-4000-8000-000000000001', 'lease_expiry', '30000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000001',
+    '50000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000001', 'MSQ-L001', 'Forged', 'Forged', '{"steps":["x"]}',
+    '2026-11-01', 'medium', 'None', 'resolved', '10000000-0000-4000-8000-000000000001', '2020-01-01')$$,
+  '42501', null, 'nor can a property manager insert an event already resolved, credited to someone else');
 select is((select tests.history_count(dismiss) from tests.ids), 1::bigint, 'the dismissal wrote one history row, the refusals none');
 
 -- Another company's event, through either company id.
@@ -138,6 +152,8 @@ select throws_ok($$select public.update_monitoring_event_status(nexus, kgalagadi
 select set_config('request.jwt.claims', tests.claims('kabelo.molefe@nexussolution.co.za'), true);
 select throws_ok($$select public.update_monitoring_event_status(nexus, untouched, 'under_review') from tests.ids$$,
   '42501', null, 'a read-only member cannot change an event');
+select throws_ok($$delete from public.monitoring_events where id = (select untouched from tests.ids)$$,
+  '42501', null, 'nor delete one');
 
 -- ------------------------------------------------------------------ background jobs (service role)
 reset role;
@@ -146,6 +162,14 @@ select lives_ok($$update public.monitoring_events set description = 'Re-raised b
   where id = (select untouched from tests.ids)$$, 'the service role still writes events directly');
 reset role;
 select is((tests.event(untouched)).description, 'Re-raised by the job', 'and the write is applied') from tests.ids;
+set local role service_role;
+select lives_ok($$insert into public.monitoring_events (company_id, type, property_id, unit_id, tenant_id, lease_id, lease_reference, title,
+    description, calculation, identified_on, priority, recommended_action, status, dedupe_key)
+  values ('20000000-0000-4000-8000-000000000001', 'lease_expiry', '30000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000001',
+    '50000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000001', 'MSQ-L001', 'Raised', 'Raised', '{"steps":["x"]}',
+    '2026-11-01', 'medium', 'None', 'new', 'tests:workflow:raised')
+  on conflict (company_id, dedupe_key) do nothing$$, 'and still raises them (insert, ignoring duplicates)');
+reset role;
 
 select * from finish();
 rollback;

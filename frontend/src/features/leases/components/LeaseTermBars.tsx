@@ -1,4 +1,5 @@
 import type { ISODate } from '@leaseguard/domain'
+import { useEffect, useRef, useState } from 'react'
 
 import { cn } from '@/lib/utils'
 
@@ -41,18 +42,7 @@ export function LeaseTermBars({ leases, today, className }: LeaseTermBarsProps) 
         ))}
       </ol>
       <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-4 sm:grid-cols-[6rem_minmax(0,1fr)_13rem]" aria-hidden="true">
-        <span className="relative col-start-2 h-4 text-xs text-muted-foreground tabular-nums">
-          {scale.years.map(({ year, at }, index) => (
-            <span
-              key={year}
-              // Narrow screens label about four years so the labels never collide; wide screens label every year.
-              className={cn('absolute -translate-x-1/2', index % Math.max(1, Math.ceil(scale.years.length / 4)) !== 0 && 'hidden sm:inline')}
-              style={{ left: `${at}%` }}
-            >
-              {year}
-            </span>
-          ))}
-        </span>
+        <YearAxis years={scale.years} />
       </div>
       <figcaption className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
         {hasNotice ? (
@@ -70,5 +60,49 @@ export function LeaseTermBars({ leases, today, className }: LeaseTermBarsProps) 
         <span>Drawn to scale, {scale.start.slice(0, 4)} to {scale.end.slice(0, 4)}</span>
       </figcaption>
     </figure>
+  )
+}
+
+/** Least room one year label needs (four tabular digits at text-xs plus a gap). */
+const LABEL_SPACE_PX = 44
+
+/**
+ * The year labels under the bars. How many fit is measured from the axis's own width (ResizeObserver), so labels
+ * never overlap at any width, with the details panel open or not; labels near either end are kept inside the axis
+ * rather than centred over its edge.
+ */
+function YearAxis({ years }: { years: readonly { year: number; at: number }[] }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const [width, setWidth] = useState(0)
+
+  useEffect(() => {
+    const element = ref.current
+    if (!element) return
+    setWidth(element.getBoundingClientRect().width)
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setWidth(entry.contentRect.width)
+    })
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
+  // Before the first measurement, label about four years; afterwards as many as the width allows.
+  const fit = width > 0 ? Math.max(1, Math.floor(width / LABEL_SPACE_PX)) : 4
+  const step = Math.max(1, Math.ceil(years.length / fit))
+
+  return (
+    <span ref={ref} className="relative col-start-2 h-4 text-xs text-muted-foreground tabular-nums">
+      {years.map(({ year, at }, index) =>
+        index % step === 0 ? (
+          <span
+            key={year}
+            className={cn('absolute whitespace-nowrap', at < 6 ? 'translate-x-0' : at > 94 ? '-translate-x-full' : '-translate-x-1/2')}
+            style={{ left: `${at}%` }}
+          >
+            {year}
+          </span>
+        ) : null,
+      )}
+    </span>
   )
 }

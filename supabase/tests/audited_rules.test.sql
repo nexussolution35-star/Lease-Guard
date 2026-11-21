@@ -60,7 +60,10 @@ select is((select count(*) from tests.audit((select unverified_lease from tests.
 select is((select verified_by_user_id from public.leases where id = (select unverified_lease from tests.ids)), null,
   'revoking verification clears the verifier');
 
--- Unverified lease terms are not financial evidence.
+-- Unverified lease terms are not financial evidence. Only background jobs insert events (signed-in users hold no INSERT,
+-- 20261122012000_monitoring_event_writes_service_only.sql), so the check runs as the service role.
+reset role;
+set local role service_role;
 select throws_ok(
   $$insert into public.monitoring_events (company_id, type, property_id, unit_id, tenant_id, lease_id, title, description,
       identified_on, priority, recommended_action)
@@ -68,6 +71,8 @@ select throws_ok(
     from public.leases l where l.id = (select other_unverified_lease from tests.ids)$$,
   '23514', null, 'financial monitoring events require a verified lease'
 );
+reset role;
+set local role authenticated;
 
 -- ------------------------------------------------------------------ monitoring event dismissal
 select throws_ok(

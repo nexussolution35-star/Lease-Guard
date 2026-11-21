@@ -38,9 +38,7 @@ const TREND_ICONS: Readonly<Record<MetricTrend['direction'], LucideIcon>> = {
 }
 
 /** A flat cell of the `MetricGrid` stat strip; the grid draws the frame and the hairlines. */
-// Each cell is its own size container, so its figure scales with the cell's width (cqi), never the viewport: a long
-// amount in a narrow strip shrinks to fit instead of running under the next cell. The caps keep today's sizes.
-const CARD_CLASSES = 'flex h-full min-w-0 flex-col gap-2 bg-card px-5 py-4 text-left text-card-foreground [container-type:inline-size]'
+const CARD_CLASSES = 'flex h-full min-w-0 flex-col gap-2 bg-card px-5 py-4 text-left text-card-foreground'
 const INTERACTIVE_CLASSES =
   'transition-colors hover:bg-muted/50 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-hidden focus-visible:ring-inset'
 
@@ -76,8 +74,13 @@ export function MetricCard({
           <Skeleton className={lead ? 'h-[2.625rem] w-20' : 'h-6 w-16'} />
         </div>
       ) : (
-        <div className={cn('whitespace-nowrap', lead ? 'text-[clamp(1rem,14cqi,2.625rem)] leading-none font-semibold tracking-[-0.02em] tabular-nums' : 'text-[clamp(0.9375rem,12cqi,1.5rem)] leading-none font-medium tabular-nums', alarming ? TONE_TEXT_CLASSES[tone] : 'text-foreground')}>
-          {value}
+        // Only this wrapper is a size container (not the cell, whose width must still come from its label and the
+        // grid): the figure scales with the space the cell gives it (cqi) and is capped at the design sizes, so a long
+        // amount in a narrow strip shrinks to fit instead of running under the next cell.
+        <div className="[container-type:inline-size]">
+          <div className={cn('whitespace-nowrap', lead ? 'text-[clamp(1rem,14cqi,2.625rem)] leading-none font-semibold tracking-[-0.02em] tabular-nums' : 'text-[clamp(0.9375rem,12cqi,1.5rem)] leading-none font-medium tabular-nums', alarming ? TONE_TEXT_CLASSES[tone] : 'text-foreground')}>
+            {value}
+          </div>
         </div>
       )}
       {description || trend ? (
