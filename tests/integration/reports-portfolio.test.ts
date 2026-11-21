@@ -57,8 +57,10 @@ describe('GET /api/v1/reports/portfolio_overview', () => {
     for (const row of report.data.properties) {
       expect(row.unitCount, row.code).toBe(units.filter((unit: { property_id: string }) => unit.property_id === row.propertyId).length)
     }
-    // Active leases as the dashboard counts them (status active).
-    expect(report.data.activeLeases).toBe(a.leases.filter((lease) => lease.status === 'active').length)
+    // Active leases as the dashboard counts them (status active), as the database holds them now: another file may
+    // have verified one of the world's pending leases (leases.test.ts) before this one runs.
+    const leases = check(await serviceRole().from('leases').select('id').eq('company_id', a.id).eq('status', 'active'), 'active leases of A')
+    expect(report.data.activeLeases).toBe(leases.length)
   })
 
   it('narrows to the filtered property and states the filters back', async () => {

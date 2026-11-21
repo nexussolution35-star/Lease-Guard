@@ -6,6 +6,9 @@ export const E2E_WEB_PORT = 5199
 export const E2E_WEB_URL = `http://localhost:${E2E_WEB_PORT}`
 export const E2E_API_PORT = 3955
 export const E2E_API_URL = `http://127.0.0.1:${E2E_API_PORT}`
+/** The reports service (services/reports, ADR 0003); the Vite dev server's gateway sends /api/v1/reports to it. */
+export const E2E_REPORTS_PORT = 3956
+export const E2E_REPORTS_URL = `http://127.0.0.1:${E2E_REPORTS_PORT}`
 /** Redis for BullMQ; the documented local default. Override with E2E_REDIS_URL (must be local). */
 export const E2E_REDIS_URL = process.env.E2E_REDIS_URL ?? 'redis://127.0.0.1:6379'
 /** The document-processing service (python-services/document-processing) the e2e statement worker calls. */

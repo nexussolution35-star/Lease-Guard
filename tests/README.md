@@ -11,7 +11,7 @@ package (`pnpm test`). Neither suite here is part of `pnpm test`: both need runn
 
 ```
 tests/
-  fixtures/      shared by both suites: world.ts (per-run test data), API process, Redis, local Supabase/SQL helpers, PDF generator and sample statements, statements acceptance portfolio, monitoring acceptance portfolio, paths
+  fixtures/      shared by both suites: world.ts (per-run test data), API process, Redis, local Supabase/SQL helpers, PDF generator and sample statements, statements acceptance portfolio, monitoring acceptance portfolio, reports acceptance dataset, paths
   integration/   vitest.config.ts, global-setup.ts, support/ (clients, row snapshots), *.test.ts
   e2e/           playwright.config.ts, global-setup.ts (world), support/ (run-api.ts, statement-worker.ts, app.ts locators, world.ts), *.spec.ts
   test-results/  output: API log, Playwright traces and screenshots (ignored by git)
@@ -93,6 +93,7 @@ API output goes to `tests/test-results/integration/api.log`.
 | `reports-service.test.ts` | The reports service (ticket R-00) through the gateway: its own liveness and readiness (Redis and Supabase up); `GET /api/v1/reports` returns the domain `REPORT_CATALOGUE` to every member role of company A, and is not served by the core API (404 there); 401 without or with a forged token, 400 without `X-Company-Id`, 403 for company B (the admin is not a member); `/api/v1/me`, `/health` and the look-alike `/api/v1/reportsx` still reach the core; `no-store` through the gateway |
 | `reports-lease-dates.test.ts` | Lease expiry and renewal deadlines (ticket R-03) through the gateway: the rows are exactly the company's verified monitored leases in the database, with days and buckets from the as-at date; within notice and requiring a warning equal what the monitoring scan raises with the company's thresholds; a lease this file adds (expiring in 60 days, one-month notice) is in the 0–3 month bucket with its deadline, linking to its open expiry and renewal events, the dashboard counting the open expiry events; bucket, date range, property and deadline-status filters stated back, an unoffered status 400; the same for every member role, another company 403 |
 | `reports-deposits-guarantees.test.ts` | Deposits and guarantees (ticket R-04) through the gateway: four leases added to property CRV of company A dated from today (a guarantee and deposit short after an 8% escalation, a guarantee expiring in 10 days, one expired, one lease pending verification); each verified lease's required cover, shortfall and guarantee state, the unverified one left out and counted as the database holds it, the totals adding up the rows; the figures equal the events the worker's real lease monitoring scan raises for the same leases on the same day (in process, service role, no queue); guarantee state and expiry range filters stated back, 400 for a status it does not offer or a range that ends before it starts; the same for every member role, 403 for another company, no writes |
+| `reports-acceptance.test.ts` | Reports acceptance (ticket R-08); see "Reports acceptance" below. The known dataset (`fixtures/reports-acceptance.ts`) on a property of its own in each company: every report's figures for it, the unfiltered figures against the dashboard and the database in both companies, every filter against the unfiltered rows, isolation by id across every report, and the weekly owner summary's owners-only and approved-template rules. Removed in `afterAll` |
 | `company-isolation.test.ts` | 403 for a company the caller is not a member of; 400 without/with a bad `X-Company-Id`; another company's ids are 404 even under the caller's own company (RLS plus company filter); a member of both companies only sees the active one |
 | `lists.test.ts` | `GET /leases`: paging with stable order, filters, search, sort, 400 for invalid parameters |
 | `tenant-list.test.ts` | `GET /tenants` (ticket M4-02): each world tenant with its current lease (domain `currentLease` over the database's leases), unit number, property name and lease count; the property filter keeps only tenants with a lease there and narrows the embedded leases; combined with search and paging; another company's tenants never listed, even filtered by its property; a non-UUID property is 400 |
@@ -164,7 +165,7 @@ prerequisites as the suite (local Supabase, local Redis); nothing else to config
    `pnpm exec supabase migration up` applies new ones). The database may be empty.
 4. A local Redis on `127.0.0.1:6379` (or set `E2E_REDIS_URL`; it must be local).
 5. The document-processing service's virtual environment, once per machine: `pnpm python:setup` (Python 3.14+).
-6. Ports 3955 (API), 3957 (document processing) and 5199 (web) free.
+6. Ports 3955 (API), 3956 (reports service), 3957 (document processing) and 5199 (web) free.
 
 ### How the environment is chosen
 
@@ -177,6 +178,10 @@ servers and never reuses one that is already running (`reuseExistingServer: fals
   (local Supabase URL and anon key, `API_CORS_ORIGINS=http://localhost:5199`, a unique `QUEUE_PREFIX`,
   every other variable from `.env.example`). Its log is `tests/test-results/e2e/api.log`. When Playwright
   stops it (SIGTERM), it stops the API, deletes the run's Redis keys and removes `backend/.dev-e2e`.
+- **Reports service** (ADR 0003), started by the same runner before the API and stopped with it: built into
+  `services/reports/.dev-e2e` and run on port 3956 like the integration suite's (`fixtures/reports-server.ts`: the same
+  local Supabase URL and anon key and Redis, `.env.example` for the rest, never the service-role key; log
+  `tests/test-results/e2e/reports.log`). Only the HTTP service runs: the reports worker (weekly owner summaries) does not.
 - **Statement processing**, started by the same runner before the API and stopped with it: the document-processing
   service (`python -m uvicorn app.main:app` from `python-services/document-processing/.venv` on port 3957, a random
   token per run; log `tests/test-results/e2e/document-processing.log`) and the statement worker
@@ -184,8 +189,10 @@ servers and never reuses one that is already running (`reuseExistingServer: fals
   `backend/.dev-e2e`, built by hand as `WorkersModule` wires them, on the run's queue prefix with the local
   service-role key; log `tests/test-results/e2e/worker.log`). Nothing else consumes the queues: no daily monitoring
   dispatch, no message delivery, no WhatsApp or invitation jobs, so an approved message still stays queued.
-- **Web**: `vite --port 5199 --strictPort` (the frontend's own Vite binary) with `VITE_API_URL=http://127.0.0.1:3955` and the local
-  `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in the process environment (they override `frontend/.env`).
+- **Web**: `vite --port 5199 --strictPort` (the frontend's own Vite binary) with `VITE_API_URL=http://localhost:5199` (its own
+  origin), `GATEWAY_CORE_URL=http://127.0.0.1:3955`, `GATEWAY_REPORTS_URL=http://127.0.0.1:3956` and the local
+  `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in the process environment (they override `frontend/.env`). The dev
+  server is the gateway, as in development: `/api/v1/reports` goes to the reports service, every other API path to the API.
 
 `global-setup.ts` creates this run's world with `createWorld` (label `e2e`: unique emails and company
 names, random passwords) and destroys it, with a cleanup check, when the run ends. Tests sign in through
@@ -206,6 +213,8 @@ never interfere. Changed values are restored by the tests themselves (and the wo
 | `whatsapp-integration.spec.ts` | Settings → Integrations → WhatsApp with no Meta settings (the e2e API uses `.env.example`): a company admin sees "Requires Meta configuration or approval" naming each missing setting and its process, three features "Requires configuration", no numbers and nothing "Connected"; the old `/settings/whatsapp` link redirects; a read-only member sees the read-only notice and no connect action; a number stored through `import_whatsapp_number` (the number import, ticket 15; no worker, so it stays pending) shows "Nexus Solution connected this number with the number import", is never shown connected, and its disconnect confirmation and disconnected state point the admin to Nexus Solution |
 | `users.spec.ts` | Settings → Users: a company admin's own row shows "You" with role change and removal disabled and explained; invite a user (toast), the same email again is refused on the email field, revoke after confirmation (status Revoked, revoke disabled); a read-only member sees the notice, the member list and no invitations or actions. Invitations it creates are deleted in `afterAll` |
 | `statements-acceptance.spec.ts` | Statements acceptance (ticket S-09), PRD §13.3 and the statement side of §13.4, in its own Playwright project after every other spec. Two units, tenants and verified leases are added to the world's property DIP (`fixtures/statement-acceptance.ts`). A property manager uploads two generated statements (`fixtures/sample-statements.ts`) in two source-system layouts, Sage (label and value columns) and PropSys (`Label: value` headings and dated rows); a copy in the same upload is "Repeated in this upload" and the same file in a later upload "Already uploaded", linking to the statement on record, and neither is registered. The worker reads both into review with no arrears event. The review screen shows the original (its short-lived link returns the uploaded bytes), the values read, and flags the additional charges (garbled on the document: missing, left empty) and the total due (no cents: low confidence, not used); the manager enters both (each correction audited with before and after), saves the tenant, unit and lease proposed from the statement and verifies. The figures are saved with the verifier's sign-off; the worker raises the arrears event and the escalation discrepancy (expected R37 800.00, R2 800.00 short), both naming the statement, and closes its review event; no tenant message is created. The Statements page counts that balance only and links to the statement; the PropSys statement stays under review with its uncertain figures flagged and raises nothing. Removed in `afterAll` |
+
+| `reports-acceptance.spec.ts` | Reports acceptance (ticket R-08), in its own Playwright project after the statements acceptance. The reports acceptance dataset (`fixtures/reports-acceptance.ts`) is added to company A on a property of its own. A company admin opens the Reports page (all twelve reports listed), then each report in turn: filters it to that property (the filter is written to the URL and kept on reload), sees the dataset's number of rows in the report's table, and exports it: the downloaded CSV (`leaseguard-<report>-<date>.csv`) holds exactly those rows, each naming that property. The arrears report in the print layout leaves the filters and actions out and names the filter. Removed in `afterAll` |
 
 Selectors are roles and accessible names from the UI (`navigation "Main"`, the workspace switcher's
 label, the table caption, pagination buttons), not CSS classes. Traces and screenshots of failures are
@@ -228,6 +237,21 @@ API and the worker's processors directly.
 | Verified information is saved correctly | e2e journey, "verify …": number, dates, period, the six figures, tenant, unit, lease, verifier and time on the statement row, the sign-off on the screen; `integration/statement-verification.test.ts` (figures only through verification) |
 | Arrears are identified from verified statement information (§13.4) | e2e journey (arrears event after verifying, none before, none for the unverified statement or its tenant; the Statements page counts only the verified balance); `integration/statement-acceptance.test.ts` (uploaded, under review, rejected and duplicate statements raise nothing in the daily scans or the post-verification job); `integration/statement-arrears.test.ts` |
 | Monitoring events are traceable to their source data (§13.4) | e2e journey and `integration/statement-acceptance.test.ts`: the arrears event and the escalation discrepancy (R35 000 at 8%: expected R37 800, R2 800 short) name the verified statement, its tenant and lease, with the calculation |
+
+## Reports acceptance (ticket R-08)
+
+Each acceptance criterion of the reports work, with the tests that prove it on the local stack. The known dataset is
+`fixtures/reports-acceptance.ts` (its comment lists every record and `REPORTS_EXPECTED` its figures), dated from the
+South African date the reports are as at, so the figures hold whenever the suite runs. Integration:
+`integration/reports-acceptance.test.ts`; browser: `e2e/reports-acceptance.spec.ts`.
+
+| Criterion | Proved by |
+| --- | --- |
+| Every report's figures match the dashboard and the underlying records on a known dataset | "every report shows the known dataset's figures for its property": each of the twelve reports filtered to the dataset's property shows its known figures (R37 800 expected against R35 000 billed, R20 000 outstanding on two accounts, the arrangement pausing T2's reminders, the R5 600 deposit and R8 400 guarantee shortfalls, the 0–3 month expiry and its renewal deadline, four uploads, two messages, the owner's summary); "the unfiltered reports equal the dashboard and the database": every figure a report shares with the dashboard is equal in both companies, and the events, units, uploads and messages listed are exactly the company's rows in the database. Each report's own integration file (R-01 to R-07) checks it against monitoring, the Statements page and communication analytics too |
+| Filters and CSV export return exactly the filtered rows | "each filter returns exactly the filtered rows": for every report, the property, status and date range filters it offers each return exactly the unfiltered report's rows that match, in the same order, and state the filters back; the e2e journey exports every report filtered to the property and the CSV holds exactly the rows of the report's table, each of that property |
+| No report shows another company's data | "no report shows another company's data": no id of the other company's dataset or world appears anywhere in any report of either company, unfiltered or filtered to the other company's property; members of one company get 403 for every report of the other; every member role sees the same figures, and the owner summary stays company admins' only |
+| The weekly summary goes to owners only and is never sent without an approved template | "the weekly owner summary goes to owners only …": the preview lists the property owner only, never a tenant; the reports worker's weekly run hands nothing over without a template, with a template chosen but not approved by Meta (the core's `record_owner_weekly_summary_message` refuses it too) or without a connected number, and the page says why; the core records a summary only for a property owner of the company, and the database refuses an owner summary addressed to a tenant and a tenant template for it. The sending itself is `integration/reports-owner-summary.test.ts` (R-07) |
+| One e2e journey opens each report, filters it and exports it | `e2e/reports-acceptance.spec.ts` (one step per report), plus the print layout |
 
 ## Monitoring accuracy acceptance: PRD §13.4 (ticket M7-06)
 

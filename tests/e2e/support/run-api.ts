@@ -4,7 +4,11 @@
  * a unique QUEUE_PREFIX, port 3955) and cleans up when Playwright stops it (SIGTERM): stops the API,
  * deletes the run's Redis keys and removes the build directory. API output: tests/test-results/e2e/api.log.
  *
- * Beside the API it runs what statement processing needs (the statements acceptance spec): the document-processing
+ * Beside the API it runs the reports service (services/reports, ADR 0003; fixtures/reports-server.ts: built into
+ * services/reports/.dev-e2e, port 3956, the same local Supabase and Redis, never the service-role key), which the Vite
+ * dev server's gateway reaches for /api/v1/reports (the reports acceptance spec). Output: tests/test-results/e2e/reports.log.
+ *
+ * It also runs what statement processing needs (the statements acceptance spec): the document-processing
  * service (python-services/document-processing, its own .venv, port 3957, a per-run token) and the statement worker
  * (statement-worker.ts: statement processing and post-verification monitoring only, on the same queue prefix, with the
  * local service role). Both stop with the API. Output: tests/test-results/e2e/document-processing.log and worker.log.
@@ -20,17 +24,20 @@ import { apiBuild, apiEnvironment, buildApi, removeApiBuild } from '../../fixtur
 import { assertLocal, resolveLocalSupabase } from '../../fixtures/local-supabase.ts'
 import { BACKEND_ROOT, REPO_ROOT, TEST_OUTPUT_ROOT } from '../../fixtures/paths.ts'
 import { assertRedisReachable, deleteKeysWithPrefix } from '../../fixtures/redis.ts'
+import { buildReports, removeReportsBuild, reportsBuild, reportsEnvironment, startReports, type RunningReports } from '../../fixtures/reports-server.ts'
 
 import {
   E2E_API_PORT,
   E2E_DOCUMENT_PROCESSING_PORT,
   E2E_DOCUMENT_PROCESSING_URL,
   E2E_REDIS_URL,
+  E2E_REPORTS_PORT,
   E2E_WEB_URL,
   STATEMENT_WORKER_ENV_VARIABLE,
 } from './env.ts'
 
 const BUILD = apiBuild('e2e')
+const REPORTS_BUILD = reportsBuild('e2e')
 // Playwright shows this process's stderr; the API's own output goes to tests/test-results/e2e/api.log.
 const log = (message: string) => console.error(`[e2e api] ${message}`)
 
@@ -72,6 +79,29 @@ function startLogged(command: string, args: readonly string[], cwd: string, chil
   return child
 }
 
+// The reports service, ready before the API (Playwright waits for the API's readiness only).
+log('building the reports service into services/reports/.dev-e2e …')
+let reports: RunningReports
+try {
+  await buildReports(REPORTS_BUILD)
+  log(`starting the reports service on port ${E2E_REPORTS_PORT}`)
+  reports = await startReports(
+    REPORTS_BUILD,
+    reportsEnvironment(REPORTS_BUILD, {
+      NODE_ENV: 'development',
+      REPORTS_PORT: String(E2E_REPORTS_PORT),
+      REPORTS_CORS_ORIGINS: E2E_WEB_URL,
+      SUPABASE_URL: supabase.url,
+      SUPABASE_ANON_KEY: supabase.anonKey,
+      REDIS_URL: E2E_REDIS_URL,
+    }),
+  )
+} catch (error) {
+  removeReportsBuild(REPORTS_BUILD)
+  removeApiBuild(BUILD)
+  throw error
+}
+
 const helpers: ChildProcess[] = []
 const running = (child: ChildProcess) => child.exitCode === null && child.signalCode === null
 
@@ -79,6 +109,8 @@ const running = (child: ChildProcess) => child.exitCode === null && child.signal
 const documentProcessingDir = path.join(REPO_ROOT, 'python-services', 'document-processing')
 const python = path.join(documentProcessingDir, '.venv', 'bin', 'python')
 if (!existsSync(python)) {
+  await reports.stop()
+  removeReportsBuild(REPORTS_BUILD)
   removeApiBuild(BUILD)
   throw new Error('The document-processing service has no virtual environment: run `pnpm python:setup` first.')
 }
@@ -139,6 +171,8 @@ async function waitForDocumentProcessing(): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 250))
   }
   documentProcessing.kill('SIGKILL')
+  await reports.stop()
+  removeReportsBuild(REPORTS_BUILD)
   removeApiBuild(BUILD)
   throw new Error('The document-processing service did not start; see tests/test-results/e2e/document-processing.log')
 }
@@ -168,7 +202,9 @@ async function cleanUpAndExit(code: number): Promise<void> {
   if (cleaning) return
   cleaning = true
   await stopHelpers()
-  log('stopped the statement worker and the document-processing service')
+  await reports.stop()
+  removeReportsBuild(REPORTS_BUILD)
+  log('stopped the statement worker, the document-processing service and the reports service')
   try {
     const deleted = await deleteKeysWithPrefix(E2E_REDIS_URL, queuePrefix)
     log(`deleted ${deleted} Redis key(s) under ${queuePrefix}:`)

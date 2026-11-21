@@ -52,7 +52,9 @@ OpenAPI document (`services/reports/openapi.json`) and dev script. Report logic 
   the core. In development the Vite dev server is the gateway (`frontend/src/services/api/devGateway.ts` builds its
   proxy rules from the table); in deployment nginx is (`infrastructure/gateway/gateway.conf.template`, checked
   against the table by `pnpm docker:gateway-check`). The generated client types every path behind it
-  (`@leaseguard/api-client` `GatewayPaths`: the core's paths and the reports service's).
+  (`@leaseguard/api-client` `GatewayPaths`: the core's paths and the reports service's). Both test suites go through
+  a gateway too: the integration suite through a proxy with the same table (`tests/fixtures/gateway.ts`), the e2e
+  suite through its Vite dev server, with the reports service running beside the API (`tests/README.md`).
 - **Data.** Supabase Postgres stays the one system of record. The reports service reads company data only through
   read-only `public.reports_*` functions or views (SECURITY INVOKER, `authenticated` only, each starting with
   `private.reports_require_member`), and writes only its own `reports_*` tables from its own `*_reports_*`
