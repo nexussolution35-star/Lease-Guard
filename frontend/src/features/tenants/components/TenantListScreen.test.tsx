@@ -127,6 +127,29 @@ describe('TenantListScreen', () => {
     expect(within(optics).getByText('Opted out')).toBeInTheDocument()
   })
 
+  it('shows the units a tenant holds now, by lease or assignment', async () => {
+    fakeTenants.list.mockResolvedValue({
+      items: [
+        tenant('t4', 'Soweto Spice', {
+          currentLease: undefined as never,
+          leaseCount: 0,
+          currentUnits: [
+            { unitId: 'u1', unitNumber: 'S01', propertyId: 'p1', propertyName: 'Maponya Square' },
+            { unitId: 'u2', unitNumber: 'S02', propertyId: 'p1', propertyName: 'Maponya Square' },
+          ],
+        }),
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 25,
+    })
+    await renderScreen()
+    const row = (await screen.findByRole('link', { name: 'Soweto Spice' })).closest('tr') as HTMLElement
+    expect(within(row).getByText('S01')).toBeInTheDocument()
+    expect(within(row).getByText('+1 more')).toBeInTheDocument()
+    expect(within(row).getByText('Maponya Square')).toBeInTheDocument()
+  })
+
   it('pages, sorts and opens a tenant', async () => {
     fakeTenants.list.mockResolvedValue({ items: [tenant('t1', 'Ubuntu Coffee')], total: 27, page: 1, pageSize: 25 })
     const { onParamsChange, router } = await renderScreen()

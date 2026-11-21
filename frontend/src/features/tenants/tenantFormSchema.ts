@@ -18,6 +18,9 @@ const optionalEmail = z
   .max(254, 'Use at most 254 characters')
   .refine((value) => value === '' || z.email().safeParse(value).success, { message: 'Enter a valid email address' })
 
+/** The property choice that assigns a new tenant to no unit. */
+export const NO_UNIT = 'none'
+
 /**
  * The tenant form (create and edit), with the API's rules. The WhatsApp number is typed as people write it and comes
  * out in E.164 through the same rule the API applies (`normalizeWhatsAppNumber`), so an invalid number is refused
@@ -43,6 +46,13 @@ export const tenantFormSchema = z.object({
   status: z.enum(TENANT_STATUSES, { error: 'Choose a status' }),
   industry: optional(100),
   notes: optional(2000),
+  /** New tenants only: the property, then the unit, to assign the tenant to straight away (empty or `NO_UNIT`: none). */
+  assignPropertyId: z.string(),
+  assignUnitId: z.string(),
+}).superRefine((values, ctx) => {
+  if (values.assignPropertyId !== '' && values.assignPropertyId !== NO_UNIT && values.assignUnitId === '') {
+    ctx.addIssue({ code: 'custom', path: ['assignUnitId'], message: 'Choose a unit, or clear the property' })
+  }
 })
 
 export type TenantFormInput = z.input<typeof tenantFormSchema>
@@ -66,6 +76,8 @@ export function newTenantFormDefaults(): TenantFormInput {
     status: 'prospective',
     industry: '',
     notes: '',
+    assignPropertyId: '',
+    assignUnitId: '',
   }
 }
 
@@ -86,6 +98,8 @@ export function tenantFormDefaults(tenant: Tenant): TenantFormInput {
     status: tenant.status,
     industry: tenant.industry,
     notes: tenant.notes ?? '',
+    assignPropertyId: '',
+    assignUnitId: '',
   }
 }
 

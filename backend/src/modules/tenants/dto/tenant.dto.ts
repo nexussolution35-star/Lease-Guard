@@ -8,6 +8,7 @@ import {
   type Tenant,
   type TenantContact,
   type TenantLeaseSummary,
+  type TenantUnitSummary,
   type TenantListItem,
   type TenantStatus,
 } from '@leaseguard/domain'
@@ -70,6 +71,13 @@ export class TenantLeaseSummaryDto implements TenantLeaseSummary {
   @ApiProperty() propertyName!: string
 }
 
+export class TenantUnitSummaryDto implements TenantUnitSummary {
+  @ApiProperty({ format: 'uuid' }) unitId!: string
+  @ApiProperty({ example: 'G12' }) unitNumber!: string
+  @ApiProperty({ format: 'uuid' }) propertyId!: string
+  @ApiProperty() propertyName!: string
+}
+
 /** A tenant list row. Same shape as the domain `TenantListItem`. */
 export class TenantListItemDto extends TenantDto implements TenantListItem {
   @ApiPropertyOptional({
@@ -82,6 +90,12 @@ export class TenantListItemDto extends TenantDto implements TenantListItem {
 
   @ApiProperty({ description: 'Leases of the tenant (in the filtered property, when filtered)' })
   leaseCount!: number
+
+  @ApiProperty({
+    type: [TenantUnitSummaryDto],
+    description: 'Units whose current tenant this tenant is: by their current lease, or assigned without a lease. Unit number order.',
+  })
+  currentUnits!: TenantUnitSummaryDto[]
 }
 
 export const TenantPageDto = createPageDto(TenantListItemDto, 'TenantPage')

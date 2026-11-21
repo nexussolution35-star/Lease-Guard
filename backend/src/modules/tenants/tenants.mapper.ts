@@ -1,4 +1,4 @@
-import { currentLease, type Tenant, type TenantLeaseSummary, type TenantListItem } from '@leaseguard/domain'
+import { currentLease, type Tenant, type TenantLeaseSummary, type TenantListItem, type TenantUnitSummary } from '@leaseguard/domain'
 
 import type { Tables } from '../../infrastructure/database/database.types'
 
@@ -14,8 +14,25 @@ export type TenantLeaseRow = Pick<LeaseRow, 'id' | 'reference' | 'status' | 'ver
   property: Pick<Tables<'properties'>, 'name'> | null
 }
 
-/** A tenant row with its embedded leases (`leases!leases_tenant_fk(TENANT_LEASE_COLUMNS)`). */
-export type TenantListRow = TenantRow & { leases: TenantLeaseRow[] | null }
+/**
+ * Units the tenant list embeds: those whose current tenant (current lease's tenant, else assigned tenant, derived in the
+ * database) is the tenant, with their property.
+ */
+export const TENANT_CURRENT_UNIT_COLUMNS = 'id, unit_number, property_id, property:properties!units_property_fk(name)'
+
+export type TenantCurrentUnitRow = Pick<Tables<'units'>, 'id' | 'unit_number' | 'property_id'> & {
+  property: Pick<Tables<'properties'>, 'name'> | null
+}
+
+/**
+ * A tenant row with its embedded leases (`leases!leases_tenant_fk(TENANT_LEASE_COLUMNS)`) and current units
+ * (`current_units:units!units_current_tenant_fk(TENANT_CURRENT_UNIT_COLUMNS)`).
+ */
+export type TenantListRow = TenantRow & { leases: TenantLeaseRow[] | null; current_units?: TenantCurrentUnitRow[] | null }
+
+function toUnitSummary(row: TenantCurrentUnitRow): TenantUnitSummary {
+  return { unitId: row.id, unitNumber: row.unit_number, propertyId: row.property_id, propertyName: row.property?.name ?? '' }
+}
 
 function toLeaseSummary(row: TenantLeaseRow): TenantLeaseSummary {
   return {
@@ -30,15 +47,18 @@ function toLeaseSummary(row: TenantLeaseRow): TenantLeaseSummary {
   }
 }
 
-/** A tenant list row: the tenant, its current lease (domain `currentLease`) and how many leases were embedded. */
+/** A tenant list row: the tenant, its current lease (domain `currentLease`), how many leases were embedded and its current units. */
 export function toTenantListItem(row: TenantListRow): TenantListItem {
-  const { leases, ...tenant } = row
+  const { leases, current_units: currentUnits, ...tenant } = row
   const all = leases ?? []
   const current = currentLease(all.map((lease) => ({ id: lease.id, status: lease.status, commencementDate: lease.commencement_date, row: lease })))
   return {
     ...toTenant(tenant),
     ...(current ? { currentLease: toLeaseSummary(current.row) } : {}),
     leaseCount: all.length,
+    currentUnits: (currentUnits ?? [])
+      .map(toUnitSummary)
+      .sort((a, b) => a.propertyName.localeCompare(b.propertyName, 'en-ZA') || a.unitNumber.localeCompare(b.unitNumber, 'en-ZA', { numeric: true })),
   }
 }
 

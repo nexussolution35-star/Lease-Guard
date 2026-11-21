@@ -55,8 +55,24 @@ describe('tenants mapper', () => {
     expect(item).not.toHaveProperty('leases')
   })
 
+  it('lists the units the tenant currently holds (by lease or assignment), by property then unit number', () => {
+    const item = toTenantListItem({
+      ...tenantRow,
+      leases: [],
+      current_units: [
+        { id: 'u10', unit_number: '10', property_id: 'p2', property: { name: 'Maponya Square' } },
+        { id: 'u9', unit_number: '9', property_id: 'p2', property: { name: 'Maponya Square' } },
+        { id: 'u1', unit_number: '1', property_id: PROPERTY, property: { name: 'Acacia Park' } },
+      ],
+    })
+    expect((item.currentUnits ?? []).map((unit) => `${unit.propertyName} ${unit.unitNumber}`)).toEqual(['Acacia Park 1', 'Maponya Square 9', 'Maponya Square 10'])
+    expect(item.currentUnits?.[0]).toEqual({ unitId: 'u1', unitNumber: '1', propertyId: PROPERTY, propertyName: 'Acacia Park' })
+    expect(item).not.toHaveProperty('current_units')
+  })
+
   it('leaves the current lease out when the tenant has none', () => {
     const item = toTenantListItem({ ...tenantRow, leases: [] })
+    expect(item.currentUnits).toEqual([])
     expect(item.leaseCount).toBe(0)
     expect(item).not.toHaveProperty('currentLease')
   })

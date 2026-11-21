@@ -3781,6 +3781,355 @@
         ]
       }
     },
+    "/api/v1/unit-assignments": {
+      "get": {
+        "description": "Current and ended assignments (history), newest first; filter by tenant, unit, property or current.",
+        "operationId": "listUnitAssignments",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Case-insensitive text search",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "direction",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SortDirection"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "Newest first when omitted",
+            "schema": {
+              "$ref": "#/components/schemas/UnitAssignmentSortField"
+            }
+          },
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "unitId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "current",
+            "required": false,
+            "in": "query",
+            "description": "true for current assignments only, false for ended ones only",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnitAssignmentPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "List tenants assigned to units in the active company",
+        "tags": [
+          "unit-assignments"
+        ]
+      },
+      "post": {
+        "description": "The unit becomes occupied and its current tenant is the assigned tenant until a lease is in force. A tenant may hold several units; a unit has one current tenant. Refused (409, naming who holds it) when the unit is let to or assigned to another tenant, or its property is archived; 404 for a tenant or unit of another company. Assigning the tenant who already holds the unit returns the current assignment. Audited on the unit. An assignment never drives monitoring or tenant messages.",
+        "operationId": "assignTenantToUnit",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUnitAssignmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnitAssignmentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The unit is let or assigned to another tenant, or its property is archived",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Assign a tenant to a unit without a lease (company admins and property managers)",
+        "tags": [
+          "unit-assignments"
+        ]
+      }
+    },
+    "/api/v1/unit-assignments/{assignmentId}/end": {
+      "post": {
+        "description": "The assignment is kept as history. The unit returns to vacant unless a lease keeps it occupied. 409 when the assignment has already ended or the property is archived. Audited on the unit.",
+        "operationId": "endUnitAssignment",
+        "parameters": [
+          {
+            "name": "assignmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnitAssignmentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Already ended, or the property is archived",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Unassign a tenant from a unit (company admins and property managers)",
+        "tags": [
+          "unit-assignments"
+        ]
+      }
+    },
     "/api/v1/tenants": {
       "get": {
         "description": "Each tenant carries its current lease (reference, unit and property) and its lease count. `propertyId` keeps tenants with a lease in that property.",
@@ -6194,7 +6543,7 @@
     },
     "/api/v1/statements/{statementId}/extraction/fields/{fieldName}/confirm": {
       "post": {
-        "description": "Resolves a flagged field with the extracted value, recording who and when, and drops any correction. A value the extractor did not find cannot be confirmed (422): enter it with correctStatementField. Confirming a confirmed field changes nothing. Audited with before and after. Returns the extraction.",
+        "description": "Resolves a flagged field with the extracted value, recording who and when, and drops any correction. A value the extractor did not find cannot be confirmed (422): enter it with correctStatementField, or, for the statement number, confirm it is not on the statement (confirmStatementFieldNotOnStatement). Confirming a confirmed field changes nothing. Audited with before and after. Returns the extraction.",
         "operationId": "confirmStatementField",
         "parameters": [
           {
@@ -6303,6 +6652,122 @@
           }
         ],
         "summary": "Confirm that an extracted value is correct",
+        "tags": [
+          "statements"
+        ]
+      }
+    },
+    "/api/v1/statements/{statementId}/extraction/fields/{fieldName}/not-on-statement": {
+      "post": {
+        "description": "For a statement that prints no statement number: resolves the statement_number field the extractor did not find without a value, recording who and when, and drops any correction. Nothing is filled in; the verified statement has no number. Only statement_number may be left out (422 for any other field), and only when the extractor found no value (422: confirm or correct it instead). Confirming it again changes nothing. Audited. Returns the extraction.",
+        "operationId": "confirmStatementFieldNotOnStatement",
+        "parameters": [
+          {
+            "name": "statementId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fieldName",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "$ref": "#/components/schemas/ExtractionFieldName"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementExtractionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Statement not found or not yet extracted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The statement is not under review (uploaded, processing, verified, rejected or duplicate) or its extraction was already reviewed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The field is required, or a value was found for it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Confirm that an optional field is not on the statement",
         "tags": [
           "statements"
         ]
@@ -15420,6 +15885,32 @@
           "parking"
         ]
       },
+      "UnitAssignmentSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "assignedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "tenantName",
+          "assignedAt"
+        ]
+      },
       "UnitPropertySummaryDto": {
         "type": "object",
         "properties": {
@@ -15526,12 +16017,20 @@
           "currentTenantId": {
             "type": "string",
             "format": "uuid",
-            "description": "Tenant of the active lease (denormalised)"
+            "description": "Current tenant: the current lease's tenant, else the assigned tenant (derived)"
           },
           "currentLeaseId": {
             "type": "string",
             "format": "uuid",
             "description": "Active lease (denormalised)"
+          },
+          "currentAssignment": {
+            "description": "The tenant assigned to the unit without a lease, while assigned",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnitAssignmentSummaryDto"
+              }
+            ]
           },
           "description": {
             "type": "string"
@@ -15548,7 +16047,7 @@
             "$ref": "#/components/schemas/UnitPropertySummaryDto"
           },
           "currentTenant": {
-            "description": "Tenant of the active lease",
+            "description": "Current tenant: the current lease's tenant, else the assigned tenant",
             "allOf": [
               {
                 "$ref": "#/components/schemas/UnitTenantSummaryDto"
@@ -15649,12 +16148,20 @@
           "currentTenantId": {
             "type": "string",
             "format": "uuid",
-            "description": "Tenant of the active lease (denormalised)"
+            "description": "Current tenant: the current lease's tenant, else the assigned tenant (derived)"
           },
           "currentLeaseId": {
             "type": "string",
             "format": "uuid",
             "description": "Active lease (denormalised)"
+          },
+          "currentAssignment": {
+            "description": "The tenant assigned to the unit without a lease, while assigned",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnitAssignmentSummaryDto"
+              }
+            ]
           },
           "description": {
             "type": "string"
@@ -15775,6 +16282,136 @@
           }
         }
       },
+      "UnitAssignmentSortField": {
+        "type": "string",
+        "enum": [
+          "assignedAt"
+        ]
+      },
+      "UnitAssignmentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The unit's property"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assignedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "assignedByUserId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Who assigned the unit; absent when the member has left the company"
+          },
+          "endedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the assignment ended; absent while it is current"
+          },
+          "endedByUserId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Who unassigned the unit"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "unitNumber": {
+            "type": "string",
+            "example": "G12"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "propertyId",
+          "unitId",
+          "tenantId",
+          "assignedAt",
+          "tenantName",
+          "unitNumber",
+          "propertyName",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UnitAssignmentPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnitAssignmentDto"
+            }
+          },
+          "total": {
+            "type": "number",
+            "minimum": 0
+          },
+          "page": {
+            "type": "number",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ]
+      },
+      "CreateUnitAssignmentDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A tenant of the company"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unit of the company whose property is not archived"
+          }
+        },
+        "required": [
+          "tenantId",
+          "unitId"
+        ]
+      },
       "TenantSortField": {
         "type": "string",
         "enum": [
@@ -15889,6 +16526,32 @@
           "propertyName"
         ]
       },
+      "TenantUnitSummaryDto": {
+        "type": "object",
+        "properties": {
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitNumber": {
+            "type": "string",
+            "example": "G12"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "unitId",
+          "unitNumber",
+          "propertyId",
+          "propertyName"
+        ]
+      },
       "TenantListItemDto": {
         "type": "object",
         "properties": {
@@ -15984,6 +16647,13 @@
           "leaseCount": {
             "type": "number",
             "description": "Leases of the tenant (in the filtered property, when filtered)"
+          },
+          "currentUnits": {
+            "description": "Units whose current tenant this tenant is: by their current lease, or assigned without a lease. Unit number order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantUnitSummaryDto"
+            }
           }
         },
         "required": [
@@ -16000,7 +16670,8 @@
           "industry",
           "createdAt",
           "updatedAt",
-          "leaseCount"
+          "leaseCount",
+          "currentUnits"
         ]
       },
       "TenantPage": {
@@ -17338,7 +18009,8 @@
           },
           "tenantCount": {
             "type": "number",
-            "minimum": 0
+            "minimum": 0,
+            "description": "Distinct tenants with a balance in this bucket"
           }
         },
         "required": [
@@ -17379,7 +18051,7 @@
           "statementId": {
             "type": "string",
             "format": "uuid",
-            "description": "The tenant's latest verified statement, which the balance comes from"
+            "description": "The latest verified statement of the tenant's lease, which the balance comes from"
           },
           "statementDate": {
             "type": "string",
@@ -17447,12 +18119,13 @@
           },
           "totalOutstanding": {
             "type": "number",
-            "description": "Rands (ZAR), 2 decimals; the sum of every tenant's outstanding balance",
+            "description": "Rands (ZAR), 2 decimals; the sum of every entry: each tenant's outstanding balance on every lease",
             "minimum": 0
           },
           "tenantsInArrears": {
             "type": "number",
-            "minimum": 0
+            "minimum": 0,
+            "description": "Distinct tenants in arrears, on one lease or more"
           },
           "tenantsUnderArrangement": {
             "type": "number",
@@ -17472,7 +18145,7 @@
             }
           },
           "entries": {
-            "description": "Tenants in arrears, largest balance first",
+            "description": "One entry per tenant and lease in arrears (a tenant with several leases has several), largest balance first",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/StatementArrearsEntryDto"

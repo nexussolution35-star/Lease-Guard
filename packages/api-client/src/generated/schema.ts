@@ -636,6 +636,50 @@ export interface paths {
         patch: operations["updateUnit"];
         trace?: never;
     };
+    "/api/v1/unit-assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List tenants assigned to units in the active company
+         * @description Current and ended assignments (history), newest first; filter by tenant, unit, property or current.
+         */
+        get: operations["listUnitAssignments"];
+        put?: never;
+        /**
+         * Assign a tenant to a unit without a lease (company admins and property managers)
+         * @description The unit becomes occupied and its current tenant is the assigned tenant until a lease is in force. A tenant may hold several units; a unit has one current tenant. Refused (409, naming who holds it) when the unit is let to or assigned to another tenant, or its property is archived; 404 for a tenant or unit of another company. Assigning the tenant who already holds the unit returns the current assignment. Audited on the unit. An assignment never drives monitoring or tenant messages.
+         */
+        post: operations["assignTenantToUnit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/unit-assignments/{assignmentId}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unassign a tenant from a unit (company admins and property managers)
+         * @description The assignment is kept as history. The unit returns to vacant unless a lease keeps it occupied. 409 when the assignment has already ended or the property is archived. Audited on the unit.
+         */
+        post: operations["endUnitAssignment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tenants": {
         parameters: {
             query?: never;
@@ -993,9 +1037,29 @@ export interface paths {
         put?: never;
         /**
          * Confirm that an extracted value is correct
-         * @description Resolves a flagged field with the extracted value, recording who and when, and drops any correction. A value the extractor did not find cannot be confirmed (422): enter it with correctStatementField. Confirming a confirmed field changes nothing. Audited with before and after. Returns the extraction.
+         * @description Resolves a flagged field with the extracted value, recording who and when, and drops any correction. A value the extractor did not find cannot be confirmed (422): enter it with correctStatementField, or, for the statement number, confirm it is not on the statement (confirmStatementFieldNotOnStatement). Confirming a confirmed field changes nothing. Audited with before and after. Returns the extraction.
          */
         post: operations["confirmStatementField"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/statements/{statementId}/extraction/fields/{fieldName}/not-on-statement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm that an optional field is not on the statement
+         * @description For a statement that prints no statement number: resolves the statement_number field the extractor did not find without a value, recording who and when, and drops any correction. Nothing is filled in; the verified statement has no number. Only statement_number may be left out (422 for any other field), and only when the extractor found no value (422: confirm or correct it instead). Confirming it again changes nothing. Audited. Returns the extraction.
+         */
+        post: operations["confirmStatementFieldNotOnStatement"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3034,6 +3098,15 @@ export interface components {
         OccupancyStatus: "occupied" | "vacant" | "under_offer" | "unavailable";
         /** @enum {string} */
         UnitType: "anchor_retail" | "line_shop" | "kiosk" | "restaurant" | "office_suite" | "warehouse" | "yard" | "storage" | "parking";
+        UnitAssignmentSummaryDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            tenantId: string;
+            tenantName: string;
+            /** Format: date-time */
+            assignedAt: string;
+        };
         UnitPropertySummaryDto: {
             /** Format: uuid */
             id: string;
@@ -3071,7 +3144,7 @@ export interface components {
             occupancyStatus: components["schemas"]["OccupancyStatus"];
             /**
              * Format: uuid
-             * @description Tenant of the active lease (denormalised)
+             * @description Current tenant: the current lease's tenant, else the assigned tenant (derived)
              */
             currentTenantId?: string;
             /**
@@ -3079,13 +3152,15 @@ export interface components {
              * @description Active lease (denormalised)
              */
             currentLeaseId?: string;
+            /** @description The tenant assigned to the unit without a lease, while assigned */
+            currentAssignment?: components["schemas"]["UnitAssignmentSummaryDto"];
             description?: string;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
             property: components["schemas"]["UnitPropertySummaryDto"];
-            /** @description Tenant of the active lease */
+            /** @description Current tenant: the current lease's tenant, else the assigned tenant */
             currentTenant?: components["schemas"]["UnitTenantSummaryDto"];
             /** @description The active lease */
             currentLease?: components["schemas"]["UnitLeaseSummaryDto"];
@@ -3112,7 +3187,7 @@ export interface components {
             occupancyStatus: components["schemas"]["OccupancyStatus"];
             /**
              * Format: uuid
-             * @description Tenant of the active lease (denormalised)
+             * @description Current tenant: the current lease's tenant, else the assigned tenant (derived)
              */
             currentTenantId?: string;
             /**
@@ -3120,6 +3195,8 @@ export interface components {
              * @description Active lease (denormalised)
              */
             currentLeaseId?: string;
+            /** @description The tenant assigned to the unit without a lease, while assigned */
+            currentAssignment?: components["schemas"]["UnitAssignmentSummaryDto"];
             description?: string;
             /** Format: date-time */
             createdAt: string;
@@ -3158,6 +3235,66 @@ export interface components {
             description?: string | null;
         };
         /** @enum {string} */
+        UnitAssignmentSortField: "assignedAt";
+        UnitAssignmentDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            companyId: string;
+            /**
+             * Format: uuid
+             * @description The unit's property
+             */
+            propertyId: string;
+            /** Format: uuid */
+            unitId: string;
+            /** Format: uuid */
+            tenantId: string;
+            /** Format: date-time */
+            assignedAt: string;
+            /**
+             * Format: uuid
+             * @description Who assigned the unit; absent when the member has left the company
+             */
+            assignedByUserId?: string;
+            /**
+             * Format: date-time
+             * @description When the assignment ended; absent while it is current
+             */
+            endedAt?: string;
+            /**
+             * Format: uuid
+             * @description Who unassigned the unit
+             */
+            endedByUserId?: string;
+            tenantName: string;
+            /** @example G12 */
+            unitNumber: string;
+            propertyName: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UnitAssignmentPage: {
+            items: components["schemas"]["UnitAssignmentDto"][];
+            total: number;
+            page: number;
+            pageSize: number;
+        };
+        CreateUnitAssignmentDto: {
+            /**
+             * Format: uuid
+             * @description A tenant of the company
+             */
+            tenantId: string;
+            /**
+             * Format: uuid
+             * @description A unit of the company whose property is not archived
+             */
+            unitId: string;
+        };
+        /** @enum {string} */
         TenantSortField: "tradingName" | "legalName" | "status" | "createdAt";
         /** @enum {string} */
         TenantStatus: "active" | "in_arrears" | "notice_given" | "vacated" | "prospective";
@@ -3183,6 +3320,15 @@ export interface components {
             /** Format: uuid */
             unitId: string;
             /** @example 001 */
+            unitNumber: string;
+            /** Format: uuid */
+            propertyId: string;
+            propertyName: string;
+        };
+        TenantUnitSummaryDto: {
+            /** Format: uuid */
+            unitId: string;
+            /** @example G12 */
             unitNumber: string;
             /** Format: uuid */
             propertyId: string;
@@ -3229,6 +3375,8 @@ export interface components {
             currentLease?: components["schemas"]["TenantLeaseSummaryDto"];
             /** @description Leases of the tenant (in the filtered property, when filtered) */
             leaseCount: number;
+            /** @description Units whose current tenant this tenant is: by their current lease, or assigned without a lease. Unit number order. */
+            currentUnits: components["schemas"]["TenantUnitSummaryDto"][];
         };
         TenantPage: {
             items: components["schemas"]["TenantListItemDto"][];
@@ -3696,6 +3844,7 @@ export interface components {
             description: string;
             /** @description Rands (ZAR), 2 decimals; the outstanding balances aged into this bucket */
             outstanding: number;
+            /** @description Distinct tenants with a balance in this bucket */
             tenantCount: number;
         };
         StatementArrearsEntryDto: {
@@ -3712,7 +3861,7 @@ export interface components {
             leaseId?: string;
             /**
              * Format: uuid
-             * @description The tenant's latest verified statement, which the balance comes from
+             * @description The latest verified statement of the tenant's lease, which the balance comes from
              */
             statementId: string;
             /** Format: date */
@@ -3743,8 +3892,9 @@ export interface components {
             asOf: string;
             /** @description Bucket boundaries in days, from the company's arrears monitoring rule */
             ageingBuckets: number[];
-            /** @description Rands (ZAR), 2 decimals; the sum of every tenant's outstanding balance */
+            /** @description Rands (ZAR), 2 decimals; the sum of every entry: each tenant's outstanding balance on every lease */
             totalOutstanding: number;
+            /** @description Distinct tenants in arrears, on one lease or more */
             tenantsInArrears: number;
             /** @description Tenants in arrears with an active payment arrangement */
             tenantsUnderArrangement: number;
@@ -3752,7 +3902,7 @@ export interface components {
             pendingReview: number;
             /** @description Every bucket of the configuration, in ageing order */
             buckets: components["schemas"]["ArrearsBucketDto"][];
-            /** @description Tenants in arrears, largest balance first */
+            /** @description One entry per tenant and lease in arrears (a tenant with several leases has several), largest balance first */
             entries: components["schemas"]["StatementArrearsEntryDto"][];
         };
         /** @enum {string} */
@@ -5425,6 +5575,7 @@ export type ApprovePortfolioImportDto = components['schemas']['ApprovePortfolioI
 export type UnitSortField = components['schemas']['UnitSortField'];
 export type OccupancyStatus = components['schemas']['OccupancyStatus'];
 export type UnitType = components['schemas']['UnitType'];
+export type UnitAssignmentSummaryDto = components['schemas']['UnitAssignmentSummaryDto'];
 export type UnitPropertySummaryDto = components['schemas']['UnitPropertySummaryDto'];
 export type UnitTenantSummaryDto = components['schemas']['UnitTenantSummaryDto'];
 export type UnitLeaseSummaryDto = components['schemas']['UnitLeaseSummaryDto'];
@@ -5433,12 +5584,17 @@ export type UnitPage = components['schemas']['UnitPage'];
 export type UnitDto = components['schemas']['UnitDto'];
 export type CreateUnitDto = components['schemas']['CreateUnitDto'];
 export type UpdateUnitDto = components['schemas']['UpdateUnitDto'];
+export type UnitAssignmentSortField = components['schemas']['UnitAssignmentSortField'];
+export type UnitAssignmentDto = components['schemas']['UnitAssignmentDto'];
+export type UnitAssignmentPage = components['schemas']['UnitAssignmentPage'];
+export type CreateUnitAssignmentDto = components['schemas']['CreateUnitAssignmentDto'];
 export type TenantSortField = components['schemas']['TenantSortField'];
 export type TenantStatus = components['schemas']['TenantStatus'];
 export type BusinessType = components['schemas']['BusinessType'];
 export type TenantContactDto = components['schemas']['TenantContactDto'];
 export type LeaseStatus = components['schemas']['LeaseStatus'];
 export type TenantLeaseSummaryDto = components['schemas']['TenantLeaseSummaryDto'];
+export type TenantUnitSummaryDto = components['schemas']['TenantUnitSummaryDto'];
 export type TenantListItemDto = components['schemas']['TenantListItemDto'];
 export type TenantPage = components['schemas']['TenantPage'];
 export type TenantDto = components['schemas']['TenantDto'];
@@ -8297,6 +8453,224 @@ export interface operations {
             };
         };
     };
+    listUnitAssignments: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                /** @description Case-insensitive text search */
+                search?: string;
+                direction?: components["schemas"]["SortDirection"];
+                /** @description Newest first when omitted */
+                sort?: components["schemas"]["UnitAssignmentSortField"];
+                tenantId?: string;
+                unitId?: string;
+                propertyId?: string;
+                /** @description true for current assignments only, false for ended ones only */
+                current?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnitAssignmentPage"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    assignTenantToUnit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateUnitAssignmentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnitAssignmentDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The unit is let or assigned to another tenant, or its property is archived */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    endUnitAssignment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assignmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnitAssignmentDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Already ended, or the property is archived */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     listTenants: {
         parameters: {
             query?: {
@@ -10018,6 +10392,91 @@ export interface operations {
                 };
             };
             /** @description The value was not found on the statement */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    confirmStatementFieldNotOnStatement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                statementId: string;
+                fieldName: components["schemas"]["ExtractionFieldName"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementExtractionDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Statement not found or not yet extracted */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The statement is not under review (uploaded, processing, verified, rejected or duplicate) or its extraction was already reviewed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The field is required, or a value was found for it */
             422: {
                 headers: {
                     [name: string]: unknown;

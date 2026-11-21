@@ -1,11 +1,30 @@
-import type { Unit, UnitListItem } from '@leaseguard/domain'
+import type { Unit, UnitAssignmentSummary, UnitListItem } from '@leaseguard/domain'
 
 import type { Tables } from '../../infrastructure/database/database.types'
 
 export type UnitRow = Tables<'units'>
 
+/**
+ * The unit's assignments embedded with it (`UNIT_ASSIGNMENT_EMBED`), with the tenant's name. Only the current one
+ * (no `ended_at`) is read; list and get also filter the embed to it.
+ */
+export type UnitAssignmentRow = Pick<Tables<'unit_tenant_assignments'>, 'id' | 'tenant_id' | 'assigned_at' | 'ended_at'> & {
+  tenant: Pick<Tables<'tenants'>, 'trading_name'> | null
+}
+
+/** A unit row, optionally with its embedded assignments. */
+export type UnitWithAssignmentsRow = UnitRow & { assignments?: UnitAssignmentRow[] | null }
+
+function toAssignmentSummary(rows: UnitAssignmentRow[] | null | undefined): UnitAssignmentSummary | undefined {
+  const current = (rows ?? []).find((row) => row.ended_at === null)
+  if (!current) return undefined
+  return { id: current.id, tenantId: current.tenant_id, tenantName: current.tenant?.trading_name ?? '', assignedAt: current.assigned_at }
+}
+
 /** Database row → domain `Unit`. Nullable columns become absent optional fields. */
-export function toUnit(row: UnitRow): Unit {
+export function toUnit(withAssignments: UnitWithAssignmentsRow): Unit {
+  const { assignments, ...row } = withAssignments
+  const assignment = toAssignmentSummary(assignments)
   return {
     id: row.id,
     companyId: row.company_id,
@@ -17,6 +36,7 @@ export function toUnit(row: UnitRow): Unit {
     occupancyStatus: row.occupancy_status,
     ...(row.current_tenant_id ? { currentTenantId: row.current_tenant_id } : {}),
     ...(row.current_lease_id ? { currentLeaseId: row.current_lease_id } : {}),
+    ...(assignment ? { currentAssignment: assignment } : {}),
     ...(row.description ? { description: row.description } : {}),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -24,15 +44,16 @@ export function toUnit(row: UnitRow): Unit {
 }
 
 /** The related rows `GET /units` embeds with each unit (see `UNIT_LIST_SELECT`). */
-export interface UnitListRow extends UnitRow {
+export interface UnitListRow extends UnitWithAssignmentsRow {
   property: Pick<Tables<'properties'>, 'id' | 'name' | 'code'> | null
   current_tenant: Pick<Tables<'tenants'>, 'id' | 'trading_name'> | null
   current_lease: Pick<Tables<'leases'>, 'id' | 'reference' | 'commencement_date' | 'expiry_date'> | null
 }
 
 /**
- * Database row with its embedded property, tenant and lease → `UnitListItem`. The property always
- * exists (foreign key); the tenant and lease are present only while the unit has an active lease.
+ * Database row with its embedded property, tenant, lease and assignment → `UnitListItem`. The property always exists
+ * (foreign key); the tenant is the current lease's, else the assigned tenant; the lease is present only while the unit
+ * has a current lease.
  */
 export function toUnitListItem(row: UnitListRow): UnitListItem {
   const { property, current_tenant: tenant, current_lease: lease, ...unit } = row

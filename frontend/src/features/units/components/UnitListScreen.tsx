@@ -63,9 +63,12 @@ const COLUMNS: DataTableColumn<UnitListItem>[] = [
     header: 'Tenant',
     cell: (unit) =>
       unit.currentTenant ? (
-        <AppLink to={`/tenants/${encodeURIComponent(unit.currentTenant.id)}`} className="text-foreground hover:underline">
-          {unit.currentTenant.tradingName}
-        </AppLink>
+        <div className="min-w-0">
+          <AppLink to={`/tenants/${encodeURIComponent(unit.currentTenant.id)}`} className="text-foreground hover:underline">
+            {unit.currentTenant.tradingName}
+          </AppLink>
+          {unit.currentAssignment && !unit.currentLease ? <div className="text-xs text-muted-foreground">Assigned, no lease</div> : null}
+        </div>
       ) : (
         NONE
       ),

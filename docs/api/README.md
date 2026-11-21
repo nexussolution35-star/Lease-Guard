@@ -146,6 +146,9 @@ From `backend/openapi.json`. "Writers" means `WRITER_ROLES`.
 | `GET /api/v1/units/{unitId}` | `getUnit` | company | members |
 | `POST /api/v1/units` | `createUnit` | company | writers |
 | `PATCH /api/v1/units/{unitId}` | `updateUnit` | company | writers |
+| `GET /api/v1/unit-assignments` | `listUnitAssignments` | company | members |
+| `POST /api/v1/unit-assignments` | `assignTenantToUnit` | company | writers |
+| `POST /api/v1/unit-assignments/{assignmentId}/end` | `endUnitAssignment` | company | writers |
 | `GET /api/v1/tenants` | `listTenants` | company | members |
 | `GET /api/v1/tenants/{tenantId}` | `getTenant` | company | members |
 | `POST /api/v1/tenants` | `createTenant` | company | writers |
@@ -190,11 +193,12 @@ From `backend/openapi.json`. "Writers" means `WRITER_ROLES`.
 Behaviour worth knowing:
 
 - **Unit list** (`listUnits`): each item is a `UnitListItem`: the unit with its `property`
-  (`id`, `name`, `code`) and, while the unit has an active lease, `currentTenant` (`id`,
-  `tradingName`) and `currentLease` (`id`, `reference`, `commencementDate`, `expiryDate`), read from
-  `currentTenantId` / `currentLeaseId` through the company-scoped foreign keys (RLS applies to every
-  embedded row). Filters: `propertyId`, `type`, `occupancyStatus`; `search` matches the unit number.
-  `getUnit` returns the plain `Unit`.
+  (`id`, `name`, `code`), its `currentTenant` (`id`, `tradingName`: the current lease's tenant, else the tenant
+  assigned to it without a lease), while it has a current lease `currentLease` (`id`, `reference`,
+  `commencementDate`, `expiryDate`), and while it is assigned `currentAssignment` (`id`, `tenantId`, `tenantName`,
+  `assignedAt`), read from `currentTenantId` / `currentLeaseId` and the unit's current assignment through the
+  company-scoped foreign keys (RLS applies to every embedded row). Filters: `propertyId`, `type`, `occupancyStatus`;
+  `search` matches the unit number. `getUnit` returns the `Unit` with its `currentAssignment`.
 - **Unit writes** (`createUnit`, `updateUnit`): unit number (trimmed, unique within its property: 409
   `A unit numbered … already exists in this property`), property (create only; fixed afterwards), unit type, floor
   area (m², two decimals), optional floor and description, occupancy status (`vacant` when omitted on create). The
@@ -227,7 +231,20 @@ Behaviour worth knowing:
   RLS. The current lease is chosen by `currentLease` in `@leaseguard/domain` (in force, then being set up, then
   ended; latest commencement among equals). Filters: `status`, `businessType`, `propertyId` (tenants with a lease in
   that property; the embedded leases and `leaseCount` are then limited to it); `search` matches the registered and
-  trading names and the contact person. `getTenant` returns the plain `Tenant`.
+  trading names and the contact person. Each item also lists `currentUnits` (`unitId`, `unitNumber`, `propertyId`,
+  `propertyName`): the units whose current tenant it is, by lease or assignment (`units_current_tenant_fk`). `getTenant`
+  returns the plain `Tenant`.
+- **Unit assignments** (`listUnitAssignments`, `assignTenantToUnit`, `endUnitAssignment`; ticket M4-04): a writer
+  assigns a tenant to a unit without a lease (`{ tenantId, unitId }`); the unit is occupied by that tenant straight
+  away. A tenant may hold several units; a unit has one current tenant. The database refuses, and the API answers 409
+  with its words: a unit assigned to another tenant (`Unit S02 is assigned to … Unassign it before …`), a unit let to
+  another tenant (`Unit S01 is let to … under lease …`), an archived property, an assignment already ended; a tenant
+  or unit of another company is 404. Assigning the holder again returns the current assignment. Ending an assignment
+  keeps it as history (`current=false` lists ended ones) and returns the unit to vacant unless a lease keeps it
+  occupied. A lease of an assigned unit must be for the assigned tenant (`createLease`/`updateLease` answer 422 in
+  words). Assign and unassign are audited on the unit. An assignment never drives monitoring or tenant messages; the
+  statement worker only uses the assigned tenants of a statement's property as matching hints. Lists are newest
+  first; filters `tenantId`, `unitId`, `propertyId`, `current`.
 
 - **Lease list** (`listLeases`): each item is a `LeaseListItem`: the `Lease` plus `tenantName` (trading name),
   `propertyName` and `unitNumber`, embedded through `leases_tenant_fk`, `leases_property_fk` and `leases_unit_fk` under
@@ -266,10 +283,13 @@ Behaviour worth knowing:
   within the limit by its content before signing (domain `statementFileProblem`). `statementDate`, `periodStart`/`periodEnd` (both or neither) and `statementNumber`
   are optional: they are read from the document, and a typed value the document disagrees with is flagged at
   review, never replaced. Until verified, a `StatementDto` may have no `statementDate` or period; a
-  verified one always has them. A likely duplicate needs a known period, so an untyped upload is checked
-  by file hash only. `processStatement` re-queues extraction; a statement whose extraction failed
+  verified one always has them. A likely duplicate (same tenant, period and statement number, two missing numbers
+  counting as equal since many statements print none) needs a known period, so an untyped upload is checked
+  by file hash only; statements known to be for different units or leases of the tenant are never likely duplicates. `processStatement` re-queues extraction; a statement whose extraction failed
   (`review_required` with `processingError`) goes back to `uploaded` with the error cleared and is queued again
-  (the status change is audited; if the queue is down it is put back as it was).
+  through the database function `retry_statement_processing` (writer check; the status change is audited; a signed-in
+  caller has no direct UPDATE of a statement's status or processing error). If the queue is down the statement stays
+  `uploaded`, like a registration the queue missed, and `processStatement` queues it later.
 - **Statement list** (`listStatements`): each row is a `StatementListItemDto`, the statement plus `propertyName` and,
   once matched, `tenantName` and `unitNumber`. Filters `status`, `propertyId`, `tenantId`, `leaseId`, `sourceSystem`,
   `uploadBatchId` (one upload batch);
@@ -282,7 +302,13 @@ Behaviour worth knowing:
   (found without a flag), `confirmed` or `corrected` by a reviewer, or `unresolved` (flagged or missing). A writer resolves
   a field with `correctStatementField` (`{ value }`: text for names and numbers, `YYYY-MM-DD` for dates, rands with at
   most two decimals for amounts, checked by `parseFieldCorrection`; 422 otherwise) or `confirmStatementField` (the
-  extracted value is right; 422 for a value that was not found, which can only be entered). A correction replaces a
+  extracted value is right; 422 for a value that was not found, which can only be entered). Many statements print no
+  number: `confirmStatementFieldNotOnStatement` (`POST .../extraction/fields/statement_number/not-on-statement`) records
+  that the statement number is not on the statement, resolving the field with no value (`resolution` `confirmed`,
+  `value` null; domain `confirmedNotOnStatement`); nothing is filled in and the verified statement has no
+  `statementNumber`. Only `statement_number` may be left out (`OPTIONAL_EXTRACTION_FIELDS`; 422 for any other field) and
+  only when the extractor found no value (422: confirm or correct it). It is stamped and audited like any confirmation,
+  drops a correction, and confirming it again changes nothing. A correction replaces a
   confirmation and confirming drops a correction; the extracted value is always kept. The database stamps who and when
   and audits each change with before and after. `setStatementMatch` (`{ tenantId, unitId, leaseId? }`) sets the three
   together: the extraction's `matchedTenantId`/`matchedUnitId` is only a proposal and is never applied by itself; the
@@ -291,9 +317,11 @@ Behaviour worth knowing:
   overlapping leases are refused with the reason; a chosen lease must be that tenant's lease of that unit and in force on
   the date. Every problem is listed in one 422. All three writes answer 409 unless the statement is `review_required`
   and its extraction `pending_review`.
-- **Statement outcome** (ticket S-05): `verifyStatement` is allowed once every field is resolved and the tenant, unit and
-  lease are set, the lease in force on the reviewed statement date (domain `statementVerificationProblems`; 422 listing
-  every reason otherwise, 409 unless `review_required`). The database function `verify_statement` writes the reviewed
+- **Statement outcome** (ticket S-05): `verifyStatement` is allowed once every field is resolved (the statement number
+  may instead be confirmed as not on the statement) and the tenant, unit and lease are set, the reviewed period does not
+  end before it starts, and the lease was in force on the reviewed statement date (domain
+  `statementVerificationProblems`; 422 listing every reason otherwise, 409 unless `review_required`). The database
+  function repeats the period and lease checks, so a direct call cannot skip them. The database function `verify_statement` writes the reviewed
   values (the correction, else the extracted value) onto the statement: number, date, period and the six figures
   (`outstanding_balance` becomes `closingBalance`); the client never sends figures, and this is the only way they reach a
   statement. It stamps the verifier, closes the extraction (`confirmed`, or `corrected` when any value was entered) and
@@ -311,12 +339,17 @@ Behaviour worth knowing:
   `statementNumber?`, `monitoringQueued`) and `notVerified` (`statementId`, `fileName?` (absent when the statement is
   not in the company), `statementNumber?`, `reasons`: every reason, as `verifyStatement` would answer).
 - **Statement arrears** (`getStatementArrears`): the Statements page's figures, calculated by the domain
-  `arrearsOverview` from each tenant's LATEST verified statement only (statements in review never count): `totalOutstanding`,
-  `tenantsInArrears`, `tenantsUnderArrangement`, one entry per bucket of the company's arrears monitoring rule
-  (`ageingBucketsDays`, default 30/60/90/120; every bucket listed, zero when empty), `pendingReview` (statements in
-  `review_required`) and `entries`: each tenant in arrears with the statement its balance comes from, its age and bucket
+  `arrearsOverview` from the LATEST verified statement of each tenant's lease (a tenant with several leases or units has
+  a statement per lease, and every one counts; a renewal that replaces the lease of the same unit supersedes the
+  replaced lease's last statement, whose balance it carries forward, so it is not counted twice; statements in review
+  never count): `totalOutstanding` (across every
+  tenant and lease), `tenantsInArrears` and `tenantsUnderArrangement` (distinct tenants), one entry per bucket of the
+  company's arrears monitoring rule (`ageingBucketsDays`, default 30/60/90/120; every bucket listed, zero when empty;
+  `tenantCount` distinct tenants), `pendingReview` (statements in `review_required`) and `entries`: one per tenant and
+  lease in arrears with the statement its balance comes from, its age and bucket
   (aged from the statement date to today in South Africa, `asOf`), who verified it, and whether an active payment
-  arrangement is in force (`underArrangement`) and pauses reminders (`remindersSuppressed`). The minimum-balance threshold
+  arrangement is in force for the tenant (`underArrangement`, on every lease of the tenant) and pauses reminders
+  (`remindersSuppressed`). The minimum-balance threshold
   of the arrears rule decides when an event is raised, not what is owed, so it does not filter these figures.
 - **Portfolio import** (upload a portfolio file) is three calls: `createPortfolioImportUploadUrl` returns a
   signed upload URL into the private `portfolio-imports` bucket and the `contentType` to send; the client

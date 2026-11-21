@@ -22,13 +22,14 @@ const fakeTenants = vi.hoisted(() => ({
   update: vi.fn<TenantSource['update']>(),
   validateWhatsApp: vi.fn<TenantSource['validateWhatsApp']>(),
 }))
-const lists = vi.hoisted(() => ({ leases: vi.fn(), statements: vi.fn(), communications: vi.fn(), arrangements: vi.fn(), members: vi.fn() }))
+const lists = vi.hoisted(() => ({ leases: vi.fn(), statements: vi.fn(), communications: vi.fn(), arrangements: vi.fn(), members: vi.fn(), assignments: vi.fn() }))
 vi.mock('../api/selectSource', () => ({ getTenantSource: () => fakeTenants }))
 vi.mock('@/features/leases/api/selectSource', () => ({ getLeaseSource: () => ({ list: lists.leases, get: vi.fn() }) }))
 vi.mock('@/features/statements/api/selectSource', () => ({ getStatementSource: () => ({ list: lists.statements, get: vi.fn() }) }))
 vi.mock('@/features/communications/api/selectSource', () => ({ getCommunicationSource: () => ({ list: lists.communications, get: vi.fn() }) }))
 vi.mock('@/features/arrangements/api/selectSource', () => ({ getArrangementSource: () => ({ list: lists.arrangements, get: vi.fn() }) }))
 vi.mock('@/features/users/api/apiSource', () => ({ createApiUserSource: () => ({ listMembers: lists.members }) }))
+vi.mock('@/features/unit-assignments/api/selectSource', () => ({ getUnitAssignmentSource: () => ({ list: lists.assignments, assign: vi.fn(), end: vi.fn() }) }))
 vi.mock('@/services/api/client', () => ({ getApiClient: () => ({}) }))
 
 const viewer = vi.hoisted(() => ({ writer: true }))
@@ -111,6 +112,7 @@ beforeEach(() => {
   lists.communications.mockResolvedValue(page([message], 1))
   lists.arrangements.mockResolvedValue(page<PaymentArrangement>([]))
   lists.members.mockResolvedValue(page([member]))
+  lists.assignments.mockResolvedValue(page([]))
 })
 
 describe('TenantDetailScreen', () => {
@@ -195,6 +197,31 @@ describe('TenantDetailScreen', () => {
     await renderScreen({ ...TENANT, whatsappOptedOut: true, status: 'prospective' })
     expect(screen.getByText('The tenant opted out of WhatsApp messages.')).toBeInTheDocument()
     expect(screen.getByText(/The tenant is prospective/)).toBeInTheDocument()
+  })
+
+  it('lists the units the tenant is assigned to, through the assignments hook', async () => {
+    lists.assignments.mockResolvedValue(
+      page([
+        {
+          id: 'as1',
+          companyId: NEXUS_ID,
+          propertyId: 'p1',
+          unitId: 'u9',
+          tenantId: TENANT.id,
+          assignedAt: '2026-11-21T08:00:00Z',
+          tenantName: TENANT.tradingName,
+          unitNumber: 'S09',
+          propertyName: 'Maponya Square',
+          createdAt: '2026-11-21T08:00:00Z',
+          updatedAt: '2026-11-21T08:00:00Z',
+        },
+      ]),
+    )
+    await renderScreen()
+    const units = await screen.findByRole('region', { name: 'Units' })
+    expect(await within(units).findByRole('link', { name: 'S09' })).toHaveAttribute('href', '/units/u9')
+    expect(within(units).getByRole('button', { name: 'Assign to unit' })).toBeInTheDocument()
+    expect(lists.assignments).toHaveBeenCalledWith(NEXUS_ID, expect.objectContaining({ tenantId: TENANT.id, current: true }))
   })
 
   it('lists the unit and lease with who verified the terms', async () => {

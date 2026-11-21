@@ -4,7 +4,7 @@ import type { EntityId, Tenant, TenantListItem } from '@leaseguard/domain'
 import { httpErrorFromDatabase, unwrapDatabase } from '../../common/http/database-errors'
 import { emptyPageWithTotal, isPageOutOfRange, rangeFor, searchFilter, toPage, type Page } from '../../common/http/pagination'
 import type { DbClient } from '../../infrastructure/database/rls-client.factory'
-import { TENANT_LEASE_COLUMNS, toTenant, toTenantListItem, type TenantListRow } from './tenants.mapper'
+import { TENANT_CURRENT_UNIT_COLUMNS, TENANT_LEASE_COLUMNS, toTenant, toTenantListItem, type TenantListRow } from './tenants.mapper'
 import {
   TENANT_SORT_COLUMNS,
   type CreateTenantBody,
@@ -29,13 +29,16 @@ export const NUMBER_CHANGED_MESSAGE =
 @Injectable()
 export class TenantsService {
   /**
-   * Tenants with their leases embedded, for the list's unit and lease reference. A property filter turns the embed
+   * Tenants with their leases and current units (by lease or assignment) embedded, for the list's unit and lease reference. A property filter turns the embed
    * into an inner join (keeps only tenants with a lease there) and narrows the embedded leases to that property.
    */
   async list(db: DbClient, companyId: EntityId, query: TenantListQuery): Promise<Page<TenantListItem>> {
     const leases = `leases!leases_tenant_fk${query.propertyId ? '!inner' : ''}(${TENANT_LEASE_COLUMNS})`
     const filtered = () => {
-      let request = db.from('tenants').select(`*, ${leases}`, { count: 'exact' }).eq('company_id', companyId)
+      let request = db
+        .from('tenants')
+        .select(`*, ${leases}, current_units:units!units_current_tenant_fk(${TENANT_CURRENT_UNIT_COLUMNS})`, { count: 'exact' })
+        .eq('company_id', companyId)
       if (query.status) request = request.eq('status', query.status)
       if (query.businessType) request = request.eq('business_type', query.businessType)
       if (query.propertyId) request = request.eq('leases.property_id', query.propertyId)

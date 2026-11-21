@@ -22,6 +22,10 @@ const fakeTenants = vi.hoisted(() => ({
   validateWhatsApp: vi.fn<TenantSource['validateWhatsApp']>(),
 }))
 vi.mock('../api/selectSource', () => ({ getTenantSource: () => fakeTenants }))
+const fakes = vi.hoisted(() => ({ properties: vi.fn(), units: vi.fn(), assign: vi.fn() }))
+vi.mock('@/features/properties/api/selectSource', () => ({ getPropertySource: () => ({ list: fakes.properties, get: vi.fn() }) }))
+vi.mock('@/features/units/api/selectSource', () => ({ getUnitSource: () => ({ list: fakes.units, get: vi.fn() }) }))
+vi.mock('@/features/unit-assignments/api/selectSource', () => ({ getUnitAssignmentSource: () => ({ list: vi.fn(), assign: fakes.assign, end: vi.fn() }) }))
 vi.mock('@/services/api/client', () => ({ getApiClient: () => ({}) }))
 
 const TENANT: Tenant = {
@@ -36,6 +40,18 @@ const TENANT: Tenant = {
   whatsappVerified: true,
   status: 'active',
   industry: 'Retail',
+}
+
+const PROPERTY = { ...sampleRecord('properties'), id: '0b6f1f43-6d5c-4f8e-9d43-3f1a2b7c9e10', companyId: NEXUS_ID, name: 'Maponya Square', status: 'active' as const }
+const { currentLeaseId: _lease, currentTenantId: _tenant, ...SAMPLE_UNIT } = sampleRecord('units')
+const UNIT = {
+  ...SAMPLE_UNIT,
+  id: '0b6f1f43-6d5c-4f8e-9d43-3f1a2b7c9e11',
+  companyId: NEXUS_ID,
+  propertyId: PROPERTY.id,
+  unitNumber: 'S07',
+  occupancyStatus: 'vacant' as const,
+  property: { id: PROPERTY.id, name: PROPERTY.name, code: 'MSQ' },
 }
 
 const onSaved = vi.fn()
@@ -54,7 +70,9 @@ beforeEach(() => {
   resetWorkspace()
   openWorkspace(NEXUS_ID)
   onSaved.mockReset()
-  for (const fn of Object.values(fakeTenants)) fn.mockReset()
+  for (const fn of [...Object.values(fakeTenants), ...Object.values(fakes)]) fn.mockReset()
+  fakes.properties.mockResolvedValue({ items: [PROPERTY], total: 1, page: 1, pageSize: 100 })
+  fakes.units.mockResolvedValue({ items: [UNIT], total: 1, page: 1, pageSize: 100 })
 })
 
 describe('TenantFormDialog', () => {
@@ -79,6 +97,47 @@ describe('TenantFormDialog', () => {
       status: 'prospective',
     })
     expect(onSaved).toHaveBeenCalledWith(created)
+  })
+
+  it('assigns the new tenant to the chosen unit, property then unit', { timeout: 20_000 }, async () => {
+    fakeTenants.create.mockResolvedValue(TENANT)
+    fakes.assign.mockResolvedValue({ id: 'a1', tenantId: TENANT.id, unitId: UNIT.id, unitNumber: 'S07', propertyName: PROPERTY.name })
+    await renderDialog()
+    const dialog = await screen.findByRole('dialog', { name: 'Add tenant' })
+    await userEvent.type(within(dialog).getByLabelText(/^Registered name/), 'Soweto Shoes (Pty) Ltd')
+    await userEvent.click(within(dialog).getByRole('combobox', { name: /^Business type/ }))
+    await userEvent.click(await screen.findByRole('option', { name: '(Pty) Ltd' }))
+    await userEvent.type(within(dialog).getByLabelText(/^WhatsApp number/), '082 555 0199')
+    await userEvent.type(within(dialog).getByLabelText(/^Full name/), 'Sizwe Mabena')
+    await userEvent.click(within(dialog).getByRole('combobox', { name: /^Property/ }))
+    await userEvent.click(await screen.findByRole('option', { name: 'Maponya Square' }))
+    await userEvent.click(within(dialog).getByRole('combobox', { name: /^Unit/ }))
+    await userEvent.click(await screen.findByRole('option', { name: 'S07 · Vacant' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add tenant' }))
+
+    expect(await screen.findByText('Soweto Shoes assigned to unit S07')).toBeInTheDocument()
+    expect(fakes.assign).toHaveBeenCalledWith(NEXUS_ID, { tenantId: TENANT.id, unitId: UNIT.id })
+  })
+
+  it('keeps the tenant added and says why when the unit cannot be assigned', { timeout: 20_000 }, async () => {
+    fakeTenants.create.mockResolvedValue(TENANT)
+    fakes.assign.mockRejectedValue(new ApiError(409, ['Unit S07 is assigned to Kasi Books. Unassign it before assigning it to another tenant.'], null))
+    await renderDialog()
+    const dialog = await screen.findByRole('dialog', { name: 'Add tenant' })
+    await userEvent.type(within(dialog).getByLabelText(/^Registered name/), 'Soweto Shoes (Pty) Ltd')
+    await userEvent.click(within(dialog).getByRole('combobox', { name: /^Business type/ }))
+    await userEvent.click(await screen.findByRole('option', { name: '(Pty) Ltd' }))
+    await userEvent.type(within(dialog).getByLabelText(/^WhatsApp number/), '082 555 0199')
+    await userEvent.type(within(dialog).getByLabelText(/^Full name/), 'Sizwe Mabena')
+    await userEvent.click(within(dialog).getByRole('combobox', { name: /^Property/ }))
+    await userEvent.click(await screen.findByRole('option', { name: 'Maponya Square' }))
+    await userEvent.click(within(dialog).getByRole('combobox', { name: /^Unit/ }))
+    await userEvent.click(await screen.findByRole('option', { name: 'S07 · Vacant' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add tenant' }))
+
+    expect(await screen.findByText('Soweto Shoes was added but not assigned to the unit')).toBeInTheDocument()
+    expect(screen.getByText('Unit S07 is assigned to Kasi Books. Unassign it before assigning it to another tenant.')).toBeInTheDocument()
+    expect(onSaved).toHaveBeenCalledWith(TENANT)
   })
 
   it('refuses an invalid WhatsApp number before calling the API, with the format to use', async () => {

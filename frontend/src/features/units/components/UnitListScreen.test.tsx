@@ -127,6 +127,20 @@ describe('UnitListScreen', () => {
     expect(within(vacant).getByText('145,5')).toBeInTheDocument()
   })
 
+  it('shows the tenant a unit is assigned to without a lease', async () => {
+    const assigned = unit('u3', 'G14', {
+      occupancyStatus: 'occupied',
+      currentTenantId: 't2',
+      currentTenant: { id: 't2', tradingName: 'Kasi Books' },
+      currentAssignment: { id: 'a1', tenantId: 't2', tenantName: 'Kasi Books', assignedAt: '2026-11-21T08:00:00Z' },
+    })
+    fakeSource.list.mockResolvedValue({ items: [assigned], total: 1, page: 1, pageSize: 25 })
+    await renderScreen()
+    const row = (await screen.findByRole('link', { name: 'G14' })).closest('tr') as HTMLElement
+    expect(within(row).getByRole('link', { name: 'Kasi Books' })).toHaveAttribute('href', '/tenants/t2')
+    expect(within(row).getByText('Assigned, no lease')).toBeInTheDocument()
+  })
+
   it('rows open the unit, with paging and sorting', async () => {
     fakeSource.list.mockResolvedValue({ items: [LET, unit('u2', 'G13')], total: 27, page: 1, pageSize: 25 })
     const { onParamsChange, router } = await renderScreen()

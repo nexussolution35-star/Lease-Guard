@@ -146,7 +146,13 @@ Downloads are five-minute signed links issued through the caller's own client. F
 verification: a signed-in caller cannot write them (column grants), cannot move a statement into or out of verified,
 rejected or duplicate directly (`private.guard_statement_outcome`), and verifies, rejects or marks a duplicate only
 through `verify_statement`, `reject_statement` and `mark_statement_duplicate` (`SECURITY DEFINER`, writer of the company
-checked first), which copy the reviewed extraction's values and stamp the verifier from the session.
+checked first), which copy the reviewed extraction's values and stamp the verifier from the session. `verify_statement`
+checks the period and that the lease was in force on the reviewed statement date itself, since a writer can set the
+lease directly. A signed-in caller cannot write an extraction's status or review notes, nor a statement's status or
+processing error (`20261121194500_statement_review_integrity.sql`): the worker writes them with the service role, the
+outcome functions close a review, and `retry_statement_processing` (`SECURITY DEFINER`, writer check) is the only way to
+put a failed statement back to `uploaded`. A statement number that is not on the document is confirmed as absent and
+audited, never invented.
 
 Portfolio import files (CSV and XLSX exported from a company's own system) are kept in the private
 `portfolio-imports` bucket under the same path shape: members read; company admins and property managers
@@ -164,6 +170,14 @@ import creates (ticket I-05) go through the same `tenants` column grants, RLS an
 WhatsApp numbers start unvalidated, so no automated message can reach them until a writer validates the number.
 The decision on a suggested tenant is a writer-only column of the batch row, checked by the API to name a tenant
 of the workspace (and by the composite foreign key), and stamped and audited like the other row fixes.
+
+Assigning a tenant to a unit without a lease (ticket M4-04) has one write path: `assign_tenant_to_unit` and
+`end_unit_tenant_assignment` (`SECURITY DEFINER`, `search_path = ''`, `can_write` checked first, 42501 otherwise).
+Signed-in callers hold only SELECT on `unit_tenant_assignments` (RLS: members of the company), so a direct Data API
+insert, update or delete is refused; the guard applies to every role (tenant and unit of the company through
+composite keys, archived property, who holds the unit), who and when are stamped from `auth.uid()`, and each assign
+and unassign is audited. An assignment never enables tenant messaging or monitoring: nothing it writes reaches
+`communications` or `monitoring_events`, and monitoring still reads verified leases only.
 
 A Google Sheets import (ticket I-06) is the API's only outbound fetch on a person's behalf, and it is not a
 URL fetch: the link must match `docs.google.com/spreadsheets/d/<id>` (`parseGoogleSheetsLink` in

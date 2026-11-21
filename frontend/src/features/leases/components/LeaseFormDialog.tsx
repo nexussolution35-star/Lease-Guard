@@ -4,13 +4,14 @@ import {
   DEPOSIT_HOLDERS,
   editRequiresReverification,
   ESCALATION_FREQUENCIES,
+  leaseTenantForUnit,
   ESCALATION_TYPES,
   type Lease,
   type LeaseTermGroup,
 } from '@leaseguard/domain'
 import { AlertCircle, Info } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { useForm, useWatch, type Control, type FieldErrors, type FieldValues } from 'react-hook-form'
+import { useForm, useWatch, type Control, type FieldErrors, type FieldValues, type UseFormSetValue } from 'react-hook-form'
 import { toast } from 'sonner'
 
 import {
@@ -114,9 +115,14 @@ const FIELD_LABELS: Record<string, string> = {
 
 const listAll = { page: 1, pageSize: MAX_LIST_PAGE_SIZE } as const
 
-/** Tenant, property and unit: the workspace's tenants, its properties that are not archived, and that property's units. */
-function PartyFields({ control, lease }: { control: LeaseControl; lease: Lease | undefined }) {
+/**
+ * Tenant, property and unit: the workspace's tenants, its properties that are not archived, and that property's units.
+ * Choosing a unit assigned to a tenant fills in that tenant for a new lease (domain `leaseTenantForUnit`); the database
+ * refuses a lease of an assigned unit for anyone else.
+ */
+function PartyFields({ control, lease, setValue }: { control: LeaseControl; lease: Lease | undefined; setValue: UseFormSetValue<LeaseFormInput> }) {
   const propertyId = useWatch({ control, name: 'propertyId' })
+  const unitId = useWatch({ control, name: 'unitId' })
   const tenants = useTenantList({ ...listAll, sort: 'tradingName', direction: 'asc' })
   const properties = usePropertyList({ ...listAll, sort: 'name', direction: 'asc' })
   const units = useUnitList({ ...listAll, sort: 'unitNumber', direction: 'asc', ...(propertyId ? { propertyId } : {}) })
@@ -128,8 +134,16 @@ function PartyFields({ control, lease }: { control: LeaseControl; lease: Lease |
   const unitOptions: FieldOption[] = propertyId
     ? (units.data?.items ?? [])
         .filter((unit) => unit.propertyId === propertyId)
-        .map((unit) => ({ value: unit.id, label: `${unit.unitNumber} · ${labelFor(unit.occupancyStatus)}` }))
+        .map((unit) => ({
+          value: unit.id,
+          label: `${unit.unitNumber} · ${unit.currentAssignment ? `Assigned to ${unit.currentAssignment.tenantName}` : labelFor(unit.occupancyStatus)}`,
+        }))
     : []
+
+  const assignedTenantId = lease ? undefined : leaseTenantForUnit(units.data?.items.find((unit) => unit.id === unitId) ?? {})
+  useEffect(() => {
+    if (assignedTenantId) setValue('tenantId', assignedTenantId, { shouldDirty: true, shouldValidate: true })
+  }, [assignedTenantId, setValue])
 
   return (
     <>
@@ -397,7 +411,7 @@ export function LeaseFormDialog({ open, onOpenChange, lease, onSaved }: LeaseFor
                 required
                 className="sm:col-span-2"
               />
-              <PartyFields control={control} lease={lease} />
+              <PartyFields control={control} lease={lease} setValue={setValue} />
             </FormSection>
 
             <FormSection title="Term">

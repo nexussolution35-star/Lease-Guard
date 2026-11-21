@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { callsTo, fakeDb } from '../../common/testing/fake-db.test-helpers'
 import { tenantListQuerySchema } from './tenants.schemas'
 import { TenantsService } from './tenants.service'
-import { TENANT_LEASE_COLUMNS } from './tenants.mapper'
+import { TENANT_CURRENT_UNIT_COLUMNS, TENANT_LEASE_COLUMNS } from './tenants.mapper'
 import { COMPANY, PROPERTY, tenantListRow, tenantRow } from './tenants.test-helpers'
 
 describe('TenantsService', () => {
@@ -38,11 +38,13 @@ describe('TenantsService', () => {
     expect(callsTo(q!, 'range')).toEqual([[20, 29]])
   })
 
-  it('embeds each tenant\'s leases with their unit and property, and maps the current lease', async () => {
+  it('embeds each tenant\'s leases and current units with their unit and property, and maps the current lease', async () => {
     const { client, queries } = fakeDb(() => ({ data: [tenantListRow], error: null, count: 1 }))
     const page = await service.list(client, COMPANY, tenantListQuerySchema.parse({}))
 
-    expect(callsTo(queries[0]!, 'select')[0]?.[0]).toBe(`*, leases!leases_tenant_fk(${TENANT_LEASE_COLUMNS})`)
+    expect(callsTo(queries[0]!, 'select')[0]?.[0]).toBe(
+      `*, leases!leases_tenant_fk(${TENANT_LEASE_COLUMNS}), current_units:units!units_current_tenant_fk(${TENANT_CURRENT_UNIT_COLUMNS})`,
+    )
     expect(page.items[0]).toMatchObject({ leaseCount: 2, currentLease: { reference: 'ACP-001', unitNumber: '001', propertyName: 'Acacia Park' } })
   })
 
@@ -51,7 +53,9 @@ describe('TenantsService', () => {
     await service.list(client, COMPANY, tenantListQuerySchema.parse({ propertyId: PROPERTY }))
 
     const [q] = queries
-    expect(callsTo(q!, 'select')[0]?.[0]).toBe(`*, leases!leases_tenant_fk!inner(${TENANT_LEASE_COLUMNS})`)
+    expect(callsTo(q!, 'select')[0]?.[0]).toBe(
+      `*, leases!leases_tenant_fk!inner(${TENANT_LEASE_COLUMNS}), current_units:units!units_current_tenant_fk(${TENANT_CURRENT_UNIT_COLUMNS})`,
+    )
     expect(callsTo(q!, 'eq')).toEqual([
       ['company_id', COMPANY],
       ['leases.property_id', PROPERTY],

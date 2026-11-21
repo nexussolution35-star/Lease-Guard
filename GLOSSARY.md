@@ -29,6 +29,14 @@ _Avoid_: Customer, client, occupant
 A WhatsApp counterparty of a company who is not (yet) identified as a tenant, such as an enquiry from an unknown number.
 _Avoid_: Customer, lead
 
+**Unit assignment**:
+A company admin's or property manager's record that a tenant occupies a unit without a lease (owner decision, 21 Nov 2026): the unit is occupied by that tenant straight away and the tenant is its current tenant until a lease is in force. A tenant may hold several units; a unit has one current tenant. Unassigning ends it (kept as history) and returns the unit to vacant unless a lease keeps it occupied. A lease of an assigned unit must be for the assigned tenant. It never drives monitoring or tenant messages.
+_Avoid_: Allocation, occupancy (for the record), tenancy
+
+**Current tenant** (of a unit):
+The tenant of the unit's active lease, else the tenant assigned to it; shown wherever a unit's tenant is shown and offered as a statement matching hint.
+_Avoid_: Occupant, lessee (when no lease exists)
+
 ## Leases and money
 
 **Lease**:

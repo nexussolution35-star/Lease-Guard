@@ -152,4 +152,33 @@ describe('LeaseFormDialog', () => {
     await waitFor(() => expect(within(dialog).getByRole('combobox', { name: /^Unit/ })).toHaveTextContent('Choose a unit'))
     expect(others.units).toHaveBeenLastCalledWith(NEXUS_ID, expect.objectContaining({ propertyId: OTHER }))
   })
+
+  it('fills in the tenant a chosen unit is assigned to', async () => {
+    const ASSIGNED_TENANT = '0b6f1f43-6d5c-4f8e-9d43-3f1a2b7c9e20'
+    others.tenants.mockResolvedValue(
+      page([
+        { ...sampleRecord('tenants'), id: TENANT_ID, tradingName: 'Thrifty Foods' },
+        { ...sampleRecord('tenants'), id: ASSIGNED_TENANT, tradingName: 'Kasi Books' },
+      ]),
+    )
+    others.units.mockResolvedValue(
+      page([
+        {
+          ...sampleRecord('units'),
+          id: UNIT_ID,
+          propertyId: PROPERTY_ID,
+          unitNumber: 'A01',
+          occupancyStatus: 'occupied',
+          currentAssignment: { id: 'as1', tenantId: ASSIGNED_TENANT, tenantName: 'Kasi Books', assignedAt: '2026-11-21T08:00:00Z' },
+        },
+      ]),
+    )
+    await renderDialog()
+    const dialog = await screen.findByRole('dialog', { name: 'Add lease' })
+    await userEvent.click(within(dialog).getByRole('combobox', { name: /^Property/ }))
+    await userEvent.click(await screen.findByRole('option', { name: 'Meadowlands Square' }))
+    await userEvent.click(within(dialog).getByRole('combobox', { name: /^Unit/ }))
+    await userEvent.click(await screen.findByRole('option', { name: 'A01 · Assigned to Kasi Books' }))
+    await waitFor(() => expect(within(dialog).getByRole('combobox', { name: /^Tenant/ })).toHaveTextContent('Kasi Books'))
+  })
 })

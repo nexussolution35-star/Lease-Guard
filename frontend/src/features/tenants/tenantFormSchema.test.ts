@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import { sampleRecord } from '@/test/fakeApi'
 
-import { newTenantFormDefaults, newTenantFrom, tenantChangesFrom, tenantErrorField, tenantFormDefaults, tenantFormSchema } from './tenantFormSchema'
+import { NO_UNIT, newTenantFormDefaults, newTenantFrom, tenantChangesFrom, tenantErrorField, tenantFormDefaults, tenantFormSchema } from './tenantFormSchema'
 
 const TENANT: Tenant = {
   ...sampleRecord('tenants'),
@@ -26,6 +26,15 @@ describe('tenantFormSchema', () => {
   it('stores the WhatsApp number in E.164, with the same rule the API applies', () => {
     expect(tenantFormSchema.parse(filled).whatsappNumber).toBe('+27825550199')
     expect(tenantFormSchema.parse({ ...filled, whatsappNumber: '+44 20 7946 0958' }).whatsappNumber).toBe('+442079460958')
+  })
+
+  it('asks for a unit once a property is chosen to assign the new tenant to, and allows neither', () => {
+    const result = tenantFormSchema.safeParse({ ...filled, assignPropertyId: 'p1' })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues).toContainEqual(expect.objectContaining({ path: ['assignUnitId'], message: 'Choose a unit, or clear the property' }))
+    expect(tenantFormSchema.safeParse({ ...filled, assignPropertyId: 'p1', assignUnitId: 'u1' }).success).toBe(true)
+    expect(tenantFormSchema.safeParse(filled).success).toBe(true)
+    expect(tenantFormSchema.safeParse({ ...filled, assignPropertyId: NO_UNIT }).success).toBe(true)
   })
 
   it('refuses an invalid number with the format to use, and the other required fields', () => {

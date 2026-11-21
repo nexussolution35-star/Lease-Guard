@@ -2,18 +2,21 @@ import { isApiError } from '@leaseguard/api-client'
 import { BUSINESS_TYPES, TENANT_STATUSES, type Tenant } from '@leaseguard/domain'
 import { AlertCircle } from 'lucide-react'
 import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch, type Control } from 'react-hook-form'
 import { toast } from 'sonner'
 
 import { FormSection, SelectField, TextAreaField, TextField, zodResolver } from '@/components/forms'
 import { FormDialog } from '@/components/shared'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Form } from '@/components/ui/form'
+import { useAssignTenantToUnit } from '@/features/unit-assignments/api/queries'
+import { useAssignableUnitOptions } from '@/features/unit-assignments/components/useAssignableUnitOptions'
 import { describeApiError } from '@/lib/data/apiErrors'
 import { enumOptions } from '@/lib/labels'
 
 import { useCreateTenant, useUpdateTenant } from '../api/queries'
 import {
+  NO_UNIT,
   newTenantFormDefaults,
   newTenantFrom,
   tenantChangesFrom,
@@ -37,19 +40,65 @@ const BUSINESS_TYPE_OPTIONS = enumOptions(BUSINESS_TYPES)
 const STATUS_OPTIONS = enumOptions(TENANT_STATUSES)
 
 /**
+ * The optional property, then unit, a new tenant is assigned to. Mounted only while the create dialog is open, so the
+ * lists are fetched only then.
+ */
+function NewTenantUnitFields({ control }: { control: Control<TenantFormInput, unknown, TenantFormValues> }) {
+  const chosenProperty = useWatch({ control, name: 'assignPropertyId' })
+  const assignPropertyId = chosenProperty === NO_UNIT ? '' : chosenProperty
+  const options = useAssignableUnitOptions(assignPropertyId || undefined, undefined)
+  return (
+    <FormSection title="Unit" description="Optional. Assign the tenant to a unit now, without a lease; the unit is occupied by the tenant straight away.">
+      <SelectField
+        control={control}
+        name="assignPropertyId"
+        label="Property"
+        options={[{ value: NO_UNIT, label: 'No unit' }, ...options.propertyOptions]}
+        placeholder={options.propertiesPending ? 'Loading properties…' : 'No unit'}
+      />
+      <SelectField
+        control={control}
+        name="assignUnitId"
+        label="Unit"
+        options={options.unitOptions}
+        placeholder={!assignPropertyId ? 'Choose the property first' : options.unitsPending ? 'Loading units…' : 'Choose a unit'}
+        disabled={!assignPropertyId}
+        required={assignPropertyId !== ''}
+      />
+    </FormSection>
+  )
+}
+
+/**
  * Create or edit a tenant. The WhatsApp number is checked as it is typed out (the same rule as the API) and stored in
- * E.164; a new number, and any changed one, stays unvalidated until a writer validates it on the tenant's page.
+ * E.164; a new number, and any changed one, stays unvalidated until a writer validates it on the tenant's page. A new
+ * tenant can be assigned to a unit straight away (optional: property, then unit); the assignment is a second request,
+ * so a refused assignment leaves the tenant added and says why.
  */
 export function TenantFormDialog({ open, onOpenChange, tenant, onSaved }: TenantFormDialogProps) {
   const isEdit = tenant !== undefined
   const create = useCreateTenant()
   const update = useUpdateTenant()
+  const assign = useAssignTenantToUnit()
 
   const form = useForm<TenantFormInput, unknown, TenantFormValues>({
     resolver: zodResolver(tenantFormSchema),
     defaultValues: tenant ? tenantFormDefaults(tenant) : newTenantFormDefaults(),
   })
-  const { reset } = form
+  const { reset, setValue, subscribe } = form
+
+  // Another property means another unit: the chosen unit belongs to the previous property.
+  useEffect(
+    () =>
+      subscribe({
+        name: 'assignPropertyId',
+        formState: { values: true },
+        callback: ({ type }) => {
+          if (type === 'change') setValue('assignUnitId', '')
+        },
+      }),
+    [subscribe, setValue],
+  )
 
   // Start from the saved tenant (or an empty form) every time the dialog opens.
   useEffect(() => {
@@ -57,6 +106,18 @@ export function TenantFormDialog({ open, onOpenChange, tenant, onSaved }: Tenant
   }, [open, tenant, reset])
 
   const rootError = form.formState.errors.root?.message
+
+  // The tenant exists by now: a refused assignment is reported, never retried as a second tenant.
+  async function assignNewTenant(saved: Tenant, unitId: string) {
+    try {
+      const assignment = await assign.mutateAsync({ tenantId: saved.id, unitId })
+      toast.success(`${saved.tradingName} assigned to unit ${assignment.unitNumber}`, { description: assignment.propertyName })
+    } catch (error) {
+      toast.error(`${saved.tradingName} was added but not assigned to the unit`, {
+        description: describeApiError(error, 'Assign the unit from the tenant’s page.'),
+      })
+    }
+  }
 
   const submit = form.handleSubmit(async (values) => {
     try {
@@ -76,6 +137,7 @@ export function TenantFormDialog({ open, onOpenChange, tenant, onSaved }: Tenant
       } else {
         saved = await create.mutateAsync(newTenantFrom(values))
         toast.success(`${saved.tradingName} added`, { description: 'Validate the WhatsApp number on the tenant’s page before reminders are sent.' })
+        if (values.assignUnitId !== '') await assignNewTenant(saved, values.assignUnitId)
       }
       onOpenChange(false)
       onSaved?.(saved)
@@ -91,7 +153,7 @@ export function TenantFormDialog({ open, onOpenChange, tenant, onSaved }: Tenant
       open={open}
       onOpenChange={onOpenChange}
       title={isEdit ? `Edit ${tenant.tradingName}` : 'Add tenant'}
-      description={isEdit ? 'Changes are recorded in the audit log.' : 'The tenant is added to this workspace. Link it to a unit through its lease.'}
+      description={isEdit ? 'Changes are recorded in the audit log.' : 'The tenant is added to this workspace, and to a unit when you choose one.'}
       submitLabel={isEdit ? 'Save changes' : 'Add tenant'}
       onSubmit={() => submit()}
       isPending={form.formState.isSubmitting}
@@ -156,6 +218,7 @@ export function TenantFormDialog({ open, onOpenChange, tenant, onSaved }: Tenant
             />
             <TextField control={form.control} name="contactEmail" label="Email" type="email" autoComplete="off" maxLength={254} />
           </FormSection>
+          {isEdit ? null : <NewTenantUnitFields control={form.control} />}
           <FormSection title="Notes">
             <TextAreaField control={form.control} name="notes" label="Notes" rows={3} maxLength={2000} className="sm:col-span-2" />
           </FormSection>

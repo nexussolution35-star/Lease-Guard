@@ -4,6 +4,7 @@ import {
   UNIT_TYPES,
   type OccupancyStatus,
   type Unit,
+  type UnitAssignmentSummary,
   type UnitLeaseSummary,
   type UnitListItem,
   type UnitPropertySummary,
@@ -16,6 +17,14 @@ import { createPageDto, PageQueryDto } from '../../../common/http/pagination'
 import { assertSchemaMatchesDto } from '../../../common/pipes/zod-validation.pipe'
 import { UNIT_SORT_FIELDS, type createUnitBodySchema, type unitListQuerySchema, type updateUnitBodySchema } from '../units.schemas'
 
+/** A unit's current assignment: the tenant holding it without a lease, and since when. */
+export class UnitAssignmentSummaryDto implements UnitAssignmentSummary {
+  @ApiProperty({ format: 'uuid' }) id!: string
+  @ApiProperty({ format: 'uuid' }) tenantId!: string
+  @ApiProperty() tenantName!: string
+  @ApiProperty({ format: 'date-time' }) assignedAt!: string
+}
+
 /** A lettable unit in the active company. Same shape as the domain `Unit`. */
 export class UnitDto implements Unit {
   @ApiProperty({ format: 'uuid' }) id!: string
@@ -26,9 +35,11 @@ export class UnitDto implements Unit {
   @ApiProperty({ description: 'Floor area in square metres' }) floorAreaSqm!: number
   @ApiPropertyOptional() floor?: string
   @ApiProperty({ enum: OCCUPANCY_STATUSES, enumName: 'OccupancyStatus' }) occupancyStatus!: OccupancyStatus
-  @ApiPropertyOptional({ format: 'uuid', description: 'Tenant of the active lease (denormalised)' })
+  @ApiPropertyOptional({ format: 'uuid', description: "Current tenant: the current lease's tenant, else the assigned tenant (derived)" })
   currentTenantId?: string
   @ApiPropertyOptional({ format: 'uuid', description: 'Active lease (denormalised)' }) currentLeaseId?: string
+  @ApiPropertyOptional({ type: UnitAssignmentSummaryDto, description: 'The tenant assigned to the unit without a lease, while assigned' })
+  currentAssignment?: UnitAssignmentSummaryDto
   @ApiPropertyOptional() description?: string
   @ApiProperty({ format: 'date-time' }) createdAt!: string
   @ApiProperty({ format: 'date-time' }) updatedAt!: string
@@ -55,7 +66,7 @@ export class UnitLeaseSummaryDto implements UnitLeaseSummary {
 /** A listed unit: the unit with its property and, when let, the tenant and lease of its active lease. */
 export class UnitListItemDto extends UnitDto implements UnitListItem {
   @ApiProperty({ type: UnitPropertySummaryDto }) property!: UnitPropertySummaryDto
-  @ApiPropertyOptional({ type: UnitTenantSummaryDto, description: 'Tenant of the active lease' })
+  @ApiPropertyOptional({ type: UnitTenantSummaryDto, description: "Current tenant: the current lease's tenant, else the assigned tenant" })
   currentTenant?: UnitTenantSummaryDto
   @ApiPropertyOptional({ type: UnitLeaseSummaryDto, description: 'The active lease' })
   currentLease?: UnitLeaseSummaryDto

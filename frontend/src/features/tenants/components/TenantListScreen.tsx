@@ -59,15 +59,21 @@ const COLUMNS: DataTableColumn<TenantListItem>[] = [
     id: 'unit',
     header: 'Unit',
     hideBelow: 'sm',
-    cell: (tenant) =>
-      tenant.currentLease ? (
+    // The units the tenant holds now (by its current lease or assigned without one), else its current lease's unit.
+    cell: (tenant) => {
+      const [first, ...more] = tenant.currentUnits ?? []
+      const unit = first ?? tenant.currentLease
+      if (!unit) return NONE
+      return (
         <div className="min-w-0">
-          <div className="tabular-nums">{tenant.currentLease.unitNumber}</div>
-          <div className="truncate text-xs text-muted-foreground">{tenant.currentLease.propertyName}</div>
+          <div className="tabular-nums">
+            {unit.unitNumber}
+            {more.length > 0 ? <span className="text-muted-foreground"> +{more.length} more</span> : null}
+          </div>
+          <div className="truncate text-xs text-muted-foreground">{unit.propertyName}</div>
         </div>
-      ) : (
-        NONE
-      ),
+      )
+    },
   },
   {
     id: 'lease',

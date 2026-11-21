@@ -60,6 +60,27 @@ describe('units mapper', () => {
     expect(item).not.toHaveProperty('current_tenant')
   })
 
+  it('lists an assigned unit with its assigned tenant and current assignment, and no lease', () => {
+    const item = toUnitListItem({
+      ...unitListRow,
+      current_lease_id: null,
+      current_lease: null,
+      assignments: [
+        { id: 'a-old', tenant_id: 't-old', assigned_at: '2026-01-01T08:00:00Z', ended_at: '2026-06-01T08:00:00Z', tenant: { trading_name: 'Gone Ltd' } },
+        { id: 'a-now', tenant_id: unitRow.current_tenant_id!, assigned_at: '2026-11-21T08:00:00Z', ended_at: null, tenant: { trading_name: 'Thrifty Foods' } },
+      ],
+    })
+    expect(item.currentTenant).toEqual({ id: unitRow.current_tenant_id, tradingName: 'Thrifty Foods' })
+    expect(item.currentAssignment).toEqual({ id: 'a-now', tenantId: unitRow.current_tenant_id, tenantName: 'Thrifty Foods', assignedAt: '2026-11-21T08:00:00Z' })
+    expect(item).not.toHaveProperty('currentLease')
+    expect(item).not.toHaveProperty('assignments')
+  })
+
+  it('leaves the assignment out when every assignment has ended', () => {
+    const unit = toUnit({ ...unitRow, assignments: [{ id: 'a', tenant_id: 't', assigned_at: '2026-01-01T08:00:00Z', ended_at: '2026-02-01T08:00:00Z', tenant: null }] })
+    expect(unit).not.toHaveProperty('currentAssignment')
+  })
+
   it('refuses a listed unit without its property', () => {
     expect(() => toUnitListItem({ ...unitListRow, property: null })).toThrow(/without its property/)
   })

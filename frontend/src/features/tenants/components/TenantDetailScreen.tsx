@@ -1,5 +1,6 @@
 import {
   ageArrears,
+  arrearsByTenant,
   describeAgeingBucket,
   isoToday,
   shouldSuppressArrearsReminder,
@@ -41,6 +42,7 @@ import { useCommunicationList } from '@/features/communications/api/queries'
 import { useLeaseList } from '@/features/leases/api/queries'
 import { LeaseTermBars } from '@/features/leases/components/LeaseTermBars'
 import { useStatementList } from '@/features/statements/api/queries'
+import { TenantUnitsSection } from '@/features/unit-assignments/components/TenantUnitsSection'
 import { useMemberList } from '@/features/users/api/queries'
 import { describeApiError } from '@/lib/data/apiErrors'
 import { MAX_LIST_PAGE_SIZE } from '@/lib/data/listParams'
@@ -204,8 +206,9 @@ export function TenantDetailScreen({ tenant }: TenantDetailScreenProps) {
 
   const tenantId = tenant.id
   const leases = useLeaseList({ page: 1, pageSize: LEASES_SHOWN, tenantId, sort: 'commencementDate', direction: 'desc' })
-  // Arrears are aged from the latest verified statement only (domain `ageArrears`); statements in review never count.
-  const latestVerified = useStatementList({ page: 1, pageSize: 1, tenantId, status: 'verified', sort: 'statementDate', direction: 'desc' })
+  // Arrears come from verified statements only, the latest per unit the tenant rents (domain `ageArrears`), added up
+  // across units; statements in review never count.
+  const latestVerified = useStatementList({ page: 1, pageSize: MAX_LIST_PAGE_SIZE, tenantId, status: 'verified', sort: 'statementDate', direction: 'desc' })
   const statements = useStatementList({ page: 1, pageSize: STATEMENTS_SHOWN, tenantId, sort: 'statementDate', direction: 'desc' })
   const communications = useCommunicationList({ page: 1, pageSize: COMMUNICATIONS_SHOWN, tenantId, sort: 'createdAt', direction: 'desc' })
   const arrangements = useArrangementList({ page: 1, pageSize: MAX_LIST_PAGE_SIZE, tenantId, status: 'active' })
@@ -213,7 +216,10 @@ export function TenantDetailScreen({ tenant }: TenantDetailScreenProps) {
   const signerOf: SignerOf = (userId) =>
     userId ? members.data?.items.find((member) => member.id.toLowerCase() === userId.toLowerCase())?.fullName : undefined
 
-  const arrears = latestVerified.data ? ageArrears(latestVerified.data.items, today)[0] : undefined
+  const arrearsEntries = latestVerified.data ? ageArrears(latestVerified.data.items, today) : []
+  const arrearsTotal = arrearsByTenant(arrearsEntries)[0]
+  // The oldest balance decides the ageing shown; the outstanding amount is the total across units.
+  const arrears = arrearsEntries.length > 0 ? arrearsEntries.reduce((oldest, entry) => (entry.ageDays > oldest.ageDays ? entry : oldest)) : undefined
   const latestStatement = latestVerified.data?.items[0]
   const remindersPaused = arrangements.data ? shouldSuppressArrearsReminder(tenantId, arrangements.data.items, today) : false
   const blockers = tenantCommunicationBlockers(tenant)
@@ -231,7 +237,7 @@ export function TenantDetailScreen({ tenant }: TenantDetailScreenProps) {
 
   const total = (query: { data?: { total: number } }) => query.data?.total ?? '—'
   const loading = (query: { isPending: boolean; isError: boolean }) => query.isPending && !query.isError
-  const outstanding = arrears?.outstanding ?? 0
+  const outstanding = arrearsTotal?.outstanding ?? 0
 
   return (
     <section>
@@ -332,7 +338,7 @@ export function TenantDetailScreen({ tenant }: TenantDetailScreenProps) {
             ) : (
               <div className="rounded-lg border border-border px-4 py-3">
                 <InformationGrid columns={3} className="gap-y-3">
-                  <InformationItem label="Outstanding" value={<CurrencyDisplay amount={arrears?.outstanding ?? 0} />} />
+                  <InformationItem label="Outstanding" value={<CurrencyDisplay amount={outstanding} />} />
                   <InformationItem
                     label="Age"
                     value={arrears ? `${arrears.ageDays} days (${describeAgeingBucket(arrears.bucket)})` : 'Nothing outstanding'}
@@ -354,6 +360,8 @@ export function TenantDetailScreen({ tenant }: TenantDetailScreenProps) {
               </div>
             )}
           </section>
+
+          <TenantUnitsSection tenant={tenant} canWrite={isWriter} />
 
           <section aria-label="Unit and lease" className="space-y-3">
             <SectionHeader

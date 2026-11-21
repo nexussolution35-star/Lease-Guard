@@ -55,12 +55,19 @@ function changesFrom(body: UpdateUnitBody): UnitChanges {
   }
 }
 
+/** The unit's assignments with the tenant's name; `toUnit` reads the current one. */
+export const UNIT_ASSIGNMENT_EMBED =
+  'assignments:unit_tenant_assignments!unit_tenant_assignments_unit_fk(id, tenant_id, assigned_at, ended_at, tenant:tenants!unit_tenant_assignments_tenant_fk(trading_name))'
+
+/** A unit with its current assignment. */
+export const UNIT_SELECT = `*, ${UNIT_ASSIGNMENT_EMBED}`
+
 /**
- * Each listed unit with its property and the tenant and lease of its active lease, named through the
- * composite company-scoped foreign keys so RLS applies to every embedded row.
+ * Each listed unit with its property, its current tenant (the current lease's tenant, else the assigned tenant), its
+ * current lease and its assignment, named through the composite company-scoped foreign keys so RLS applies to every
+ * embedded row.
  */
-export const UNIT_LIST_SELECT =
-  '*, property:properties!units_property_fk(id, name, code), current_tenant:tenants!units_current_tenant_fk(id, trading_name), current_lease:leases!units_current_lease_fk(id, reference, commencement_date, expiry_date)'
+export const UNIT_LIST_SELECT = `*, property:properties!units_property_fk(id, name, code), current_tenant:tenants!units_current_tenant_fk(id, trading_name), current_lease:leases!units_current_lease_fk(id, reference, commencement_date, expiry_date), ${UNIT_ASSIGNMENT_EMBED}`
 
 /**
  * Units of one company. Every query runs through the caller's RLS-bound client and also filters
@@ -70,7 +77,11 @@ export const UNIT_LIST_SELECT =
 export class UnitsService {
   async list(db: DbClient, companyId: EntityId, query: UnitListQuery): Promise<Page<UnitListItem>> {
     const filtered = () => {
-      let request = db.from('units').select(UNIT_LIST_SELECT, { count: 'exact' }).eq('company_id', companyId)
+      let request = db
+        .from('units')
+        .select(UNIT_LIST_SELECT, { count: 'exact' })
+        .eq('company_id', companyId)
+        .is('assignments.ended_at', null)
       if (query.propertyId) request = request.eq('property_id', query.propertyId)
       if (query.occupancyStatus) request = request.eq('occupancy_status', query.occupancyStatus)
       if (query.type) request = request.eq('type', query.type)
@@ -92,7 +103,7 @@ export class UnitsService {
 
   async get(db: DbClient, companyId: EntityId, unitId: EntityId): Promise<Unit> {
     const row = unwrapDatabase(
-      await db.from('units').select('*').eq('company_id', companyId).eq('id', unitId).maybeSingle(),
+      await db.from('units').select(UNIT_SELECT).eq('company_id', companyId).eq('id', unitId).is('assignments.ended_at', null).maybeSingle(),
       'Get unit',
     )
     return toUnit(row)
@@ -104,7 +115,7 @@ export class UnitsService {
    */
   async create(db: DbClient, companyId: EntityId, body: CreateUnitBody): Promise<Unit> {
     const row = unwrapDatabase(
-      await db.from('units').insert(unitInsertColumns(companyId, body)).select('*').single(),
+      await db.from('units').insert(unitInsertColumns(companyId, body)).select(UNIT_SELECT).single(),
       'Create unit',
       writeErrors(body.unitNumber),
     )
@@ -117,7 +128,7 @@ export class UnitsService {
    */
   async update(db: DbClient, companyId: EntityId, unitId: EntityId, body: UpdateUnitBody): Promise<Unit> {
     const row = unwrapDatabase(
-      await db.from('units').update(changesFrom(body)).eq('company_id', companyId).eq('id', unitId).select('*').maybeSingle(),
+      await db.from('units').update(changesFrom(body)).eq('company_id', companyId).eq('id', unitId).select(UNIT_SELECT).maybeSingle(),
       'Update unit',
       writeErrors(body.unitNumber),
     )

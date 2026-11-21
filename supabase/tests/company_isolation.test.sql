@@ -79,7 +79,7 @@ select is(
   0::bigint,
   'anon has no privileges on any public table'
 );
-select is((select count(*) from tests.company_tables()), 40::bigint, 'all 40 end-user company-owned tables are covered');
+select is((select count(*) from tests.company_tables()), 41::bigint, 'all 41 end-user company-owned tables are covered');
 select is(
   (select count(*) from (select tbl from tests.expected
                          where tbl <> 'companies' and n > 0 and company_id in (tests.company('NS'), tests.company('KP'))

@@ -23,6 +23,7 @@ import { LeaseTermBars } from '@/features/leases/components/LeaseTermBars'
 import { LeaseVerification } from '@/features/leases/components/LeaseVerification'
 import { usePropertyQuery } from '@/features/properties/api/queries'
 import { useTenantQuery } from '@/features/tenants/api/queries'
+import { UnitTenantSection } from '@/features/unit-assignments/components/UnitTenantSection'
 import { useMemberList } from '@/features/users/api/queries'
 import { describeApiError } from '@/lib/data/apiErrors'
 import { MAX_LIST_PAGE_SIZE } from '@/lib/data/listParams'
@@ -85,9 +86,10 @@ function historyColumns(signerOf: (userId: string | undefined) => string | undef
 }
 
 /**
- * One unit: its current tenant and lease (the lease term drawn to scale, with who verified it), every lease the unit
- * has had, and its details with the property in a side rail. The tenant and lease come from the active lease and are
- * never typed in. Writers edit the unit; a unit of an archived property is read-only until the property is restored.
+ * One unit: its tenant (the active lease's, else the tenant assigned to it, with Assign tenant and Unassign), its current
+ * lease (the lease term drawn to scale, with who verified it), every lease the unit has had, and its details with the
+ * property in a side rail. The tenant and lease are never typed in. Writers edit the unit; a unit of an archived property
+ * is read-only until the property is restored.
  * Every rule is enforced by the API; the screen explains it.
  */
 export function UnitDetailScreen({ unit }: UnitDetailScreenProps) {
@@ -165,6 +167,8 @@ export function UnitDetailScreen({ unit }: UnitDetailScreenProps) {
       {/* DOM order is the phone order: the current lease, then the history, then details. From `lg` details sit in a right rail. */}
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-x-8 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-10 lg:col-start-1 lg:row-start-1">
+          <UnitTenantSection unit={unit} propertyStatus={propertyRecord?.status} canWrite={canEdit} />
+
           <section aria-label="Current lease" className="space-y-3">
             <SectionHeader title="Current lease" description="The tenant and lease in force, from the unit's active lease." />
             {unit.currentLeaseId === undefined ? (

@@ -6,7 +6,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 \ir fixtures/two_companies.psql
-select plan(34);
+select plan(35);
 
 create schema tests;
 grant usage on schema tests to authenticated;
@@ -96,8 +96,13 @@ select throws_ok(
     where id = '40000000-0000-4000-8000-000000000001'$$,
   '23503', null, 'a unit''s current tenant must be its current lease''s tenant');
 select throws_ok(
-  $$update public.units set current_lease_id = null where id = '40000000-0000-4000-8000-000000000001'$$,
-  '23514', null, 'a unit sets its current lease and tenant together');
+  $$update public.units set current_tenant_id = null where id = '40000000-0000-4000-8000-000000000001'$$,
+  '23514', null, 'a unit with a current lease has its tenant');
+-- Without a current lease the current tenant is derived from the unit's assignment (none here), never kept stale
+-- (20261121210000_unit_tenant_assignments.sql).
+update public.units set current_lease_id = null where id = '40000000-0000-4000-8000-000000000002';
+select is((select current_tenant_id from public.units where id = '40000000-0000-4000-8000-000000000002'), null,
+  'clearing the current lease of an unassigned unit clears its tenant');
 select lives_ok(
   $$update public.units set current_lease_id = null, current_tenant_id = null where id = '40000000-0000-4000-8000-000000000001'$$,
   'a unit can clear its current lease and tenant together');

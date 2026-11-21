@@ -1028,6 +1028,50 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"unit_tenant_assignments": {
+                  Row: {
+                    "assigned_at": string,"assigned_by_user_id": string | null,"company_id": string,"created_at": string,"ended_at": string | null,"ended_by_user_id": string | null,"id": string,"property_id": string,"tenant_id": string,"unit_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "assigned_at"?: string,"assigned_by_user_id"?: string | null,"company_id": string,"created_at"?: string,"ended_at"?: string | null,"ended_by_user_id"?: string | null,"id"?: string,"property_id": string,"tenant_id": string,"unit_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "assigned_at"?: string,"assigned_by_user_id"?: string | null,"company_id"?: string,"created_at"?: string,"ended_at"?: string | null,"ended_by_user_id"?: string | null,"id"?: string,"property_id"?: string,"tenant_id"?: string,"unit_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "unit_tenant_assignments_assigned_by_fk"
+      columns: ["company_id","assigned_by_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    },{
+      foreignKeyName: "unit_tenant_assignments_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "unit_tenant_assignments_ended_by_fk"
+      columns: ["company_id","ended_by_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    },{
+      foreignKeyName: "unit_tenant_assignments_tenant_fk"
+      columns: ["company_id","tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "unit_tenant_assignments_unit_fk"
+      columns: ["company_id","property_id","unit_id"]
+isOneToOne: false
+      referencedRelation: "units"
+      referencedColumns: ["company_id","property_id","id"]
+    }
+                  ]
                 },"units": {
                   Row: {
                     "company_id": string,"created_at": string,"current_lease_id": string | null,"current_tenant_id": string | null,"description": string | null,"floor": string | null,"floor_area_sqm": number,"id": string,"occupancy_status": Database["public"]['Enums']["occupancy_status"],"property_id": string,"type": Database["public"]['Enums']["unit_type"],"unit_number": string,"updated_at": string
@@ -1593,6 +1637,9 @@ isOneToOne: false
               "company_id": string,"outcome": string
             }[]
                            },
+"assign_tenant_to_unit":
+{ Args: { "p_company_id": string,"p_tenant_id": string,"p_unit_id": string }; Returns: string
+                           },
 "assign_whatsapp_handover":
 { Args: { "p_assignee": string,"p_company_id": string,"p_conversation_id": string }; Returns: {
               "handover_id": string,"outcome": string
@@ -1656,6 +1703,9 @@ isOneToOne: false
 { Args: { "p_company_id": string,"p_number_id": string }; Returns: {
               "outcome": string,"token_removed": boolean
             }[]
+                           },
+"end_unit_tenant_assignment":
+{ Args: { "p_assignment_id": string,"p_company_id": string }; Returns: string
                            },
 "fail_whatsapp_onboarding_exchange":
 { Args: { "p_company_id": string,"p_error_message": string,"p_session_id": string }; Returns: string
@@ -1753,6 +1803,9 @@ isOneToOne: false
 { Args: { "p_company_id": string,"p_conversation_id": string,"p_note"?: string }; Returns: {
               "handover_id": string,"outcome": string
             }[]
+                           },
+"retry_statement_processing":
+{ Args: { "p_company_id": string,"p_statement_id": string }; Returns: string
                            },
 "save_lease":
 { Args: { "p_company_id": string,"p_guarantee"?: Json,"p_lease": Json,"p_lease_id"?: string,"p_set_guarantee"?: boolean }; Returns: string
