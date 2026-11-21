@@ -12,9 +12,17 @@ const LEASE_ID = leaseRow.id
 describe('LeasesService', () => {
   const service = new LeasesService()
 
-  it('lists one company with every filter, reference search, sorting and paging', async () => {
+  it('lists one company with every filter, reference or tenant search, sorting and paging', async () => {
     const { client, queries } = fakeDb(() => ({
-      data: [{ ...leaseRow, lease_bank_guarantees: [guaranteeRow] }],
+      data: [
+        {
+          ...leaseRow,
+          lease_bank_guarantees: [guaranteeRow],
+          tenant: { trading_name: 'Umoya Coffee' },
+          property: { name: 'Acacia Park' },
+          unit: { unit_number: 'ACP-001' },
+        },
+      ],
       error: null,
       count: 1,
     }))
@@ -30,10 +38,22 @@ describe('LeasesService', () => {
 
     const page = await service.list(client, COMPANY, query)
 
-    expect(page.items[0]).toMatchObject({ id: LEASE_ID, bankGuarantee: { bank: 'Standard Bank' } })
+    expect(page.items[0]).toMatchObject({
+      id: LEASE_ID,
+      bankGuarantee: { bank: 'Standard Bank' },
+      tenantName: 'Umoya Coffee',
+      propertyName: 'Acacia Park',
+      unitNumber: 'ACP-001',
+    })
+    expect(page.items[0]).not.toHaveProperty('tenant')
     const [q] = queries
     expect(q?.table).toBe('leases')
-    expect(callsTo(q!, 'select')).toEqual([['*, lease_bank_guarantees(*)', { count: 'exact' }]])
+    expect(callsTo(q!, 'select')).toEqual([
+      [
+        '*, lease_bank_guarantees(*), tenant:tenants!leases_tenant_fk(trading_name), property:properties!leases_property_fk(name), unit:units!leases_unit_fk(unit_number)',
+        { count: 'exact' },
+      ],
+    ])
     expect(callsTo(q!, 'eq')).toEqual([
       ['company_id', COMPANY],
       ['status', 'active'],
@@ -42,8 +62,27 @@ describe('LeasesService', () => {
       ['tenant_id', leaseRow.tenant_id],
       ['verified', false],
     ])
-    expect(callsTo(q!, 'or')).toEqual([['reference.ilike."%MSQ%"']])
+    expect(callsTo(q!, 'or')).toEqual([['reference.ilike."%MSQ%",tenant_search_text.ilike."%MSQ%"']])
     expect(callsTo(q!, 'order')[0]).toEqual(['expiry_date', { ascending: true }])
+    expect(callsTo(q!, 'gte')).toEqual([])
+  })
+
+  it('filters leases expiring within a number of days of the South African date', async () => {
+    const { client, queries } = fakeDb(() => ({ data: [], error: null, count: 0 }))
+    // 22:30 UTC on 31 Dec is already 1 Jan in South Africa (UTC+2).
+    const now = new Date('2026-12-31T22:30:00Z')
+
+    await service.list(client, COMPANY, leaseListQuerySchema.parse({ expiresWithinDays: '90' }), now)
+
+    expect(callsTo(queries[0]!, 'gte')).toEqual([['expiry_date', '2027-01-01']])
+    expect(callsTo(queries[0]!, 'lte')).toEqual([['expiry_date', '2027-04-01']])
+  })
+
+  it('accepts a whole number of days from 0 to ten years for expiresWithinDays', () => {
+    expect(leaseListQuerySchema.parse({ expiresWithinDays: '30' }).expiresWithinDays).toBe(30)
+    expect(leaseListQuerySchema.safeParse({ expiresWithinDays: '-1' }).success).toBe(false)
+    expect(leaseListQuerySchema.safeParse({ expiresWithinDays: '1.5' }).success).toBe(false)
+    expect(leaseListQuerySchema.safeParse({ expiresWithinDays: '3651' }).success).toBe(false)
   })
 
   it('accepts only true/false for the verified filter', () => {

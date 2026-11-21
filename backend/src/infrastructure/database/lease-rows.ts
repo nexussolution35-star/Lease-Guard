@@ -6,7 +6,8 @@ import type { Tables } from './database.types'
 // because the API (modules/) and lease monitoring (workers/) both read leases and must not import each
 // other: one mapping keeps locality for every lease column.
 
-export type LeaseRow = Tables<'leases'>
+/** A `leases` table row. `tenant_search_text` is a computed field for the list search, never selected by `*`. */
+export type LeaseRow = Omit<Tables<'leases'>, 'tenant_search_text'>
 export type BankGuaranteeRow = Tables<'lease_bank_guarantees'>
 
 /** A lease row with its embedded bank guarantee (at most one: `lease_id` is unique). */

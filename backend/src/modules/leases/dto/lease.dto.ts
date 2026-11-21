@@ -5,6 +5,7 @@ import {
   ESCALATION_TYPES,
   GUARANTEE_STATUSES,
   LEASE_STATUSES,
+  MAX_EXPIRING_WITHIN_DAYS,
   type BankGuarantee,
   type Deposit,
   type DepositHolder,
@@ -13,6 +14,7 @@ import {
   type GuaranteeStatus,
   type Lease,
   type LeaseEscalation,
+  type LeaseListItem,
   type LeaseStatus,
   type RenewalOption,
 } from '@leaseguard/domain'
@@ -20,7 +22,17 @@ import type { z } from 'zod'
 
 import { createPageDto, PageQueryDto } from '../../../common/http/pagination'
 import { assertSchemaMatchesDto } from '../../../common/pipes/zod-validation.pipe'
-import { LEASE_SORT_FIELDS, type leaseListQuerySchema } from '../leases.schemas'
+import {
+  LEASE_INITIAL_STATUSES,
+  LEASE_SORT_FIELDS,
+  type createLeaseBodySchema,
+  type leaseDepositSchema,
+  type leaseEscalationSchema,
+  type leaseGuaranteeSchema,
+  type leaseListQuerySchema,
+  type leaseRenewalSchema,
+  type updateLeaseBodySchema,
+} from '../leases.schemas'
 
 /** Agreed rental increase conditions. Same shape as the domain `LeaseEscalation`. */
 export class LeaseEscalationDto implements LeaseEscalation {
@@ -97,7 +109,14 @@ export class LeaseDto implements Lease {
   @ApiProperty({ format: 'date-time' }) updatedAt!: string
 }
 
-export const LeasePageDto = createPageDto(LeaseDto, 'LeasePage')
+/** A lease in the list: the lease plus the names of its tenant, property and unit. */
+export class LeaseListItemDto extends LeaseDto implements LeaseListItem {
+  @ApiProperty({ description: "The tenant's trading name", example: 'Umoya Coffee' }) tenantName!: string
+  @ApiProperty({ example: 'Acacia Park Shopping Centre' }) propertyName!: string
+  @ApiProperty({ example: 'ACP-001' }) unitNumber!: string
+}
+
+export const LeasePageDto = createPageDto(LeaseListItemDto, 'LeasePage')
 
 export class LeaseListQueryDto extends PageQueryDto {
   @ApiPropertyOptional({ enum: LEASE_SORT_FIELDS, enumName: 'LeaseSortField' })
@@ -117,6 +136,88 @@ export class LeaseListQueryDto extends PageQueryDto {
 
   @ApiPropertyOptional({ type: Boolean, description: 'true for verified leases only, false for unverified only' })
   verified?: boolean
+
+  @ApiPropertyOptional({
+    type: Number,
+    minimum: 0,
+    maximum: MAX_EXPIRING_WITHIN_DAYS,
+    description: 'Leases expiring from today (South African date) to this many days from today, inclusive',
+  })
+  expiresWithinDays?: number
 }
 
 assertSchemaMatchesDto<z.infer<typeof leaseListQuerySchema>, LeaseListQueryDto>(true)
+
+// --------------------------------------------------------------------------- create and edit
+
+type InitialLeaseStatus = (typeof LEASE_INITIAL_STATUSES)[number]
+
+/** Renewal option terms in a request. Whether the tenant exercised it is recorded separately. */
+export class RenewalOptionInputDto {
+  @ApiProperty() exists!: boolean
+  @ApiPropertyOptional({ minimum: 1, maximum: 600, description: 'Length of the renewal term in months' }) renewalTermMonths?: number
+  @ApiPropertyOptional({ minimum: 0, maximum: 120, description: 'Written notice required before expiry, in months' })
+  noticePeriodMonths?: number
+  @ApiPropertyOptional({ maxLength: 2000 }) notes?: string
+}
+
+/** A bank guarantee in a request. Its status (released, called) follows its lifecycle and is not set here. */
+export class BankGuaranteeInputDto {
+  @ApiProperty({ maxLength: 200 }) bank!: string
+  @ApiProperty({ maxLength: 100 }) referenceNumber!: string
+  @ApiProperty({ minimum: 0, description: 'Amount in ZAR, at most two decimals' }) amount!: number
+  @ApiProperty({ minimum: 0, exclusiveMinimum: true, description: 'Months of rental the guarantee was sized as' }) basisMonths!: number
+  @ApiProperty({ format: 'date' }) issuedOn!: string
+  @ApiProperty({ format: 'date', description: 'After the issue date' }) expiresOn!: string
+  @ApiPropertyOptional({ maxLength: 2000 }) notes?: string
+}
+
+/** Body of POST /leases. Amounts are ZAR excluding VAT. */
+export class CreateLeaseDto {
+  @ApiProperty({ maxLength: 40, example: 'MSQ-L012', description: 'Upper-cased; unique in the company' }) reference!: string
+  @ApiProperty({ format: 'uuid', description: 'A tenant of the company' }) tenantId!: string
+  @ApiProperty({ format: 'uuid', description: 'A property of the company that is not archived' }) propertyId!: string
+  @ApiProperty({ format: 'uuid', description: 'A unit of that property' }) unitId!: string
+  @ApiProperty({ format: 'date' }) commencementDate!: string
+  @ApiProperty({ format: 'date', description: 'After the commencement date' }) expiryDate!: string
+  @ApiProperty({ minimum: 0, description: 'Rental at commencement (ZAR, excl. VAT)' }) initialMonthlyRental!: number
+  @ApiPropertyOptional({ minimum: 0, description: 'The initial rental when omitted' }) currentMonthlyRental?: number
+  @ApiProperty({ minimum: 1, maximum: 28 }) paymentDueDay!: number
+  @ApiProperty({ type: LeaseEscalationDto, description: 'The amount field its type names is required' }) escalation!: LeaseEscalationDto
+  @ApiProperty({ type: RenewalOptionInputDto }) renewalOption!: RenewalOptionInputDto
+  @ApiPropertyOptional({ type: DepositDto, nullable: true }) deposit?: DepositDto | null
+  @ApiPropertyOptional({ type: BankGuaranteeInputDto, nullable: true }) bankGuarantee?: BankGuaranteeInputDto | null
+  @ApiPropertyOptional({ enum: LEASE_INITIAL_STATUSES, enumName: 'InitialLeaseStatus', description: 'pending_verification when omitted' })
+  status?: InitialLeaseStatus
+  @ApiPropertyOptional({ type: String, nullable: true, maxLength: 4000 }) notes?: string | null
+}
+
+/**
+ * Body of PATCH /leases/{leaseId}. Omitted fields are unchanged; escalation, renewal option, deposit and bank guarantee
+ * each replace the whole group. A change to a lease term (parties, dates, rentals, due day, escalation, renewal
+ * option, deposit, guarantee) of a verified lease returns it to pending verification.
+ */
+export class UpdateLeaseDto {
+  @ApiPropertyOptional({ maxLength: 40 }) reference?: string
+  @ApiPropertyOptional({ format: 'uuid' }) tenantId?: string
+  @ApiPropertyOptional({ format: 'uuid', description: 'Send the unit with it' }) propertyId?: string
+  @ApiPropertyOptional({ format: 'uuid' }) unitId?: string
+  @ApiPropertyOptional({ format: 'date' }) commencementDate?: string
+  @ApiPropertyOptional({ format: 'date' }) expiryDate?: string
+  @ApiPropertyOptional({ minimum: 0 }) initialMonthlyRental?: number
+  @ApiPropertyOptional({ minimum: 0 }) currentMonthlyRental?: number
+  @ApiPropertyOptional({ minimum: 1, maximum: 28 }) paymentDueDay?: number
+  @ApiPropertyOptional({ type: LeaseEscalationDto }) escalation?: LeaseEscalationDto
+  @ApiPropertyOptional({ type: RenewalOptionInputDto }) renewalOption?: RenewalOptionInputDto
+  @ApiPropertyOptional({ type: DepositDto, nullable: true, description: 'null removes the deposit' }) deposit?: DepositDto | null
+  @ApiPropertyOptional({ type: BankGuaranteeInputDto, nullable: true, description: 'null removes the guarantee' })
+  bankGuarantee?: BankGuaranteeInputDto | null
+  @ApiPropertyOptional({ type: String, nullable: true, maxLength: 4000, description: 'Empty or null clears it' }) notes?: string | null
+}
+
+assertSchemaMatchesDto<z.infer<typeof leaseEscalationSchema>, LeaseEscalationDto>(true)
+assertSchemaMatchesDto<z.infer<typeof leaseRenewalSchema>, RenewalOptionInputDto>(true)
+assertSchemaMatchesDto<z.infer<typeof leaseDepositSchema>, DepositDto>(true)
+assertSchemaMatchesDto<z.infer<typeof leaseGuaranteeSchema>, BankGuaranteeInputDto>(true)
+assertSchemaMatchesDto<z.infer<typeof createLeaseBodySchema>, CreateLeaseDto>(true)
+assertSchemaMatchesDto<z.infer<typeof updateLeaseBodySchema>, UpdateLeaseDto>(true)

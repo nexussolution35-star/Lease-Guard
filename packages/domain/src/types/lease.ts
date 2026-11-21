@@ -100,6 +100,17 @@ export interface Lease extends CompanyScoped {
   notes?: string
 }
 
+/**
+ * A lease as the lease list shows it: the lease plus the names of its tenant, property and unit, so a
+ * row reads without a lookup per record.
+ */
+export interface LeaseListItem extends Lease {
+  /** The tenant's trading name. */
+  tenantName: string
+  propertyName: string
+  unitNumber: string
+}
+
 export const LEASE_DOCUMENT_TYPES = [
   'signed_lease',
   'addendum',
@@ -110,6 +121,12 @@ export const LEASE_DOCUMENT_TYPES = [
   'other',
 ] as const
 export type LeaseDocumentType = (typeof LEASE_DOCUMENT_TYPES)[number]
+
+/** Lease documents are PDFs (the lease-documents bucket accepts nothing else). */
+export const LEASE_DOCUMENT_MIME_TYPES = ['application/pdf'] as const
+export type LeaseDocumentMimeType = (typeof LEASE_DOCUMENT_MIME_TYPES)[number]
+/** Largest lease document: 20 MB (the lease-documents bucket's limit). */
+export const LEASE_DOCUMENT_MAX_BYTES = 20 * 1024 * 1024
 
 export interface LeaseDocument extends CompanyScoped {
   leaseId: EntityId

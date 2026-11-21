@@ -1,5 +1,5 @@
 import type { ISODate, Lease, LeaseStatus } from '../types/index.js'
-import { compareISODate, daysBetween } from './dates.js'
+import { addDaysISO, compareISODate, daysBetween } from './dates.js'
 
 /** Lease statuses whose expiry is actively monitored. */
 export const MONITORED_LEASE_STATUSES: readonly LeaseStatus[] = ['active', 'expiring']
@@ -27,6 +27,21 @@ export function expiryStatusForDays(days: number): LeaseExpiryStatus {
   if (days <= EXPIRY_THRESHOLDS.soon) return 'expiring_soon'
   if (days <= EXPIRY_THRESHOLDS.watch) return 'expiring_watch'
   return 'current'
+}
+
+/** Choices for the lease list's "expiring within" filter, in days: the expiry thresholds plus a year. */
+export const EXPIRING_WITHIN_DAY_OPTIONS = [EXPIRY_THRESHOLDS.critical, EXPIRY_THRESHOLDS.soon, EXPIRY_THRESHOLDS.watch, 365] as const
+
+/** Longest "expiring within" window the lease list accepts, in days (ten years). */
+export const MAX_EXPIRING_WITHIN_DAYS = 3650
+
+/**
+ * Expiry dates of the leases expiring within `days` of `today`, both ends inclusive: from today (0 days left,
+ * as `daysUntilExpiry` counts) to today plus `days`. Leases already expired are outside the window.
+ */
+export function expiringWithinRange(today: ISODate, days: number): { from: ISODate; to: ISODate } {
+  if (!Number.isInteger(days) || days < 0) throw new RangeError(`expiringWithinRange: days must be a whole number of 0 or more, got ${days}`)
+  return { from: today, to: addDaysISO(today, days) }
 }
 
 export function leaseExpiryStatus(lease: Pick<Lease, 'expiryDate'>, today: ISODate): LeaseExpiryStatus {

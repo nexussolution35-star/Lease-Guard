@@ -3,6 +3,7 @@ import { makeLease } from './__fixtures__/lease.js'
 import {
   crossedThreshold,
   daysUntilExpiry,
+  expiringWithinRange,
   leaseExpiryStatus,
   shouldRaiseExpiryEvent,
   upcomingExpiries,
@@ -56,5 +57,21 @@ describe('crossedThreshold / shouldRaiseExpiryEvent', () => {
   it('respects lease status', () => {
     expect(shouldRaiseExpiryEvent(makeLease({ expiryDate: '2026-12-21' }), today, notice)).toBe(90)
     expect(shouldRaiseExpiryEvent(makeLease({ expiryDate: '2026-12-21', status: 'renewed' }), today, notice)).toBeNull()
+  })
+})
+
+describe('expiringWithinRange', () => {
+  it('runs from today to today plus the days, inclusive, matching daysUntilExpiry', () => {
+    const range = expiringWithinRange(today, 30)
+    expect(range).toEqual({ from: '2026-11-06', to: '2026-12-06' })
+    expect(daysUntilExpiry(makeLease({ expiryDate: range.to }), today)).toBe(30)
+    expect(daysUntilExpiry(makeLease({ expiryDate: range.from }), today)).toBe(0)
+  })
+  it('crosses month and leap-year ends', () => {
+    expect(expiringWithinRange('2028-02-01', 365)).toEqual({ from: '2028-02-01', to: '2029-01-31' })
+  })
+  it('refuses negative or fractional days', () => {
+    expect(() => expiringWithinRange(today, -1)).toThrow(RangeError)
+    expect(() => expiringWithinRange(today, 1.5)).toThrow(RangeError)
   })
 })
