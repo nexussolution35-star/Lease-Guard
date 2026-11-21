@@ -140,6 +140,8 @@ From `backend/openapi.json` and, for the reports service, `services/reports/open
 | `GET /api/v1/reports/rental_discrepancies` | `getRentalDiscrepanciesReport` | company | members |
 
 | `GET /api/v1/reports/deposits_guarantees` | `getDepositsGuaranteesReport` | company | members |
+| `GET /api/v1/reports/statement_processing` | `getStatementProcessingReport` | company | members |
+| `GET /api/v1/reports/communication_activity` | `getCommunicationActivityReport` | company | members |
 `GET /api/v1/reports` returns `{ reports: ReportDefinitionDto[] }`: the report catalogue (`REPORT_CATALOGUE` in
 `packages/domain/src/rules/reportCatalogue.ts`, the same list the web app shows), in display order. The service also
 answers `GET /health` and `GET /health/ready` on its own port; through the gateway those paths reach the core.
@@ -181,6 +183,26 @@ company) and the domain rules; reports are monitoring summaries, never transacti
   and the next instalment; counts per status, the remaining balance under active arrangements, paid to date, missed and
   overdue totals. Records only: nothing is paid through LeaseGuard. Status filter: the arrangement status. Date range: the
   date agreed.
+- `statement_processing` (R-06): every uploaded statement of the company (archived properties included, as the
+  dashboard counts its pending reviews), newest first, linking to the statement, tenant and unit, with its South African
+  upload date and age in days, source system, status, extraction confidence and, while under review, the fields a
+  reviewer still has to confirm or correct (`fieldResolution`); counted by status, by source system and by property
+  (in progress = uploaded or processing; waiting for review = `review_required`, processing failures included;
+  processing failed = waiting with a processing error, `processingFailed`, as the Statements page shows it), with the
+  review backlog oldest first and the processing failures with their reason. Without filters the statements waiting for
+  review equal the dashboard's `pendingStatementReviews` and the Statements page's `status=review_required` total.
+  Status filter: the statement status. Date range: the upload date (South African).
+- `communication_activity` (R-06): every message of the company, newest first, with its counterparty (the tenant's
+  trading name, the owner's name or the contact's WhatsApp name), its property (its own, else its lease's, statement's
+  or arrangement's), status, delivery outcome (`pending`, `delivered`, `read`, `failed`: outbound messages handed to
+  WhatsApp for sending only, as communication analytics counts them; delivered includes read) and its approval (the
+  pending request, else the latest decided one); counted by type, status, outcome and property (messages without a
+  property last), with the delivery rate, the messages awaiting approval longest waiting first with the hours each has
+  waited and its age bucket (`under_1_day`, `1_3_days`, `3_7_days`, `over_7_days`), the mean approval turnaround of
+  people's decisions (the AI agent's own approvals of its replies to contacts are left out) and the failed messages with
+  their reason. Without filters the messages awaiting approval equal the dashboard's `pendingApprovals`. Read-only:
+  nothing is sent, approved or retried from it. Status filter: the delivery status. Date range: the date the message
+  was recorded (South African). The property filter leaves out messages without a property.
 - `lease_monitoring` (R-02): every monitoring event of the company, the open ones by default (new, under review, action
   required, in progress: `OPEN_EVENT_STATUSES`, as the monitoring list and the dashboard count them), each with its age
   in days on the "as at" date (`ageBucket` 0-7, 8-30, 31-90, 90+) and whether it is overdue (open, due before the "as

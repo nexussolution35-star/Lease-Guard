@@ -60,7 +60,7 @@ OpenAPI document (`services/reports/openapi.json`) and dev script. Report logic 
 - **Reports.** Every report is `GET /api/v1/reports/{reportId}` with one shared query (property, date range, status)
   and one answer shape (`{ reportId, asOf, filters, data }`). The service reads rows from the reporting functions and
   puts each report together with the domain rules (`@leaseguard/domain` `rules/portfolioReports.ts`,
-  `rules/monitoringReports.ts`, `rules/leaseDateReports.ts`, `rules/securityReports.ts`, `rules/arrearsReports.ts`, `rules/reportFrame.ts`), counted the way the dashboard counts and worked out the way lease monitoring works it out; the web app's report frame
+  `rules/monitoringReports.ts`, `rules/leaseDateReports.ts`, `rules/securityReports.ts`, `rules/arrearsReports.ts`, `rules/statementCommunicationReports.ts`, `rules/reportFrame.ts`), counted the way the dashboard counts and worked out the way lease monitoring works it out; the web app's report frame
   (`frontend/src/features/reports`) only shows the figures, keeps the filters in the URL, exports the rows shown as
   CSV and prints.
 - **Between services: queues only.** A service asks another to act through Redis/BullMQ; it never writes another
