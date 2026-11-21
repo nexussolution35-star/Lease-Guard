@@ -4,18 +4,17 @@ import { AppLink, ErrorState, SectionHeader } from '@/components/shared'
 import { Skeleton } from '@/components/ui/skeleton'
 import { describeApiError } from '@/lib/data/apiErrors'
 import { isAwaitingWorkspace } from '@/lib/data/queries'
-import { cn } from '@/lib/utils'
 
 import { useCommunicationAnalytics } from '../api/queries'
 import { useDateFormatter } from '@/lib/dateFormat'
 
 const DEFAULT_RANGE = {}
 
-/** The strip's cells: Delivered leads (did tenants receive what was approved), set larger in a wider cell. */
-const STRIP_CLASSES = 'grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-[1fr_1fr_1.4fr_1fr]'
-const CELL_CLASSES = 'flex flex-col gap-2 bg-card p-4'
+
+// A compact, even ledger line like the dashboard's portfolio: the outstanding balance is the dashboard's one lead figure.
+const STRIP_CLASSES = 'grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4'
+const CELL_CLASSES = 'flex flex-col gap-1.5 bg-card px-4 py-3'
 const TERMS = ['Received', 'Sent', 'Delivered', 'Handovers'] as const
-const LEAD_TERM = 'Delivered'
 
 type Cell = [term: (typeof TERMS)[number], value: string, share?: string]
 
@@ -53,7 +52,7 @@ export function CommunicationAnalyticsSummary() {
           {TERMS.map((term) => (
             <div key={term} className={CELL_CLASSES}>
               <span className="text-xs font-medium text-muted-foreground">{term}</span>
-              <Skeleton className={term === LEAD_TERM ? 'h-10 w-28' : 'h-7 w-16'} />
+              <Skeleton className="h-5 w-10" />
             </div>
           ))}
         </div>
@@ -66,12 +65,9 @@ export function CommunicationAnalyticsSummary() {
         <dl className={STRIP_CLASSES}>
           {cellsOf(figures, delivered).map(([term, value, share]) => (
             <div key={term} className={CELL_CLASSES}>
-              <dt className="text-xs font-medium text-muted-foreground">{term}</dt>
+              <dt className="text-xs text-muted-foreground">{term}</dt>
               <dd
-                className={cn(
-                  'leading-none font-medium tabular-nums text-foreground',
-                  term === LEAD_TERM ? 'text-[2.5rem]' : 'text-[1.75rem]',
-                )}
+                className="text-xl leading-none font-medium tabular-nums text-foreground"
               >
                 {value}
                 {share ? <span className="text-sm font-normal text-muted-foreground"> {share}</span> : null}
