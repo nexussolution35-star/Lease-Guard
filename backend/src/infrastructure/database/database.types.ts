@@ -1857,9 +1857,74 @@ isOneToOne: false
               "lease_id": string,"outstanding": number,"property_id": string,"statement_date": string,"statement_id": string,"tenant_id": string,"unit_id": string
             }[]
                            },
+"reports_arrears_detail":
+{ Args: { "p_company_id": string }; Returns: {
+              "lease_id": string,"lease_reference": string,"outstanding": number,"property_id": string,"property_name": string,"statement_date": string,"statement_id": string,"tenant_id": string,"tenant_name": string,"unit_id": string,"unit_number": string
+            }[]
+                           },
+"reports_arrears_settings":
+{ Args: { "p_company_id": string }; Returns: {
+              "arrangement_attention_config": Json,"arrears_config": Json
+            }[]
+                           },
+"reports_communication_activity":
+{ Args: { "p_company_id": string }; Returns: {
+              "approval_decided_at": string,"approval_decided_by_agent": boolean,"approval_decision": Database["public"]['Enums']["approval_decision"],"approval_requested_at": string,"arrangement_id": string,"channel": Database["public"]['Enums']["channel"],"communication_id": string,"counterparty_name": string,"created_at": string,"created_on": string,"direction": Database["public"]['Enums']["message_direction"],"failure_reason": string,"message_type": Database["public"]['Enums']["message_type"],"property_id": string,"property_name": string,"recipient_type": Database["public"]['Enums']["recipient_type"],"statement_id": string,"status": Database["public"]['Enums']["delivery_status"],"tenant_id": string
+            }[]
+                           },
+"reports_discrepancy_rule":
+{ Args: { "p_company_id": string }; Returns: {
+              "config": Json,"enabled": boolean
+            }[]
+                           },
+"reports_guarantee_notice_days":
+{ Args: { "p_company_id": string }; Returns: {
+              "company_notice_days": (number)[],"rule_notice_days": Json
+            }[]
+                           },
+"reports_lease_date_settings":
+{ Args: { "p_company_id": string }; Returns: {
+              "lease_expiry_notice_days": (number)[],"renewal_warning_days": (number)[]
+            }[]
+                           },
+"reports_lease_dates":
+{ Args: { "p_company_id": string }; Returns: {
+              "current_monthly_rental": number,"expiry_date": string,"lease_id": string,"lease_reference": string,"lease_status": Database["public"]['Enums']["lease_status"],"open_expiry_event_id": string,"open_renewal_event_id": string,"property_id": string,"property_name": string,"renewal_exercised": boolean,"renewal_notice_period_months": number,"renewal_option_exists": boolean,"tenant_id": string,"tenant_name": string,"unit_id": string,"unit_number": string,"verified": boolean
+            }[]
+                           },
+"reports_lease_security":
+{ Args: { "p_company_id": string }; Returns: {
+              "commencement_date": string,"deposit_amount": number,"deposit_basis_months": number,"deposit_held_by": Database["public"]['Enums']["deposit_holder"],"deposit_interest_bearing": boolean,"escalation_cpi_assumed_percentage": number,"escalation_cpi_margin_percentage": number,"escalation_fixed_amount": number,"escalation_frequency": Database["public"]['Enums']["escalation_frequency"],"escalation_percentage": number,"escalation_type": Database["public"]['Enums']["escalation_type"],"expiry_date": string,"first_escalation_date": string,"guarantee_amount": number,"guarantee_bank": string,"guarantee_basis_months": number,"guarantee_expires_on": string,"guarantee_issued_on": string,"guarantee_reference": string,"guarantee_status": Database["public"]['Enums']["guarantee_status"],"initial_monthly_rental": number,"lease_id": string,"lease_status": Database["public"]['Enums']["lease_status"],"property_id": string,"property_name": string,"reference": string,"tenant_id": string,"tenant_name": string,"unit_id": string,"unit_number": string,"verified": boolean
+            }[]
+                           },
+"reports_monitoring_events":
+{ Args: { "p_company_id": string }; Returns: {
+              "calculation": Json,"due_date": string,"event_id": string,"event_type": Database["public"]['Enums']["monitoring_event_type"],"identified_on": string,"lease_id": string,"lease_reference": string,"priority": Database["public"]['Enums']["event_priority"],"property_id": string,"property_name": string,"statement_date": string,"statement_id": string,"statement_period_start": string,"status": Database["public"]['Enums']["monitoring_event_status"],"tenant_id": string,"tenant_name": string,"title": string,"unit_number": string
+            }[]
+                           },
+"reports_payment_arrangements":
+{ Args: { "p_company_id": string }; Returns: {
+              "agreed_on": string,"arrangement_id": string,"closed_on": string,"final_installment_date": string,"first_installment_date": string,"frequency": Database["public"]['Enums']["installment_frequency"],"installment_amount": number,"installments": Json,"lease_id": string,"lease_reference": string,"outstanding_balance": number,"property_id": string,"property_name": string,"status": Database["public"]['Enums']["arrangement_status"],"suppress_arrears_reminders": boolean,"tenant_id": string,"tenant_name": string,"unit_id": string,"unit_number": string
+            }[]
+                           },
 "reports_property_figures":
 { Args: { "p_company_id": string }; Returns: {
               "active_leases": number,"monthly_rental_roll": number,"occupied_units": number,"open_events": number,"property_code": string,"property_id": string,"property_name": string,"property_status": Database["public"]['Enums']["property_status"],"unit_count": number,"unverified_leases": number,"vacant_units": number
+            }[]
+                           },
+"reports_rental_comparisons":
+{ Args: { "p_company_id": string }; Returns: {
+              "commencement_date": string,"escalation_cpi_assumed_percentage": number,"escalation_cpi_margin_percentage": number,"escalation_fixed_amount": number,"escalation_frequency": Database["public"]['Enums']["escalation_frequency"],"escalation_percentage": number,"escalation_type": Database["public"]['Enums']["escalation_type"],"expiry_date": string,"first_escalation_date": string,"initial_monthly_rental": number,"lease_id": string,"lease_reference": string,"lease_status": Database["public"]['Enums']["lease_status"],"period_start": string,"property_id": string,"property_name": string,"rental_charged": number,"statement_date": string,"statement_id": string,"tenant_id": string,"tenant_name": string,"unit_number": string,"verified": boolean
+            }[]
+                           },
+"reports_statement_review_fields":
+{ Args: { "p_company_id": string }; Returns: {
+              "confirmed_at": string,"corrected_value": Json,"flagged": boolean,"name": Database["public"]['Enums']["extraction_field_name"],"statement_id": string,"value": Json
+            }[]
+                           },
+"reports_statement_uploads":
+{ Args: { "p_company_id": string }; Returns: {
+              "duplicate_of_statement_id": string,"extraction_confidence": number,"file_name": string,"processing_error": string,"property_id": string,"property_name": string,"source_system": Database["public"]['Enums']["statement_source"],"statement_date": string,"statement_id": string,"statement_number": string,"status": Database["public"]['Enums']["statement_status"],"tenant_id": string,"tenant_name": string,"unit_id": string,"unit_number": string,"uploaded_at": string,"uploaded_on": string
             }[]
                            },
 "reports_unit_occupancy":

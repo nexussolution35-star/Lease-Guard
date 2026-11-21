@@ -30,6 +30,23 @@ const REPORT_REQUESTS: { [Id in AvailableReportId]: ReportRequest<Id> } = {
   portfolio_overview: (api, companyId, query) =>
     unwrap(api.GET('/api/v1/reports/portfolio_overview', { params: { query }, headers: headersFor(companyId) })),
   occupancy: (api, companyId, query) => unwrap(api.GET('/api/v1/reports/occupancy', { params: { query }, headers: headersFor(companyId) })),
+  lease_monitoring: (api, companyId, query) =>
+    unwrap(api.GET('/api/v1/reports/lease_monitoring', { params: { query }, headers: headersFor(companyId) })),
+  rental_discrepancies: (api, companyId, query) =>
+    unwrap(api.GET('/api/v1/reports/rental_discrepancies', { params: { query }, headers: headersFor(companyId) })),
+  lease_expiry: (api, companyId, query) =>
+    unwrap(api.GET('/api/v1/reports/lease_expiry', { params: { query }, headers: headersFor(companyId) })),
+  renewal_deadlines: (api, companyId, query) =>
+    unwrap(api.GET('/api/v1/reports/renewal_deadlines', { params: { query }, headers: headersFor(companyId) })),
+  arrears: (api, companyId, query) => unwrap(api.GET('/api/v1/reports/arrears', { params: { query }, headers: headersFor(companyId) })),
+  payment_arrangements: (api, companyId, query) =>
+    unwrap(api.GET('/api/v1/reports/payment_arrangements', { params: { query }, headers: headersFor(companyId) })),
+  deposits_guarantees: (api, companyId, query) =>
+    unwrap(api.GET('/api/v1/reports/deposits_guarantees', { params: { query }, headers: headersFor(companyId) })),
+  statement_processing: (api, companyId, query) =>
+    unwrap(api.GET('/api/v1/reports/statement_processing', { params: { query }, headers: headersFor(companyId) })),
+  communication_activity: (api, companyId, query) =>
+    unwrap(api.GET('/api/v1/reports/communication_activity', { params: { query }, headers: headersFor(companyId) })),
 }
 
 /** Reports from the reports service through the gateway, for the company named explicitly. */

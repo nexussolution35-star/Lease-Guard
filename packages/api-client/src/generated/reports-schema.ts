@@ -61,6 +61,186 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/lease_monitoring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lease monitoring: events by type, priority, status, property and age
+         * @description Every monitoring event of the company, open ones by default (new, under review, action required, in progress, as the monitoring list and the dashboard count them), each with its age on the "as at" date. Filters: propertyId, from/to (date identified), status (event status).
+         */
+        get: operations["getLeaseMonitoringReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/rental_discrepancies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Rental discrepancies: billed rental against the escalated contractual rental per lease
+         * @description For every verified, monitored lease, the rental billed on its latest verified statement against the escalated rental at the billed period's start, with the company's tolerance and the calculation step by step (the lease monitoring scan's comparison), linked to the event raised for the statement; plus open discrepancy events on earlier statements. Filters: propertyId, from/to (billing period start), status (outside_tolerance, within_tolerance).
+         */
+        get: operations["getRentalDiscrepanciesReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/arrears": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Arrears ageing: outstanding per tenant and unit from the latest verified statement, aged into the company's buckets
+         * @description Counted as the Statements page and the dashboard count: the latest verified statement of each tenant's unit (the lease without a unit), zero and credit balances left out, aged from the statement date into the company's arrears monitoring buckets. A tenant under an active payment arrangement stays in arrears and is marked, with whether its reminders are paused. Filters: propertyId, status (under_arrangement, no_arrangement).
+         */
+        get: operations["getArrearsReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/payment_arrangements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Payment arrangements: status, schedule progress, missed and overdue instalments
+         * @description Every arrangement (proposed, active, completed, defaulted, cancelled) with the instalments recorded as paid, missed and, while in force, overdue (past the due date plus the company's grace days) and the next instalment. Filters: propertyId, from/to (the date agreed), status (arrangement status). Records only: no payment is taken.
+         */
+        get: operations["getPaymentArrangementsReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/lease_expiry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lease expiry: verified leases by expiry bucket (expired, 0–3, 3–6, 6–12 months, later), soonest first
+         * @description Verified leases in a monitored status (active, expiring), each with its expiry date, days to expiry, bucket in calendar months from the as-at date, rental, renewal option, the company notice threshold reached (the one monitoring raises its expiry event for) and its open expiry event. Filters: propertyId, from/to (expiry date), status (expiry bucket). A monitoring report, never a transaction.
+         */
+        get: operations["getLeaseExpiryReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/renewal_deadlines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Renewal deadlines: renewal-notice deadlines of verified renewal options, soonest first, with days left
+         * @description Verified leases in a monitored status with a renewal option and a notice period: the deadline (expiry less the notice period), days left, its status (passed, due within 14, 30 or 90 days, open, exercised), the company warning threshold reached (the one monitoring raises its renewal event for) and its open renewal event. Filters: propertyId, from/to (notice deadline), status (deadline status). A monitoring report, never a transaction.
+         */
+        get: operations["getRenewalDeadlinesReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/deposits_guarantees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Deposits and guarantees: per verified lease, deposit and guarantee held, required cover, shortfall and guarantee expiry
+         * @description Verified leases in a monitored status (active, expiring) with a deposit or a bank guarantee. Required cover is the basis months times the rental the verified terms expect as at today (escalations applied), as lease monitoring works it out; a guarantee is expiring inside the company's guarantee expiry notice days. Filters: propertyId, from/to (guarantee expiry date), status (guarantee state: active, expiring, expired, released, called). A monitoring report, never a transaction.
+         */
+        get: operations["getDepositsGuaranteesReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/statement_processing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Statement processing: uploads by status, source system and property, the review backlog and processing failures
+         * @description Counted as the Statements page and the dashboard count them: a statement waits for review while its status is review_required (processing failures included), its processing failed when it waits with a processing error, and a field is unresolved until confirmed or corrected. Filters: propertyId, from/to (upload date, South African), status (statement status).
+         */
+        get: operations["getStatementProcessingReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/communication_activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Communication activity: messages by type, status, delivery outcome and property, and the approvals pending with their age
+         * @description Counted as communication analytics and the dashboard count them: an outbound message is handed over once queued, sent, delivered, read or failed, delivered includes read, and a message waits for approval while its approval request is pending. Filters: propertyId (leaves out messages without a property), from/to (message date, South African), status (delivery status). A monitoring report: nothing is sent or approved from it.
+         */
+        get: operations["getCommunicationActivityReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -282,6 +462,892 @@ export interface components {
             reportId: "occupancy";
             data: components["schemas"]["OccupancyReportDto"];
         };
+        MonitoringEventTypeCountsDto: {
+            rental_escalation_discrepancy: number;
+            lease_expiry: number;
+            renewal_notice_deadline: number;
+            guarantee_expiry: number;
+            guarantee_shortfall: number;
+            deposit_shortfall: number;
+            arrears: number;
+            arrangement_attention: number;
+            statement_review_required: number;
+        };
+        EventPriorityCountsDto: {
+            low: number;
+            medium: number;
+            high: number;
+            critical: number;
+        };
+        MonitoringEventStatusCountsDto: {
+            new: number;
+            under_review: number;
+            action_required: number;
+            in_progress: number;
+            resolved: number;
+            dismissed: number;
+        };
+        MonitoringEventsByPropertyDto: {
+            /** Format: uuid */
+            propertyId: string;
+            propertyName: string;
+            total: number;
+            open: number;
+            overdue: number;
+        };
+        /** @enum {string} */
+        EventAgeBucket: "0-7" | "8-30" | "31-90" | "90+";
+        MonitoringEventsByAgeDto: {
+            bucket: components["schemas"]["EventAgeBucket"];
+            count: number;
+        };
+        /** @enum {string} */
+        MonitoringEventType: "rental_escalation_discrepancy" | "lease_expiry" | "renewal_notice_deadline" | "guarantee_expiry" | "guarantee_shortfall" | "deposit_shortfall" | "arrears" | "arrangement_attention" | "statement_review_required";
+        /** @enum {string} */
+        EventPriority: "low" | "medium" | "high" | "critical";
+        /** @enum {string} */
+        MonitoringEventStatus: "new" | "under_review" | "action_required" | "in_progress" | "resolved" | "dismissed";
+        MonitoringEventReportRowDto: {
+            /** Format: uuid */
+            eventId: string;
+            type: components["schemas"]["MonitoringEventType"];
+            title: string;
+            priority: components["schemas"]["EventPriority"];
+            status: components["schemas"]["MonitoringEventStatus"];
+            /** Format: uuid */
+            propertyId: string;
+            propertyName: string;
+            unitNumber?: string;
+            /** Format: uuid */
+            tenantId?: string;
+            tenantName?: string;
+            /** Format: uuid */
+            leaseId?: string;
+            leaseReference?: string;
+            /** Format: uuid */
+            statementId?: string;
+            /** Format: date */
+            identifiedOn: string;
+            /** Format: date */
+            dueDate?: string;
+            /** @description Days from the date the event was identified to the "as at" date. */
+            ageDays: number;
+            ageBucket: components["schemas"]["EventAgeBucket"];
+            /** @description Still open with a due date before the "as at" date. */
+            overdue: boolean;
+        };
+        LeaseMonitoringReportDto: {
+            /** @description Events listed: the open events, or the events of the statuses asked for. */
+            total: number;
+            /** @description Listed events still open (new, under review, action required, in progress). */
+            open: number;
+            /** @description Listed events still open and past their due date. */
+            overdue: number;
+            byType: components["schemas"]["MonitoringEventTypeCountsDto"];
+            byPriority: components["schemas"]["EventPriorityCountsDto"];
+            byStatus: components["schemas"]["MonitoringEventStatusCountsDto"];
+            byProperty: components["schemas"]["MonitoringEventsByPropertyDto"][];
+            byAge: components["schemas"]["MonitoringEventsByAgeDto"][];
+            /** @description Oldest first, then critical first. */
+            events: components["schemas"]["MonitoringEventReportRowDto"][];
+        };
+        LeaseMonitoringResponseDto: {
+            /**
+             * Format: date
+             * @description The South African date the figures are as at.
+             * @example 2026-11-21
+             */
+            asOf: string;
+            filters: components["schemas"]["ReportFiltersDto"];
+            /** @enum {string} */
+            reportId: "lease_monitoring";
+            data: components["schemas"]["LeaseMonitoringReportDto"];
+        };
+        RentalDiscrepancyRowDto: {
+            /**
+             * @description `event`: a monitoring event was raised for the statement; `recomputed`: found by recomputation.
+             * @enum {string}
+             */
+            source: "event" | "recomputed";
+            /** @description True: the lease's latest verified statement compared with its verified terms now. False: an open discrepancy event on an earlier statement, with the calculation it recorded. */
+            current: boolean;
+            /** Format: uuid */
+            eventId?: string;
+            eventStatus?: components["schemas"]["MonitoringEventStatus"];
+            /** Format: uuid */
+            leaseId: string;
+            leaseReference: string;
+            /** Format: uuid */
+            tenantId: string;
+            tenantName: string;
+            /** Format: uuid */
+            propertyId: string;
+            propertyName: string;
+            unitNumber?: string;
+            /** Format: uuid */
+            statementId?: string;
+            /** Format: date */
+            statementDate?: string;
+            /**
+             * Format: date
+             * @description Start of the billed period: the date the contractual rental is evaluated at.
+             */
+            periodStart?: string;
+            /** @description Escalated contractual monthly rental (ZAR). */
+            expected: number;
+            /** @description Rental billed on the statement (ZAR). */
+            billed: number;
+            /** @description Expected − billed (ZAR); positive = under-billed. */
+            difference: number;
+            withinTolerance: boolean;
+            /** @description The escalation calculation, step by step. */
+            steps: string[];
+        };
+        RentalDiscrepancyReportDto: {
+            /** @description Outside tolerance first, largest difference first. */
+            rows: components["schemas"]["RentalDiscrepancyRowDto"][];
+            /** @description Sum of the differences on rows outside tolerance (ZAR). */
+            totalMonthlyDifference: number;
+            /** @description Sum of the positive differences outside tolerance (ZAR). */
+            underBilled: number;
+            /** @description Sum of the negative differences outside tolerance, as a positive amount (ZAR). */
+            overBilled: number;
+            outsideToleranceCount: number;
+            /** @description Rows with a raised monitoring event. */
+            eventCount: number;
+            /** @description Rows outside tolerance with no event raised yet. */
+            recomputedCount: number;
+            /** @description Open rental escalation discrepancy events at the listed properties (the dashboard's figure without filters). */
+            openEventCount: number;
+            /** @description Verified, monitored leases compared with their latest verified statement. */
+            leasesCompared: number;
+            /** @description Verified, monitored leases without a verified statement that bills rental yet. */
+            awaitingStatement: number;
+            /** @description Leases waiting for verification: their terms drive no monitoring yet. */
+            unverifiedLeasesExcluded: number;
+        };
+        RentalDiscrepanciesResponseDto: {
+            /**
+             * Format: date
+             * @description The South African date the figures are as at.
+             * @example 2026-11-21
+             */
+            asOf: string;
+            filters: components["schemas"]["ReportFiltersDto"];
+            /** @enum {string} */
+            reportId: "rental_discrepancies";
+            data: components["schemas"]["RentalDiscrepancyReportDto"];
+        };
+        ArrearsBucketRowDto: {
+            /** @example 30 */
+            bucket: string;
+            /** @example 30–59 days */
+            description: string;
+            /** @description ZAR */
+            amount: number;
+            tenantCount: number;
+        };
+        ArrearsRowDto: {
+            /** Format: uuid */
+            tenantId: string;
+            /** @example Dlamini Cellular */
+            tenantName: string;
+            /** Format: uuid */
+            propertyId: string;
+            propertyName: string;
+            /** Format: uuid */
+            unitId?: string;
+            /** @example S01 */
+            unitNumber?: string;
+            /** Format: uuid */
+            leaseId?: string;
+            /** @example MSQ-L001 */
+            leaseReference?: string;
+            /**
+             * Format: uuid
+             * @description The latest verified statement of the account, the balance comes from.
+             */
+            statementId: string;
+            /** Format: date */
+            statementDate: string;
+            /** @description Closing balance, else total due, of that statement (ZAR). */
+            outstanding: number;
+            /** @description Days from the statement date to the as-at date. */
+            ageDays: number;
+            /**
+             * @description Ageing bucket label: 'current', a boundary in days ('30') or the open-ended last one ('120+').
+             * @example 30
+             */
+            bucket: string;
+            /** @description An active payment arrangement is in force for the tenant; the balance is still owed. */
+            underArrangement: boolean;
+            /** @description That arrangement pauses the tenant's normal arrears reminders. */
+            remindersSuppressed: boolean;
+            /**
+             * Format: uuid
+             * @description The active arrangement in force (the latest agreed).
+             */
+            arrangementId?: string;
+        };
+        ArrearsReportDto: {
+            /**
+             * @description The company's ageing bucket boundaries in days.
+             * @example [
+             *       30,
+             *       60,
+             *       90,
+             *       120
+             *     ]
+             */
+            ageingBuckets: number[];
+            totalOutstanding: number;
+            /** @description Distinct tenants in arrears. */
+            tenantCount: number;
+            tenantsUnderArrangement: number;
+            tenantsWithRemindersSuppressed: number;
+            outstandingUnderArrangement: number;
+            buckets: components["schemas"]["ArrearsBucketRowDto"][];
+            /** @description Largest balance first. */
+            rows: components["schemas"]["ArrearsRowDto"][];
+        };
+        ArrearsResponseDto: {
+            /**
+             * Format: date
+             * @description The South African date the figures are as at.
+             * @example 2026-11-21
+             */
+            asOf: string;
+            filters: components["schemas"]["ReportFiltersDto"];
+            /** @enum {string} */
+            reportId: "arrears";
+            data: components["schemas"]["ArrearsReportDto"];
+        };
+        ArrangementStatusCountsDto: {
+            proposed: number;
+            active: number;
+            completed: number;
+            defaulted: number;
+            cancelled: number;
+        };
+        /** @enum {string} */
+        ArrangementStatus: "proposed" | "active" | "completed" | "defaulted" | "cancelled";
+        /** @enum {string} */
+        InstallmentFrequency: "weekly" | "fortnightly" | "monthly";
+        ArrangementRowDto: {
+            /** Format: uuid */
+            arrangementId: string;
+            /** Format: uuid */
+            tenantId: string;
+            tenantName: string;
+            /** Format: uuid */
+            propertyId: string;
+            propertyName: string;
+            /** Format: uuid */
+            unitId: string;
+            unitNumber: string;
+            /** Format: uuid */
+            leaseId: string;
+            leaseReference: string;
+            status: components["schemas"]["ArrangementStatus"];
+            frequency: components["schemas"]["InstallmentFrequency"];
+            installmentAmount: number;
+            /** Format: date */
+            agreedOn: string;
+            /** Format: date */
+            finalInstallmentDate: string;
+            /** Format: date */
+            closedOn?: string;
+            suppressArrearsReminders: boolean;
+            /** @description Outstanding balance at the time of agreement (ZAR). */
+            outstandingBalance: number;
+            /** @description Instalments recorded as paid (ZAR); LeaseGuard never takes payments. */
+            paid: number;
+            remaining: number;
+            paidCount: number;
+            totalCount: number;
+            /** @description Instalments recorded as missed. */
+            missedCount: number;
+            /** @description Open instalments past their due date plus the company's grace days (active arrangements only). */
+            overdueCount: number;
+            /** Format: date */
+            nextDueDate?: string;
+            nextAmount?: number;
+        };
+        PaymentArrangementsReportDto: {
+            /** @description Grace days after a due date before an instalment counts as overdue. */
+            graceDays: number;
+            countsByStatus: components["schemas"]["ArrangementStatusCountsDto"];
+            /** @description Arrangements in force on the as-at date. */
+            activeCount: number;
+            /** @description Remaining balance of the active arrangements (ZAR). */
+            outstandingUnderArrangement: number;
+            /** @description Paid instalments recorded (ZAR). */
+            paidToDate: number;
+            missedInstallments: number;
+            overdueInstallments: number;
+            rows: components["schemas"]["ArrangementRowDto"][];
+        };
+        PaymentArrangementsResponseDto: {
+            /**
+             * Format: date
+             * @description The South African date the figures are as at.
+             * @example 2026-11-21
+             */
+            asOf: string;
+            filters: components["schemas"]["ReportFiltersDto"];
+            /** @enum {string} */
+            reportId: "payment_arrangements";
+            data: components["schemas"]["PaymentArrangementsReportDto"];
+        };
+        /** @enum {string} */
+        ExpiryBucket: "expired" | "months_0_3" | "months_3_6" | "months_6_12" | "later";
+        ExpiryBucketTotalDto: {
+            bucket: components["schemas"]["ExpiryBucket"];
+            count: number;
+            /** @description Monthly rental of the leases in the bucket (ZAR, excl. VAT). */
+            monthlyRental: number;
+        };
+        LeaseExpiryRowDto: {
+            /** Format: uuid */
+            leaseId: string;
+            /** @example MSQ-L012 */
+            reference: string;
+            /** Format: uuid */
+            tenantId: string;
+            /** @example Dlamini Cellular */
+            tenantName: string;
+            /** Format: uuid */
+            propertyId: string;
+            /** @example Maponya Square */
+            propertyName: string;
+            /** Format: uuid */
+            unitId: string;
+            /** @example S01 */
+            unitNumber: string;
+            /** Format: date */
+            expiryDate: string;
+            /** @description Signed calendar days from the as-at date to expiry; negative once expired. */
+            daysUntilExpiry: number;
+            /** @description Where the expiry falls in calendar months from the as-at date: expired, within 3 months, 3–6, 6–12, later. */
+            bucket: components["schemas"]["ExpiryBucket"];
+            /** @description Current contractual monthly rental of the verified lease (ZAR, excl. VAT). */
+            monthlyRental: number;
+            /** @description The lease has a renewal option the tenant has not exercised. */
+            renewalOptionAvailable: boolean;
+            /** @description The company lease-expiry notice threshold (days) reached: the one monitoring raises its expiry event for. */
+            noticeThreshold?: number;
+            /**
+             * Format: uuid
+             * @description The open lease-expiry monitoring event of the lease.
+             */
+            openEventId?: string;
+        };
+        LeaseExpiryReportDto: {
+            /** @description Every bucket, in order, with the leases shown in it. */
+            buckets: components["schemas"]["ExpiryBucketTotalDto"][];
+            /** @description Verified leases in a monitored status (active, expiring), soonest expiry first. */
+            rows: components["schemas"]["LeaseExpiryRowDto"][];
+            /** @description Leases shown whose expiry date has passed. */
+            expiredCount: number;
+            /** @description Leases shown inside a company notice threshold: the leases monitoring raises an expiry event for. */
+            withinNoticeCount: number;
+            /** @description The company lease-expiry notice thresholds in days, largest first; empty when the rule is off. */
+            noticeDays: number[];
+            /** @description Leases that have not ended whose terms are not verified: not monitored, so not listed. */
+            unverifiedLeasesExcluded: number;
+        };
+        LeaseExpiryResponseDto: {
+            /**
+             * Format: date
+             * @description The South African date the figures are as at.
+             * @example 2026-11-21
+             */
+            asOf: string;
+            filters: components["schemas"]["ReportFiltersDto"];
+            /** @enum {string} */
+            reportId: "lease_expiry";
+            data: components["schemas"]["LeaseExpiryReportDto"];
+        };
+        /** @enum {string} */
+        RenewalDeadlineRowStatus: "passed" | "due_critical" | "due_soon" | "upcoming" | "open" | "exercised";
+        RenewalDeadlineRowDto: {
+            /** Format: uuid */
+            leaseId: string;
+            /** @example MSQ-L012 */
+            reference: string;
+            /** Format: uuid */
+            tenantId: string;
+            /** @example Dlamini Cellular */
+            tenantName: string;
+            /** Format: uuid */
+            propertyId: string;
+            /** @example Maponya Square */
+            propertyName: string;
+            /** @example S01 */
+            unitNumber: string;
+            /** Format: date */
+            expiryDate: string;
+            /** @description Written notice required before expiry, in months. */
+            noticePeriodMonths: number;
+            /**
+             * Format: date
+             * @description Last day written renewal notice may be given: expiry less the notice period.
+             */
+            deadline: string;
+            /** @description Signed days from the as-at date to the deadline; negative once passed. */
+            daysUntilDeadline: number;
+            status: components["schemas"]["RenewalDeadlineRowStatus"];
+            /** @description The company renewal warning threshold (days) reached: the one monitoring raises its renewal event for. */
+            warningThreshold?: number;
+            /**
+             * Format: uuid
+             * @description The open renewal-notice-deadline monitoring event of the lease.
+             */
+            openEventId?: string;
+        };
+        RenewalDeadlineCountsDto: {
+            passed: number;
+            due_critical: number;
+            due_soon: number;
+            upcoming: number;
+            open: number;
+            exercised: number;
+        };
+        RenewalDeadlinesReportDto: {
+            /** @description Verified renewal options with a notice period, soonest deadline first. */
+            rows: components["schemas"]["RenewalDeadlineRowDto"][];
+            countsByStatus: components["schemas"]["RenewalDeadlineCountsDto"];
+            /** @description Leases shown inside a company warning threshold: the leases monitoring raises a renewal event for. */
+            requiringWarning: number;
+            /** @description The company renewal warning thresholds in days, largest first; empty when the rule is off. */
+            warningDays: number[];
+            /** @description Verified leases with an unexercised renewal option but no notice period recorded. */
+            missingNoticePeriod: number;
+            /** @description Leases that have not ended whose terms are not verified: not monitored, so not listed. */
+            unverifiedLeasesExcluded: number;
+        };
+        RenewalDeadlinesResponseDto: {
+            /**
+             * Format: date
+             * @description The South African date the figures are as at.
+             * @example 2026-11-21
+             */
+            asOf: string;
+            filters: components["schemas"]["ReportFiltersDto"];
+            /** @enum {string} */
+            reportId: "renewal_deadlines";
+            data: components["schemas"]["RenewalDeadlinesReportDto"];
+        };
+        /** @enum {string} */
+        DepositHolder: "landlord" | "managing_agent" | "attorney_trust";
+        /**
+         * @description Released and called are final; else expired once the date has passed, expiring inside a notice threshold, else active.
+         * @enum {string}
+         */
+        GuaranteeExpiryState: "released" | "called" | "expired" | "expiring" | "active";
+        SecurityRowDto: {
+            /** Format: uuid */
+            leaseId: string;
+            /** @example MSQ-L001 */
+            reference: string;
+            /** Format: uuid */
+            tenantId: string;
+            /** @example Dlamini Cellular */
+            tenantName: string;
+            /** Format: uuid */
+            propertyId: string;
+            /** @example Maponya Square */
+            propertyName: string;
+            /** Format: uuid */
+            unitId: string;
+            /** @example S01 */
+            unitNumber: string;
+            /** @description Monthly rental the verified terms expect as at the report date, escalations applied (ZAR, excl. VAT). */
+            expectedMonthlyRental: number;
+            /** @description Deposit held (ZAR). */
+            depositAmount?: number;
+            depositHeldBy?: components["schemas"]["DepositHolder"];
+            /** @description The deposit expressed as months of rental. */
+            depositBasisMonths?: number;
+            /** @description Basis months × expected rental (ZAR); absent without a deposit basis. */
+            depositRequired?: number;
+            /** @description Required deposit less the deposit held, never below zero (ZAR). */
+            depositShortfall: number;
+            /** @example Standard Bank */
+            guaranteeBank?: string;
+            /** @example BG-0042 */
+            guaranteeReference?: string;
+            /** @description Bank guarantee amount (ZAR). */
+            guaranteeAmount?: number;
+            /** @description The guarantee was sized as this many months of rental. */
+            guaranteeBasisMonths?: number;
+            /** @description Basis months × expected rental (ZAR), for a guarantee recorded as active or expiring. */
+            guaranteeRequired?: number;
+            /** @description Required guarantee less the guarantee amount, never below zero (ZAR). */
+            guaranteeShortfall: number;
+            /** Format: date */
+            guaranteeExpiresOn?: string;
+            /** @description Released and called are final; else expired once the date has passed, expiring inside a notice threshold, else active. */
+            guaranteeState?: components["schemas"]["GuaranteeExpiryState"];
+            /** @description Days from the report date to the guarantee expiry (negative once expired). */
+            guaranteeDaysUntilExpiry?: number;
+            /** @description A deposit or guarantee shortfall, or a guarantee expiring or expired. */
+            needsAttention: boolean;
+        };
+        DepositsGuaranteesReportDto: {
+            /** @description Deposits held on the listed leases (ZAR). */
+            totalDeposits: number;
+            /** @description Guarantees in force (active or expiring) on the listed leases (ZAR). */
+            totalGuarantees: number;
+            depositShortfallTotal: number;
+            guaranteeShortfallTotal: number;
+            /** @description Listed leases with a deposit or a guarantee shortfall. */
+            leasesWithShortfall: number;
+            expiringGuarantees: number;
+            expiredGuarantees: number;
+            /**
+             * @description Guarantee expiry notice thresholds in days, largest first.
+             * @example [
+             *       90,
+             *       30
+             *     ]
+             */
+            guaranteeNoticeDays: number[];
+            rows: components["schemas"]["SecurityRowDto"][];
+            /** @description Leases with a deposit or guarantee that have not ended but whose terms are not verified: not listed. */
+            unverifiedLeasesExcluded: number;
+        };
+        DepositsGuaranteesResponseDto: {
+            /**
+             * Format: date
+             * @description The South African date the figures are as at.
+             * @example 2026-11-21
+             */
+            asOf: string;
+            filters: components["schemas"]["ReportFiltersDto"];
+            /** @enum {string} */
+            reportId: "deposits_guarantees";
+            data: components["schemas"]["DepositsGuaranteesReportDto"];
+        };
+        StatementStatusCountsDto: {
+            uploaded: number;
+            processing: number;
+            review_required: number;
+            verified: number;
+            rejected: number;
+            duplicate: number;
+        };
+        /** @enum {string} */
+        StatementSource: "MRI" | "MDA" | "PropSys" | "Sage" | "other";
+        StatementSourceFiguresDto: {
+            total: number;
+            /** @description Uploaded or processing. */
+            inProgress: number;
+            /** @description Status review_required, processing failures included (as the dashboard counts). */
+            pendingReview: number;
+            processingFailures: number;
+            verified: number;
+            rejected: number;
+            duplicate: number;
+            sourceSystem: components["schemas"]["StatementSource"];
+        };
+        StatementPropertyFiguresDto: {
+            total: number;
+            /** @description Uploaded or processing. */
+            inProgress: number;
+            /** @description Status review_required, processing failures included (as the dashboard counts). */
+            pendingReview: number;
+            processingFailures: number;
+            verified: number;
+            rejected: number;
+            duplicate: number;
+            /** Format: uuid */
+            propertyId: string;
+            propertyName: string;
+        };
+        /** @enum {string} */
+        StatementStatus: "uploaded" | "processing" | "review_required" | "verified" | "rejected" | "duplicate";
+        StatementUploadRowDto: {
+            /** Format: uuid */
+            statementId: string;
+            /** @example MSQ-2026-10.pdf */
+            fileName: string;
+            statementNumber?: string;
+            /** Format: uuid */
+            propertyId: string;
+            propertyName: string;
+            /** Format: uuid */
+            tenantId?: string;
+            tenantName?: string;
+            /** Format: uuid */
+            unitId?: string;
+            unitNumber?: string;
+            sourceSystem: components["schemas"]["StatementSource"];
+            status: components["schemas"]["StatementStatus"];
+            /** Format: date-time */
+            uploadedAt: string;
+            /**
+             * Format: date
+             * @description The South African calendar date of the upload (the date range bounds it).
+             */
+            uploadedOn: string;
+            /** Format: date */
+            statementDate?: string;
+            /** @description Automatic extraction gave up: under review with the reason in processingError. */
+            processingFailed: boolean;
+            processingError?: string;
+            /** Format: uuid */
+            duplicateOfStatementId?: string;
+            /** @description Overall extraction confidence (0–1). */
+            extractionConfidence?: number;
+            /** @description Extracted fields a reviewer still has to confirm or correct. */
+            unresolvedFields: number;
+            /** @description Whole days from the upload date to the as-at date. */
+            ageDays: number;
+        };
+        StatementProcessingReportDto: {
+            total: number;
+            /** @description Uploaded or processing. */
+            inProgress: number;
+            /** @description Status review_required, processing failures included (as the dashboard counts). */
+            pendingReview: number;
+            processingFailures: number;
+            verified: number;
+            rejected: number;
+            duplicate: number;
+            countsByStatus: components["schemas"]["StatementStatusCountsDto"];
+            /** @description In source order; sources without uploads left out. */
+            bySource: components["schemas"]["StatementSourceFiguresDto"][];
+            /** @description By property name. */
+            byProperty: components["schemas"]["StatementPropertyFiguresDto"][];
+            /** @description Under review with nothing failed. */
+            awaitingReview: number;
+            /** @description Age in days of the oldest statement waiting for review. */
+            oldestPendingReviewDays: number | null;
+            /** @description Mean overall extraction confidence (0–1). */
+            averageExtractionConfidence: number | null;
+            /** @description Waiting for review, processing failures included, oldest upload first. */
+            backlog: components["schemas"]["StatementUploadRowDto"][];
+            /** @description Automatic processing failed, oldest upload first. */
+            failures: components["schemas"]["StatementUploadRowDto"][];
+            /** @description Every upload shown, newest first. */
+            rows: components["schemas"]["StatementUploadRowDto"][];
+        };
+        StatementProcessingResponseDto: {
+            /**
+             * Format: date
+             * @description The South African date the figures are as at.
+             * @example 2026-11-21
+             */
+            asOf: string;
+            filters: components["schemas"]["ReportFiltersDto"];
+            /** @enum {string} */
+            reportId: "statement_processing";
+            data: components["schemas"]["StatementProcessingReportDto"];
+        };
+        /** @enum {string} */
+        MessageType: "monthly_statement" | "initial_payment_reminder" | "overdue_payment_reminder" | "follow_up_payment_reminder" | "arrangement_installment_reminder" | "owner_weekly_summary" | "owner_query_response" | "inbound_reply" | "manual";
+        CommunicationTypeFiguresDto: {
+            total: number;
+            outbound: number;
+            inbound: number;
+            /** @description Outbound messages handed to WhatsApp for sending (queued, sent, delivered, read or failed). */
+            handedOver: number;
+            /** @description Delivered, read included. */
+            delivered: number;
+            failed: number;
+            pendingApproval: number;
+            messageType: components["schemas"]["MessageType"];
+        };
+        DeliveryStatusCountsDto: {
+            draft: number;
+            pending_approval: number;
+            approved: number;
+            queued: number;
+            sent: number;
+            delivered: number;
+            read: number;
+            failed: number;
+            rejected: number;
+            received: number;
+        };
+        CommunicationPropertyFiguresDto: {
+            total: number;
+            outbound: number;
+            inbound: number;
+            /** @description Outbound messages handed to WhatsApp for sending (queued, sent, delivered, read or failed). */
+            handedOver: number;
+            /** @description Delivered, read included. */
+            delivered: number;
+            failed: number;
+            pendingApproval: number;
+            /**
+             * Format: uuid
+             * @description Null for messages without a property.
+             */
+            propertyId: string | null;
+            propertyName: string | null;
+        };
+        DeliveryOutcomeCountsDto: {
+            /** @description Queued or sent, not delivered yet. */
+            pending: number;
+            delivered: number;
+            read: number;
+            failed: number;
+        };
+        /** @enum {string} */
+        ApprovalAgeBucket: "under_1_day" | "1_3_days" | "3_7_days" | "over_7_days";
+        ApprovalAgeCountDto: {
+            bucket: components["schemas"]["ApprovalAgeBucket"];
+            count: number;
+        };
+        ApprovalFiguresDto: {
+            pending: number;
+            approved: number;
+            rejected: number;
+            /** @description Mean minutes from request to a person's decision. */
+            averageTurnaroundMinutes: number | null;
+            /** @description Hours the oldest pending request has waited. */
+            oldestPendingHours: number | null;
+            byAge: components["schemas"]["ApprovalAgeCountDto"][];
+        };
+        /** @enum {string} */
+        Channel: "whatsapp" | "email" | "system";
+        /** @enum {string} */
+        MessageDirection: "outbound" | "inbound";
+        /** @enum {string} */
+        RecipientType: "tenant" | "property_owner" | "contact";
+        /** @enum {string} */
+        DeliveryStatus: "draft" | "pending_approval" | "approved" | "queued" | "sent" | "delivered" | "read" | "failed" | "rejected" | "received";
+        /**
+         * @description Outbound messages handed over for sending only.
+         * @enum {string}
+         */
+        DeliveryOutcome: "pending" | "delivered" | "read" | "failed";
+        /**
+         * @description The pending request, else the latest decided one.
+         * @enum {string}
+         */
+        ApprovalDecision: "pending" | "approved" | "rejected";
+        PendingApprovalRowDto: {
+            /** Format: uuid */
+            communicationId: string;
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * Format: date
+             * @description The South African calendar date the message was recorded (the date range bounds it).
+             */
+            createdOn: string;
+            channel: components["schemas"]["Channel"];
+            direction: components["schemas"]["MessageDirection"];
+            messageType: components["schemas"]["MessageType"];
+            recipientType: components["schemas"]["RecipientType"];
+            /** @description The tenant's trading name, the owner's name or the contact's WhatsApp name. */
+            counterpartyName?: string;
+            /** Format: uuid */
+            tenantId?: string;
+            /**
+             * Format: uuid
+             * @description The message's property, else its lease's, statement's or arrangement's.
+             */
+            propertyId?: string;
+            propertyName?: string;
+            /** Format: uuid */
+            statementId?: string;
+            /** Format: uuid */
+            arrangementId?: string;
+            status: components["schemas"]["DeliveryStatus"];
+            /** @description Outbound messages handed over for sending only. */
+            outcome?: components["schemas"]["DeliveryOutcome"];
+            failureReason?: string;
+            /** @description The pending request, else the latest decided one. */
+            approvalDecision?: components["schemas"]["ApprovalDecision"];
+            /** Format: date-time */
+            approvalDecidedAt?: string;
+            /** Format: date-time */
+            approvalRequestedAt: string;
+            /** @description Whole hours the request has waited. */
+            waitingHours: number;
+            ageBucket: components["schemas"]["ApprovalAgeBucket"];
+        };
+        CommunicationActivityRowDto: {
+            /** Format: uuid */
+            communicationId: string;
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * Format: date
+             * @description The South African calendar date the message was recorded (the date range bounds it).
+             */
+            createdOn: string;
+            channel: components["schemas"]["Channel"];
+            direction: components["schemas"]["MessageDirection"];
+            messageType: components["schemas"]["MessageType"];
+            recipientType: components["schemas"]["RecipientType"];
+            /** @description The tenant's trading name, the owner's name or the contact's WhatsApp name. */
+            counterpartyName?: string;
+            /** Format: uuid */
+            tenantId?: string;
+            /**
+             * Format: uuid
+             * @description The message's property, else its lease's, statement's or arrangement's.
+             */
+            propertyId?: string;
+            propertyName?: string;
+            /** Format: uuid */
+            statementId?: string;
+            /** Format: uuid */
+            arrangementId?: string;
+            status: components["schemas"]["DeliveryStatus"];
+            /** @description Outbound messages handed over for sending only. */
+            outcome?: components["schemas"]["DeliveryOutcome"];
+            failureReason?: string;
+            /** @description The pending request, else the latest decided one. */
+            approvalDecision?: components["schemas"]["ApprovalDecision"];
+            /** Format: date-time */
+            approvalDecidedAt?: string;
+            /** Format: date-time */
+            approvalRequestedAt?: string;
+        };
+        CommunicationActivityReportDto: {
+            total: number;
+            outbound: number;
+            inbound: number;
+            /** @description Outbound messages handed to WhatsApp for sending (queued, sent, delivered, read or failed). */
+            handedOver: number;
+            /** @description Delivered, read included. */
+            delivered: number;
+            failed: number;
+            pendingApproval: number;
+            /** @description In message type order; types without messages left out. */
+            byType: components["schemas"]["CommunicationTypeFiguresDto"][];
+            byStatus: components["schemas"]["DeliveryStatusCountsDto"];
+            /** @description By property name; messages without a property last. */
+            byProperty: components["schemas"]["CommunicationPropertyFiguresDto"][];
+            outcomes: components["schemas"]["DeliveryOutcomeCountsDto"];
+            /** @description Delivered (read included) over handed over (0–1). */
+            deliveryRate: number | null;
+            approvals: components["schemas"]["ApprovalFiguresDto"];
+            /** @description Longest waiting first. */
+            pendingApprovals: components["schemas"]["PendingApprovalRowDto"][];
+            /** @description Outbound messages that failed, newest first. */
+            failedMessages: components["schemas"]["CommunicationActivityRowDto"][];
+            /** @description Every message shown, newest first. */
+            rows: components["schemas"]["CommunicationActivityRowDto"][];
+        };
+        CommunicationActivityResponseDto: {
+            /**
+             * Format: date
+             * @description The South African date the figures are as at.
+             * @example 2026-11-21
+             */
+            asOf: string;
+            filters: components["schemas"]["ReportFiltersDto"];
+            /** @enum {string} */
+            reportId: "communication_activity";
+            data: components["schemas"]["CommunicationActivityReportDto"];
+        };
         LivenessResponse: {
             /** @enum {string} */
             status: "ok";
@@ -330,6 +1396,72 @@ export type UnitTenantSource = components['schemas']['UnitTenantSource'];
 export type OccupancyUnitRowDto = components['schemas']['OccupancyUnitRowDto'];
 export type OccupancyReportDto = components['schemas']['OccupancyReportDto'];
 export type OccupancyResponseDto = components['schemas']['OccupancyResponseDto'];
+export type MonitoringEventTypeCountsDto = components['schemas']['MonitoringEventTypeCountsDto'];
+export type EventPriorityCountsDto = components['schemas']['EventPriorityCountsDto'];
+export type MonitoringEventStatusCountsDto = components['schemas']['MonitoringEventStatusCountsDto'];
+export type MonitoringEventsByPropertyDto = components['schemas']['MonitoringEventsByPropertyDto'];
+export type EventAgeBucket = components['schemas']['EventAgeBucket'];
+export type MonitoringEventsByAgeDto = components['schemas']['MonitoringEventsByAgeDto'];
+export type MonitoringEventType = components['schemas']['MonitoringEventType'];
+export type EventPriority = components['schemas']['EventPriority'];
+export type MonitoringEventStatus = components['schemas']['MonitoringEventStatus'];
+export type MonitoringEventReportRowDto = components['schemas']['MonitoringEventReportRowDto'];
+export type LeaseMonitoringReportDto = components['schemas']['LeaseMonitoringReportDto'];
+export type LeaseMonitoringResponseDto = components['schemas']['LeaseMonitoringResponseDto'];
+export type RentalDiscrepancyRowDto = components['schemas']['RentalDiscrepancyRowDto'];
+export type RentalDiscrepancyReportDto = components['schemas']['RentalDiscrepancyReportDto'];
+export type RentalDiscrepanciesResponseDto = components['schemas']['RentalDiscrepanciesResponseDto'];
+export type ArrearsBucketRowDto = components['schemas']['ArrearsBucketRowDto'];
+export type ArrearsRowDto = components['schemas']['ArrearsRowDto'];
+export type ArrearsReportDto = components['schemas']['ArrearsReportDto'];
+export type ArrearsResponseDto = components['schemas']['ArrearsResponseDto'];
+export type ArrangementStatusCountsDto = components['schemas']['ArrangementStatusCountsDto'];
+export type ArrangementStatus = components['schemas']['ArrangementStatus'];
+export type InstallmentFrequency = components['schemas']['InstallmentFrequency'];
+export type ArrangementRowDto = components['schemas']['ArrangementRowDto'];
+export type PaymentArrangementsReportDto = components['schemas']['PaymentArrangementsReportDto'];
+export type PaymentArrangementsResponseDto = components['schemas']['PaymentArrangementsResponseDto'];
+export type ExpiryBucket = components['schemas']['ExpiryBucket'];
+export type ExpiryBucketTotalDto = components['schemas']['ExpiryBucketTotalDto'];
+export type LeaseExpiryRowDto = components['schemas']['LeaseExpiryRowDto'];
+export type LeaseExpiryReportDto = components['schemas']['LeaseExpiryReportDto'];
+export type LeaseExpiryResponseDto = components['schemas']['LeaseExpiryResponseDto'];
+export type RenewalDeadlineRowStatus = components['schemas']['RenewalDeadlineRowStatus'];
+export type RenewalDeadlineRowDto = components['schemas']['RenewalDeadlineRowDto'];
+export type RenewalDeadlineCountsDto = components['schemas']['RenewalDeadlineCountsDto'];
+export type RenewalDeadlinesReportDto = components['schemas']['RenewalDeadlinesReportDto'];
+export type RenewalDeadlinesResponseDto = components['schemas']['RenewalDeadlinesResponseDto'];
+export type DepositHolder = components['schemas']['DepositHolder'];
+export type GuaranteeExpiryState = components['schemas']['GuaranteeExpiryState'];
+export type SecurityRowDto = components['schemas']['SecurityRowDto'];
+export type DepositsGuaranteesReportDto = components['schemas']['DepositsGuaranteesReportDto'];
+export type DepositsGuaranteesResponseDto = components['schemas']['DepositsGuaranteesResponseDto'];
+export type StatementStatusCountsDto = components['schemas']['StatementStatusCountsDto'];
+export type StatementSource = components['schemas']['StatementSource'];
+export type StatementSourceFiguresDto = components['schemas']['StatementSourceFiguresDto'];
+export type StatementPropertyFiguresDto = components['schemas']['StatementPropertyFiguresDto'];
+export type StatementStatus = components['schemas']['StatementStatus'];
+export type StatementUploadRowDto = components['schemas']['StatementUploadRowDto'];
+export type StatementProcessingReportDto = components['schemas']['StatementProcessingReportDto'];
+export type StatementProcessingResponseDto = components['schemas']['StatementProcessingResponseDto'];
+export type MessageType = components['schemas']['MessageType'];
+export type CommunicationTypeFiguresDto = components['schemas']['CommunicationTypeFiguresDto'];
+export type DeliveryStatusCountsDto = components['schemas']['DeliveryStatusCountsDto'];
+export type CommunicationPropertyFiguresDto = components['schemas']['CommunicationPropertyFiguresDto'];
+export type DeliveryOutcomeCountsDto = components['schemas']['DeliveryOutcomeCountsDto'];
+export type ApprovalAgeBucket = components['schemas']['ApprovalAgeBucket'];
+export type ApprovalAgeCountDto = components['schemas']['ApprovalAgeCountDto'];
+export type ApprovalFiguresDto = components['schemas']['ApprovalFiguresDto'];
+export type Channel = components['schemas']['Channel'];
+export type MessageDirection = components['schemas']['MessageDirection'];
+export type RecipientType = components['schemas']['RecipientType'];
+export type DeliveryStatus = components['schemas']['DeliveryStatus'];
+export type DeliveryOutcome = components['schemas']['DeliveryOutcome'];
+export type ApprovalDecision = components['schemas']['ApprovalDecision'];
+export type PendingApprovalRowDto = components['schemas']['PendingApprovalRowDto'];
+export type CommunicationActivityRowDto = components['schemas']['CommunicationActivityRowDto'];
+export type CommunicationActivityReportDto = components['schemas']['CommunicationActivityReportDto'];
+export type CommunicationActivityResponseDto = components['schemas']['CommunicationActivityResponseDto'];
 export type LivenessResponse = components['schemas']['LivenessResponse'];
 export type DependencyCheck = components['schemas']['DependencyCheck'];
 export type ReadinessChecks = components['schemas']['ReadinessChecks'];
@@ -479,6 +1611,582 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OccupancyResponseDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getLeaseMonitoringReport: {
+        parameters: {
+            query?: {
+                /** @description Only these properties (repeat the parameter for several). */
+                propertyId?: string[];
+                /** @description Inclusive start of the date range on the report's primary date. */
+                from?: string;
+                /** @description Inclusive end of the date range on the report's primary date. */
+                to?: string;
+                /** @description Only records with these statuses (repeat the parameter for several). */
+                status?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaseMonitoringResponseDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getRentalDiscrepanciesReport: {
+        parameters: {
+            query?: {
+                /** @description Only these properties (repeat the parameter for several). */
+                propertyId?: string[];
+                /** @description Inclusive start of the date range on the report's primary date. */
+                from?: string;
+                /** @description Inclusive end of the date range on the report's primary date. */
+                to?: string;
+                /** @description Only records with these statuses (repeat the parameter for several). */
+                status?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RentalDiscrepanciesResponseDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getArrearsReport: {
+        parameters: {
+            query?: {
+                /** @description Only these properties (repeat the parameter for several). */
+                propertyId?: string[];
+                /** @description Inclusive start of the date range on the report's primary date. */
+                from?: string;
+                /** @description Inclusive end of the date range on the report's primary date. */
+                to?: string;
+                /** @description Only records with these statuses (repeat the parameter for several). */
+                status?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArrearsResponseDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getPaymentArrangementsReport: {
+        parameters: {
+            query?: {
+                /** @description Only these properties (repeat the parameter for several). */
+                propertyId?: string[];
+                /** @description Inclusive start of the date range on the report's primary date. */
+                from?: string;
+                /** @description Inclusive end of the date range on the report's primary date. */
+                to?: string;
+                /** @description Only records with these statuses (repeat the parameter for several). */
+                status?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentArrangementsResponseDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getLeaseExpiryReport: {
+        parameters: {
+            query?: {
+                /** @description Only these properties (repeat the parameter for several). */
+                propertyId?: string[];
+                /** @description Inclusive start of the date range on the report's primary date. */
+                from?: string;
+                /** @description Inclusive end of the date range on the report's primary date. */
+                to?: string;
+                /** @description Only records with these statuses (repeat the parameter for several). */
+                status?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaseExpiryResponseDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getRenewalDeadlinesReport: {
+        parameters: {
+            query?: {
+                /** @description Only these properties (repeat the parameter for several). */
+                propertyId?: string[];
+                /** @description Inclusive start of the date range on the report's primary date. */
+                from?: string;
+                /** @description Inclusive end of the date range on the report's primary date. */
+                to?: string;
+                /** @description Only records with these statuses (repeat the parameter for several). */
+                status?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RenewalDeadlinesResponseDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getDepositsGuaranteesReport: {
+        parameters: {
+            query?: {
+                /** @description Only these properties (repeat the parameter for several). */
+                propertyId?: string[];
+                /** @description Inclusive start of the date range on the report's primary date. */
+                from?: string;
+                /** @description Inclusive end of the date range on the report's primary date. */
+                to?: string;
+                /** @description Only records with these statuses (repeat the parameter for several). */
+                status?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepositsGuaranteesResponseDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getStatementProcessingReport: {
+        parameters: {
+            query?: {
+                /** @description Only these properties (repeat the parameter for several). */
+                propertyId?: string[];
+                /** @description Inclusive start of the date range on the report's primary date. */
+                from?: string;
+                /** @description Inclusive end of the date range on the report's primary date. */
+                to?: string;
+                /** @description Only records with these statuses (repeat the parameter for several). */
+                status?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementProcessingResponseDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getCommunicationActivityReport: {
+        parameters: {
+            query?: {
+                /** @description Only these properties (repeat the parameter for several). */
+                propertyId?: string[];
+                /** @description Inclusive start of the date range on the report's primary date. */
+                from?: string;
+                /** @description Inclusive end of the date range on the report's primary date. */
+                to?: string;
+                /** @description Only records with these statuses (repeat the parameter for several). */
+                status?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunicationActivityResponseDto"];
                 };
             };
             /** @description Invalid request or missing X-Company-Id header */

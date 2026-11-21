@@ -1,9 +1,16 @@
 import { OCCUPANCY_STATUSES } from '../types/unit.js'
+import { ARRANGEMENT_STATUSES } from '../types/arrangement.js'
+import { MONITORING_EVENT_STATUSES } from '../types/monitoring.js'
 import { PROPERTY_STATUSES } from '../types/property.js'
-import type { ReportFilters, ReportFilterSupport, ReportId } from '../types/reports.js'
+import { ARREARS_ARRANGEMENT_STATES, RENTAL_COMPARISON_STATES, type ReportFilters, type ReportFilterSupport, type ReportId } from '../types/reports.js'
+import { EXPIRY_BUCKETS, RENEWAL_DEADLINE_ROW_STATUSES } from '../types/reports.js'
 import { compareISODate, isValidISODate } from './dates.js'
+import type { GuaranteeExpiryState } from './guarantee.js'
+import { DELIVERY_STATUSES } from '../types/communication.js'
+import { STATEMENT_STATUSES } from '../types/statement.js'
 
-const PROPERTY_ONLY: ReportFilterSupport = { property: true, dateRange: null, statuses: null }
+/** The deposits and guarantees report's status filter, in display order: a guarantee's expiry state. */
+const GUARANTEE_FILTER_STATES = ['active', 'expiring', 'expired', 'released', 'called'] as const satisfies readonly GuaranteeExpiryState[]
 
 /**
  * The filters each report offers in the shared report frame (PRD §7, §12.9). Every report can be narrowed to
@@ -15,15 +22,26 @@ export const REPORT_FILTER_SUPPORT: Readonly<Record<ReportId, ReportFilterSuppor
   portfolio_overview: { property: true, dateRange: null, statuses: { label: 'Property status', values: PROPERTY_STATUSES } },
   // A snapshot of the units as at today: no date range. The status is the unit's occupancy.
   occupancy: { property: true, dateRange: null, statuses: { label: 'Occupancy', values: OCCUPANCY_STATUSES } },
-  lease_monitoring: PROPERTY_ONLY,
-  rental_discrepancies: PROPERTY_ONLY,
-  lease_expiry: PROPERTY_ONLY,
-  renewal_deadlines: PROPERTY_ONLY,
-  deposits_guarantees: PROPERTY_ONLY,
-  arrears: PROPERTY_ONLY,
-  payment_arrangements: PROPERTY_ONLY,
-  statement_processing: PROPERTY_ONLY,
-  communication_activity: PROPERTY_ONLY,
+  // Events identified in the range. Without a status filter the report lists the open events (OPEN_EVENT_STATUSES).
+  lease_monitoring: { property: true, dateRange: { field: 'Identified' }, statuses: { label: 'Event status', values: MONITORING_EVENT_STATUSES } },
+  // Comparisons of statements whose billed period starts in the range. The status is the comparison's outcome.
+  rental_discrepancies: { property: true, dateRange: { field: 'Billing period' }, statuses: { label: 'Comparison', values: RENTAL_COMPARISON_STATES } },
+  // Monitored leases expiring in the range. The status is where the expiry falls (expired, 0–3, 3–6, 6–12 months, later).
+  lease_expiry: { property: true, dateRange: { field: 'Expiry date' }, statuses: { label: 'Expiry', values: EXPIRY_BUCKETS } },
+  // Renewal notice deadlines in the range. The status is the deadline's urgency (or exercised).
+  renewal_deadlines: { property: true, dateRange: { field: 'Notice deadline' }, statuses: { label: 'Deadline', values: RENEWAL_DEADLINE_ROW_STATUSES } },
+  // A snapshot as at today. The date range bounds the guarantee's expiry date; the status is the guarantee's expiry
+  // state (rules/guarantee.ts). Either filter leaves out leases without a guarantee.
+  deposits_guarantees: { property: true, dateRange: { field: 'Guarantee expiry' }, statuses: { label: 'Guarantee', values: GUARANTEE_FILTER_STATES } },
+  // A snapshot of the balances as at today: no date range. The status is whether an active arrangement is in force.
+  arrears: { property: true, dateRange: null, statuses: { label: 'Arrangement', values: ARREARS_ARRANGEMENT_STATES } },
+  // The date range bounds the date the arrangement was agreed; the status is the arrangement's.
+  payment_arrangements: { property: true, dateRange: { field: 'Agreed on' }, statuses: { label: 'Arrangement status', values: ARRANGEMENT_STATUSES } },
+  // Statements uploaded in the range (South African date). The status is the statement's.
+  statement_processing: { property: true, dateRange: { field: 'Uploaded' }, statuses: { label: 'Statement status', values: STATEMENT_STATUSES } },
+  // Messages recorded in the range (South African date). The status is the message's delivery status. The property
+  // filter leaves out messages with no property (an owner's weekly summary covers the portfolio).
+  communication_activity: { property: true, dateRange: { field: 'Message date' }, statuses: { label: 'Message status', values: DELIVERY_STATUSES } },
 }
 
 const unique = <T>(values: readonly T[]): T[] => [...new Set(values)]

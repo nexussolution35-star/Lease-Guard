@@ -299,6 +299,1041 @@
         ]
       }
     },
+    "/api/v1/reports/lease_monitoring": {
+      "get": {
+        "description": "Every monitoring event of the company, open ones by default (new, under review, action required, in progress, as the monitoring list and the dashboard count them), each with its age on the \"as at\" date. Filters: propertyId, from/to (date identified), status (event status).",
+        "operationId": "getLeaseMonitoringReport",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "description": "Only these properties (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive start of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive end of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Only records with these statuses (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseMonitoringResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Lease monitoring: events by type, priority, status, property and age",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/rental_discrepancies": {
+      "get": {
+        "description": "For every verified, monitored lease, the rental billed on its latest verified statement against the escalated rental at the billed period's start, with the company's tolerance and the calculation step by step (the lease monitoring scan's comparison), linked to the event raised for the statement; plus open discrepancy events on earlier statements. Filters: propertyId, from/to (billing period start), status (outside_tolerance, within_tolerance).",
+        "operationId": "getRentalDiscrepanciesReport",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "description": "Only these properties (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive start of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive end of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Only records with these statuses (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RentalDiscrepanciesResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Rental discrepancies: billed rental against the escalated contractual rental per lease",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/arrears": {
+      "get": {
+        "description": "Counted as the Statements page and the dashboard count: the latest verified statement of each tenant's unit (the lease without a unit), zero and credit balances left out, aged from the statement date into the company's arrears monitoring buckets. A tenant under an active payment arrangement stays in arrears and is marked, with whether its reminders are paused. Filters: propertyId, status (under_arrangement, no_arrangement).",
+        "operationId": "getArrearsReport",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "description": "Only these properties (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive start of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive end of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Only records with these statuses (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArrearsResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Arrears ageing: outstanding per tenant and unit from the latest verified statement, aged into the company's buckets",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/payment_arrangements": {
+      "get": {
+        "description": "Every arrangement (proposed, active, completed, defaulted, cancelled) with the instalments recorded as paid, missed and, while in force, overdue (past the due date plus the company's grace days) and the next instalment. Filters: propertyId, from/to (the date agreed), status (arrangement status). Records only: no payment is taken.",
+        "operationId": "getPaymentArrangementsReport",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "description": "Only these properties (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive start of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive end of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Only records with these statuses (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentArrangementsResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Payment arrangements: status, schedule progress, missed and overdue instalments",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/lease_expiry": {
+      "get": {
+        "description": "Verified leases in a monitored status (active, expiring), each with its expiry date, days to expiry, bucket in calendar months from the as-at date, rental, renewal option, the company notice threshold reached (the one monitoring raises its expiry event for) and its open expiry event. Filters: propertyId, from/to (expiry date), status (expiry bucket). A monitoring report, never a transaction.",
+        "operationId": "getLeaseExpiryReport",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "description": "Only these properties (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive start of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive end of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Only records with these statuses (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseExpiryResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Lease expiry: verified leases by expiry bucket (expired, 0–3, 3–6, 6–12 months, later), soonest first",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/renewal_deadlines": {
+      "get": {
+        "description": "Verified leases in a monitored status with a renewal option and a notice period: the deadline (expiry less the notice period), days left, its status (passed, due within 14, 30 or 90 days, open, exercised), the company warning threshold reached (the one monitoring raises its renewal event for) and its open renewal event. Filters: propertyId, from/to (notice deadline), status (deadline status). A monitoring report, never a transaction.",
+        "operationId": "getRenewalDeadlinesReport",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "description": "Only these properties (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive start of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive end of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Only records with these statuses (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenewalDeadlinesResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Renewal deadlines: renewal-notice deadlines of verified renewal options, soonest first, with days left",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/deposits_guarantees": {
+      "get": {
+        "description": "Verified leases in a monitored status (active, expiring) with a deposit or a bank guarantee. Required cover is the basis months times the rental the verified terms expect as at today (escalations applied), as lease monitoring works it out; a guarantee is expiring inside the company's guarantee expiry notice days. Filters: propertyId, from/to (guarantee expiry date), status (guarantee state: active, expiring, expired, released, called). A monitoring report, never a transaction.",
+        "operationId": "getDepositsGuaranteesReport",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "description": "Only these properties (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive start of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive end of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Only records with these statuses (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepositsGuaranteesResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Deposits and guarantees: per verified lease, deposit and guarantee held, required cover, shortfall and guarantee expiry",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/statement_processing": {
+      "get": {
+        "description": "Counted as the Statements page and the dashboard count them: a statement waits for review while its status is review_required (processing failures included), its processing failed when it waits with a processing error, and a field is unresolved until confirmed or corrected. Filters: propertyId, from/to (upload date, South African), status (statement status).",
+        "operationId": "getStatementProcessingReport",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "description": "Only these properties (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive start of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive end of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Only records with these statuses (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementProcessingResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Statement processing: uploads by status, source system and property, the review backlog and processing failures",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/communication_activity": {
+      "get": {
+        "description": "Counted as communication analytics and the dashboard count them: an outbound message is handed over once queued, sent, delivered, read or failed, delivered includes read, and a message waits for approval while its approval request is pending. Filters: propertyId (leaves out messages without a property), from/to (message date, South African), status (delivery status). A monitoring report: nothing is sent or approved from it.",
+        "operationId": "getCommunicationActivityReport",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "description": "Only these properties (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive start of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive end of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Only records with these statuses (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunicationActivityResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Communication activity: messages by type, status, delivery outcome and property, and the approvals pending with their age",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "HealthController_liveness",
@@ -964,6 +1999,2668 @@
           },
           "data": {
             "$ref": "#/components/schemas/OccupancyReportDto"
+          }
+        },
+        "required": [
+          "asOf",
+          "filters",
+          "reportId",
+          "data"
+        ]
+      },
+      "MonitoringEventTypeCountsDto": {
+        "type": "object",
+        "properties": {
+          "rental_escalation_discrepancy": {
+            "type": "number"
+          },
+          "lease_expiry": {
+            "type": "number"
+          },
+          "renewal_notice_deadline": {
+            "type": "number"
+          },
+          "guarantee_expiry": {
+            "type": "number"
+          },
+          "guarantee_shortfall": {
+            "type": "number"
+          },
+          "deposit_shortfall": {
+            "type": "number"
+          },
+          "arrears": {
+            "type": "number"
+          },
+          "arrangement_attention": {
+            "type": "number"
+          },
+          "statement_review_required": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "rental_escalation_discrepancy",
+          "lease_expiry",
+          "renewal_notice_deadline",
+          "guarantee_expiry",
+          "guarantee_shortfall",
+          "deposit_shortfall",
+          "arrears",
+          "arrangement_attention",
+          "statement_review_required"
+        ]
+      },
+      "EventPriorityCountsDto": {
+        "type": "object",
+        "properties": {
+          "low": {
+            "type": "number"
+          },
+          "medium": {
+            "type": "number"
+          },
+          "high": {
+            "type": "number"
+          },
+          "critical": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "low",
+          "medium",
+          "high",
+          "critical"
+        ]
+      },
+      "MonitoringEventStatusCountsDto": {
+        "type": "object",
+        "properties": {
+          "new": {
+            "type": "number"
+          },
+          "under_review": {
+            "type": "number"
+          },
+          "action_required": {
+            "type": "number"
+          },
+          "in_progress": {
+            "type": "number"
+          },
+          "resolved": {
+            "type": "number"
+          },
+          "dismissed": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "new",
+          "under_review",
+          "action_required",
+          "in_progress",
+          "resolved",
+          "dismissed"
+        ]
+      },
+      "MonitoringEventsByPropertyDto": {
+        "type": "object",
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number"
+          },
+          "open": {
+            "type": "number"
+          },
+          "overdue": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "propertyId",
+          "propertyName",
+          "total",
+          "open",
+          "overdue"
+        ]
+      },
+      "EventAgeBucket": {
+        "type": "string",
+        "enum": [
+          "0-7",
+          "8-30",
+          "31-90",
+          "90+"
+        ]
+      },
+      "MonitoringEventsByAgeDto": {
+        "type": "object",
+        "properties": {
+          "bucket": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventAgeBucket"
+              }
+            ]
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "bucket",
+          "count"
+        ]
+      },
+      "MonitoringEventType": {
+        "type": "string",
+        "enum": [
+          "rental_escalation_discrepancy",
+          "lease_expiry",
+          "renewal_notice_deadline",
+          "guarantee_expiry",
+          "guarantee_shortfall",
+          "deposit_shortfall",
+          "arrears",
+          "arrangement_attention",
+          "statement_review_required"
+        ]
+      },
+      "EventPriority": {
+        "type": "string",
+        "enum": [
+          "low",
+          "medium",
+          "high",
+          "critical"
+        ]
+      },
+      "MonitoringEventStatus": {
+        "type": "string",
+        "enum": [
+          "new",
+          "under_review",
+          "action_required",
+          "in_progress",
+          "resolved",
+          "dismissed"
+        ]
+      },
+      "MonitoringEventReportRowDto": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MonitoringEventType"
+              }
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "priority": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventPriority"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MonitoringEventStatus"
+              }
+            ]
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "unitNumber": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseReference": {
+            "type": "string"
+          },
+          "statementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "identifiedOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "ageDays": {
+            "type": "number",
+            "description": "Days from the date the event was identified to the \"as at\" date."
+          },
+          "ageBucket": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventAgeBucket"
+              }
+            ]
+          },
+          "overdue": {
+            "type": "boolean",
+            "description": "Still open with a due date before the \"as at\" date."
+          }
+        },
+        "required": [
+          "eventId",
+          "type",
+          "title",
+          "priority",
+          "status",
+          "propertyId",
+          "propertyName",
+          "identifiedOn",
+          "ageDays",
+          "ageBucket",
+          "overdue"
+        ]
+      },
+      "LeaseMonitoringReportDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "Events listed: the open events, or the events of the statuses asked for."
+          },
+          "open": {
+            "type": "number",
+            "description": "Listed events still open (new, under review, action required, in progress)."
+          },
+          "overdue": {
+            "type": "number",
+            "description": "Listed events still open and past their due date."
+          },
+          "byType": {
+            "$ref": "#/components/schemas/MonitoringEventTypeCountsDto"
+          },
+          "byPriority": {
+            "$ref": "#/components/schemas/EventPriorityCountsDto"
+          },
+          "byStatus": {
+            "$ref": "#/components/schemas/MonitoringEventStatusCountsDto"
+          },
+          "byProperty": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonitoringEventsByPropertyDto"
+            }
+          },
+          "byAge": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonitoringEventsByAgeDto"
+            }
+          },
+          "events": {
+            "description": "Oldest first, then critical first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonitoringEventReportRowDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "open",
+          "overdue",
+          "byType",
+          "byPriority",
+          "byStatus",
+          "byProperty",
+          "byAge",
+          "events"
+        ]
+      },
+      "LeaseMonitoringResponseDto": {
+        "type": "object",
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date",
+            "description": "The South African date the figures are as at.",
+            "example": "2026-11-21"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/ReportFiltersDto"
+          },
+          "reportId": {
+            "type": "string",
+            "enum": [
+              "lease_monitoring"
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/LeaseMonitoringReportDto"
+          }
+        },
+        "required": [
+          "asOf",
+          "filters",
+          "reportId",
+          "data"
+        ]
+      },
+      "RentalDiscrepancyRowDto": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "event",
+              "recomputed"
+            ],
+            "description": "`event`: a monitoring event was raised for the statement; `recomputed`: found by recomputation."
+          },
+          "current": {
+            "type": "boolean",
+            "description": "True: the lease's latest verified statement compared with its verified terms now. False: an open discrepancy event on an earlier statement, with the calculation it recorded."
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MonitoringEventStatus"
+              }
+            ]
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseReference": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "unitNumber": {
+            "type": "string"
+          },
+          "statementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "statementDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date",
+            "description": "Start of the billed period: the date the contractual rental is evaluated at."
+          },
+          "expected": {
+            "type": "number",
+            "description": "Escalated contractual monthly rental (ZAR)."
+          },
+          "billed": {
+            "type": "number",
+            "description": "Rental billed on the statement (ZAR)."
+          },
+          "difference": {
+            "type": "number",
+            "description": "Expected − billed (ZAR); positive = under-billed."
+          },
+          "withinTolerance": {
+            "type": "boolean"
+          },
+          "steps": {
+            "description": "The escalation calculation, step by step.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "source",
+          "current",
+          "leaseId",
+          "leaseReference",
+          "tenantId",
+          "tenantName",
+          "propertyId",
+          "propertyName",
+          "expected",
+          "billed",
+          "difference",
+          "withinTolerance",
+          "steps"
+        ]
+      },
+      "RentalDiscrepancyReportDto": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "description": "Outside tolerance first, largest difference first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RentalDiscrepancyRowDto"
+            }
+          },
+          "totalMonthlyDifference": {
+            "type": "number",
+            "description": "Sum of the differences on rows outside tolerance (ZAR)."
+          },
+          "underBilled": {
+            "type": "number",
+            "description": "Sum of the positive differences outside tolerance (ZAR)."
+          },
+          "overBilled": {
+            "type": "number",
+            "description": "Sum of the negative differences outside tolerance, as a positive amount (ZAR)."
+          },
+          "outsideToleranceCount": {
+            "type": "number"
+          },
+          "eventCount": {
+            "type": "number",
+            "description": "Rows with a raised monitoring event."
+          },
+          "recomputedCount": {
+            "type": "number",
+            "description": "Rows outside tolerance with no event raised yet."
+          },
+          "openEventCount": {
+            "type": "number",
+            "description": "Open rental escalation discrepancy events at the listed properties (the dashboard's figure without filters)."
+          },
+          "leasesCompared": {
+            "type": "number",
+            "description": "Verified, monitored leases compared with their latest verified statement."
+          },
+          "awaitingStatement": {
+            "type": "number",
+            "description": "Verified, monitored leases without a verified statement that bills rental yet."
+          },
+          "unverifiedLeasesExcluded": {
+            "type": "number",
+            "description": "Leases waiting for verification: their terms drive no monitoring yet."
+          }
+        },
+        "required": [
+          "rows",
+          "totalMonthlyDifference",
+          "underBilled",
+          "overBilled",
+          "outsideToleranceCount",
+          "eventCount",
+          "recomputedCount",
+          "openEventCount",
+          "leasesCompared",
+          "awaitingStatement",
+          "unverifiedLeasesExcluded"
+        ]
+      },
+      "RentalDiscrepanciesResponseDto": {
+        "type": "object",
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date",
+            "description": "The South African date the figures are as at.",
+            "example": "2026-11-21"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/ReportFiltersDto"
+          },
+          "reportId": {
+            "type": "string",
+            "enum": [
+              "rental_discrepancies"
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/RentalDiscrepancyReportDto"
+          }
+        },
+        "required": [
+          "asOf",
+          "filters",
+          "reportId",
+          "data"
+        ]
+      },
+      "ArrearsBucketRowDto": {
+        "type": "object",
+        "properties": {
+          "bucket": {
+            "type": "string",
+            "example": "30"
+          },
+          "description": {
+            "type": "string",
+            "example": "30–59 days"
+          },
+          "amount": {
+            "type": "number",
+            "description": "ZAR"
+          },
+          "tenantCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "bucket",
+          "description",
+          "amount",
+          "tenantCount"
+        ]
+      },
+      "ArrearsRowDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantName": {
+            "type": "string",
+            "example": "Dlamini Cellular"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitNumber": {
+            "type": "string",
+            "example": "S01"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseReference": {
+            "type": "string",
+            "example": "MSQ-L001"
+          },
+          "statementId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The latest verified statement of the account, the balance comes from."
+          },
+          "statementDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "outstanding": {
+            "type": "number",
+            "description": "Closing balance, else total due, of that statement (ZAR)."
+          },
+          "ageDays": {
+            "type": "number",
+            "description": "Days from the statement date to the as-at date."
+          },
+          "bucket": {
+            "type": "string",
+            "description": "Ageing bucket label: 'current', a boundary in days ('30') or the open-ended last one ('120+').",
+            "example": "30"
+          },
+          "underArrangement": {
+            "type": "boolean",
+            "description": "An active payment arrangement is in force for the tenant; the balance is still owed."
+          },
+          "remindersSuppressed": {
+            "type": "boolean",
+            "description": "That arrangement pauses the tenant's normal arrears reminders."
+          },
+          "arrangementId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The active arrangement in force (the latest agreed)."
+          }
+        },
+        "required": [
+          "tenantId",
+          "tenantName",
+          "propertyId",
+          "propertyName",
+          "statementId",
+          "statementDate",
+          "outstanding",
+          "ageDays",
+          "bucket",
+          "underArrangement",
+          "remindersSuppressed"
+        ]
+      },
+      "ArrearsReportDto": {
+        "type": "object",
+        "properties": {
+          "ageingBuckets": {
+            "description": "The company's ageing bucket boundaries in days.",
+            "example": [
+              30,
+              60,
+              90,
+              120
+            ],
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "totalOutstanding": {
+            "type": "number"
+          },
+          "tenantCount": {
+            "type": "number",
+            "description": "Distinct tenants in arrears."
+          },
+          "tenantsUnderArrangement": {
+            "type": "number"
+          },
+          "tenantsWithRemindersSuppressed": {
+            "type": "number"
+          },
+          "outstandingUnderArrangement": {
+            "type": "number"
+          },
+          "buckets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArrearsBucketRowDto"
+            }
+          },
+          "rows": {
+            "description": "Largest balance first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArrearsRowDto"
+            }
+          }
+        },
+        "required": [
+          "ageingBuckets",
+          "totalOutstanding",
+          "tenantCount",
+          "tenantsUnderArrangement",
+          "tenantsWithRemindersSuppressed",
+          "outstandingUnderArrangement",
+          "buckets",
+          "rows"
+        ]
+      },
+      "ArrearsResponseDto": {
+        "type": "object",
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date",
+            "description": "The South African date the figures are as at.",
+            "example": "2026-11-21"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/ReportFiltersDto"
+          },
+          "reportId": {
+            "type": "string",
+            "enum": [
+              "arrears"
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/ArrearsReportDto"
+          }
+        },
+        "required": [
+          "asOf",
+          "filters",
+          "reportId",
+          "data"
+        ]
+      },
+      "ArrangementStatusCountsDto": {
+        "type": "object",
+        "properties": {
+          "proposed": {
+            "type": "number"
+          },
+          "active": {
+            "type": "number"
+          },
+          "completed": {
+            "type": "number"
+          },
+          "defaulted": {
+            "type": "number"
+          },
+          "cancelled": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "proposed",
+          "active",
+          "completed",
+          "defaulted",
+          "cancelled"
+        ]
+      },
+      "ArrangementStatus": {
+        "type": "string",
+        "enum": [
+          "proposed",
+          "active",
+          "completed",
+          "defaulted",
+          "cancelled"
+        ]
+      },
+      "InstallmentFrequency": {
+        "type": "string",
+        "enum": [
+          "weekly",
+          "fortnightly",
+          "monthly"
+        ]
+      },
+      "ArrangementRowDto": {
+        "type": "object",
+        "properties": {
+          "arrangementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitNumber": {
+            "type": "string"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseReference": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ArrangementStatus"
+              }
+            ]
+          },
+          "frequency": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InstallmentFrequency"
+              }
+            ]
+          },
+          "installmentAmount": {
+            "type": "number"
+          },
+          "agreedOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "finalInstallmentDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "closedOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "suppressArrearsReminders": {
+            "type": "boolean"
+          },
+          "outstandingBalance": {
+            "type": "number",
+            "description": "Outstanding balance at the time of agreement (ZAR)."
+          },
+          "paid": {
+            "type": "number",
+            "description": "Instalments recorded as paid (ZAR); LeaseGuard never takes payments."
+          },
+          "remaining": {
+            "type": "number"
+          },
+          "paidCount": {
+            "type": "number"
+          },
+          "totalCount": {
+            "type": "number"
+          },
+          "missedCount": {
+            "type": "number",
+            "description": "Instalments recorded as missed."
+          },
+          "overdueCount": {
+            "type": "number",
+            "description": "Open instalments past their due date plus the company's grace days (active arrangements only)."
+          },
+          "nextDueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "nextAmount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "arrangementId",
+          "tenantId",
+          "tenantName",
+          "propertyId",
+          "propertyName",
+          "unitId",
+          "unitNumber",
+          "leaseId",
+          "leaseReference",
+          "status",
+          "frequency",
+          "installmentAmount",
+          "agreedOn",
+          "finalInstallmentDate",
+          "suppressArrearsReminders",
+          "outstandingBalance",
+          "paid",
+          "remaining",
+          "paidCount",
+          "totalCount",
+          "missedCount",
+          "overdueCount"
+        ]
+      },
+      "PaymentArrangementsReportDto": {
+        "type": "object",
+        "properties": {
+          "graceDays": {
+            "type": "number",
+            "description": "Grace days after a due date before an instalment counts as overdue."
+          },
+          "countsByStatus": {
+            "$ref": "#/components/schemas/ArrangementStatusCountsDto"
+          },
+          "activeCount": {
+            "type": "number",
+            "description": "Arrangements in force on the as-at date."
+          },
+          "outstandingUnderArrangement": {
+            "type": "number",
+            "description": "Remaining balance of the active arrangements (ZAR)."
+          },
+          "paidToDate": {
+            "type": "number",
+            "description": "Paid instalments recorded (ZAR)."
+          },
+          "missedInstallments": {
+            "type": "number"
+          },
+          "overdueInstallments": {
+            "type": "number"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArrangementRowDto"
+            }
+          }
+        },
+        "required": [
+          "graceDays",
+          "countsByStatus",
+          "activeCount",
+          "outstandingUnderArrangement",
+          "paidToDate",
+          "missedInstallments",
+          "overdueInstallments",
+          "rows"
+        ]
+      },
+      "PaymentArrangementsResponseDto": {
+        "type": "object",
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date",
+            "description": "The South African date the figures are as at.",
+            "example": "2026-11-21"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/ReportFiltersDto"
+          },
+          "reportId": {
+            "type": "string",
+            "enum": [
+              "payment_arrangements"
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/PaymentArrangementsReportDto"
+          }
+        },
+        "required": [
+          "asOf",
+          "filters",
+          "reportId",
+          "data"
+        ]
+      },
+      "ExpiryBucket": {
+        "type": "string",
+        "enum": [
+          "expired",
+          "months_0_3",
+          "months_3_6",
+          "months_6_12",
+          "later"
+        ]
+      },
+      "ExpiryBucketTotalDto": {
+        "type": "object",
+        "properties": {
+          "bucket": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExpiryBucket"
+              }
+            ]
+          },
+          "count": {
+            "type": "number"
+          },
+          "monthlyRental": {
+            "type": "number",
+            "description": "Monthly rental of the leases in the bucket (ZAR, excl. VAT)."
+          }
+        },
+        "required": [
+          "bucket",
+          "count",
+          "monthlyRental"
+        ]
+      },
+      "LeaseExpiryRowDto": {
+        "type": "object",
+        "properties": {
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string",
+            "example": "MSQ-L012"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantName": {
+            "type": "string",
+            "example": "Dlamini Cellular"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string",
+            "example": "Maponya Square"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitNumber": {
+            "type": "string",
+            "example": "S01"
+          },
+          "expiryDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "daysUntilExpiry": {
+            "type": "number",
+            "description": "Signed calendar days from the as-at date to expiry; negative once expired."
+          },
+          "bucket": {
+            "description": "Where the expiry falls in calendar months from the as-at date: expired, within 3 months, 3–6, 6–12, later.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExpiryBucket"
+              }
+            ]
+          },
+          "monthlyRental": {
+            "type": "number",
+            "description": "Current contractual monthly rental of the verified lease (ZAR, excl. VAT)."
+          },
+          "renewalOptionAvailable": {
+            "type": "boolean",
+            "description": "The lease has a renewal option the tenant has not exercised."
+          },
+          "noticeThreshold": {
+            "type": "number",
+            "description": "The company lease-expiry notice threshold (days) reached: the one monitoring raises its expiry event for."
+          },
+          "openEventId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The open lease-expiry monitoring event of the lease."
+          }
+        },
+        "required": [
+          "leaseId",
+          "reference",
+          "tenantId",
+          "tenantName",
+          "propertyId",
+          "propertyName",
+          "unitId",
+          "unitNumber",
+          "expiryDate",
+          "daysUntilExpiry",
+          "bucket",
+          "monthlyRental",
+          "renewalOptionAvailable"
+        ]
+      },
+      "LeaseExpiryReportDto": {
+        "type": "object",
+        "properties": {
+          "buckets": {
+            "description": "Every bucket, in order, with the leases shown in it.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExpiryBucketTotalDto"
+            }
+          },
+          "rows": {
+            "description": "Verified leases in a monitored status (active, expiring), soonest expiry first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeaseExpiryRowDto"
+            }
+          },
+          "expiredCount": {
+            "type": "number",
+            "description": "Leases shown whose expiry date has passed."
+          },
+          "withinNoticeCount": {
+            "type": "number",
+            "description": "Leases shown inside a company notice threshold: the leases monitoring raises an expiry event for."
+          },
+          "noticeDays": {
+            "description": "The company lease-expiry notice thresholds in days, largest first; empty when the rule is off.",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "unverifiedLeasesExcluded": {
+            "type": "number",
+            "description": "Leases that have not ended whose terms are not verified: not monitored, so not listed."
+          }
+        },
+        "required": [
+          "buckets",
+          "rows",
+          "expiredCount",
+          "withinNoticeCount",
+          "noticeDays",
+          "unverifiedLeasesExcluded"
+        ]
+      },
+      "LeaseExpiryResponseDto": {
+        "type": "object",
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date",
+            "description": "The South African date the figures are as at.",
+            "example": "2026-11-21"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/ReportFiltersDto"
+          },
+          "reportId": {
+            "type": "string",
+            "enum": [
+              "lease_expiry"
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/LeaseExpiryReportDto"
+          }
+        },
+        "required": [
+          "asOf",
+          "filters",
+          "reportId",
+          "data"
+        ]
+      },
+      "RenewalDeadlineRowStatus": {
+        "type": "string",
+        "enum": [
+          "passed",
+          "due_critical",
+          "due_soon",
+          "upcoming",
+          "open",
+          "exercised"
+        ]
+      },
+      "RenewalDeadlineRowDto": {
+        "type": "object",
+        "properties": {
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string",
+            "example": "MSQ-L012"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantName": {
+            "type": "string",
+            "example": "Dlamini Cellular"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string",
+            "example": "Maponya Square"
+          },
+          "unitNumber": {
+            "type": "string",
+            "example": "S01"
+          },
+          "expiryDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "noticePeriodMonths": {
+            "type": "number",
+            "description": "Written notice required before expiry, in months."
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date",
+            "description": "Last day written renewal notice may be given: expiry less the notice period."
+          },
+          "daysUntilDeadline": {
+            "type": "number",
+            "description": "Signed days from the as-at date to the deadline; negative once passed."
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RenewalDeadlineRowStatus"
+              }
+            ]
+          },
+          "warningThreshold": {
+            "type": "number",
+            "description": "The company renewal warning threshold (days) reached: the one monitoring raises its renewal event for."
+          },
+          "openEventId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The open renewal-notice-deadline monitoring event of the lease."
+          }
+        },
+        "required": [
+          "leaseId",
+          "reference",
+          "tenantId",
+          "tenantName",
+          "propertyId",
+          "propertyName",
+          "unitNumber",
+          "expiryDate",
+          "noticePeriodMonths",
+          "deadline",
+          "daysUntilDeadline",
+          "status"
+        ]
+      },
+      "RenewalDeadlineCountsDto": {
+        "type": "object",
+        "properties": {
+          "passed": {
+            "type": "number"
+          },
+          "due_critical": {
+            "type": "number"
+          },
+          "due_soon": {
+            "type": "number"
+          },
+          "upcoming": {
+            "type": "number"
+          },
+          "open": {
+            "type": "number"
+          },
+          "exercised": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "passed",
+          "due_critical",
+          "due_soon",
+          "upcoming",
+          "open",
+          "exercised"
+        ]
+      },
+      "RenewalDeadlinesReportDto": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "description": "Verified renewal options with a notice period, soonest deadline first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RenewalDeadlineRowDto"
+            }
+          },
+          "countsByStatus": {
+            "$ref": "#/components/schemas/RenewalDeadlineCountsDto"
+          },
+          "requiringWarning": {
+            "type": "number",
+            "description": "Leases shown inside a company warning threshold: the leases monitoring raises a renewal event for."
+          },
+          "warningDays": {
+            "description": "The company renewal warning thresholds in days, largest first; empty when the rule is off.",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "missingNoticePeriod": {
+            "type": "number",
+            "description": "Verified leases with an unexercised renewal option but no notice period recorded."
+          },
+          "unverifiedLeasesExcluded": {
+            "type": "number",
+            "description": "Leases that have not ended whose terms are not verified: not monitored, so not listed."
+          }
+        },
+        "required": [
+          "rows",
+          "countsByStatus",
+          "requiringWarning",
+          "warningDays",
+          "missingNoticePeriod",
+          "unverifiedLeasesExcluded"
+        ]
+      },
+      "RenewalDeadlinesResponseDto": {
+        "type": "object",
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date",
+            "description": "The South African date the figures are as at.",
+            "example": "2026-11-21"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/ReportFiltersDto"
+          },
+          "reportId": {
+            "type": "string",
+            "enum": [
+              "renewal_deadlines"
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/RenewalDeadlinesReportDto"
+          }
+        },
+        "required": [
+          "asOf",
+          "filters",
+          "reportId",
+          "data"
+        ]
+      },
+      "DepositHolder": {
+        "type": "string",
+        "enum": [
+          "landlord",
+          "managing_agent",
+          "attorney_trust"
+        ]
+      },
+      "GuaranteeExpiryState": {
+        "type": "string",
+        "enum": [
+          "released",
+          "called",
+          "expired",
+          "expiring",
+          "active"
+        ],
+        "description": "Released and called are final; else expired once the date has passed, expiring inside a notice threshold, else active."
+      },
+      "SecurityRowDto": {
+        "type": "object",
+        "properties": {
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string",
+            "example": "MSQ-L001"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantName": {
+            "type": "string",
+            "example": "Dlamini Cellular"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string",
+            "example": "Maponya Square"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitNumber": {
+            "type": "string",
+            "example": "S01"
+          },
+          "expectedMonthlyRental": {
+            "type": "number",
+            "description": "Monthly rental the verified terms expect as at the report date, escalations applied (ZAR, excl. VAT)."
+          },
+          "depositAmount": {
+            "type": "number",
+            "description": "Deposit held (ZAR)."
+          },
+          "depositHeldBy": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DepositHolder"
+              }
+            ]
+          },
+          "depositBasisMonths": {
+            "type": "number",
+            "description": "The deposit expressed as months of rental."
+          },
+          "depositRequired": {
+            "type": "number",
+            "description": "Basis months × expected rental (ZAR); absent without a deposit basis."
+          },
+          "depositShortfall": {
+            "type": "number",
+            "description": "Required deposit less the deposit held, never below zero (ZAR)."
+          },
+          "guaranteeBank": {
+            "type": "string",
+            "example": "Standard Bank"
+          },
+          "guaranteeReference": {
+            "type": "string",
+            "example": "BG-0042"
+          },
+          "guaranteeAmount": {
+            "type": "number",
+            "description": "Bank guarantee amount (ZAR)."
+          },
+          "guaranteeBasisMonths": {
+            "type": "number",
+            "description": "The guarantee was sized as this many months of rental."
+          },
+          "guaranteeRequired": {
+            "type": "number",
+            "description": "Basis months × expected rental (ZAR), for a guarantee recorded as active or expiring."
+          },
+          "guaranteeShortfall": {
+            "type": "number",
+            "description": "Required guarantee less the guarantee amount, never below zero (ZAR)."
+          },
+          "guaranteeExpiresOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "guaranteeState": {
+            "description": "Released and called are final; else expired once the date has passed, expiring inside a notice threshold, else active.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GuaranteeExpiryState"
+              }
+            ]
+          },
+          "guaranteeDaysUntilExpiry": {
+            "type": "number",
+            "description": "Days from the report date to the guarantee expiry (negative once expired)."
+          },
+          "needsAttention": {
+            "type": "boolean",
+            "description": "A deposit or guarantee shortfall, or a guarantee expiring or expired."
+          }
+        },
+        "required": [
+          "leaseId",
+          "reference",
+          "tenantId",
+          "tenantName",
+          "propertyId",
+          "propertyName",
+          "unitId",
+          "unitNumber",
+          "expectedMonthlyRental",
+          "depositShortfall",
+          "guaranteeShortfall",
+          "needsAttention"
+        ]
+      },
+      "DepositsGuaranteesReportDto": {
+        "type": "object",
+        "properties": {
+          "totalDeposits": {
+            "type": "number",
+            "description": "Deposits held on the listed leases (ZAR)."
+          },
+          "totalGuarantees": {
+            "type": "number",
+            "description": "Guarantees in force (active or expiring) on the listed leases (ZAR)."
+          },
+          "depositShortfallTotal": {
+            "type": "number"
+          },
+          "guaranteeShortfallTotal": {
+            "type": "number"
+          },
+          "leasesWithShortfall": {
+            "type": "number",
+            "description": "Listed leases with a deposit or a guarantee shortfall."
+          },
+          "expiringGuarantees": {
+            "type": "number"
+          },
+          "expiredGuarantees": {
+            "type": "number"
+          },
+          "guaranteeNoticeDays": {
+            "description": "Guarantee expiry notice thresholds in days, largest first.",
+            "example": [
+              90,
+              30
+            ],
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SecurityRowDto"
+            }
+          },
+          "unverifiedLeasesExcluded": {
+            "type": "number",
+            "description": "Leases with a deposit or guarantee that have not ended but whose terms are not verified: not listed."
+          }
+        },
+        "required": [
+          "totalDeposits",
+          "totalGuarantees",
+          "depositShortfallTotal",
+          "guaranteeShortfallTotal",
+          "leasesWithShortfall",
+          "expiringGuarantees",
+          "expiredGuarantees",
+          "guaranteeNoticeDays",
+          "rows",
+          "unverifiedLeasesExcluded"
+        ]
+      },
+      "DepositsGuaranteesResponseDto": {
+        "type": "object",
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date",
+            "description": "The South African date the figures are as at.",
+            "example": "2026-11-21"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/ReportFiltersDto"
+          },
+          "reportId": {
+            "type": "string",
+            "enum": [
+              "deposits_guarantees"
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/DepositsGuaranteesReportDto"
+          }
+        },
+        "required": [
+          "asOf",
+          "filters",
+          "reportId",
+          "data"
+        ]
+      },
+      "StatementStatusCountsDto": {
+        "type": "object",
+        "properties": {
+          "uploaded": {
+            "type": "number"
+          },
+          "processing": {
+            "type": "number"
+          },
+          "review_required": {
+            "type": "number"
+          },
+          "verified": {
+            "type": "number"
+          },
+          "rejected": {
+            "type": "number"
+          },
+          "duplicate": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "uploaded",
+          "processing",
+          "review_required",
+          "verified",
+          "rejected",
+          "duplicate"
+        ]
+      },
+      "StatementSource": {
+        "type": "string",
+        "enum": [
+          "MRI",
+          "MDA",
+          "PropSys",
+          "Sage",
+          "other"
+        ]
+      },
+      "StatementSourceFiguresDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "inProgress": {
+            "type": "number",
+            "description": "Uploaded or processing."
+          },
+          "pendingReview": {
+            "type": "number",
+            "description": "Status review_required, processing failures included (as the dashboard counts)."
+          },
+          "processingFailures": {
+            "type": "number"
+          },
+          "verified": {
+            "type": "number"
+          },
+          "rejected": {
+            "type": "number"
+          },
+          "duplicate": {
+            "type": "number"
+          },
+          "sourceSystem": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StatementSource"
+              }
+            ]
+          }
+        },
+        "required": [
+          "total",
+          "inProgress",
+          "pendingReview",
+          "processingFailures",
+          "verified",
+          "rejected",
+          "duplicate",
+          "sourceSystem"
+        ]
+      },
+      "StatementPropertyFiguresDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "inProgress": {
+            "type": "number",
+            "description": "Uploaded or processing."
+          },
+          "pendingReview": {
+            "type": "number",
+            "description": "Status review_required, processing failures included (as the dashboard counts)."
+          },
+          "processingFailures": {
+            "type": "number"
+          },
+          "verified": {
+            "type": "number"
+          },
+          "rejected": {
+            "type": "number"
+          },
+          "duplicate": {
+            "type": "number"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "total",
+          "inProgress",
+          "pendingReview",
+          "processingFailures",
+          "verified",
+          "rejected",
+          "duplicate",
+          "propertyId",
+          "propertyName"
+        ]
+      },
+      "StatementStatus": {
+        "type": "string",
+        "enum": [
+          "uploaded",
+          "processing",
+          "review_required",
+          "verified",
+          "rejected",
+          "duplicate"
+        ]
+      },
+      "StatementUploadRowDto": {
+        "type": "object",
+        "properties": {
+          "statementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string",
+            "example": "MSQ-2026-10.pdf"
+          },
+          "statementNumber": {
+            "type": "string"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitNumber": {
+            "type": "string"
+          },
+          "sourceSystem": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StatementSource"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StatementStatus"
+              }
+            ]
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "uploadedOn": {
+            "type": "string",
+            "format": "date",
+            "description": "The South African calendar date of the upload (the date range bounds it)."
+          },
+          "statementDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "processingFailed": {
+            "type": "boolean",
+            "description": "Automatic extraction gave up: under review with the reason in processingError."
+          },
+          "processingError": {
+            "type": "string"
+          },
+          "duplicateOfStatementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "extractionConfidence": {
+            "type": "number",
+            "description": "Overall extraction confidence (0–1)."
+          },
+          "unresolvedFields": {
+            "type": "number",
+            "description": "Extracted fields a reviewer still has to confirm or correct."
+          },
+          "ageDays": {
+            "type": "number",
+            "description": "Whole days from the upload date to the as-at date."
+          }
+        },
+        "required": [
+          "statementId",
+          "fileName",
+          "propertyId",
+          "propertyName",
+          "sourceSystem",
+          "status",
+          "uploadedAt",
+          "uploadedOn",
+          "processingFailed",
+          "unresolvedFields",
+          "ageDays"
+        ]
+      },
+      "StatementProcessingReportDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "inProgress": {
+            "type": "number",
+            "description": "Uploaded or processing."
+          },
+          "pendingReview": {
+            "type": "number",
+            "description": "Status review_required, processing failures included (as the dashboard counts)."
+          },
+          "processingFailures": {
+            "type": "number"
+          },
+          "verified": {
+            "type": "number"
+          },
+          "rejected": {
+            "type": "number"
+          },
+          "duplicate": {
+            "type": "number"
+          },
+          "countsByStatus": {
+            "$ref": "#/components/schemas/StatementStatusCountsDto"
+          },
+          "bySource": {
+            "description": "In source order; sources without uploads left out.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatementSourceFiguresDto"
+            }
+          },
+          "byProperty": {
+            "description": "By property name.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatementPropertyFiguresDto"
+            }
+          },
+          "awaitingReview": {
+            "type": "number",
+            "description": "Under review with nothing failed."
+          },
+          "oldestPendingReviewDays": {
+            "type": "number",
+            "nullable": true,
+            "description": "Age in days of the oldest statement waiting for review."
+          },
+          "averageExtractionConfidence": {
+            "type": "number",
+            "nullable": true,
+            "description": "Mean overall extraction confidence (0–1)."
+          },
+          "backlog": {
+            "description": "Waiting for review, processing failures included, oldest upload first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatementUploadRowDto"
+            }
+          },
+          "failures": {
+            "description": "Automatic processing failed, oldest upload first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatementUploadRowDto"
+            }
+          },
+          "rows": {
+            "description": "Every upload shown, newest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatementUploadRowDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "inProgress",
+          "pendingReview",
+          "processingFailures",
+          "verified",
+          "rejected",
+          "duplicate",
+          "countsByStatus",
+          "bySource",
+          "byProperty",
+          "awaitingReview",
+          "oldestPendingReviewDays",
+          "averageExtractionConfidence",
+          "backlog",
+          "failures",
+          "rows"
+        ]
+      },
+      "StatementProcessingResponseDto": {
+        "type": "object",
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date",
+            "description": "The South African date the figures are as at.",
+            "example": "2026-11-21"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/ReportFiltersDto"
+          },
+          "reportId": {
+            "type": "string",
+            "enum": [
+              "statement_processing"
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/StatementProcessingReportDto"
+          }
+        },
+        "required": [
+          "asOf",
+          "filters",
+          "reportId",
+          "data"
+        ]
+      },
+      "MessageType": {
+        "type": "string",
+        "enum": [
+          "monthly_statement",
+          "initial_payment_reminder",
+          "overdue_payment_reminder",
+          "follow_up_payment_reminder",
+          "arrangement_installment_reminder",
+          "owner_weekly_summary",
+          "owner_query_response",
+          "inbound_reply",
+          "manual"
+        ]
+      },
+      "CommunicationTypeFiguresDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "outbound": {
+            "type": "number"
+          },
+          "inbound": {
+            "type": "number"
+          },
+          "handedOver": {
+            "type": "number",
+            "description": "Outbound messages handed to WhatsApp for sending (queued, sent, delivered, read or failed)."
+          },
+          "delivered": {
+            "type": "number",
+            "description": "Delivered, read included."
+          },
+          "failed": {
+            "type": "number"
+          },
+          "pendingApproval": {
+            "type": "number"
+          },
+          "messageType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessageType"
+              }
+            ]
+          }
+        },
+        "required": [
+          "total",
+          "outbound",
+          "inbound",
+          "handedOver",
+          "delivered",
+          "failed",
+          "pendingApproval",
+          "messageType"
+        ]
+      },
+      "DeliveryStatusCountsDto": {
+        "type": "object",
+        "properties": {
+          "draft": {
+            "type": "number"
+          },
+          "pending_approval": {
+            "type": "number"
+          },
+          "approved": {
+            "type": "number"
+          },
+          "queued": {
+            "type": "number"
+          },
+          "sent": {
+            "type": "number"
+          },
+          "delivered": {
+            "type": "number"
+          },
+          "read": {
+            "type": "number"
+          },
+          "failed": {
+            "type": "number"
+          },
+          "rejected": {
+            "type": "number"
+          },
+          "received": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "draft",
+          "pending_approval",
+          "approved",
+          "queued",
+          "sent",
+          "delivered",
+          "read",
+          "failed",
+          "rejected",
+          "received"
+        ]
+      },
+      "CommunicationPropertyFiguresDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "outbound": {
+            "type": "number"
+          },
+          "inbound": {
+            "type": "number"
+          },
+          "handedOver": {
+            "type": "number",
+            "description": "Outbound messages handed to WhatsApp for sending (queued, sent, delivered, read or failed)."
+          },
+          "delivered": {
+            "type": "number",
+            "description": "Delivered, read included."
+          },
+          "failed": {
+            "type": "number"
+          },
+          "pendingApproval": {
+            "type": "number"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Null for messages without a property."
+          },
+          "propertyName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "total",
+          "outbound",
+          "inbound",
+          "handedOver",
+          "delivered",
+          "failed",
+          "pendingApproval",
+          "propertyId",
+          "propertyName"
+        ]
+      },
+      "DeliveryOutcomeCountsDto": {
+        "type": "object",
+        "properties": {
+          "pending": {
+            "type": "number",
+            "description": "Queued or sent, not delivered yet."
+          },
+          "delivered": {
+            "type": "number"
+          },
+          "read": {
+            "type": "number"
+          },
+          "failed": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "pending",
+          "delivered",
+          "read",
+          "failed"
+        ]
+      },
+      "ApprovalAgeBucket": {
+        "type": "string",
+        "enum": [
+          "under_1_day",
+          "1_3_days",
+          "3_7_days",
+          "over_7_days"
+        ]
+      },
+      "ApprovalAgeCountDto": {
+        "type": "object",
+        "properties": {
+          "bucket": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApprovalAgeBucket"
+              }
+            ]
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "bucket",
+          "count"
+        ]
+      },
+      "ApprovalFiguresDto": {
+        "type": "object",
+        "properties": {
+          "pending": {
+            "type": "number"
+          },
+          "approved": {
+            "type": "number"
+          },
+          "rejected": {
+            "type": "number"
+          },
+          "averageTurnaroundMinutes": {
+            "type": "number",
+            "nullable": true,
+            "description": "Mean minutes from request to a person's decision."
+          },
+          "oldestPendingHours": {
+            "type": "number",
+            "nullable": true,
+            "description": "Hours the oldest pending request has waited."
+          },
+          "byAge": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApprovalAgeCountDto"
+            }
+          }
+        },
+        "required": [
+          "pending",
+          "approved",
+          "rejected",
+          "averageTurnaroundMinutes",
+          "oldestPendingHours",
+          "byAge"
+        ]
+      },
+      "Channel": {
+        "type": "string",
+        "enum": [
+          "whatsapp",
+          "email",
+          "system"
+        ]
+      },
+      "MessageDirection": {
+        "type": "string",
+        "enum": [
+          "outbound",
+          "inbound"
+        ]
+      },
+      "RecipientType": {
+        "type": "string",
+        "enum": [
+          "tenant",
+          "property_owner",
+          "contact"
+        ]
+      },
+      "DeliveryStatus": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "pending_approval",
+          "approved",
+          "queued",
+          "sent",
+          "delivered",
+          "read",
+          "failed",
+          "rejected",
+          "received"
+        ]
+      },
+      "DeliveryOutcome": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "delivered",
+          "read",
+          "failed"
+        ],
+        "description": "Outbound messages handed over for sending only."
+      },
+      "ApprovalDecision": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "approved",
+          "rejected"
+        ],
+        "description": "The pending request, else the latest decided one."
+      },
+      "PendingApprovalRowDto": {
+        "type": "object",
+        "properties": {
+          "communicationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdOn": {
+            "type": "string",
+            "format": "date",
+            "description": "The South African calendar date the message was recorded (the date range bounds it)."
+          },
+          "channel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Channel"
+              }
+            ]
+          },
+          "direction": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessageDirection"
+              }
+            ]
+          },
+          "messageType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessageType"
+              }
+            ]
+          },
+          "recipientType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecipientType"
+              }
+            ]
+          },
+          "counterpartyName": {
+            "type": "string",
+            "description": "The tenant's trading name, the owner's name or the contact's WhatsApp name."
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The message's property, else its lease's, statement's or arrangement's."
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "statementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "arrangementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeliveryStatus"
+              }
+            ]
+          },
+          "outcome": {
+            "description": "Outbound messages handed over for sending only.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeliveryOutcome"
+              }
+            ]
+          },
+          "failureReason": {
+            "type": "string"
+          },
+          "approvalDecision": {
+            "description": "The pending request, else the latest decided one.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApprovalDecision"
+              }
+            ]
+          },
+          "approvalDecidedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "approvalRequestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "waitingHours": {
+            "type": "number",
+            "description": "Whole hours the request has waited."
+          },
+          "ageBucket": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApprovalAgeBucket"
+              }
+            ]
+          }
+        },
+        "required": [
+          "communicationId",
+          "createdAt",
+          "createdOn",
+          "channel",
+          "direction",
+          "messageType",
+          "recipientType",
+          "status",
+          "approvalRequestedAt",
+          "waitingHours",
+          "ageBucket"
+        ]
+      },
+      "CommunicationActivityRowDto": {
+        "type": "object",
+        "properties": {
+          "communicationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdOn": {
+            "type": "string",
+            "format": "date",
+            "description": "The South African calendar date the message was recorded (the date range bounds it)."
+          },
+          "channel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Channel"
+              }
+            ]
+          },
+          "direction": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessageDirection"
+              }
+            ]
+          },
+          "messageType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessageType"
+              }
+            ]
+          },
+          "recipientType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecipientType"
+              }
+            ]
+          },
+          "counterpartyName": {
+            "type": "string",
+            "description": "The tenant's trading name, the owner's name or the contact's WhatsApp name."
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The message's property, else its lease's, statement's or arrangement's."
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "statementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "arrangementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeliveryStatus"
+              }
+            ]
+          },
+          "outcome": {
+            "description": "Outbound messages handed over for sending only.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeliveryOutcome"
+              }
+            ]
+          },
+          "failureReason": {
+            "type": "string"
+          },
+          "approvalDecision": {
+            "description": "The pending request, else the latest decided one.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApprovalDecision"
+              }
+            ]
+          },
+          "approvalDecidedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "approvalRequestedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "communicationId",
+          "createdAt",
+          "createdOn",
+          "channel",
+          "direction",
+          "messageType",
+          "recipientType",
+          "status"
+        ]
+      },
+      "CommunicationActivityReportDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "outbound": {
+            "type": "number"
+          },
+          "inbound": {
+            "type": "number"
+          },
+          "handedOver": {
+            "type": "number",
+            "description": "Outbound messages handed to WhatsApp for sending (queued, sent, delivered, read or failed)."
+          },
+          "delivered": {
+            "type": "number",
+            "description": "Delivered, read included."
+          },
+          "failed": {
+            "type": "number"
+          },
+          "pendingApproval": {
+            "type": "number"
+          },
+          "byType": {
+            "description": "In message type order; types without messages left out.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommunicationTypeFiguresDto"
+            }
+          },
+          "byStatus": {
+            "$ref": "#/components/schemas/DeliveryStatusCountsDto"
+          },
+          "byProperty": {
+            "description": "By property name; messages without a property last.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommunicationPropertyFiguresDto"
+            }
+          },
+          "outcomes": {
+            "$ref": "#/components/schemas/DeliveryOutcomeCountsDto"
+          },
+          "deliveryRate": {
+            "type": "number",
+            "nullable": true,
+            "description": "Delivered (read included) over handed over (0–1)."
+          },
+          "approvals": {
+            "$ref": "#/components/schemas/ApprovalFiguresDto"
+          },
+          "pendingApprovals": {
+            "description": "Longest waiting first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PendingApprovalRowDto"
+            }
+          },
+          "failedMessages": {
+            "description": "Outbound messages that failed, newest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommunicationActivityRowDto"
+            }
+          },
+          "rows": {
+            "description": "Every message shown, newest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommunicationActivityRowDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "outbound",
+          "inbound",
+          "handedOver",
+          "delivered",
+          "failed",
+          "pendingApproval",
+          "byType",
+          "byStatus",
+          "byProperty",
+          "outcomes",
+          "deliveryRate",
+          "approvals",
+          "pendingApprovals",
+          "failedMessages",
+          "rows"
+        ]
+      },
+      "CommunicationActivityResponseDto": {
+        "type": "object",
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date",
+            "description": "The South African date the figures are as at.",
+            "example": "2026-11-21"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/ReportFiltersDto"
+          },
+          "reportId": {
+            "type": "string",
+            "enum": [
+              "communication_activity"
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/CommunicationActivityReportDto"
           }
         },
         "required": [

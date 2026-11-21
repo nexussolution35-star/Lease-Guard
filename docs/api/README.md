@@ -132,7 +132,14 @@ From `backend/openapi.json` and, for the reports service, `services/reports/open
 | `GET /api/v1/reports` | `listReports` | company | members |
 | `GET /api/v1/reports/portfolio_overview` | `getPortfolioOverviewReport` | company | members |
 | `GET /api/v1/reports/occupancy` | `getOccupancyReport` | company | members |
+| `GET /api/v1/reports/arrears` | `getArrearsReport` | company | members |
+| `GET /api/v1/reports/payment_arrangements` | `getPaymentArrangementsReport` | company | members |
+| `GET /api/v1/reports/lease_expiry` | `getLeaseExpiryReport` | company | members |
+| `GET /api/v1/reports/renewal_deadlines` | `getRenewalDeadlinesReport` | company | members |
+| `GET /api/v1/reports/lease_monitoring` | `getLeaseMonitoringReport` | company | members |
+| `GET /api/v1/reports/rental_discrepancies` | `getRentalDiscrepanciesReport` | company | members |
 
+| `GET /api/v1/reports/deposits_guarantees` | `getDepositsGuaranteesReport` | company | members |
 `GET /api/v1/reports` returns `{ reports: ReportDefinitionDto[] }`: the report catalogue (`REPORT_CATALOGUE` in
 `packages/domain/src/rules/reportCatalogue.ts`, the same list the web app shows), in display order. The service also
 answers `GET /health` and `GET /health/ready` on its own port; through the gateway those paths reach the core.
@@ -158,7 +165,63 @@ company) and the domain rules; reports are monitoring summaries, never transacti
   every unit of a property that is not archived with its occupancy status and current tenant: the current lease's
   tenant, else the tenant assigned to it (`tenantSource` `lease` or `assignment`). Status filter: the occupancy status.
   No date range.
+- `arrears` (R-05): every account in arrears, one row per tenant and unit (the lease when the statement names no unit),
+  from its latest verified statement (`reports_arrears_accounts`, the rules of `GET /statements/arrears` and
+  `dashboard_arrears_totals`; zero and credit balances are not arrears), largest first, aged from the statement date into
+  the company's arrears monitoring buckets (`ageingBuckets`, default 30/60/90/120), linking to the tenant, unit, lease,
+  statement and the arrangement in force. A tenant under an active payment arrangement stays in arrears (the balance is
+  owed) and is marked on every unit (`underArrangement`), with whether the arrangement pauses its normal reminders
+  (`remindersSuppressed`); totals: outstanding, tenants, tenants and outstanding under arrangement, reminders paused, and
+  every bucket. Without filters the total and tenant count equal the dashboard's and the Statements page's. Status
+  filter: `under_arrangement`, `no_arrangement`. No date range.
+- `payment_arrangements` (R-05): every payment arrangement (active first, then proposed, defaulted, completed, cancelled;
+  the latest agreed first), linking to the arrangement, unit and lease, with its schedule progress (instalments recorded
+  as paid, `arrangementProgress`), missed instalments and, while it is in force, the overdue instalments (open past the
+  due date plus the company's arrangement monitoring grace days, `graceDays`, as the arrangement monitoring counts them)
+  and the next instalment; counts per status, the remaining balance under active arrangements, paid to date, missed and
+  overdue totals. Records only: nothing is paid through LeaseGuard. Status filter: the arrangement status. Date range: the
+  date agreed.
+- `lease_monitoring` (R-02): every monitoring event of the company, the open ones by default (new, under review, action
+  required, in progress: `OPEN_EVENT_STATUSES`, as the monitoring list and the dashboard count them), each with its age
+  in days on the "as at" date (`ageBucket` 0-7, 8-30, 31-90, 90+) and whether it is overdue (open, due before the "as
+  at" date), linking to the event, property, tenant and lease; counted by type, priority, status, property and age.
+  Status filter: the event status. Date range: the date identified.
+- `rental_discrepancies` (R-02): for every verified lease in a monitored status, the rental billed on its latest verified
+  statement that bills rental against the escalated contractual rental at the billed period's start, with the
+  difference (expected − billed, positive = billed short), the company's rental escalation discrepancy tolerance and the
+  calculation step by step: the lease monitoring scan's comparison (`compareBilledRental`). A row links to the lease,
+  the statement and the discrepancy event raised for that statement (`source` `event`, else `recomputed`); an open
+  discrepancy event on an earlier statement is listed too (`current: false`) with the figures it recorded. Totals of the
+  differences outside tolerance (net, under-billed, over-billed), the open discrepancy events (the dashboard's
+  `escalationDiscrepancies` without filters), and the leases not compared (awaiting a verified statement, waiting for
+  verification). Status filter: `outside_tolerance`, `within_tolerance`. Date range: the billed period's start.
+- `lease_expiry` (R-03): every verified lease in a monitored status (active, expiring; unverified terms never drive
+  monitoring, so those leases are only counted, `unverifiedLeasesExcluded`), soonest expiry first, with its days to
+  expiry on the "as at" date and its bucket in calendar months (`expired`, `months_0_3`, `months_3_6`, `months_6_12`,
+  `later`; each bucket's end inclusive, a month clamped to the target month's last day), rental, whether an unexercised
+  renewal option exists, the company lease-expiry notice threshold reached (`noticeThreshold`, the one the lease
+  monitoring scan raises its expiry event for, `shouldRaiseExpiryEvent`; the rule's own days, else the company's, none
+  when the rule is off) and its open lease-expiry event; totals per bucket, expired, within notice. Status filter: the
+  bucket. Date range: the expiry date.
+- `renewal_deadlines` (R-03): every verified monitored lease with a renewal option and a notice period, soonest deadline
+  first: the deadline (`renewalNoticeDeadline`: expiry less the notice period), days left, status
+  (`renewalDeadlineStatus`: `passed`, `due_critical`, `due_soon`, `upcoming`, `open`, `exercised`), the company warning
+  threshold reached (`warningThreshold`, the one the scan raises its renewal event for, `leasesRequiringRenewalWarning`)
+  and its open renewal-notice-deadline event; counts per status, requiring a warning, options without a notice period.
+  Status filter: the deadline status. Date range: the notice deadline.
 
+- `deposits_guarantees` (R-04): every verified lease in a monitored status (active, expiring) with a deposit or a bank
+  guarantee, by property then lease reference: the deposit held (and who holds it), the guarantee (bank, reference,
+  amount, expiry), the rental the verified terms expect on the "as at" date (escalations applied), the required cover
+  (basis months × that rental: `depositCoverage`, `guaranteeCoverage`, the figures of the lease monitoring scan's
+  `deposit_shortfall` and `guarantee_shortfall` events; a deposit without a basis and a released or called guarantee
+  have no required cover), the shortfall, and the guarantee's state (`guaranteeExpiryStatus`: `active`, `expiring` inside
+  the guarantee expiry notice days, the rule's own else the company's, `expired`, `released`, `called`) with days to
+  expiry; `needsAttention` marks a shortfall or an expiring or expired guarantee. Totals: deposits held, guarantees in
+  force (active and expiring), deposit and guarantee shortfalls, leases short of cover, expiring and expired guarantees,
+  the notice days used, and the unverified leases with a deposit or guarantee that are left out
+  (`unverifiedLeasesExcluded`). Status filter: the guarantee state. Date range: the guarantee expiry date (either
+  filter leaves out leases without a guarantee). Nothing claims or calls a guarantee.
 ### Core service
 
 | Method and path | operationId | Scope | Roles |
