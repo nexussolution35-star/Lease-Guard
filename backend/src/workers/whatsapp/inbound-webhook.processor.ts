@@ -252,7 +252,8 @@ export class WhatsAppWebhookProcessor implements OnModuleInit {
     private readonly channels: WhatsAppChannels,
     private readonly clock: Clock,
     @Inject(WORKER_ENV) private readonly env: Pick<WorkerEnv, 'WHATSAPP_APP_ID'>,
-    private readonly queues: Pick<WorkerQueues, 'enqueueAll'>,
+    // Explicit token: a Pick<> type is erased to Object in decorator metadata, which Nest cannot resolve.
+    @Inject(WorkerQueues) private readonly queues: Pick<WorkerQueues, 'enqueueAll'>,
   ) {}
 
   onModuleInit(): void {
