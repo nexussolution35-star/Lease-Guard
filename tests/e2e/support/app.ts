@@ -13,7 +13,6 @@ export const NAV_ITEMS = [
   { label: 'Monitoring', path: '/monitoring' },
   { label: 'Arrangements', path: '/arrangements' },
   { label: 'Communications', path: '/communications' },
-  { label: 'WhatsApp', path: '/whatsapp' },
   { label: 'Reports', path: '/reports' },
   { label: 'Settings', path: '/settings' },
 ] as const
