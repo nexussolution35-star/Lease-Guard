@@ -87,6 +87,33 @@ export function approvalBlocker(approval: Pick<MessageApproval, 'decision'> | un
 
 type EligibleTenant = Pick<Tenant, 'id' | 'whatsappVerified' | 'whatsappOptedOut' | 'status'>
 
+/** Why a tenant cannot receive any automated message, whatever its type or approval. */
+export type TenantCommunicationBlocker = 'whatsapp_not_validated' | 'whatsapp_opted_out' | 'vacated' | 'prospective'
+
+/** The blocker reasons as `canSendTenantMessage` (and the backend's outbound gate) words them. */
+export const TENANT_COMMUNICATION_BLOCKER_REASONS: Readonly<Record<TenantCommunicationBlocker, string>> = {
+  whatsapp_not_validated: 'Tenant WhatsApp number has not been verified',
+  whatsapp_opted_out: 'Tenant has opted out of WhatsApp communication',
+  vacated: 'Tenant has vacated',
+  prospective: 'Tenant is prospective and has no lease yet',
+}
+
+/**
+ * The tenant's own state that turns automated communication (statements and payment reminders) off, in this order: an
+ * unvalidated WhatsApp number (PRD §5.4), an opt-out, a vacated or prospective tenant. Empty when the tenant can be
+ * messaged; each message still needs its approval and its type's own rules (`canSendTenantMessage`).
+ */
+export function tenantCommunicationBlockers(
+  tenant: Pick<Tenant, 'whatsappVerified' | 'whatsappOptedOut' | 'status'>,
+): TenantCommunicationBlocker[] {
+  const blockers: TenantCommunicationBlocker[] = []
+  if (!tenant.whatsappVerified) blockers.push('whatsapp_not_validated')
+  if (tenant.whatsappOptedOut) blockers.push('whatsapp_opted_out')
+  if (tenant.status === 'vacated') blockers.push('vacated')
+  if (tenant.status === 'prospective') blockers.push('prospective')
+  return blockers
+}
+
 /**
  * Can this message be sent to a tenant right now? Rules, all of which must hold:
  * - messageType is a TenantMessageType (statements & payment reminders only)
@@ -105,10 +132,7 @@ export function canSendTenantMessage(
   if (!isTenantMessageType(messageType)) {
     reasons.push(`Message type "${messageType}" is not permitted for tenants`)
   }
-  if (!tenant.whatsappVerified) reasons.push('Tenant WhatsApp number has not been verified')
-  if (tenant.whatsappOptedOut) reasons.push('Tenant has opted out of WhatsApp communication')
-  if (tenant.status === 'vacated') reasons.push('Tenant has vacated')
-  if (tenant.status === 'prospective') reasons.push('Tenant is prospective and has no lease yet')
+  for (const blocker of tenantCommunicationBlockers(tenant)) reasons.push(TENANT_COMMUNICATION_BLOCKER_REASONS[blocker])
 
   const approval = approvalBlocker(context.approval)
   if (approval) reasons.push(approval)

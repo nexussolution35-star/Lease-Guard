@@ -9,6 +9,7 @@ import {
   requestAt,
   sampleRecord,
   TEST_COMPANY_ID,
+  TEST_FILTER_ID,
   TEST_RECORD_ID,
   urlOf,
   type FakeFetch,
@@ -25,12 +26,12 @@ function sourceWith(fetch: FakeFetch) {
 describe('createApiTenantSource', () => {
   it('lists with the explicit company and every set parameter, exactly as the endpoint accepts them', async () => {
     const fetch = fakeFetch(200, { items: [tenant], total: 1, page: 2, pageSize: 10 })
-    const page = await sourceWith(fetch).list(TEST_COMPANY_ID, { page: 2, pageSize: 10, search: ' needle ', sort: 'tradingName', direction: 'asc', status: 'in_arrears', businessType: 'pty_ltd' })
+    const page = await sourceWith(fetch).list(TEST_COMPANY_ID, { page: 2, pageSize: 10, search: ' needle ', sort: 'tradingName', direction: 'asc', status: 'in_arrears', businessType: 'pty_ltd', propertyId: TEST_FILTER_ID })
 
     expect(page).toEqual({ items: [tenant], total: 1, page: 2, pageSize: 10 })
     expect(urlOf(fetch)).toEqual({
       pathname: '/api/v1/tenants',
-      query: { page: '2', pageSize: '10', search: 'needle', sort: 'tradingName', direction: 'asc', status: 'in_arrears', businessType: 'pty_ltd' },
+      query: { page: '2', pageSize: '10', search: 'needle', sort: 'tradingName', direction: 'asc', status: 'in_arrears', businessType: 'pty_ltd', propertyId: TEST_FILTER_ID },
     })
     // The company in the query key wins over the client's default company.
     expect(requestAt(fetch).headers.get('x-company-id')).toBe(TEST_COMPANY_ID)

@@ -32,6 +32,18 @@ export function ageingBucket(
   return label
 }
 
+/**
+ * The days a bucket covers, in words: with [30,60,90,120], 'current' is "0–29 days", '30' is "30–59 days" and '120+'
+ * is "120 days or more".
+ */
+export function describeAgeingBucket(label: AgeingBucketLabel, buckets: readonly number[] = DEFAULT_AGEING_BUCKETS): string {
+  const sorted = [...buckets].sort((a, b) => a - b)
+  if (label === 'current') return sorted.length > 0 ? `0–${sorted[0] - 1} days` : 'Any age'
+  const from = Number.parseInt(label, 10)
+  const next = sorted.find((boundary) => boundary > from)
+  return label.endsWith('+') || next === undefined ? `${from} days or more` : `${from}–${next - 1} days`
+}
+
 export interface TenantArrears {
   tenantId: EntityId
   propertyId: EntityId

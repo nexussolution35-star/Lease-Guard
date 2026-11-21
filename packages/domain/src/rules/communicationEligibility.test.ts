@@ -9,6 +9,7 @@ import {
   FORBIDDEN_TENANT_TOPICS,
   ForbiddenTenantTopicError,
   isTenantMessageType,
+  tenantCommunicationBlockers,
   type TenantMessageContext,
 } from './communicationEligibility.js'
 
@@ -84,5 +85,20 @@ describe('canSendOwnerMessage', () => {
     expect(canSendOwnerMessage(makeOwner({ whatsappNumber: undefined }), 'owner_query_response').reasons).toEqual(['Owner has no WhatsApp number on record'])
     expect(canSendOwnerMessage(makeOwner({ status: 'suspended' }), 'owner_weekly_summary').reasons).toEqual(['Owner user is suspended'])
     expect(canSendOwnerMessage(makeOwner(), 'owner_weekly_summary', 'cmp_other').reasons).toEqual(['User is not a property owner in this company'])
+  })
+})
+
+describe('tenantCommunicationBlockers', () => {
+  it('is empty for a validated, active tenant', () => {
+    expect(tenantCommunicationBlockers(makeTenant())).toEqual([])
+  })
+  it('names every tenant state that turns automated communication off, the unvalidated number first', () => {
+    expect(tenantCommunicationBlockers(makeTenant({ whatsappVerified: false }))).toEqual(['whatsapp_not_validated'])
+    expect(tenantCommunicationBlockers(makeTenant({ whatsappVerified: false, whatsappOptedOut: true, status: 'vacated' }))).toEqual([
+      'whatsapp_not_validated',
+      'whatsapp_opted_out',
+      'vacated',
+    ])
+    expect(tenantCommunicationBlockers(makeTenant({ status: 'prospective' }))).toEqual(['prospective'])
   })
 })

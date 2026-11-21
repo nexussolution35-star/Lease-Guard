@@ -1,11 +1,12 @@
 import { createFileRoute, useParams } from '@tanstack/react-router'
 
-import { RecordNotFound, ScreenPlaceholder } from '@/components/layout'
+import { RecordNotFound } from '@/components/layout'
 import { RecordQueryView } from '@/components/shared'
 import { useTenantQuery } from '@/features/tenants/api'
+import { TenantDetailScreen } from '@/features/tenants/components/TenantDetailScreen'
 
 export const Route = createFileRoute('/tenants/$tenantId')({
-  component: function TenantDetailScreen() {
+  component: function TenantDetailRoute() {
     const { tenantId } = useParams({ from: '/tenants/$tenantId' })
     const query = useTenantQuery(tenantId)
     return (
@@ -13,7 +14,7 @@ export const Route = createFileRoute('/tenants/$tenantId')({
         query={query}
         notFound={<RecordNotFound entityLabel="Tenant" backTo="/tenants" backLabel="Back to tenants" />}
       >
-        {(record) => <ScreenPlaceholder title={record.tradingName} description="Tenant profile, leases, statements and communication history." />}
+        {(record) => <TenantDetailScreen tenant={record} />}
       </RecordQueryView>
     )
   },

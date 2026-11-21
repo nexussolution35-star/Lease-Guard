@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { makeStatement } from './__fixtures__/lease.js'
-import { ageArrears, ageingBucket, ageingBucketLabels, ageingSummary, tenantsInArrears, totalOutstanding } from './arrears.js'
+import { ageArrears, ageingBucket, ageingBucketLabels, ageingSummary, describeAgeingBucket, tenantsInArrears, totalOutstanding } from './arrears.js'
 
 const today = '2026-11-06'
 
@@ -43,5 +43,19 @@ describe('ageArrears', () => {
     expect(tenantsInArrears(result, 5000).map((r) => r.tenantId)).toEqual(['t2', 't1'])
     expect(tenantsInArrears(result)).toHaveLength(3)
     expect(ageingSummary(result)).toEqual({ current: 0, '30': 9500.56, '60': 0, '90': 0, '120+': 20000 })
+  })
+})
+
+describe('describeAgeingBucket', () => {
+  it('puts each bucket of the default configuration in words', () => {
+    expect(describeAgeingBucket('current')).toBe('0–29 days')
+    expect(describeAgeingBucket('30')).toBe('30–59 days')
+    expect(describeAgeingBucket('90')).toBe('90–119 days')
+    expect(describeAgeingBucket('120+')).toBe('120 days or more')
+  })
+  it('follows a custom configuration', () => {
+    expect(describeAgeingBucket('current', [60, 30])).toBe('0–29 days')
+    expect(describeAgeingBucket('30', [30, 60])).toBe('30–59 days')
+    expect(describeAgeingBucket('60+', [30, 60])).toBe('60 days or more')
   })
 })
