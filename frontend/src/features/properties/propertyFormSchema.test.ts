@@ -5,6 +5,7 @@ import {
   NO_OWNER,
   newPropertyFormDefaults,
   newPropertyFrom,
+  newUnitsFrom,
   propertyChangesFrom,
   propertyErrorField,
   propertyFormDefaults,
@@ -94,5 +95,29 @@ describe('propertyErrorField', () => {
     expect(propertyErrorField(422, 'The property manager must be a company admin or property manager of this workspace.')).toBe('managerUserId')
     expect(propertyErrorField(422, 'This property is archived. Restore it before changing it.')).toBeNull()
     expect(propertyErrorField(500, 'code')).toBeNull()
+  })
+})
+
+describe('units listed with a new property', () => {
+  const office = { ...propertyFormDefaults(PROPERTY), type: 'office' as const }
+  const unit = (unitNumber: string, type: 'office_suite' | 'line_shop' = 'office_suite') => ({ unitNumber, type, floorAreaSqm: 120, floor: '' })
+
+  it('refuses a unit type that does not suit the property type', () => {
+    const result = propertyFormSchema.safeParse({ ...office, units: [unit('101', 'line_shop')] })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues.map((i) => [i.path.join('.'), i.message])).toEqual([['units.0.type', 'Choose a unit type that suits this property']])
+  })
+
+  it('refuses the same unit number twice, ignoring case and spaces', () => {
+    const result = propertyFormSchema.safeParse({ ...office, units: [unit('g01'), unit(' G01 ')] })
+    expect(result.error?.issues.map((i) => i.path.join('.'))).toEqual(['units.1.unitNumber'])
+  })
+
+  it('builds vacant unit bodies for the new property, leaving out an empty floor', () => {
+    const values = propertyFormSchema.parse({ ...office, units: [unit('101'), { ...unit('102'), floor: 'First' }] })
+    expect(newUnitsFrom(values, 'p1')).toEqual([
+      { propertyId: 'p1', unitNumber: '101', type: 'office_suite', floorAreaSqm: 120, occupancyStatus: 'vacant' },
+      { propertyId: 'p1', unitNumber: '102', type: 'office_suite', floorAreaSqm: 120, occupancyStatus: 'vacant', floor: 'First' },
+    ])
   })
 })

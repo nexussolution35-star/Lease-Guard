@@ -1,6 +1,7 @@
-import { PROPERTY_TYPES, SA_PROVINCES, STATEMENT_SOURCES, type Property } from '@leaseguard/domain'
+import { PROPERTY_TYPES, SA_PROVINCES, STATEMENT_SOURCES, UNIT_TYPES, unitTypeMatchesProperty, unitTypesForProperty, type EntityId, type Property, type PropertyType } from '@leaseguard/domain'
 import { z } from 'zod'
 
+import type { NewUnit } from '../units/api/source'
 import type { NewProperty, PropertyChanges } from './api/source'
 
 /** Owner select value for "no owner" (a select option cannot have an empty value). */
@@ -17,6 +18,23 @@ const required = (label: string, max: number) =>
     .max(max, `Use at most ${max} characters`)
 
 const optional = (max: number) => z.string().trim().max(max, `Use at most ${max} characters`)
+
+/** Most units added together with a new property; larger portfolios use the import. */
+export const MAX_NEW_PROPERTY_UNITS = 50
+
+/** One unit added together with a new property, with the units API's rules. New units start vacant. */
+export const newPropertyUnitSchema = z.object({
+  unitNumber: z.string().trim().min(1, 'Enter the unit number').max(30, 'Use at most 30 characters'),
+  type: z.enum(UNIT_TYPES, { error: 'Choose a unit type' }),
+  floorAreaSqm: z
+    .number({ error: 'Enter the floor area' })
+    .positive('The area must be more than 0 m²')
+    .max(1_000_000, 'Use at most 1 000 000 m²')
+    .refine((value) => Math.round(value * 100) / 100 === value, { message: 'Use at most two decimals' }),
+  floor: optional(50),
+})
+
+export type NewPropertyUnitInput = z.input<typeof newPropertyUnitSchema>
 
 /**
  * The property form (create and edit), with the API's rules. The code is only set on create: it is fixed once the
@@ -49,6 +67,17 @@ export const propertyFormSchema = z.object({
   managerUserId: z.string().min(1, 'Choose the property manager'),
   ownerUserId: z.string(),
   accountingSystem: z.enum(STATEMENT_SOURCES, { error: 'Choose the accounting system' }),
+  /** Units to add with a new property; always empty when editing (units are managed on their own screens). */
+  units: z.array(newPropertyUnitSchema).max(MAX_NEW_PROPERTY_UNITS, `Add at most ${MAX_NEW_PROPERTY_UNITS} units here; import a file for more`),
+}).superRefine((values, ctx) => {
+  // A unit number is used once per property, and each unit's type must suit the property type.
+  const seen = new Set<string>()
+  values.units.forEach((unit, index) => {
+    const key = unit.unitNumber.trim().toLowerCase()
+    if (key !== '' && seen.has(key)) ctx.addIssue({ code: 'custom', path: ['units', index, 'unitNumber'], message: 'This unit number is already in the list' })
+    seen.add(key)
+    if (!unitTypeMatchesProperty(unit.type, values.type)) ctx.addIssue({ code: 'custom', path: ['units', index, 'type'], message: 'Choose a unit type that suits this property' })
+  })
 })
 
 export type PropertyFormInput = z.input<typeof propertyFormSchema>
@@ -72,7 +101,30 @@ export function newPropertyFormDefaults(managerUserId: string | null): PropertyF
     managerUserId: managerUserId ?? '',
     ownerUserId: NO_OWNER,
     accountingSystem: '' as PropertyFormInput['accountingSystem'],
+    units: [],
   }
+}
+
+/** An empty unit row for a new property, typed as the most usual unit for the property type. */
+export function newPropertyUnitDefaults(propertyType: PropertyType | undefined): NewPropertyUnitInput {
+  return {
+    unitNumber: '',
+    type: (propertyType ? unitTypesForProperty(propertyType)[0] : '') as NewPropertyUnitInput['type'],
+    floorAreaSqm: undefined as unknown as number,
+    floor: '',
+  }
+}
+
+/** The `POST /units` bodies for the units listed with a new property. Each starts vacant; an empty floor is left out. */
+export function newUnitsFrom(values: PropertyFormValues, propertyId: EntityId): NewUnit[] {
+  return values.units.map((unit) => ({
+    propertyId,
+    unitNumber: unit.unitNumber,
+    type: unit.type,
+    floorAreaSqm: unit.floorAreaSqm,
+    occupancyStatus: 'vacant',
+    ...(unit.floor === '' ? {} : { floor: unit.floor }),
+  }))
 }
 
 /** Form values for an existing property. An archived property is not edited (restore it first). */
@@ -93,6 +145,7 @@ export function propertyFormDefaults(property: Property): PropertyFormInput {
     managerUserId: property.managerUserId,
     ownerUserId: property.ownerUserId ?? NO_OWNER,
     accountingSystem: property.accountingSystem,
+    units: [],
   }
 }
 

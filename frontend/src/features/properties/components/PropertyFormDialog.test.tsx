@@ -24,7 +24,9 @@ const fakeProperties = vi.hoisted(() => ({
   restore: vi.fn<PropertySource['restore']>(),
 }))
 const members = vi.hoisted(() => ({ list: vi.fn() }))
+const fakeUnits = vi.hoisted(() => ({ create: vi.fn() }))
 vi.mock('../api/selectSource', () => ({ getPropertySource: () => fakeProperties }))
+vi.mock('../../units/api/selectSource', () => ({ getUnitSource: () => fakeUnits }))
 vi.mock('@/features/users/api/apiSource', () => ({ createApiUserSource: () => ({ listMembers: members.list }) }))
 vi.mock('@/services/api/client', () => ({ getApiClient: () => ({}) }))
 
@@ -71,6 +73,7 @@ beforeEach(() => {
   openWorkspace(NEXUS_ID)
   onSaved.mockReset()
   for (const fn of Object.values(fakeProperties)) fn.mockReset()
+  fakeUnits.create.mockReset()
   members.list.mockResolvedValue({
     items: [person(ME, 'Sipho Dlamini', 'company_admin'), person(OWNER_ID, 'Pieter Botha', 'property_owner'), person(READER_ID, 'Kabelo Molefe', 'read_only')],
     total: 3,
@@ -157,5 +160,77 @@ describe('PropertyFormDialog', () => {
     expect(await within(dialog).findByText('Enter the property name')).toBeInTheDocument()
     expect(within(dialog).getByText('Enter the four-digit postal code')).toBeInTheDocument()
     expect(fakeProperties.create).not.toHaveBeenCalled()
+  })
+  it('adds units of a type that suits the property together with it', { timeout: 30_000 }, async () => {
+    const created: Property = { ...sampleRecord('properties'), name: 'Rosebank Corner', code: 'RBC' }
+    fakeProperties.create.mockResolvedValue(created)
+    fakeUnits.create.mockImplementation(async (_companyId: string, unit: { unitNumber: string }) => ({ id: unit.unitNumber, ...unit }))
+    await renderDialog()
+    const dialog = await screen.findByRole('dialog', { name: 'Add property' })
+    await fillRequired(dialog)
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add unit' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add unit' }))
+    const rows = within(within(dialog).getByRole('list', { name: 'Units to add' })).getAllByRole('listitem')
+    expect(rows).toHaveLength(2)
+    // An office building suggests office suites and never offers shops.
+    expect(within(rows[0]!).getByRole('combobox', { name: /^Unit type/ })).toHaveTextContent('Office suite')
+    await userEvent.click(within(rows[1]!).getByRole('combobox', { name: /^Unit type/ }))
+    expect(screen.queryByRole('option', { name: 'Line shop' })).not.toBeInTheDocument()
+    await userEvent.click(await screen.findByRole('option', { name: 'Storage' }))
+
+    await userEvent.type(within(rows[0]!).getByLabelText(/^Unit number/), '101')
+    await userEvent.type(within(rows[0]!).getByLabelText(/^Floor area/), '250')
+    await userEvent.type(within(rows[0]!).getByLabelText(/^Floor$/), 'First')
+    await userEvent.type(within(rows[1]!).getByLabelText(/^Unit number/), 'S1')
+    await userEvent.type(within(rows[1]!).getByLabelText(/^Floor area/), '12')
+    expect(within(dialog).getByText('2 units, 262 m² of 4 200 m² lettable')).toBeInTheDocument()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add property' }))
+
+    expect(await screen.findByText('Rosebank Corner added with 2 units')).toBeInTheDocument()
+    expect(fakeUnits.create.mock.calls).toEqual([
+      [NEXUS_ID, { propertyId: created.id, unitNumber: '101', type: 'office_suite', floorAreaSqm: 250, occupancyStatus: 'vacant', floor: 'First' }],
+      [NEXUS_ID, { propertyId: created.id, unitNumber: 'S1', type: 'storage', floorAreaSqm: 12, occupancyStatus: 'vacant' }],
+    ])
+    expect(onSaved).toHaveBeenCalledWith(created)
+  })
+
+  it('stops a unit number listed twice before calling the API', { timeout: 20_000 }, async () => {
+    await renderDialog()
+    const dialog = await screen.findByRole('dialog', { name: 'Add property' })
+    await fillRequired(dialog)
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add unit' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add unit' }))
+    const rows = within(within(dialog).getByRole('list', { name: 'Units to add' })).getAllByRole('listitem')
+    for (const row of rows) {
+      await userEvent.type(within(row).getByLabelText(/^Unit number/), 'G01')
+      await userEvent.type(within(row).getByLabelText(/^Floor area/), '80')
+    }
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add property' }))
+    expect(await within(dialog).findByText('This unit number is already in the list')).toBeInTheDocument()
+    expect(fakeProperties.create).not.toHaveBeenCalled()
+  })
+
+  it('keeps the property and the other units when one unit is refused', { timeout: 20_000 }, async () => {
+    const created: Property = { ...sampleRecord('properties'), name: 'Rosebank Corner', code: 'RBC' }
+    fakeProperties.create.mockResolvedValue(created)
+    fakeUnits.create
+      .mockResolvedValueOnce({ id: 'u1' })
+      .mockRejectedValueOnce(new ApiError(409, ['Unit number 102 is already used in this property'], null))
+    await renderDialog()
+    const dialog = await screen.findByRole('dialog', { name: 'Add property' })
+    await fillRequired(dialog)
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add unit' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add unit' }))
+    const rows = within(within(dialog).getByRole('list', { name: 'Units to add' })).getAllByRole('listitem')
+    await userEvent.type(within(rows[0]!).getByLabelText(/^Unit number/), '101')
+    await userEvent.type(within(rows[0]!).getByLabelText(/^Floor area/), '250')
+    await userEvent.type(within(rows[1]!).getByLabelText(/^Unit number/), '102')
+    await userEvent.type(within(rows[1]!).getByLabelText(/^Floor area/), '300')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add property' }))
+
+    expect(await screen.findByText('Rosebank Corner added with 1 unit; 1 unit was not added')).toBeInTheDocument()
+    expect(screen.getByText('102: the number is already used. Add it from the property page.')).toBeInTheDocument()
+    expect(onSaved).toHaveBeenCalledWith(created)
   })
 })

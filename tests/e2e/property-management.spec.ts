@@ -11,11 +11,58 @@ test.describe.configure({ mode: 'serial' })
 /** A code unique to this run: 'E' and the last six letters or digits of the run id. */
 const code = () => `E${e2eWorld().runId.replace(/[^a-z0-9]/gi, '').slice(-6).toUpperCase()}`
 const name = () => `E2E Rosebank Corner ${e2eWorld().runId}`
+/** The property added together with its units: 'F' and the same six letters or digits. */
+const unitsCode = () => `F${code().slice(1)}`
+const unitsName = () => `E2E Parktown Offices ${e2eWorld().runId}`
 
 test.describe('property management', () => {
   test.afterAll(async () => {
     const db = serviceRoleClient(e2eContext().supabase)
-    await db.from('properties').delete().eq('company_id', e2eWorld().companies.a.id).eq('code', code())
+    await db.from('properties').delete().eq('company_id', e2eWorld().companies.a.id).in('code', [code(), unitsCode()])
+  })
+
+  test('a property manager adds a property together with units that suit it', async ({ page }) => {
+    await signIn(page, e2eUser('manager'), '/properties')
+    await page.getByRole('button', { name: 'Add property' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Add property' })
+    await dialog.getByLabel(/^Name/).fill(unitsName())
+    await dialog.getByLabel(/^Code/).fill(unitsCode())
+    await dialog.getByRole('combobox', { name: /^Type/ }).click()
+    await page.getByRole('option', { name: 'Office' }).click()
+    await dialog.getByLabel(/^Gross lettable area/).fill('900')
+    await dialog.getByLabel(/^Street address/).fill('12 Empire Road')
+    await dialog.getByLabel(/^Suburb/).fill('Parktown')
+    await dialog.getByLabel(/^City or town/).fill('Johannesburg')
+    await dialog.getByRole('combobox', { name: /^Province/ }).click()
+    await page.getByRole('option', { name: 'Gauteng' }).click()
+    await dialog.getByLabel(/^Postal code/).fill('2193')
+    await dialog.getByRole('combobox', { name: /^Accounting system/ }).click()
+    await page.getByRole('option', { name: 'Sage' }).click()
+
+    await dialog.getByRole('button', { name: 'Add unit' }).click()
+    await dialog.getByRole('button', { name: 'Add unit' }).click()
+    const rows = dialog.getByRole('list', { name: 'Units to add' }).getByRole('listitem')
+    await expect(rows.first().getByRole('combobox', { name: /^Unit type/ })).toHaveText('Office suite')
+    await rows.nth(0).getByLabel(/^Unit number/).fill('101')
+    await rows.nth(0).getByLabel(/^Floor area/).fill('450')
+    await rows.nth(1).getByLabel(/^Unit number/).fill('102')
+    await rows.nth(1).getByLabel(/^Floor area/).fill('380')
+    await dialog.getByRole('button', { name: 'Add property' }).click()
+
+    await expect(page.getByText(`${unitsName()} added with 2 units`)).toBeVisible()
+    await expect(pageHeading(page)).toHaveText(unitsName())
+    const units = page.getByRole('region', { name: 'Units' })
+    await expect(units).toContainText('101')
+    await expect(units).toContainText('102')
+
+    // The units are stored, vacant, in the new property.
+    const db = serviceRoleClient(e2eContext().supabase)
+    const property = await db.from('properties').select('id').eq('company_id', e2eWorld().companies.a.id).eq('code', unitsCode()).single()
+    const stored = await db.from('units').select('unit_number, type, occupancy_status').eq('property_id', (property.data as { id: string }).id).order('unit_number')
+    expect(stored.data).toEqual([
+      { unit_number: '101', type: 'office_suite', occupancy_status: 'vacant' },
+      { unit_number: '102', type: 'office_suite', occupancy_status: 'vacant' },
+    ])
   })
 
   test('a property manager adds a property, edits it, archives it and restores it', async ({ page }) => {

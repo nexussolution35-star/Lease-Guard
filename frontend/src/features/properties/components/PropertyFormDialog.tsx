@@ -2,6 +2,8 @@ import { isApiError } from '@leaseguard/api-client'
 import { PROPERTY_TYPES, SA_PROVINCES, STATEMENT_SOURCES, type Property } from '@leaseguard/domain'
 import { AlertCircle } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
+
+import { PropertyUnitsSection } from './PropertyUnitsSection'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 
@@ -16,12 +18,15 @@ import { describeApiError } from '@/lib/data/apiErrors'
 import { MAX_LIST_PAGE_SIZE } from '@/lib/data/listParams'
 import { enumOptions, labelFor } from '@/lib/labels'
 
+import { useCreateUnit } from '../../units/api/queries'
+import { unitErrorField } from '../../units/unitFormSchema'
 import { useCreateProperty, useUpdateProperty } from '../api/queries'
 import {
   EDITABLE_PROPERTY_STATUSES,
   NO_OWNER,
   newPropertyFormDefaults,
   newPropertyFrom,
+  newUnitsFrom,
   propertyChangesFrom,
   propertyErrorField,
   propertyFormDefaults,
@@ -60,6 +65,7 @@ export function PropertyFormDialog({ open, onOpenChange, property, onSaved }: Pr
   const currentUserId = useCurrentUserId()
   const create = useCreateProperty()
   const update = useUpdateProperty()
+  const createUnit = useCreateUnit()
   const members = useMemberList({ page: 1, pageSize: MAX_LIST_PAGE_SIZE, sort: 'fullName', direction: 'asc' }, { enabled: open })
 
   const form = useForm<PropertyFormInput, unknown, PropertyFormValues>({
@@ -104,7 +110,25 @@ export function PropertyFormDialog({ open, onOpenChange, property, onSaved }: Pr
         toast.success(`${saved.name} saved`)
       } else {
         saved = await create.mutateAsync(newPropertyFrom(values))
-        toast.success(`${saved.name} added`)
+        // The property exists now; each unit is its own record, so one refusal does not undo the others.
+        const failed: string[] = []
+        for (const unit of newUnitsFrom(values, saved.id)) {
+          try {
+            await createUnit.mutateAsync(unit)
+          } catch (error) {
+            const reason = describeApiError(error, 'it could not be saved')
+            const taken = isApiError(error) && unitErrorField(error.status, reason) === 'unitNumber'
+            failed.push(`${unit.unitNumber}: ${taken ? 'the number is already used' : reason}`)
+          }
+        }
+        const added = values.units.length - failed.length
+        const unitsText = added === 0 ? '' : ` with ${added} ${added === 1 ? 'unit' : 'units'}`
+        if (failed.length === 0) toast.success(`${saved.name} added${unitsText}`)
+        else
+          toast.warning(`${saved.name} added${unitsText}; ${failed.length} ${failed.length === 1 ? 'unit was' : 'units were'} not added`, {
+            description: `${failed.join('. ')}. Add ${failed.length === 1 ? 'it' : 'them'} from the property page.`,
+            duration: 12_000,
+          })
       }
       onOpenChange(false)
       onSaved?.(saved)
@@ -121,7 +145,7 @@ export function PropertyFormDialog({ open, onOpenChange, property, onSaved }: Pr
       open={open}
       onOpenChange={onOpenChange}
       title={isEdit ? `Edit ${property.name}` : 'Add property'}
-      description={isEdit ? 'Changes are recorded in the audit log.' : 'The property is added to this workspace. Its code cannot be changed later.'}
+      description={isEdit ? 'Changes are recorded in the audit log.' : 'The property and any units you list are added to this workspace. The code cannot be changed later.'}
       submitLabel={isEdit ? 'Save changes' : 'Add property'}
       onSubmit={() => submit()}
       isPending={form.formState.isSubmitting}
@@ -193,6 +217,7 @@ export function PropertyFormDialog({ open, onOpenChange, property, onSaved }: Pr
               required
             />
           </FormSection>
+          {isEdit ? null : <PropertyUnitsSection control={form.control} getValues={form.getValues} setValue={form.setValue} />}
         </div>
       </Form>
     </FormDialog>
