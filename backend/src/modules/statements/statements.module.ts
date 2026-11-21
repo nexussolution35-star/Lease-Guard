@@ -22,6 +22,6 @@ import { StatementsService } from './statements.service'
   // StatementArrearsController first: its static path must win over `statements/:statementId`.
   controllers: [StatementArrearsController, StatementsController, StatementReviewController, StatementVerificationController],
   providers: [StatementsService, StatementUploadsService, StatementArrearsService, StatementReviewService, StatementVerificationService],
-  exports: [StatementsService],
+  exports: [StatementsService, StatementArrearsService],
 })
 export class StatementsModule {}

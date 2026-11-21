@@ -20,7 +20,10 @@ import { dayCount, type RecordNames } from './event-presentation'
 export type ArrearsStatement = Pick<
   Statement,
   'id' | 'tenantId' | 'propertyId' | 'unitId' | 'leaseId' | 'status' | 'statementDate' | 'closingBalance' | 'totalDue'
->
+> & {
+  /** The reference of the statement's lease, recorded on the event like the lease findings do. */
+  leaseReference?: string
+}
 export type ArrearsArrangement = Pick<PaymentArrangement, 'tenantId' | 'status' | 'agreedOn' | 'closedOn' | 'suppressArrearsReminders'>
 
 export interface ArrearsScanInput {
@@ -52,6 +55,7 @@ export function arrearsFindings(input: ArrearsScanInput): ArrearsFindings {
   const buckets = rule.config?.ageingBucketsDays ?? DEFAULT_AGEING_BUCKETS
   const threshold = rule.config?.minimumBalanceRands ?? 0
   const units = new Map(input.statements.map((s) => [s.id, s.unitId]))
+  const leaseReferences = new Map(input.statements.map((s) => [s.id, s.leaseReference]))
 
   const drafts: EventDraft[] = []
   const suppressedTenantIds: EntityId[] = []
@@ -63,6 +67,7 @@ export function arrearsFindings(input: ArrearsScanInput): ArrearsFindings {
     const tenant = names.tenant(owing.tenantId)
     for (const entry of owing.entries) {
       const unitId = units.get(entry.statementId)
+      const leaseReference = entry.leaseId ? leaseReferences.get(entry.statementId) : undefined
       const assignee = rule.defaultAssigneeUserId ?? names.managerOf(entry.propertyId)
       drafts.push({
         // One finding per statement AND ageing bucket: the event is raised once per bucket, so when the
@@ -73,6 +78,7 @@ export function arrearsFindings(input: ArrearsScanInput): ArrearsFindings {
         ...(unitId ? { unitId } : {}),
         tenantId: entry.tenantId,
         ...(entry.leaseId ? { leaseId: entry.leaseId } : {}),
+        ...(leaseReference ? { leaseReference } : {}),
         statementId: entry.statementId,
         ...(rule.ruleId ? { ruleId: rule.ruleId } : {}),
         title: `Arrears: ${tenant} owes ${formatZAR(entry.outstanding)}`,

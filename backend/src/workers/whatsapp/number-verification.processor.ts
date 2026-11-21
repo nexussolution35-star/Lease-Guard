@@ -129,6 +129,9 @@ export class DatabaseVerificationStore implements VerificationStore {
       category: t.category.slice(0, 40),
       status: t.status.slice(0, 40),
       rejected_reason: t.rejectedReason ?? null,
+      // Meta's text (at most 1024 characters at Meta; anything longer is not stored) and header format.
+      body: t.body !== undefined && t.body.length <= 4096 ? t.body : null,
+      header_format: t.headerFormat ?? null,
     }))
     const count = unwrap(
       await this.db.rpc('sync_whatsapp_message_templates', { p_company_id: companyId, p_business_account_id: businessAccountId, p_templates: payload }),

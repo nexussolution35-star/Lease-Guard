@@ -1,5 +1,14 @@
 import type { MonitoringEventSortField } from '@leaseguard/api-client'
-import type { EntityId, EventPriority, MonitoringEvent, MonitoringEventStatus, MonitoringEventType } from '@leaseguard/domain'
+import type {
+  EntityId,
+  EventPriority,
+  MonitoringDueWindow,
+  MonitoringEventListItem,
+  MonitoringEventStatus,
+  MonitoringEventType,
+  UNASSIGNED_FILTER,
+} from '@leaseguard/domain'
+import type { UpdateMonitoringEventStatusDto } from '@leaseguard/api-client'
 
 import type { ListParams, Page } from '@/lib/data/listParams'
 
@@ -16,7 +25,13 @@ export interface MonitoringEventListParams extends ListParams<MonitoringEventSor
   priority?: EventPriority
   type?: MonitoringEventType
   propertyId?: EntityId
+  unitId?: EntityId
+  tenantId?: EntityId
   leaseId?: EntityId
+  /** One member's user id, or `unassigned` for events nobody is assigned to. */
+  assignee?: EntityId | typeof UNASSIGNED_FILTER
+  /** Due-date window on the South African date (domain `dueWindowRange`, applied by the API). */
+  due?: MonitoringDueWindow
 }
 
 /**
@@ -24,6 +39,16 @@ export interface MonitoringEventListParams extends ListParams<MonitoringEventSor
  * resolve to API-shaped pages and `get` resolves to null when the record is not in that company.
  */
 export interface MonitoringEventSource {
-  list(companyId: EntityId, params: MonitoringEventListParams): Promise<Page<MonitoringEvent>>
-  get(companyId: EntityId, id: EntityId): Promise<MonitoringEvent | null>
+  /** Each listed event names its property and, when set, its unit, tenant and assignee. */
+  list(companyId: EntityId, params: MonitoringEventListParams): Promise<Page<MonitoringEventListItem>>
+  /** The event with the names of its property and, when set, its unit, tenant and assignee. */
+  get(companyId: EntityId, id: EntityId): Promise<MonitoringEventListItem | null>
+  /**
+   * Moves the event to another status (writers; the API applies the domain workflow and answers 409 when the move is
+   * not allowed or the event changed meanwhile). The note is the dismissal reason, or the resolution notes otherwise.
+   */
+  updateStatus(companyId: EntityId, id: EntityId, change: MonitoringEventStatusChange): Promise<MonitoringEventListItem>
 }
+
+/** Body of `PATCH /api/v1/monitoring/events/{eventId}/status`. */
+export type MonitoringEventStatusChange = UpdateMonitoringEventStatusDto

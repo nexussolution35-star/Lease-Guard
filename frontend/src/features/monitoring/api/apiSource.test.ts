@@ -26,12 +26,28 @@ function sourceWith(fetch: FakeFetch) {
 describe('createApiMonitoringEventSource', () => {
   it('lists with the explicit company and every set parameter, exactly as the endpoint accepts them', async () => {
     const fetch = fakeFetch(200, { items: [event], total: 1, page: 2, pageSize: 10 })
-    const page = await sourceWith(fetch).list(TEST_COMPANY_ID, { page: 2, pageSize: 10, search: ' needle ', sort: 'priority', direction: 'desc', status: 'action_required', open: true, priority: 'high', type: 'arrears', propertyId: TEST_FILTER_ID, leaseId: TEST_FILTER_ID })
+    const page = await sourceWith(fetch).list(TEST_COMPANY_ID, { page: 2, pageSize: 10, search: ' needle ', sort: 'priority', direction: 'desc', status: 'action_required', open: true, priority: 'high', type: 'arrears', propertyId: TEST_FILTER_ID, unitId: TEST_FILTER_ID, tenantId: TEST_FILTER_ID, leaseId: TEST_FILTER_ID, assignee: 'unassigned', due: 'overdue' })
 
     expect(page).toEqual({ items: [event], total: 1, page: 2, pageSize: 10 })
     expect(urlOf(fetch)).toEqual({
       pathname: '/api/v1/monitoring/events',
-      query: { page: '2', pageSize: '10', search: 'needle', sort: 'priority', direction: 'desc', status: 'action_required', open: 'true', priority: 'high', type: 'arrears', propertyId: TEST_FILTER_ID, leaseId: TEST_FILTER_ID },
+      query: {
+        page: '2',
+        pageSize: '10',
+        search: 'needle',
+        sort: 'priority',
+        direction: 'desc',
+        status: 'action_required',
+        open: 'true',
+        priority: 'high',
+        type: 'arrears',
+        propertyId: TEST_FILTER_ID,
+        unitId: TEST_FILTER_ID,
+        tenantId: TEST_FILTER_ID,
+        leaseId: TEST_FILTER_ID,
+        assignee: 'unassigned',
+        due: 'overdue',
+      },
     })
     // The company in the query key wins over the client's default company.
     expect(requestAt(fetch).headers.get('x-company-id')).toBe(TEST_COMPANY_ID)
@@ -57,6 +73,23 @@ describe('createApiMonitoringEventSource', () => {
     const fetch = fakeFetch(200, event)
     expect(await sourceWith(fetch).get(TEST_COMPANY_ID, 'demo_record_id')).toBeNull()
     expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('moves an event to another status with the note, for the explicit company', async () => {
+    const fetch = fakeFetch(200, { ...event, status: 'dismissed' })
+    const moved = await sourceWith(fetch).updateStatus(TEST_COMPANY_ID, TEST_RECORD_ID, { status: 'dismissed', note: 'Billed under the addendum' })
+
+    expect(moved.status).toBe('dismissed')
+    expect(requestAt(fetch).method).toBe('PATCH')
+    expect(urlOf(fetch).pathname).toBe(`/api/v1/monitoring/events/${TEST_RECORD_ID}/status`)
+    expect(requestAt(fetch).headers.get('x-company-id')).toBe(TEST_COMPANY_ID)
+    expect(await requestAt(fetch).json()).toEqual({ status: 'dismissed', note: 'Billed under the addendum' })
+  })
+
+  it('rethrows a refused move (409) so the screen can say why', async () => {
+    const fetch = fakeFetch(409, { statusCode: 409, message: 'An event cannot move from "resolved" to "dismissed"' })
+    const error = await sourceWith(fetch).updateStatus(TEST_COMPANY_ID, TEST_RECORD_ID, { status: 'dismissed', note: 'x' }).catch((e: unknown) => e)
+    expect((error as ApiError).status).toBe(409)
   })
 
   it('rethrows other API errors', async () => {

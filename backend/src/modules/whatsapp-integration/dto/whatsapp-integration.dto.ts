@@ -85,6 +85,10 @@ export class WhatsAppMessageTemplateDto implements WhatsAppMessageTemplate {
   @ApiProperty({ format: 'date-time' }) syncedAt!: string
   @ApiPropertyOptional({ format: 'date-time', description: "When Meta last changed the status (Meta's status webhook), if after the last sync" })
   statusUpdatedAt?: string
+  @ApiPropertyOptional({ description: "Meta's BODY text with numbered placeholders {{1}}, {{2}}…; absent when synced before LeaseGuard read template text" })
+  body?: string
+  @ApiPropertyOptional({ description: "Meta's HEADER format: TEXT, IMAGE, VIDEO, DOCUMENT (carries the statement PDF) or LOCATION" })
+  headerFormat?: string
 }
 
 export class RegisterWhatsAppNumberDto {

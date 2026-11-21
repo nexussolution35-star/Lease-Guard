@@ -27,7 +27,8 @@ export interface DisconnectResult {
   message: string
 }
 
-const TEMPLATE_COLUMNS = 'id, business_account_id, meta_template_id, name, language, category, status, rejected_reason, synced_at, status_updated_at'
+const TEMPLATE_COLUMNS =
+  'id, business_account_id, meta_template_id, name, language, category, status, rejected_reason, synced_at, status_updated_at, body, header_format'
 
 const DATE_TIME = new Intl.DateTimeFormat('en-ZA', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Johannesburg' })
 
@@ -135,6 +136,8 @@ export class WhatsAppNumbersService {
       ...(row.rejected_reason ? { rejectedReason: row.rejected_reason } : {}),
       syncedAt: row.synced_at,
       ...(row.status_updated_at ? { statusUpdatedAt: row.status_updated_at } : {}),
+      ...(row.body ? { body: row.body } : {}),
+      ...(row.header_format ? { headerFormat: row.header_format } : {}),
     }))
   }
 

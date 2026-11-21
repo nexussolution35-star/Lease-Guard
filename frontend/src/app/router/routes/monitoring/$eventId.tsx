@@ -1,8 +1,9 @@
 import { createFileRoute, useParams } from '@tanstack/react-router'
 
-import { RecordNotFound, ScreenPlaceholder } from '@/components/layout'
+import { RecordNotFound } from '@/components/layout'
 import { RecordQueryView } from '@/components/shared'
 import { useMonitoringEventQuery } from '@/features/monitoring/api'
+import { MonitoringEventDetailScreen } from '@/features/monitoring/components/MonitoringEventDetailScreen'
 
 export const Route = createFileRoute('/monitoring/$eventId')({
   component: function MonitoringEventScreen() {
@@ -11,9 +12,10 @@ export const Route = createFileRoute('/monitoring/$eventId')({
     return (
       <RecordQueryView
         query={query}
+        loadingLabel="Loading the monitoring event…"
         notFound={<RecordNotFound entityLabel="Monitoring event" backTo="/monitoring" backLabel="Back to monitoring" />}
       >
-        {(record) => <ScreenPlaceholder title={record.title} description="Event details, calculation and recommended action." />}
+        {(record) => <MonitoringEventDetailScreen event={record} />}
       </RecordQueryView>
     )
   },

@@ -39,7 +39,7 @@ export class ArrearsMonitoringProcessor implements OnModuleInit {
       fetchAll('Load verified statements', (from, to) => {
         const query = db
           .from('statements')
-          .select('id, tenant_id, property_id, unit_id, lease_id, status, statement_date, closing_balance, total_due')
+          .select('id, tenant_id, property_id, unit_id, lease_id, status, statement_date, closing_balance, total_due, lease:leases!statements_lease_fk(reference)')
           .eq('company_id', companyId)
           .eq('status', 'verified')
           .not('tenant_id', 'is', null)
@@ -56,6 +56,7 @@ export class ArrearsMonitoringProcessor implements OnModuleInit {
       ...(row.tenant_id ? { tenantId: row.tenant_id } : {}),
       ...(row.unit_id ? { unitId: row.unit_id } : {}),
       ...(row.lease_id ? { leaseId: row.lease_id } : {}),
+      ...(row.lease ? { leaseReference: row.lease.reference } : {}),
       status: row.status,
       // Always set on a verified statement (statements_verified_dates_check).
       ...(row.statement_date !== null ? { statementDate: row.statement_date } : {}),

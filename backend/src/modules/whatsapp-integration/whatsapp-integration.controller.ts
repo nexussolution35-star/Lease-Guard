@@ -131,7 +131,7 @@ export class WhatsAppIntegrationController {
   @ApiOperation({
     operationId: 'listWhatsAppMessageTemplates',
     summary: "The message templates Meta holds for the active company's WhatsApp Business Accounts",
-    description: "As last synced during number verification: name, language, Meta's category and review status. Every member may read them.",
+    description: "As last synced (number verification, or Sync again in Settings → Message templates): name, language, Meta's category, review status, body text and header format. Every member may read them.",
   })
   @ApiOkResponse({ type: [WhatsAppMessageTemplateDto] })
   listMessageTemplates(@UserDb() db: DbClient, @CurrentCompany() company: CompanyContext): Promise<WhatsAppMessageTemplate[]> {

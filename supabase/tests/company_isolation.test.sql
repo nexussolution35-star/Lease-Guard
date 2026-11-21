@@ -16,6 +16,11 @@ insert into public.portfolio_import_records (company_id, import_id, row_number, 
 values
   ('20000000-0000-4000-8000-000000000001', '61000000-0000-4000-8000-000000000001', 2, 'property', '30000000-0000-4000-8000-000000000001'),
   ('20000000-0000-4000-8000-000000000002', '61000000-0000-4000-8000-000000000002', 2, 'property', '30000000-0000-4000-8000-000000000002');
+-- Each company's fixture template sends its monthly statement (Settings → Message templates).
+insert into public.message_type_templates (company_id, message_type, message_template_id)
+select company_id, message_type, id from public.message_templates
+where company_id in ('20000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000002')
+  and meta_template_name = 'monthly_statement_v1';
 
 -- ------------------------------------------------------------------ helpers (rolled back with the test)
 create schema tests;
@@ -79,12 +84,12 @@ select is(
   0::bigint,
   'anon has no privileges on any public table'
 );
-select is((select count(*) from tests.company_tables()), 41::bigint, 'all 41 end-user company-owned tables are covered');
+select is((select count(*) from tests.company_tables()), 42::bigint, 'all 42 end-user company-owned tables are covered');
 select is(
   (select count(*) from (select tbl from tests.expected
                          where tbl <> 'companies' and n > 0 and company_id in (tests.company('NS'), tests.company('KP'))
                          group by tbl having count(distinct company_id) = 2) x),
-  40::bigint,
+  41::bigint,
   'the fixtures populate every company-owned table for both companies'
 );
 select is(

@@ -122,6 +122,10 @@ _Avoid_: Sign-off, review
 **Deliverable**:
 The state of an outbound communication that passes every rule for sending right now; a communication that is not deliverable has one or more blockers.
 
+**Message template**:
+A WhatsApp template Meta has reviewed for a company's WhatsApp Business Account, which LeaseGuard needs to send a message outside the 24-hour window. A company admin chooses which approved template sends each message type (its template mapping); a template sends one type, and a tenant type takes only a Utility template about statements and payments.
+_Avoid_: Template (on its own, which also reads as the portfolio import template)
+
 **WhatsApp channel**:
 A company's connection to WhatsApp through one of its own registered business phone numbers, used to send and receive its communications.
 _Avoid_: WhatsApp integration, WhatsApp account (when the sending capability is meant)

@@ -90,6 +90,7 @@ const phoneNumberSchema = z.object({
   status: z.string().optional(),
   platform_type: z.string().optional(),
 })
+const templateComponentSchema = z.object({ type: z.string(), format: z.string().optional(), text: z.string().optional() })
 const templateSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -97,6 +98,8 @@ const templateSchema = z.object({
   category: z.string(),
   status: z.string(),
   rejected_reason: z.string().optional(),
+  // Meta's components: the BODY text and the HEADER format. An unexpected shape keeps the template without them.
+  components: z.array(templateComponentSchema).optional().catch(undefined),
 })
 
 /** What Meta's debug_token reports about a business token. */
@@ -129,11 +132,15 @@ export interface MetaMessageTemplate {
   category: string
   status: string
   rejectedReason?: string
+  /** Meta's BODY text, with numbered placeholders {{1}}, {{2}}… */
+  body?: string
+  /** Meta's HEADER format, e.g. `DOCUMENT` (carries a PDF) or `TEXT`. */
+  headerFormat?: string
 }
 
 const META_ID = /^\d{1,32}$/
 const PHONE_NUMBER_FIELDS = 'id,display_phone_number,verified_name,quality_rating,code_verification_status,name_status,status,platform_type'
-const TEMPLATE_FIELDS = 'id,name,language,category,status,rejected_reason'
+const TEMPLATE_FIELDS = 'id,name,language,category,status,rejected_reason,components'
 /** Pages read from a list edge before giving up (100 items each). */
 const MAX_PAGES = 20
 
@@ -244,6 +251,7 @@ export class WhatsAppClient {
       category: row.category,
       status: row.status,
       ...(row.rejected_reason ? { rejectedReason: row.rejected_reason } : {}),
+      ...templateText(row.components),
     }))
   }
 
@@ -318,4 +326,11 @@ export class WhatsAppClient {
       },
     )
   }
+}
+
+/** The BODY text and HEADER format of Meta's template components, when Meta returned them. */
+function templateText(components: readonly z.infer<typeof templateComponentSchema>[] | undefined): Pick<MetaMessageTemplate, 'body' | 'headerFormat'> {
+  const body = components?.find((c) => c.type.toUpperCase() === 'BODY')?.text
+  const headerFormat = components?.find((c) => c.type.toUpperCase() === 'HEADER')?.format?.toUpperCase()
+  return { ...(body ? { body } : {}), ...(headerFormat ? { headerFormat } : {}) }
 }

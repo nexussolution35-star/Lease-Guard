@@ -185,4 +185,39 @@ describe('WhatsAppClient management calls (number verification)', () => {
       { id: '9001', name: 'monthly_statement', language: 'en_ZA', category: 'UTILITY', status: 'APPROVED', rejectedReason: 'NONE' },
     ])
   })
+
+  it("reads each template's body text and header format from Meta's components", async () => {
+    const { client: wa, calls } = client(async () =>
+      jsonResponse(200, {
+        data: [
+          {
+            id: '9001',
+            name: 'monthly_statement',
+            language: 'en_ZA',
+            category: 'UTILITY',
+            status: 'APPROVED',
+            components: [
+              { type: 'HEADER', format: 'DOCUMENT' },
+              { type: 'BODY', text: 'Good day {{1}}. Your statement is attached.' },
+              { type: 'FOOTER', text: 'LeaseGuard' },
+            ],
+          },
+          { id: '9002', name: 'odd', language: 'en', category: 'UTILITY', status: 'APPROVED', components: 'not-a-list' },
+        ],
+      }),
+    )
+    await expect(wa.listTemplates('771001', 'token-1')).resolves.toEqual([
+      {
+        id: '9001',
+        name: 'monthly_statement',
+        language: 'en_ZA',
+        category: 'UTILITY',
+        status: 'APPROVED',
+        body: 'Good day {{1}}. Your statement is attached.',
+        headerFormat: 'DOCUMENT',
+      },
+      { id: '9002', name: 'odd', language: 'en', category: 'UTILITY', status: 'APPROVED' },
+    ])
+    expect(new URL(calls[0].url).searchParams.get('fields')).toBe('id,name,language,category,status,rejected_reason,components')
+  })
 })

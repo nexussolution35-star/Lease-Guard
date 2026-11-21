@@ -27,6 +27,22 @@ export function canTransition(from: MonitoringEventStatus, to: MonitoringEventSt
   return EVENT_TRANSITIONS[from].includes(to)
 }
 
+/**
+ * The statuses a person may move an event to from `from`, in workflow order (the forward step first, `dismissed`
+ * last). Empty for a resolved or dismissed event.
+ */
+export function nextEventStatuses(from: MonitoringEventStatus): readonly MonitoringEventStatus[] {
+  return EVENT_TRANSITIONS[from]
+}
+
+/** Longest note a status change may carry (the resolution notes, or the reason for a dismissal). */
+export const EVENT_STATUS_NOTE_MAX_LENGTH = 2000
+
+/** Dismissing an event must say why; a note is optional for every other move. */
+export function statusChangeRequiresNote(to: MonitoringEventStatus): boolean {
+  return to === 'dismissed'
+}
+
 export function isOpenEventStatus(status: MonitoringEventStatus): boolean {
   return OPEN_EVENT_STATUSES.includes(status)
 }

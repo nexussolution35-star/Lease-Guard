@@ -13,6 +13,8 @@ export interface AuditLogListParams {
   pageSize: number
   action?: AuditAction
   entityType?: EntityType
+  /** One record's entries (with `entityType`), e.g. a monitoring event's history. */
+  entityId?: EntityId
   actorUserId?: EntityId
   from?: ISODate
   to?: ISODate

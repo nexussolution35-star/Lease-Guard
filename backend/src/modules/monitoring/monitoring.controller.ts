@@ -7,7 +7,7 @@ import {
   ApiTags,
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger'
-import type { MonitoringEvent } from '@leaseguard/domain'
+import type { MonitoringEventListItem } from '@leaseguard/domain'
 
 import { CompanyScoped, WRITER_ROLES } from '../../common/decorators/company-scoped.decorator'
 import { CurrentCompany } from '../../common/decorators/current-company.decorator'
@@ -18,7 +18,7 @@ import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe'
 import type { CompanyContext } from '../../common/request-context'
 import type { DbClient } from '../../infrastructure/database/rls-client.factory'
 import {
-  MonitoringEventDto,
+  MonitoringEventListItemDto,
   MonitoringEventListQueryDto,
   MonitoringEventPageDto,
   UpdateMonitoringEventStatusDto,
@@ -40,20 +40,24 @@ export class MonitoringController {
     @UserDb() db: DbClient,
     @CurrentCompany() company: CompanyContext,
     @Query(new ZodValidationPipe(monitoringEventListQuerySchema)) query: MonitoringEventListQueryDto,
-  ): Promise<Page<MonitoringEvent>> {
+  ): Promise<Page<MonitoringEventListItem>> {
     return this.monitoring.list(db, company.companyId, query)
   }
 
   @Get(':eventId')
   @CompanyScoped()
-  @ApiOperation({ operationId: 'getMonitoringEvent', summary: 'Get one monitoring event' })
-  @ApiOkResponse({ type: MonitoringEventDto })
+  @ApiOperation({
+    operationId: 'getMonitoringEvent',
+    summary: 'Get one monitoring event',
+    description: 'The event with the names of its property and, when set, its unit, tenant and assignee (as a list row).',
+  })
+  @ApiOkResponse({ type: MonitoringEventListItemDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
   get(
     @UserDb() db: DbClient,
     @CurrentCompany() company: CompanyContext,
     @Param('eventId', new ParseUUIDPipe()) eventId: string,
-  ): Promise<MonitoringEvent> {
+  ): Promise<MonitoringEventListItem> {
     return this.monitoring.get(db, company.companyId, eventId)
   }
 
@@ -67,7 +71,7 @@ export class MonitoringController {
       'any open status → dismissed). Dismissing requires a note (the reason). Who resolved or dismissed the ' +
       'event, and when, is recorded by the database from the caller, and every status change is audited.',
   })
-  @ApiOkResponse({ type: MonitoringEventDto })
+  @ApiOkResponse({ type: MonitoringEventListItemDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
   @ApiConflictResponse({ type: ApiErrorDto, description: 'The workflow does not allow this move, or the event changed meanwhile' })
   @ApiUnprocessableEntityResponse({ type: ApiErrorDto, description: 'The change breaks a data integrity rule' })
@@ -76,7 +80,7 @@ export class MonitoringController {
     @CurrentCompany() company: CompanyContext,
     @Param('eventId', new ParseUUIDPipe()) eventId: string,
     @Body(new ZodValidationPipe(updateMonitoringEventStatusBodySchema)) body: UpdateMonitoringEventStatusDto,
-  ): Promise<MonitoringEvent> {
+  ): Promise<MonitoringEventListItem> {
     return this.monitoring.updateStatus(db, company.companyId, eventId, body)
   }
 }

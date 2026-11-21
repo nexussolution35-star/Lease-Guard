@@ -1,5 +1,5 @@
 import { COMPANY_ID_HEADER, compactQuery, isApiError, unwrap, type ApiClient } from '@leaseguard/api-client'
-import type { MonitoringEvent } from '@leaseguard/domain'
+import type { MonitoringEventListItem } from '@leaseguard/domain'
 
 import { isUuid } from '@/lib/data/ids'
 import { listSearchTerm } from '@/lib/data/listParams'
@@ -8,7 +8,7 @@ import type { MonitoringEventSource } from './source'
 
 /**
  * Monitoring events from the LeaseGuard API (`GET /api/v1/monitoring/events`,
- * `GET /api/v1/monitoring/events/{eventId}`).
+ * `GET /api/v1/monitoring/events/{eventId}`, `PATCH /api/v1/monitoring/events/{eventId}/status`).
  */
 export function createApiMonitoringEventSource(api: ApiClient): MonitoringEventSource {
   return {
@@ -27,19 +27,23 @@ export function createApiMonitoringEventSource(api: ApiClient): MonitoringEventS
               priority: params.priority,
               type: params.type,
               propertyId: params.propertyId,
+              unitId: params.unitId,
+              tenantId: params.tenantId,
               leaseId: params.leaseId,
+              assignee: params.assignee,
+              due: params.due,
             }),
           },
           headers: { [COMPANY_ID_HEADER]: companyId },
         }),
       )
-      return { ...page, items: page.items satisfies MonitoringEvent[] }
+      return { ...page, items: page.items satisfies MonitoringEventListItem[] }
     },
 
     async get(companyId, id) {
       if (!isUuid(id)) return null
       try {
-        const event: MonitoringEvent = await unwrap(
+        const event: MonitoringEventListItem = await unwrap(
           api.GET('/api/v1/monitoring/events/{eventId}', {
             params: { path: { eventId: id } },
             headers: { [COMPANY_ID_HEADER]: companyId },
@@ -50,6 +54,17 @@ export function createApiMonitoringEventSource(api: ApiClient): MonitoringEventS
         if (isApiError(error) && error.isNotFound) return null
         throw error
       }
+    },
+
+    async updateStatus(companyId, id, change) {
+      const event: MonitoringEventListItem = await unwrap(
+        api.PATCH('/api/v1/monitoring/events/{eventId}/status', {
+          params: { path: { eventId: id } },
+          body: change,
+          headers: { [COMPANY_ID_HEADER]: companyId },
+        }),
+      )
+      return event
     },
   }
 }

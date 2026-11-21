@@ -1,9 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { ScreenPlaceholder } from '@/components/layout'
+import { MessageTemplatesSettingsScreen } from '@/features/message-templates/components/MessageTemplatesSettingsScreen'
 
 export const Route = createFileRoute('/settings/templates')({
-  component: function TemplatesSettingsScreen() {
-    return <ScreenPlaceholder title="Message templates" description="Approved templates for tenant and owner messages." />
-  },
+  component: MessageTemplatesSettingsScreen,
 })

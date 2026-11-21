@@ -80,6 +80,15 @@ describe('arrearsFindings', () => {
     expect(scan('2027-03-05')).toMatchObject({ dedupeKey: `arrears:${STATEMENT}:120+`, priority: 'critical' })
   })
 
+  it("records the statement's lease reference on the event, like the lease findings", () => {
+    const withLease = arrearsFindings({ statements: [statement({ leaseReference: 'LG-ACP-001' })], arrangements: [], settings: settings(), names, asOf: AS_OF })
+    expect(withLease.drafts[0]).toMatchObject({ leaseId: LEASE, leaseReference: 'LG-ACP-001' })
+    const { leaseId: _leaseId, ...noLease } = statement()
+    const withoutLease = arrearsFindings({ statements: [noLease], arrangements: [], settings: settings(), names, asOf: AS_OF })
+    expect(withoutLease.drafts[0]).not.toHaveProperty('leaseId')
+    expect(withoutLease.drafts[0]).not.toHaveProperty('leaseReference')
+  })
+
   it('ignores unverified statements and balances in credit', () => {
     const { drafts } = arrearsFindings({
       statements: [statement({ status: 'review_required' }), statement({ id: 's-credit', tenantId: 'tenant-2', closingBalance: -50 })],

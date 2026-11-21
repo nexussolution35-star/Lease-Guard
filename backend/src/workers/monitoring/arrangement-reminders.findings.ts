@@ -2,9 +2,11 @@ import {
   daysBetween,
   formatSADate,
   formatZAR,
+  installmentShortfallsOnStatements,
   isArrangementActive,
   nextInstallment,
   overdueInstallments,
+  type ArrangementStatementFigures,
   type ISODate,
   type PaymentArrangement,
 } from '@leaseguard/domain'
@@ -31,11 +33,15 @@ export interface ArrangementScanInput {
   settings: MonitoringSettings
   names: RecordNames
   asOf: ISODate
+  /** Verified statements of the arrangements' leases, to flag instalments a statement shows were not covered. */
+  statements?: readonly ArrangementStatementFigures[]
 }
 
 export interface ArrangementFindings {
   /** 'arrangement_attention' events for open instalments past their due date plus grace days. */
   overdue: EventDraft[]
+  /** 'arrangement_attention' events for open instalments a verified statement shows were not covered. */
+  shortOnStatement: EventDraft[]
   /** Heads-up for the responsible property manager about instalments due within the lead days. */
   upcoming: NotificationDraft[]
 }
@@ -52,7 +58,9 @@ export function arrangementFindings(input: ArrangementScanInput): ArrangementFin
   const graceDays = rule.config?.graceDays ?? 0
   const leadDays = settings.company.installmentReminderLeadDays
   const overdue: EventDraft[] = []
+  const shortOnStatement: EventDraft[] = []
   const upcoming: NotificationDraft[] = []
+  const statements = input.statements ?? []
 
   for (const arrangement of input.arrangements) {
     if (!isArrangementActive(arrangement, asOf)) continue
@@ -82,6 +90,41 @@ export function arrangementFindings(input: ArrangementScanInput): ArrangementFin
           ...(assignee ? { assignedToUserId: assignee } : {}),
         })
       }
+
+      // A verified statement whose period holds the due date and whose payments do not cover that period's charges
+      // plus the instalments due: flagged for the manager to confirm, never recorded as missed here.
+      for (const found of installmentShortfallsOnStatements(arrangement, statements)) {
+        const { installment } = found
+        const period = `${formatSADate(found.periodStart)} to ${formatSADate(found.periodEnd)}`
+        shortOnStatement.push({
+          dedupeKey: `arrangement_attention:statement:${installment.id}`,
+          type: 'arrangement_attention',
+          propertyId: arrangement.propertyId,
+          unitId: arrangement.unitId,
+          tenantId: arrangement.tenantId,
+          leaseId: arrangement.leaseId,
+          arrangementId: arrangement.id,
+          statementId: found.statementId,
+          ...(rule.ruleId ? { ruleId: rule.ruleId } : {}),
+          title: `Instalment not covered on statement: ${tenant} arrangement (${installment.sequence} of ${total})`,
+          description: `The verified statement for ${period} shows ${formatZAR(found.paymentsReceived)} received against ${formatZAR(found.expected)} due in that period, including instalment ${installment.sequence} of ${formatZAR(installment.amount)} due on ${formatSADate(installment.dueDate)}.`,
+          calculation: {
+            expectedAmount: found.expected,
+            actualAmount: found.paymentsReceived,
+            difference: found.shortfall,
+            steps: [
+              `Rental charged ${formatZAR(found.rentalCharged)} + additional charges ${formatZAR(found.additionalCharges)} + instalments due ${formatZAR(found.installmentsDue)} = ${formatZAR(found.expected)}`,
+              `Payments received ${formatZAR(found.paymentsReceived)}`,
+              `Short by ${formatZAR(found.shortfall)}`,
+            ],
+          },
+          identifiedOn: asOf,
+          dueDate: installment.dueDate,
+          priority: rule.defaultPriority ?? 'high',
+          recommendedAction: 'Confirm with the tenant whether the instalment was paid, and record it on the arrangement as paid or missed.',
+          ...(assignee ? { assignedToUserId: assignee } : {}),
+        })
+      }
     }
 
     const next = nextInstallment(arrangement, asOf)
@@ -97,5 +140,5 @@ export function arrangementFindings(input: ArrangementScanInput): ArrangementFin
       })
     }
   }
-  return { overdue, upcoming }
+  return { overdue, shortOnStatement, upcoming }
 }

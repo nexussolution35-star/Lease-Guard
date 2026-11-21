@@ -106,6 +106,68 @@ describe('arrangementFindings', () => {
   })
 })
 
+describe('arrangementFindings on verified statements', () => {
+  const october = {
+    id: 'stmt-oct',
+    leaseId: LEASE,
+    status: 'verified' as const,
+    statementDate: '2026-10-31',
+    periodStart: '2026-10-01',
+    periodEnd: '2026-10-31',
+    rentalCharged: 12000,
+    additionalCharges: 0,
+    paymentsReceived: 12000,
+  }
+
+  it('flags an open instalment the statement shows was not covered, with the calculation and its source statement', () => {
+    const { shortOnStatement } = arrangementFindings({
+      arrangements: [arrangement([instalment(1, '2026-10-15'), instalment(2, '2026-11-15')])],
+      settings: settings(),
+      names,
+      asOf: AS_OF,
+      statements: [october],
+    })
+    expect(shortOnStatement).toEqual([
+      expect.objectContaining({
+        dedupeKey: 'arrangement_attention:statement:inst-1',
+        type: 'arrangement_attention',
+        arrangementId: ARRANGEMENT,
+        statementId: 'stmt-oct',
+        leaseId: LEASE,
+        dueDate: '2026-10-15',
+        title: 'Instalment not covered on statement: Test Trading arrangement (1 of 2)',
+        calculation: expect.objectContaining({ expectedAmount: 22000, actualAmount: 12000, difference: 10000 }),
+        assignedToUserId: MANAGER,
+      }),
+    ])
+  })
+
+  it('raises nothing when the payments cover the period, the instalment is recorded, or the rule is off', () => {
+    const covered = arrangementFindings({
+      arrangements: [arrangement([instalment(1, '2026-10-15')])],
+      settings: settings(),
+      names,
+      asOf: AS_OF,
+      statements: [{ ...october, paymentsReceived: 22000 }],
+    })
+    const recorded = arrangementFindings({
+      arrangements: [arrangement([instalment(1, '2026-10-15', 'missed')])],
+      settings: settings(),
+      names,
+      asOf: AS_OF,
+      statements: [october],
+    })
+    const off = arrangementFindings({
+      arrangements: [arrangement([instalment(1, '2026-10-15')])],
+      settings: settings([rule({ event_type: 'arrangement_attention', enabled: false, config: { kind: 'arrangement_attention', graceDays: 0 } })]),
+      names,
+      asOf: AS_OF,
+      statements: [october],
+    })
+    expect([...covered.shortOnStatement, ...recorded.shortOnStatement, ...off.shortOnStatement]).toEqual([])
+  })
+})
+
 describe('ArrangementRemindersProcessor', () => {
   it('loads the job company arrangements and instalments and never updates instalments', async () => {
     const db = fakeDb(
@@ -131,6 +193,13 @@ describe('ArrangementRemindersProcessor', () => {
     expect(instalments && callsTo(instalments, 'in')).toEqual([['arrangement_id', [ARRANGEMENT]]])
     expect(db.queries.filter((q) => q.table === 'arrangement_installments' && isWrite(q))).toEqual([])
     expect(db.queries.filter((q) => q.table === 'communications')).toEqual([])
+
+    const statements = db.queries.find((q) => q.table === 'statements')
+    expect(statements && callsTo(statements, 'eq')).toEqual([
+      ['company_id', COMPANY],
+      ['status', 'verified'],
+    ])
+    expect(statements && callsTo(statements, 'in')).toEqual([['lease_id', [LEASE]]])
 
     const events = db.queries.find((q) => q.table === 'monitoring_events' && isWrite(q))
     const eventRows = events ? callsTo(events, 'upsert')[0][0] : []

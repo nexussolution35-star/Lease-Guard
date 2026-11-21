@@ -1,3 +1,5 @@
+import type { MessageTypeTemplateStatus } from '@leaseguard/domain'
+
 /**
  * Display labels and visual tones for every LeaseGuard enum value.
  * Components must use these helpers instead of hardcoding enum text.
@@ -63,6 +65,9 @@ const LABEL_OVERRIDES: Readonly<Record<string, string>> = {
   deposit_shortfall: 'Deposit shortfall',
   arrangement_attention: 'Arrangement needs attention',
   statement_review_required: 'Statement review required',
+  next_7_days: 'Due within 7 days',
+  next_30_days: 'Due within 30 days',
+  next_90_days: 'Due within 90 days',
   under_review: 'Under review',
   action_required: 'Action required',
   in_progress: 'In progress',
@@ -195,4 +200,29 @@ export const TONE_CLASSES: Readonly<Record<Tone, string>> = {
 /** Build `{ value, label }` options for selects from an enum tuple. */
 export function enumOptions<T extends string>(values: readonly T[]): { value: T; label: string }[] {
   return values.map((value) => ({ value, label: labelFor(value) }))
+}
+
+/** Status groups of the monitoring list's status filter (one status, or all open or all closed events). */
+export const MONITORING_STATUS_GROUP_LABELS: Readonly<Record<'open' | 'closed', string>> = {
+  open: 'Open (needs attention)',
+  closed: 'Closed (resolved or dismissed)',
+}
+
+/** Settings → Message templates: whether a message type can be sent with its template (`messageTypeTemplateState`). */
+export const MESSAGE_TEMPLATE_STATE_LABELS: Readonly<Record<MessageTypeTemplateStatus, string>> = {
+  not_mapped: 'No template',
+  ready: 'Ready to send',
+  waiting_on_meta: 'Waiting on Meta',
+  rejected: 'Not approved by Meta',
+  removed: 'Removed by Meta',
+  text_changed: 'Text changed',
+}
+
+export const MESSAGE_TEMPLATE_STATE_TONES: Readonly<Record<MessageTypeTemplateStatus, Tone>> = {
+  not_mapped: 'neutral',
+  ready: 'success',
+  waiting_on_meta: 'info',
+  rejected: 'danger',
+  removed: 'danger',
+  text_changed: 'warning',
 }

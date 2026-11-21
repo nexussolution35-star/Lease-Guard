@@ -26,7 +26,12 @@ describe('queue registry', () => {
       'whatsapp-webhook',
       'whatsapp-agent',
       'whatsapp-test-message',
+      'whatsapp-template-sync',
     ])
+  })
+
+  it('keys a template sync by its company and number, so repeated requests share one run', () => {
+    expect(jobIdFor('whatsapp-template-sync', { companyId: 'C1', numberId: 'N1' })).toBe('whatsapp-template-sync.c1.n1')
   })
 
   it('keys post-verification monitoring by its company and statement, so a statement is monitored once', () => {

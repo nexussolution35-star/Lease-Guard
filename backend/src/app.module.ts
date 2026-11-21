@@ -16,8 +16,10 @@ import { AuditModule } from './modules/audit/audit.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { CommunicationsModule } from './modules/communications/communications.module'
 import { CompaniesModule } from './modules/companies/companies.module'
+import { DashboardModule } from './modules/dashboard/dashboard.module'
 import { InvitationsModule } from './modules/invitations/invitations.module'
 import { LeasesModule } from './modules/leases/leases.module'
+import { MessageTemplatesModule } from './modules/message-templates/message-templates.module'
 import { MonitoringModule } from './modules/monitoring/monitoring.module'
 import { NotificationsModule } from './modules/notifications/notifications.module'
 import { PortfolioImportsModule } from './modules/portfolio-imports/portfolio-imports.module'
@@ -60,12 +62,14 @@ export class AppModule {
         MonitoringModule,
         ArrangementsModule,
         CommunicationsModule,
+        MessageTemplatesModule,
         WhatsAppIntegrationModule,
         WhatsAppWebhookModule,
         WhatsAppConversationsModule,
         WhatsAppAgentModule,
         NotificationsModule,
         AuditModule,
+        DashboardModule,
         AddressSuggestionsModule,
       ],
       providers: [

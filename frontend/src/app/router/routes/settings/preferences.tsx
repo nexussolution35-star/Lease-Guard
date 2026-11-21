@@ -1,9 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { ScreenPlaceholder } from '@/components/layout'
+import { PreferencesScreen } from '@/features/account/components/PreferencesScreen'
 
 export const Route = createFileRoute('/settings/preferences')({
-  component: function PreferencesScreen() {
-    return <ScreenPlaceholder title="Preferences" description="Display preferences for this browser." />
-  },
+  component: PreferencesScreen,
 })

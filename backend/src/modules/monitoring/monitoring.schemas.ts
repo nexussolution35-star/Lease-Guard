@@ -1,7 +1,11 @@
 import {
   EVENT_PRIORITIES,
+  EVENT_STATUS_NOTE_MAX_LENGTH,
+  MONITORING_DUE_WINDOWS,
   MONITORING_EVENT_STATUSES,
   MONITORING_EVENT_TYPES,
+  statusChangeRequiresNote,
+  UNASSIGNED_FILTER,
   type MonitoringEventStatus,
 } from '@leaseguard/domain'
 import { z } from 'zod'
@@ -19,7 +23,13 @@ export const monitoringEventListQuerySchema = listQuerySchema(MONITORING_EVENT_S
   priority: z.enum(EVENT_PRIORITIES).optional(),
   type: z.enum(MONITORING_EVENT_TYPES).optional(),
   propertyId: z.uuid().optional(),
+  unitId: z.uuid().optional(),
+  tenantId: z.uuid().optional(),
   leaseId: z.uuid().optional(),
+  /** One member's user id, or `unassigned` for events nobody is assigned to. */
+  assignee: z.union([z.literal(UNASSIGNED_FILTER), z.uuid()]).optional(),
+  /** Due-date window, judged on the South African date (domain `dueWindowRange`). */
+  due: z.enum(MONITORING_DUE_WINDOWS).optional(),
 })
 export type MonitoringEventListQuery = z.infer<typeof monitoringEventListQuerySchema>
 
@@ -47,9 +57,9 @@ export const MONITORING_EVENT_TARGET_STATUSES = [
 export const updateMonitoringEventStatusBodySchema = z
   .strictObject({
     status: z.enum(MONITORING_EVENT_TARGET_STATUSES),
-    note: z.string().trim().min(1).max(2000).optional(),
+    note: z.string().trim().min(1).max(EVENT_STATUS_NOTE_MAX_LENGTH).optional(),
   })
-  .refine((body) => body.status !== 'dismissed' || body.note !== undefined, {
+  .refine((body) => !statusChangeRequiresNote(body.status) || body.note !== undefined, {
     path: ['note'],
     message: 'is required to dismiss an event',
   })

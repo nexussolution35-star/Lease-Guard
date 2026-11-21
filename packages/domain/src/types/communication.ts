@@ -95,7 +95,8 @@ export interface MessageTemplate extends CompanyScoped {
   audience: RecipientType
   /** Name registered with Meta. */
   metaTemplateName: string
-  language: 'en' | 'en_ZA' | 'af'
+  /** Meta language code, e.g. `en_ZA` or `en_US`. */
+  language: string
   category: 'utility' | 'marketing'
   /** Body with numbered placeholders `{{1}}`, `{{2}}`… */
   body: string

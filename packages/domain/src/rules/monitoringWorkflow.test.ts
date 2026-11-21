@@ -7,7 +7,9 @@ import {
   EVENT_TRANSITIONS,
   isOpenEventStatus,
   leaseStatusAfterVerification,
+  nextEventStatuses,
   OPEN_EVENT_STATUSES,
+  statusChangeRequiresNote,
   TERMINAL_EVENT_STATUSES,
 } from './monitoringWorkflow.js'
 
@@ -29,6 +31,26 @@ describe('monitoring event workflow', () => {
     for (const status of TERMINAL_EVENT_STATUSES) expect(EVENT_TRANSITIONS[status]).toEqual([])
     for (const status of MONITORING_EVENT_STATUSES) expect(canTransition(status, 'new')).toBe(false)
     expect(canTransition('dismissed', 'resolved')).toBe(false)
+  })
+})
+
+describe('nextEventStatuses', () => {
+  it('offers the forward step first and dismissal last while the event is open', () => {
+    expect(nextEventStatuses('new')).toEqual(['under_review', 'dismissed'])
+    expect(nextEventStatuses('in_progress')).toEqual(['resolved', 'dismissed'])
+    for (const status of OPEN_EVENT_STATUSES) expect(nextEventStatuses(status).at(-1)).toBe('dismissed')
+  })
+
+  it('offers nothing once resolved or dismissed, and only moves canTransition allows', () => {
+    for (const status of TERMINAL_EVENT_STATUSES) expect(nextEventStatuses(status)).toEqual([])
+    for (const from of MONITORING_EVENT_STATUSES) for (const to of nextEventStatuses(from)) expect(canTransition(from, to)).toBe(true)
+  })
+})
+
+describe('statusChangeRequiresNote', () => {
+  it('requires a reason only to dismiss', () => {
+    expect(statusChangeRequiresNote('dismissed')).toBe(true)
+    for (const status of MONITORING_EVENT_STATUSES.filter((s) => s !== 'dismissed')) expect(statusChangeRequiresNote(status)).toBe(false)
   })
 })
 

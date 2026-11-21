@@ -9,6 +9,9 @@ import { MonitoringService } from './monitoring.service'
 const COMPANY = '3ab0fc4a-eadb-50b8-bc4d-5673ada1519e'
 const EVENT = '6f1d2c1e-0000-4000-8000-0000000000aa'
 const LEASE = '6f1d2c1e-0000-4000-8000-0000000000bb'
+const UNIT = '6f1d2c1e-0000-4000-8000-0000000000dd'
+const TENANT = '6f1d2c1e-0000-4000-8000-0000000000ee'
+const USER = '6f1d2c1e-0000-4000-8000-0000000000ff'
 
 function eventRow(overrides: Partial<MonitoringEventRow> = {}): MonitoringEventRow {
   return {
@@ -101,6 +104,65 @@ describe('MonitoringService', () => {
     expect(monitoringEventListQuerySchema.safeParse({ open: 'yes' }).success).toBe(false)
   })
 
+  it('names the property, unit, tenant and assignee of each row, and leaves absent ones out', async () => {
+    const { client, queries } = fakeDb(() => ({
+      data: [
+        {
+          ...eventRow({ unit_id: UNIT, tenant_id: TENANT, assigned_to_user_id: USER }),
+          property: { name: 'Mall of the South' },
+          unit: { unit_number: 'G12' },
+          tenant: { trading_name: 'Bean There' },
+          assignee: { profile: { full_name: 'Thandi Mokoena' } },
+        },
+        { ...eventRow({ id: LEASE }), property: { name: 'Mall of the South' }, unit: null, tenant: null, assignee: null },
+      ],
+      error: null,
+      count: 2,
+    }))
+    const page = await service.list(client, COMPANY, monitoringEventListQuerySchema.parse({}))
+
+    expect(page.items[0]).toMatchObject({
+      propertyName: 'Mall of the South',
+      unitNumber: 'G12',
+      tenantName: 'Bean There',
+      assigneeName: 'Thandi Mokoena',
+      assignedToUserId: USER,
+    })
+    for (const absent of ['unitNumber', 'tenantName', 'assigneeName']) expect(page.items[1]).not.toHaveProperty(absent)
+    // The embeds are not leaked into the event's own fields.
+    for (const embed of ['property', 'unit', 'tenant', 'assignee']) expect(page.items[0]).not.toHaveProperty(embed)
+    expect(callsTo(queries[0]!, 'select')[0]![0]).toContain('assignee:company_users!monitoring_events_assigned_to_fk')
+  })
+
+  it('filters by unit, tenant and one assignee or the unassigned', async () => {
+    const { client, queries } = fakeDb(() => ({ data: [], error: null, count: 0 }))
+    await service.list(client, COMPANY, monitoringEventListQuerySchema.parse({ unitId: UNIT, tenantId: TENANT, assignee: USER }))
+    await service.list(client, COMPANY, monitoringEventListQuerySchema.parse({ assignee: 'unassigned' }))
+    expect(callsTo(queries[0]!, 'eq')).toEqual([
+      ['company_id', COMPANY],
+      ['unit_id', UNIT],
+      ['tenant_id', TENANT],
+      ['assigned_to_user_id', USER],
+    ])
+    expect(callsTo(queries[1]!, 'is')).toEqual([['assigned_to_user_id', null]])
+    expect(callsTo(queries[1]!, 'eq')).toEqual([['company_id', COMPANY]])
+    expect(monitoringEventListQuerySchema.safeParse({ assignee: 'someone' }).success).toBe(false)
+    expect(monitoringEventListQuerySchema.safeParse({ unitId: 'G12' }).success).toBe(false)
+  })
+
+  it('turns a due window into a due-date range on the South African date', async () => {
+    // 22:30 UTC on 20 Nov is already 21 Nov in South Africa.
+    const now = new Date('2026-11-20T22:30:00Z')
+    const { client, queries } = fakeDb(() => ({ data: [], error: null, count: 0 }))
+    await service.list(client, COMPANY, monitoringEventListQuerySchema.parse({ due: 'overdue' }), now)
+    await service.list(client, COMPANY, monitoringEventListQuerySchema.parse({ due: 'next_30_days' }), now)
+    expect(callsTo(queries[0]!, 'gte')).toEqual([])
+    expect(callsTo(queries[0]!, 'lte')).toEqual([['due_date', '2026-11-20']])
+    expect(callsTo(queries[1]!, 'gte')).toEqual([['due_date', '2026-11-21']])
+    expect(callsTo(queries[1]!, 'lte')).toEqual([['due_date', '2026-12-21']])
+    expect(monitoringEventListQuerySchema.safeParse({ due: 'next_year' }).success).toBe(false)
+  })
+
   it('sorts events without a due date last only for the nullable due_date column', async () => {
     for (const [sort, direction, expected] of [
       ['dueDate', 'desc', ['due_date', { ascending: false, nullsFirst: false }]],
@@ -113,6 +175,29 @@ describe('MonitoringService', () => {
       await service.list(client, COMPANY, monitoringEventListQuerySchema.parse({ sort, direction }))
       expect(callsTo(queries[0]!, 'order')).toEqual([expected, ['id', { ascending: true }]])
     }
+  })
+
+  it('gets one event of the company with the names of its property, unit, tenant and assignee', async () => {
+    const { client, queries } = fakeDb(() => ({
+      data: {
+        ...eventRow({ unit_id: UNIT, tenant_id: TENANT, assigned_to_user_id: USER }),
+        property: { name: 'Mall of the South' },
+        unit: { unit_number: 'G12' },
+        tenant: { trading_name: 'Bean There' },
+        assignee: { profile: { full_name: 'Thandi Mokoena' } },
+      },
+      error: null,
+    }))
+
+    const event = await service.get(client, COMPANY, EVENT)
+
+    expect(event).toMatchObject({ id: EVENT, propertyName: 'Mall of the South', unitNumber: 'G12', tenantName: 'Bean There', assigneeName: 'Thandi Mokoena' })
+    expect(event.calculation).toEqual({ expectedAmount: 37_800, actualAmount: 35_000, difference: 2_800, steps: ['R35 000 × 1.08 = R37 800'] })
+    expect(callsTo(queries[0]!, 'eq')).toEqual([
+      ['company_id', COMPANY],
+      ['id', EVENT],
+    ])
+    expect(callsTo(queries[0]!, 'select')[0]![0]).toContain('property:properties!monitoring_events_property_fk(name)')
   })
 
   it('returns 404 when the event is not visible', async () => {
@@ -139,7 +224,10 @@ describe('MonitoringService', () => {
     const event = await service.updateStatus(client, COMPANY, EVENT, body)
 
     expect(event.status).toBe('dismissed')
+    expect(event.dismissal).toEqual({ reason: 'Duplicate', dismissedByUserId: 'u1', dismissedAt: '2026-11-02T08:00:00+00:00' })
     expect(callsTo(queries[1]!, 'update')).toEqual([[{ status: 'dismissed', dismissal_reason: 'Duplicate' }]])
+    // The updated event comes back as the detail screen shows it, with its names.
+    expect(callsTo(queries[1]!, 'select')[0]![0]).toContain('tenant:tenants!monitoring_events_tenant_fk(trading_name)')
     expect(callsTo(queries[1]!, 'eq')).toEqual([
       ['company_id', COMPANY],
       ['id', EVENT],

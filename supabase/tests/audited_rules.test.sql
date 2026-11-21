@@ -179,11 +179,14 @@ select throws_ok(
     from public.tenants where id = (select tenant from tests.ids)$$, t),
   '23514', null, format('tenants cannot receive %s messages', t)
 ) from unnest(array['manual', 'owner_weekly_summary', 'owner_query_response']) t;
+-- Signed-in users no longer write templates (a company admin maps them, 20261121234500): checked as the owner.
+reset role;
 select throws_ok(
   $$insert into public.message_templates (company_id, name, message_type, audience, meta_template_name, language, category, body)
     values ((select nexus from tests.ids), 'Lease renewal', 'manual', 'tenant', 'renewal_v1', 'en', 'utility', 'Your lease expires soon')$$,
   '23514', null, 'tenant templates are limited to tenant message types'
 );
+set local role authenticated;
 
 -- ------------------------------------------------------------------ audit log is append-only
 select lives_ok(

@@ -40,6 +40,14 @@ describe('createApiAuditSource', () => {
     expect(request.headers.get('x-company-id')).toBe(COMPANY)
   })
 
+  it("lists one record's entries by entity type and id (a monitoring event's history)", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => json(200, { items: [], total: 0, page: 1, pageSize: 50 }))
+    await sourceWith(fetch).list(COMPANY, { page: 1, pageSize: 50, entityType: 'monitoring_event', entityId: ACTOR })
+
+    const query = Object.fromEntries(new URL(firstRequest(fetch).url).searchParams)
+    expect(query).toMatchObject({ entityType: 'monitoring_event', entityId: ACTOR })
+  })
+
   it('rethrows a refusal (property owners are not audit readers)', async () => {
     const fetch = vi.fn<typeof globalThis.fetch>(async () => json(403, { statusCode: 403, message: 'Forbidden' }))
     await expect(sourceWith(fetch).list(COMPANY, { page: 1, pageSize: 25 })).rejects.toBeInstanceOf(ApiError)

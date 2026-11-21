@@ -1190,7 +1190,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get one monitoring event */
+        /**
+         * Get one monitoring event
+         * @description The event with the names of its property and, when set, its unit, tenant and assignee (as a list row).
+         */
         get: operations["getMonitoringEvent"];
         put?: never;
         post?: never;
@@ -1233,7 +1236,11 @@ export interface paths {
          */
         get: operations["listArrangements"];
         put?: never;
-        post?: never;
+        /**
+         * Record a payment arrangement (company admins and property managers)
+         * @description A monitoring record of an agreement: LeaseGuard never collects, processes or verifies a payment. The lease is leaseId, else the tenant's single lease in force at the property (and unit). The instalment schedule is generated from the terms (each instalment the agreed amount, the last the remainder); a given final instalment date must agree with it. While active it pauses the tenant's normal arrears reminders. 409 when the tenant already has an active arrangement; 422 for terms or a lease that do not fit, in words. Audited.
+         */
+        post: operations["createArrangement"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1251,6 +1258,70 @@ export interface paths {
         get: operations["getArrangement"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit a proposed or active payment arrangement (company admins and property managers)
+         * @description Omitted fields are unchanged; status moves proposed -> active only. Changed terms generate the schedule again, refused (409) once an instalment outcome is recorded. 409 for a closed arrangement or a second active one for the tenant; 422 for terms that do not fit. Audited with the changed fields.
+         */
+        patch: operations["updateArrangement"];
+        trace?: never;
+    };
+    "/api/v1/arrangements/{arrangementId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close an active payment arrangement as completed or defaulted (company admins and property managers)
+         * @description Normal arrears reminders resume for the tenant. The arrangement is read-only from then on. Stamps who and when; audited. 409 when it is already closed or still proposed (cancel a proposal instead).
+         */
+        post: operations["closeArrangement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/arrangements/{arrangementId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a proposed or active payment arrangement, with the reason (company admins and property managers)
+         * @description Normal arrears reminders resume for the tenant. Stamps who, when and why; audited. 409 when it is already closed.
+         */
+        post: operations["cancelArrangement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/arrangements/{arrangementId}/installments/{installmentId}/outcome": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record an instalment as paid, missed or waived, or clear it (company admins and property managers)
+         * @description A monitoring record of an agreement: LeaseGuard never collects, processes or verifies a payment. The outcome is the property manager's confirmation (from an updated statement or the tenant). A future instalment cannot be missed. Only while the arrangement is active (409 otherwise). Stamps who and when; audited on the arrangement.
+         */
+        post: operations["recordInstallmentOutcome"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1371,6 +1442,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/message-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every templated message type with the WhatsApp template that sends it
+         * @description The five tenant types (statement and payment messages only), then the owner types; each with its audience, the chosen Meta template (name, language, text, variables, document attachment, Meta's status and reason) and whether it can be sent now. Every member may read it.
+         */
+        get: operations["getMessageTemplateSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/message-templates/{messageType}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Choose the Meta template that sends a message type (company admins)
+         * @description The template must be one of the company’s synced templates that Meta approved, not an authentication template, a Utility template for a tenant type, with LeaseGuard holding its text (numbered placeholders, no gaps), no banking details and, for a tenant type, no escalation, expiry, renewal, dispute, guarantee or deposit wording; and it must not already send another type. Refused with 422 and every reason. Audited on the template.
+         */
+        put: operations["chooseMessageTemplate"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/message-templates/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync the templates from Meta again (company admins)
+         * @description Queues a sync of each connected number's WhatsApp Business Account in the worker: Meta's status, text and header format of every template, reflected onto the chosen templates. Idempotent while a sync is waiting.
+         */
+        post: operations["syncMessageTemplates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/integrations/whatsapp/capabilities": {
         parameters: {
             query?: never;
@@ -1460,7 +1591,7 @@ export interface paths {
         };
         /**
          * The message templates Meta holds for the active company's WhatsApp Business Accounts
-         * @description As last synced during number verification: name, language, Meta's category and review status. Every member may read them.
+         * @description As last synced (number verification, or Sync again in Settings → Message templates): name, language, Meta's category, review status, body text and header format. Every member may read them.
          */
         get: operations["listWhatsAppMessageTemplates"];
         put?: never;
@@ -2073,6 +2204,26 @@ export interface paths {
         };
         /** List audit log entries in the active company */
         get: operations["listAuditLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The dashboard figures of the active company
+         * @description Every PRD §7.1 figure in one request: properties, units, occupied units, active leases, outstanding balances and tenants in arrears (from the latest verified statement per unit, as GET /statements/arrears), open escalation discrepancy, lease expiry, renewal deadline and guarantee expiry events, active payment arrangements, statements waiting for review and messages awaiting approval. Every member may read it. Monitoring figures, never transactions.
+         */
+        get: operations["getDashboardSummary"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4366,6 +4517,8 @@ export interface components {
         EventPriority: "low" | "medium" | "high" | "critical";
         /** @enum {string} */
         MonitoringEventType: "rental_escalation_discrepancy" | "lease_expiry" | "renewal_notice_deadline" | "guarantee_expiry" | "guarantee_shortfall" | "deposit_shortfall" | "arrears" | "arrangement_attention" | "statement_review_required";
+        /** @enum {string} */
+        MonitoringDueWindow: "overdue" | "next_7_days" | "next_30_days" | "next_90_days";
         EventCalculationDto: {
             /** @description Rands (ZAR) */
             expectedAmount?: number;
@@ -4383,7 +4536,7 @@ export interface components {
             /** Format: date-time */
             dismissedAt: string;
         };
-        MonitoringEventDto: {
+        MonitoringEventListItemDto: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
@@ -4426,9 +4579,16 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+            propertyName: string;
+            /** @description Absent when the event names no unit */
+            unitNumber?: string;
+            /** @description The tenant's trading name; absent when the event names no tenant */
+            tenantName?: string;
+            /** @description The assigned member's full name; absent when nobody is assigned */
+            assigneeName?: string;
         };
         MonitoringEventPage: {
-            items: components["schemas"]["MonitoringEventDto"][];
+            items: components["schemas"]["MonitoringEventListItemDto"][];
             total: number;
             page: number;
             pageSize: number;
@@ -4468,6 +4628,13 @@ export interface components {
             confirmedByUserId?: string;
             /** Format: date */
             confirmedOn?: string;
+            /**
+             * Format: uuid
+             * @description Who recorded the outcome (paid, missed or waived)
+             */
+            outcomeRecordedByUserId?: string;
+            /** Format: date-time */
+            outcomeRecordedAt?: string;
             notes?: string;
         };
         PaymentArrangementDto: {
@@ -4501,8 +4668,20 @@ export interface components {
             agreedOn: string;
             /** Format: date */
             closedOn?: string;
+            /**
+             * Format: uuid
+             * @description Who closed or cancelled it
+             */
+            closedByUserId?: string;
+            /** @description Why it was closed or cancelled */
+            closeReason?: string;
             notes: string;
             installments: components["schemas"]["ArrangementInstallmentDto"][];
+            /** @description The tenant's trading name */
+            tenantName: string;
+            propertyName: string;
+            unitNumber: string;
+            leaseReference: string;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -4513,6 +4692,92 @@ export interface components {
             total: number;
             page: number;
             pageSize: number;
+        };
+        /**
+         * @description active when omitted
+         * @enum {string}
+         */
+        OpenArrangementStatus: "proposed" | "active";
+        CreateArrangementDto: {
+            /**
+             * Format: uuid
+             * @description A tenant of the company
+             */
+            tenantId: string;
+            /**
+             * Format: uuid
+             * @description The property the arrears are at
+             */
+            propertyId: string;
+            /**
+             * Format: uuid
+             * @description Narrows the lease when the tenant has several units at the property
+             */
+            unitId?: string;
+            /**
+             * Format: uuid
+             * @description The lease the arrears are under; else the tenant's single lease in force at the property
+             */
+            leaseId?: string;
+            /** @description Outstanding balance at the time of agreement, rands (ZAR) */
+            outstandingBalance: number;
+            /** @description Agreed instalment, rands (ZAR); at most the outstanding balance */
+            installmentAmount: number;
+            frequency: components["schemas"]["InstallmentFrequency"];
+            /**
+             * Format: date
+             * @description On or after the agreement date
+             */
+            firstInstallmentDate: string;
+            /**
+             * Format: date
+             * @description The schedule's last due date; refused when it disagrees
+             */
+            finalInstallmentDate?: string;
+            /** @description active when omitted */
+            status?: components["schemas"]["OpenArrangementStatus"];
+            /**
+             * Format: date
+             * @description Today (South Africa) when omitted; never in the future
+             */
+            agreedOn?: string;
+            notes?: string;
+        };
+        UpdateArrangementDto: {
+            outstandingBalance?: number;
+            installmentAmount?: number;
+            frequency?: components["schemas"]["InstallmentFrequency"];
+            /** Format: date */
+            firstInstallmentDate?: string;
+            /**
+             * Format: date
+             * @description Follows the schedule when omitted
+             */
+            finalInstallmentDate?: string;
+            /** Format: date */
+            agreedOn?: string;
+            /** @description proposed -> active only */
+            status?: components["schemas"]["OpenArrangementStatus"];
+            notes?: string;
+        };
+        /** @enum {string} */
+        ArrangementCloseOutcome: "completed" | "defaulted";
+        CloseArrangementDto: {
+            outcome: components["schemas"]["ArrangementCloseOutcome"];
+            reason?: string;
+        };
+        CancelArrangementDto: {
+            reason: string;
+        };
+        /**
+         * @description paid (confirmed_paid), missed or waived as the property manager confirms it; scheduled clears it
+         * @enum {string}
+         */
+        InstallmentOutcomeChoice: "confirmed_paid" | "missed" | "waived" | "scheduled";
+        InstallmentOutcomeDto: {
+            /** @description paid (confirmed_paid), missed or waived as the property manager confirms it; scheduled clears it */
+            outcome: components["schemas"]["InstallmentOutcomeChoice"];
+            note?: string;
         };
         /** @enum {string} */
         CommunicationSortField: "createdAt" | "sentAt" | "status";
@@ -4690,6 +4955,81 @@ export interface components {
             note: string;
         };
         /** @enum {string} */
+        TemplatedMessageType: "monthly_statement" | "initial_payment_reminder" | "overdue_payment_reminder" | "follow_up_payment_reminder" | "arrangement_installment_reminder" | "owner_weekly_summary" | "owner_query_response";
+        /** @enum {string} */
+        TemplateAudience: "tenant" | "property_owner";
+        /**
+         * @description LeaseGuard's reading of Meta's status
+         * @enum {string}
+         */
+        TemplateApprovalStatus: "draft" | "submitted" | "approved" | "rejected";
+        MessageTypeTemplateMappingDto: {
+            /**
+             * Format: uuid
+             * @description The company's message template that messages of the type name
+             */
+            templateId: string;
+            /**
+             * Format: uuid
+             * @description The synced Meta template with the same name and language, while Meta holds it
+             */
+            whatsappTemplateId?: string;
+            /** @description Name registered with Meta */
+            metaTemplateName: string;
+            /** @description Meta language code, e.g. en_ZA */
+            language: string;
+            /** @enum {string} */
+            category: "utility" | "marketing";
+            /** @description The text as chosen, with numbered placeholders {{1}}, {{2}}… */
+            body: string;
+            /** @description What each placeholder holds, in order */
+            variables: string[];
+            /** @description LeaseGuard's reading of Meta's status */
+            approvalStatus: components["schemas"]["TemplateApprovalStatus"];
+            /** @description Meta's status of the synced template, e.g. APPROVED, PAUSED; absent once Meta no longer holds it */
+            metaStatus?: string;
+            /** @description Meta's reason for rejecting or pausing it */
+            rejectedReason?: string;
+            /** @description A document header: the template can carry the statement PDF */
+            supportsDocumentAttachment: boolean;
+            /** @description Meta's text differs from the text chosen (edited in WhatsApp Manager): choose it again */
+            metaBodyChanged: boolean;
+            /** Format: date-time */
+            mappedAt: string;
+            /**
+             * Format: uuid
+             * @description Who chose it; absent when the member has left the company
+             */
+            mappedByUserId?: string;
+            mappedByName?: string;
+        };
+        MessageTypeTemplateDto: {
+            messageType: components["schemas"]["TemplatedMessageType"];
+            audience: components["schemas"]["TemplateAudience"];
+            /** @description Absent until a company admin chooses a template */
+            mapping?: components["schemas"]["MessageTypeTemplateMappingDto"];
+            /** @description Messages of this type can be sent now: a template is chosen, Meta approved it and its text is unchanged */
+            sendable: boolean;
+        };
+        MessageTemplateSettingsDto: {
+            /** @description At least one of the company's WhatsApp numbers is connected */
+            whatsappConnected: boolean;
+            /** @description Every templated message type: the five tenant types, then the owner types */
+            types: components["schemas"]["MessageTypeTemplateDto"][];
+        };
+        ChooseMessageTemplateDto: {
+            /**
+             * Format: uuid
+             * @description A synced Meta template of the company (GET /integrations/whatsapp/message-templates)
+             */
+            whatsappTemplateId: string;
+        };
+        MessageTemplateSyncDto: {
+            /** @description Connected numbers whose WhatsApp Business Account is synced (one per account) */
+            queued: number;
+            message: string;
+        };
+        /** @enum {string} */
         WhatsAppCapability: "embedded_signup" | "webhook" | "agent_runtime";
         /**
          * @description The LeaseGuard process that reads the setting
@@ -4835,6 +5175,10 @@ export interface components {
              * @description When Meta last changed the status (Meta's status webhook), if after the last sync
              */
             statusUpdatedAt?: string;
+            /** @description Meta's BODY text with numbered placeholders {{1}}, {{2}}…; absent when synced before LeaseGuard read template text */
+            body?: string;
+            /** @description Meta's HEADER format: TEXT, IMAGE, VIDEO, DOCUMENT (carries the statement PDF) or LOCATION */
+            headerFormat?: string;
         };
         WhatsAppVerificationRequestDto: {
             /** Format: uuid */
@@ -5438,6 +5782,39 @@ export interface components {
             page: number;
             pageSize: number;
         };
+        DashboardSummaryDto: {
+            /**
+             * Format: date
+             * @description The South African calendar day the figures are as of (balances are aged to it)
+             */
+            asOf: string;
+            /** @description Properties that are not archived */
+            properties: number;
+            /** @description Units of the properties that are not archived */
+            units: number;
+            /** @description Of those units, the ones whose occupancy status is occupied */
+            occupiedUnits: number;
+            /** @description Leases with status active */
+            activeLeases: number;
+            /** @description Rands (ZAR), 2 decimals; the outstanding balance on each unit's latest verified statement, totalled (as GET /statements/arrears) */
+            totalOutstanding: number;
+            /** @description Distinct tenants with an outstanding balance on a latest verified statement */
+            tenantsInArrears: number;
+            /** @description Payment arrangements with status active (monitoring records, never payments) */
+            activeArrangements: number;
+            /** @description Open monitoring events (new, under review, action required, in progress) of type rental_escalation_discrepancy */
+            escalationDiscrepancies: number;
+            /** @description Open monitoring events (new, under review, action required, in progress) of type lease_expiry */
+            upcomingExpiries: number;
+            /** @description Open monitoring events (new, under review, action required, in progress) of type renewal_notice_deadline */
+            renewalDeadlines: number;
+            /** @description Open monitoring events (new, under review, action required, in progress) of type guarantee_expiry */
+            expiringGuarantees: number;
+            /** @description Statements waiting for review (review_required) */
+            pendingStatementReviews: number;
+            /** @description Tenant messages waiting on a property manager's approval */
+            pendingApprovals: number;
+        };
         AddressSuggestionsStatusDto: {
             /** @description False when the deployment has no Google Maps key: address fields are plain inputs */
             available: boolean;
@@ -5675,9 +6052,10 @@ export type MonitoringEventSortField = components['schemas']['MonitoringEventSor
 export type MonitoringEventStatus = components['schemas']['MonitoringEventStatus'];
 export type EventPriority = components['schemas']['EventPriority'];
 export type MonitoringEventType = components['schemas']['MonitoringEventType'];
+export type MonitoringDueWindow = components['schemas']['MonitoringDueWindow'];
 export type EventCalculationDto = components['schemas']['EventCalculationDto'];
 export type EventDismissalDto = components['schemas']['EventDismissalDto'];
-export type MonitoringEventDto = components['schemas']['MonitoringEventDto'];
+export type MonitoringEventListItemDto = components['schemas']['MonitoringEventListItemDto'];
 export type MonitoringEventPage = components['schemas']['MonitoringEventPage'];
 export type MonitoringEventTargetStatus = components['schemas']['MonitoringEventTargetStatus'];
 export type UpdateMonitoringEventStatusDto = components['schemas']['UpdateMonitoringEventStatusDto'];
@@ -5688,6 +6066,14 @@ export type InstallmentStatus = components['schemas']['InstallmentStatus'];
 export type ArrangementInstallmentDto = components['schemas']['ArrangementInstallmentDto'];
 export type PaymentArrangementDto = components['schemas']['PaymentArrangementDto'];
 export type PaymentArrangementPage = components['schemas']['PaymentArrangementPage'];
+export type OpenArrangementStatus = components['schemas']['OpenArrangementStatus'];
+export type CreateArrangementDto = components['schemas']['CreateArrangementDto'];
+export type UpdateArrangementDto = components['schemas']['UpdateArrangementDto'];
+export type ArrangementCloseOutcome = components['schemas']['ArrangementCloseOutcome'];
+export type CloseArrangementDto = components['schemas']['CloseArrangementDto'];
+export type CancelArrangementDto = components['schemas']['CancelArrangementDto'];
+export type InstallmentOutcomeChoice = components['schemas']['InstallmentOutcomeChoice'];
+export type InstallmentOutcomeDto = components['schemas']['InstallmentOutcomeDto'];
 export type CommunicationSortField = components['schemas']['CommunicationSortField'];
 export type DeliveryStatus = components['schemas']['DeliveryStatus'];
 export type MessageType = components['schemas']['MessageType'];
@@ -5705,6 +6091,14 @@ export type CommunicationAnalyticsDto = components['schemas']['CommunicationAnal
 export type ApproveCommunicationBodyDto = components['schemas']['ApproveCommunicationBodyDto'];
 export type ApprovalDecisionResultDto = components['schemas']['ApprovalDecisionResultDto'];
 export type RejectCommunicationBodyDto = components['schemas']['RejectCommunicationBodyDto'];
+export type TemplatedMessageType = components['schemas']['TemplatedMessageType'];
+export type TemplateAudience = components['schemas']['TemplateAudience'];
+export type TemplateApprovalStatus = components['schemas']['TemplateApprovalStatus'];
+export type MessageTypeTemplateMappingDto = components['schemas']['MessageTypeTemplateMappingDto'];
+export type MessageTypeTemplateDto = components['schemas']['MessageTypeTemplateDto'];
+export type MessageTemplateSettingsDto = components['schemas']['MessageTemplateSettingsDto'];
+export type ChooseMessageTemplateDto = components['schemas']['ChooseMessageTemplateDto'];
+export type MessageTemplateSyncDto = components['schemas']['MessageTemplateSyncDto'];
 export type WhatsAppCapability = components['schemas']['WhatsAppCapability'];
 export type SettingProcess = components['schemas']['SettingProcess'];
 export type MissingSettingDto = components['schemas']['MissingSettingDto'];
@@ -5777,6 +6171,7 @@ export type AuditAction = components['schemas']['AuditAction'];
 export type FieldChangeDto = components['schemas']['FieldChangeDto'];
 export type AuditLogDto = components['schemas']['AuditLogDto'];
 export type AuditLogPage = components['schemas']['AuditLogPage'];
+export type DashboardSummaryDto = components['schemas']['DashboardSummaryDto'];
 export type AddressSuggestionsStatusDto = components['schemas']['AddressSuggestionsStatusDto'];
 export type AddressSearchDto = components['schemas']['AddressSearchDto'];
 export type AddressSuggestionDto = components['schemas']['AddressSuggestionDto'];
@@ -10905,7 +11300,13 @@ export interface operations {
                 priority?: components["schemas"]["EventPriority"];
                 type?: components["schemas"]["MonitoringEventType"];
                 propertyId?: string;
+                unitId?: string;
+                tenantId?: string;
                 leaseId?: string;
+                /** @description One member's user id (uuid), or `unassigned` for events nobody is assigned to */
+                assignee?: string;
+                /** @description overdue: due before today; next_n_days: due from today to n days from today, inclusive (South African date) */
+                due?: components["schemas"]["MonitoringDueWindow"];
             };
             header?: never;
             path?: never;
@@ -10975,7 +11376,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MonitoringEventDto"];
+                    "application/json": components["schemas"]["MonitoringEventListItemDto"];
                 };
             };
             /** @description Invalid request or missing X-Company-Id header */
@@ -11044,7 +11445,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MonitoringEventDto"];
+                    "application/json": components["schemas"]["MonitoringEventListItemDto"];
                 };
             };
             /** @description Invalid request or missing X-Company-Id header */
@@ -11123,6 +11524,7 @@ export interface operations {
                 status?: components["schemas"]["ArrangementStatus"];
                 leaseId?: string;
                 tenantId?: string;
+                propertyId?: string;
             };
             header?: never;
             path?: never;
@@ -11158,6 +11560,91 @@ export interface operations {
             };
             /** @description Not a member of the company, or role not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    createArrangement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateArrangementDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentArrangementDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The tenant already has an active arrangement */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The terms or the lease do not fit */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11223,6 +11710,323 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    updateArrangement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                arrangementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateArrangementDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentArrangementDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    closeArrangement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                arrangementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseArrangementDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentArrangementDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    cancelArrangement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                arrangementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelArrangementDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentArrangementDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    recordInstallmentOutcome: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                arrangementId: string;
+                installmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstallmentOutcomeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentArrangementDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11653,6 +12457,212 @@ export interface operations {
                 };
             };
             /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getMessageTemplateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageTemplateSettingsDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    chooseMessageTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                messageType: components["schemas"]["TemplatedMessageType"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChooseMessageTemplateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageTypeTemplateDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /**
+             * @description Not a company admin
+             *
+             *     Not a member of the company, or role not allowed
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description No such synced template in the active company */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The template cannot send this type (every reason) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    syncMessageTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageTemplateSyncDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description No WhatsApp number is connected */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /**
+             * @description Background processing is unavailable
+             *
+             *     Authentication or database unavailable
+             */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -14639,6 +15649,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditLogPage"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getDashboardSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardSummaryDto"];
                 };
             };
             /** @description Invalid request or missing X-Company-Id header */

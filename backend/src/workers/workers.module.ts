@@ -26,6 +26,7 @@ import { Clock } from './shared/clock'
 import { AGENT_LLM, WhatsAppAgentProcessor } from './whatsapp/agent-reply.processor'
 import { WhatsAppWebhookProcessor } from './whatsapp/inbound-webhook.processor'
 import { WhatsAppNumberVerificationProcessor } from './whatsapp/number-verification.processor'
+import { WhatsAppTemplateSyncProcessor } from './whatsapp/template-sync.processor'
 import { WhatsAppTestMessageProcessor } from './whatsapp/test-message.processor'
 import { StatementFiles } from './shared/statement-files'
 import { StatementProcessingProcessor } from './statements/statement-processing.processor'
@@ -75,6 +76,7 @@ const processors: Provider[] = [
   WhatsAppWebhookProcessor,
   WhatsAppAgentProcessor,
   WhatsAppTestMessageProcessor,
+  WhatsAppTemplateSyncProcessor,
 ]
 
 /**

@@ -88,3 +88,17 @@ export interface MonitoringRule extends CompanyScoped {
   /** Property manager events are assigned to when raised by this rule. */
   defaultAssigneeUserId?: EntityId
 }
+
+/**
+ * A monitoring event as the monitoring list shows it: the event plus the names of its property and, when the event
+ * names them, its unit, tenant and assigned property manager, so a row reads without a lookup per record.
+ */
+export interface MonitoringEventListItem extends MonitoringEvent {
+  propertyName: string
+  /** Absent when the event names no unit. */
+  unitNumber?: string
+  /** The tenant's trading name; absent when the event names no tenant. */
+  tenantName?: string
+  /** The assigned member's full name; absent when nobody is assigned. */
+  assigneeName?: string
+}

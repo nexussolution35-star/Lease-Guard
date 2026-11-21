@@ -63,13 +63,21 @@ const PAIRS: { readonly [E in DbEnumName]: readonly string[] } = {
  * test until it is paired above or listed here with the reason.
  */
 const DOMAIN_ONLY: Readonly<Record<string, string>> = {
+  MONITORING_DUE_WINDOWS: 'due-date windows of the monitoring list filter, turned into a due_date range by dueWindowRange; never stored',
   FIELD_REVIEW_REASON_KINDS: 'why a field is flagged, derived from extraction issues and the stored field by fieldReviewReasons; never stored',
   OPTIONAL_EXTRACTION_FIELDS:
     'subset of extraction_field_name that may be confirmed as not on the statement (statement_extraction_fields_confirm_value_check, 20261121194500)',
+  INSTALLMENT_OUTCOMES: 'subset of installment_status a manager records (record_arrangement_installment_outcome, 20261121223100)',
+  ARRANGEMENT_CLOSE_OUTCOMES: 'subset of arrangement_status an active arrangement closes as (close_payment_arrangement, 20261121223100)',
+  CLOSED_ARRANGEMENT_STATUSES: 'subset of arrangement_status that is read-only (private.guard_payment_arrangement, 20261121223100)',
   FIELD_RESOLUTIONS: 'derived from statement_extraction_fields (corrected_value, confirmed_at, value, flagged) by fieldResolution; never stored',
   INVITATION_STATUSES: 'company_invitations.status is text with a check constraint (20261109101900), not an enum',
   ONBOARDING_STEPS: 'computed by the onboarding endpoint; never stored',
   OWNER_MESSAGE_TYPES: 'subset of message_type (communication eligibility rule)',
+  TEMPLATED_MESSAGE_TYPES:
+    'subset of message_type sent with a template (message_type_templates_type_check, 20261121234500)',
+  WHATSAPP_TEMPLATE_HEADER_FORMATS:
+    'whatsapp_message_templates.header_format is text with a check constraint (20261121234500), not an enum',
   FORBIDDEN_TENANT_TOPICS: 'message content rule; never stored',
   REPORT_IDS: 'report catalogue; reports are computed, not stored',
   EXPIRY_BUCKETS: 'report grouping; computed',

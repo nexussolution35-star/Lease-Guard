@@ -16,6 +16,7 @@ export function createApiAuditSource(api: ApiClient): AuditSource {
               direction: 'desc',
               action: params.action,
               entityType: params.entityType,
+              entityId: params.entityId,
               actorUserId: params.actorUserId,
               from: params.from,
               to: params.to,

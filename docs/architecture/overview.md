@@ -79,8 +79,8 @@ signed raw payload (the API cannot store it; the worker stores it first and the 
 | `message-delivery` | `companyId`, `communicationId` | API: `POST /communications/{id}/approve` | 4 |
 | `monitoring-dispatch` | `asOf?` | BullMQ job scheduler `daily-monitoring-dispatch`, `0 6 * * *` Africa/Johannesburg | 1 |
 | `lease-monitoring` | `companyId`, `asOf` | `monitoring-dispatch`, one job per active company | 1 |
-| `arrears-monitoring` | `companyId`, `asOf` | `monitoring-dispatch` | 1 |
-| `arrangement-reminders` | `companyId`, `asOf` | `monitoring-dispatch` | 1 |
+| `arrears-monitoring` | `companyId`, `asOf` | `monitoring-dispatch` (one `arrears` event per latest verified statement and ageing bucket, naming the statement, lease and lease reference; suppressed by an active arrangement; never a tenant message) | 1 |
+| `arrangement-reminders` | `companyId`, `asOf` | `monitoring-dispatch` (overdue instalments, and instalments a verified statement shows were not covered, become `arrangement_attention` events; upcoming ones notify the property manager; never a tenant message) | 1 |
 | `statement-monitoring` | `companyId`, `statementId` | API: `POST /statements/{id}/verify` (arrears and lease monitoring for that statement's tenant, at once) | 1 |
 | `whatsapp-webhook` | `payloadSha256`, `body`, `receivedAt` | API: `POST /webhooks/whatsapp` (Meta, signed) | 4 |
 

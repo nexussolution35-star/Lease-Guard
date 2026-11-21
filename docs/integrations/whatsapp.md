@@ -202,7 +202,27 @@ sequenceDiagram
   several accounts the last synced account wins for a shared name. A LeaseGuard template that was approved
   or submitted but whose Meta name and language no account of the company holds any more goes back to
   `draft`, so the outbound gate stops sending a template Meta would refuse; templates of the company's other
-  accounts count, so syncing one account never downgrades a template another account holds.
+  accounts count, so syncing one account never downgrades a template another account holds. Since ticket SG-01 the
+  sync also reads each template's `components` and keeps Meta's BODY text (`body`) and HEADER format
+  (`header_format`; `DOCUMENT` carries the statement PDF).
+- **Which template sends which message (ticket SG-01, Settings → Message templates).** `message_type_templates` maps
+  each templated message type (the five tenant statement and payment types, then `owner_weekly_summary` and
+  `owner_query_response`) to one `message_templates` row. A company admin chooses a synced template
+  (`PUT /api/v1/message-templates/{messageType}` → `set_message_type_template`), which copies its name, language,
+  category, text, approval, document header and variable names into `message_templates`; communications of the
+  type name that row, so the outbound gate keeps refusing it whenever Meta's status is not approved. Rules, checked
+  by `@leaseguard/domain` (`templateMappingProblems`) and again by the database: Meta approved it (`APPROVED` or
+  `FLAGGED`), not an authentication template, a tenant type takes a Utility template only, LeaseGuard holds its text
+  with numbered placeholders `{{1}}…{{n}}`, no banking details, for a tenant type no escalation, lease expiry,
+  renewal, dispute, guarantee or deposit wording, and one template sends one type. Every choice is audited on the
+  template. A template edited in WhatsApp Manager after it was chosen reads "Text changed" (`metaBodyChanged`) and is
+  not sendable until it is chosen again (the approved text is rebuilt into Meta's parameters, so the two must match;
+  the outbound gate itself compares the message with the chosen text).
+- **Sync again** (`POST /api/v1/message-templates/sync`, company admins): the API queues `whatsapp-template-sync`
+  (`backend/src/workers/whatsapp/template-sync.ts`) for one connected number per WhatsApp Business Account. The
+  worker opens the number's management (`manageNumber`), lists the templates and calls the same
+  `sync_whatsapp_message_templates` as verification step 5, without re-checking the number. Transient failures retry;
+  Meta's refusal and a number no longer manageable are recorded in the job's result.
 - **Disconnect** (`disconnect_whatsapp_number`, company admins, `SECURITY DEFINER`): the number becomes
   `disconnected` at once (it can no longer send or receive: only a connected number has a channel or owns a
   receiving number), its verification results are deleted, and the token is removed. The decision follows the token,
@@ -998,7 +1018,10 @@ sequenceDiagram
 | `POST /api/v1/integrations/whatsapp/numbers/:numberId/verify` (ticket 04) | `company_admin` | 202: `numberId`, `status` (`queued`, `already_running`), `message`. 404 not the company's number, 409 disconnected, 503 Redis unavailable. |
 | `POST /api/v1/integrations/whatsapp/numbers/:numberId/register` (ticket 04) | `company_admin` | Body `{ pin }` (6 digits). 202 as above; 400 not 6 digits; 409 connected or disconnected, or a verification run in progress (no PIN stored); 429 while Meta's registration lock lasts, with its end time. The PIN is never stored or returned. |
 | `POST /api/v1/integrations/whatsapp/numbers/:numberId/disconnect` (ticket 04) | `company_admin` | 200: `numberId`, `status: disconnected`, `tokenRemoved`, `message`. 404 not the company's number. |
-| `GET /api/v1/integrations/whatsapp/message-templates` (ticket 04) | Members | The templates Meta holds for the company's accounts as last synced: `name`, `language`, `category`, `status`, `rejectedReason`, `syncedAt`. |
+| `GET /api/v1/integrations/whatsapp/message-templates` (ticket 04) | Members | The templates Meta holds for the company's accounts as last synced: `name`, `language`, `category`, `status`, `rejectedReason`, `syncedAt`, and (SG-01) Meta's `body` and `headerFormat`. |
+| `GET /api/v1/message-templates` (ticket SG-01) | Members | Every templated message type with its audience, the chosen template and whether it can be sent now; `whatsappConnected`. |
+| `PUT /api/v1/message-templates/{messageType}` (ticket SG-01) | `company_admin` | Body `{ whatsappTemplateId }`. 200 the type with its template; 422 with every reason it cannot serve the type; 404 another company's template; 400 an untemplated type. Audited. |
+| `POST /api/v1/message-templates/sync` (ticket SG-01) | `company_admin` | 202 `{ queued, message }`: `whatsapp-template-sync` per connected WhatsApp Business Account; 409 without a connected number; 503 without Redis. |
 | `GET /api/v1/integrations/whatsapp/business-accounts` (ticket 04 adds) | Members | Each number also has `verificationSteps` (in step order) and `registrationBlockedUntil`. |
 | `GET /api/v1/integrations/whatsapp/business-accounts` (ticket 15 adds) | Members | `operatorImportedAt` on a number Nexus Solution connected with the number import (absent for Embedded Signup). No endpoint imports a number: only the operator command does. |
 | `GET /api/v1/webhooks/whatsapp` (ticket 05) | Public (Meta) | Meta's handshake: `hub.challenge` as plain text when `hub.mode=subscribe` and `hub.verify_token` matches; 403 otherwise; 400 bad challenge; 503 without `WHATSAPP_WEBHOOK_VERIFY_TOKEN`. |

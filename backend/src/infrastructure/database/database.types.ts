@@ -10,14 +10,14 @@ export type Database = {
           Tables: {
             "arrangement_installments": {
                   Row: {
-                    "amount": number,"arrangement_id": string,"company_id": string,"confirmed_by_user_id": string | null,"confirmed_on": string | null,"created_at": string,"due_date": string,"id": string,"notes": string | null,"reminder_sent_at": string | null,"sequence": number,"status": Database["public"]['Enums']["installment_status"],"updated_at": string
+                    "amount": number,"arrangement_id": string,"company_id": string,"confirmed_by_user_id": string | null,"confirmed_on": string | null,"created_at": string,"due_date": string,"id": string,"notes": string | null,"outcome_recorded_at": string | null,"outcome_recorded_by_user_id": string | null,"reminder_sent_at": string | null,"sequence": number,"status": Database["public"]['Enums']["installment_status"],"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount": number,"arrangement_id": string,"company_id": string,"confirmed_by_user_id"?: string | null,"confirmed_on"?: string | null,"created_at"?: string,"due_date": string,"id"?: string,"notes"?: string | null,"reminder_sent_at"?: string | null,"sequence": number,"status"?: Database["public"]['Enums']["installment_status"],"updated_at"?: string
+                    "amount": number,"arrangement_id": string,"company_id": string,"confirmed_by_user_id"?: string | null,"confirmed_on"?: string | null,"created_at"?: string,"due_date": string,"id"?: string,"notes"?: string | null,"outcome_recorded_at"?: string | null,"outcome_recorded_by_user_id"?: string | null,"reminder_sent_at"?: string | null,"sequence": number,"status"?: Database["public"]['Enums']["installment_status"],"updated_at"?: string
                   }
                   Update: {
-                    "amount"?: number,"arrangement_id"?: string,"company_id"?: string,"confirmed_by_user_id"?: string | null,"confirmed_on"?: string | null,"created_at"?: string,"due_date"?: string,"id"?: string,"notes"?: string | null,"reminder_sent_at"?: string | null,"sequence"?: number,"status"?: Database["public"]['Enums']["installment_status"],"updated_at"?: string
+                    "amount"?: number,"arrangement_id"?: string,"company_id"?: string,"confirmed_by_user_id"?: string | null,"confirmed_on"?: string | null,"created_at"?: string,"due_date"?: string,"id"?: string,"notes"?: string | null,"outcome_recorded_at"?: string | null,"outcome_recorded_by_user_id"?: string | null,"reminder_sent_at"?: string | null,"sequence"?: number,"status"?: Database["public"]['Enums']["installment_status"],"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -35,6 +35,12 @@ isOneToOne: false
     },{
       foreignKeyName: "arrangement_installments_confirmed_by_fk"
       columns: ["company_id","confirmed_by_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    },{
+      foreignKeyName: "arrangement_installments_outcome_by_fk"
+      columns: ["company_id","outcome_recorded_by_user_id"]
 isOneToOne: false
       referencedRelation: "company_users"
       referencedColumns: ["company_id","user_id"]
@@ -434,6 +440,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"message_type_templates": {
+                  Row: {
+                    "company_id": string,"created_at": string,"mapped_at": string,"mapped_by_user_id": string | null,"message_template_id": string,"message_type": Database["public"]['Enums']["message_type"],"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "company_id": string,"created_at"?: string,"mapped_at"?: string,"mapped_by_user_id"?: string | null,"message_template_id": string,"message_type": Database["public"]['Enums']["message_type"],"updated_at"?: string
+                  }
+                  Update: {
+                    "company_id"?: string,"created_at"?: string,"mapped_at"?: string,"mapped_by_user_id"?: string | null,"message_template_id"?: string,"message_type"?: Database["public"]['Enums']["message_type"],"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "message_type_templates_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "message_type_templates_mapped_by_fk"
+      columns: ["company_id","mapped_by_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    },{
+      foreignKeyName: "message_type_templates_template_fk"
+      columns: ["company_id","message_template_id"]
+isOneToOne: true
+      referencedRelation: "message_templates"
+      referencedColumns: ["company_id","id"]
+    }
+                  ]
                 },"monitoring_events": {
                   Row: {
                     "arrangement_id": string | null,"assigned_to_user_id": string | null,"calculation": Json | null,"company_id": string,"created_at": string,"dedupe_key": string | null,"description": string,"dismissal_reason": string | null,"dismissed_at": string | null,"dismissed_by_user_id": string | null,"due_date": string | null,"id": string,"identified_on": string,"lease_id": string | null,"lease_reference": string | null,"priority": Database["public"]['Enums']["event_priority"],"property_id": string,"recommended_action": string,"resolution_notes": string | null,"resolved_at": string | null,"resolved_by_user_id": string | null,"rule_id": string | null,"statement_id": string | null,"status": Database["public"]['Enums']["monitoring_event_status"],"tenant_id": string | null,"title": string,"type": Database["public"]['Enums']["monitoring_event_type"],"unit_id": string | null,"updated_at": string
@@ -574,19 +612,25 @@ isOneToOne: false
                   ]
                 },"payment_arrangements": {
                   Row: {
-                    "agreed_by_user_id": string,"agreed_on": string,"closed_on": string | null,"company_id": string,"created_at": string,"final_installment_date": string,"first_installment_date": string,"frequency": Database["public"]['Enums']["installment_frequency"],"id": string,"installment_amount": number,"lease_id": string,"notes": string,"outstanding_balance": number,"property_id": string,"status": Database["public"]['Enums']["arrangement_status"],"suppress_arrears_reminders": boolean,"tenant_id": string,"unit_id": string,"updated_at": string
+                    "agreed_by_user_id": string,"agreed_on": string,"close_reason": string | null,"closed_by_user_id": string | null,"closed_on": string | null,"company_id": string,"created_at": string,"final_installment_date": string,"first_installment_date": string,"frequency": Database["public"]['Enums']["installment_frequency"],"id": string,"installment_amount": number,"lease_id": string,"notes": string,"outstanding_balance": number,"property_id": string,"status": Database["public"]['Enums']["arrangement_status"],"suppress_arrears_reminders": boolean,"tenant_id": string,"unit_id": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "agreed_by_user_id": string,"agreed_on": string,"closed_on"?: string | null,"company_id": string,"created_at"?: string,"final_installment_date": string,"first_installment_date": string,"frequency": Database["public"]['Enums']["installment_frequency"],"id"?: string,"installment_amount": number,"lease_id": string,"notes"?: string,"outstanding_balance": number,"property_id": string,"status"?: Database["public"]['Enums']["arrangement_status"],"suppress_arrears_reminders"?: boolean,"tenant_id": string,"unit_id": string,"updated_at"?: string
+                    "agreed_by_user_id": string,"agreed_on": string,"close_reason"?: string | null,"closed_by_user_id"?: string | null,"closed_on"?: string | null,"company_id": string,"created_at"?: string,"final_installment_date": string,"first_installment_date": string,"frequency": Database["public"]['Enums']["installment_frequency"],"id"?: string,"installment_amount": number,"lease_id": string,"notes"?: string,"outstanding_balance": number,"property_id": string,"status"?: Database["public"]['Enums']["arrangement_status"],"suppress_arrears_reminders"?: boolean,"tenant_id": string,"unit_id": string,"updated_at"?: string
                   }
                   Update: {
-                    "agreed_by_user_id"?: string,"agreed_on"?: string,"closed_on"?: string | null,"company_id"?: string,"created_at"?: string,"final_installment_date"?: string,"first_installment_date"?: string,"frequency"?: Database["public"]['Enums']["installment_frequency"],"id"?: string,"installment_amount"?: number,"lease_id"?: string,"notes"?: string,"outstanding_balance"?: number,"property_id"?: string,"status"?: Database["public"]['Enums']["arrangement_status"],"suppress_arrears_reminders"?: boolean,"tenant_id"?: string,"unit_id"?: string,"updated_at"?: string
+                    "agreed_by_user_id"?: string,"agreed_on"?: string,"close_reason"?: string | null,"closed_by_user_id"?: string | null,"closed_on"?: string | null,"company_id"?: string,"created_at"?: string,"final_installment_date"?: string,"first_installment_date"?: string,"frequency"?: Database["public"]['Enums']["installment_frequency"],"id"?: string,"installment_amount"?: number,"lease_id"?: string,"notes"?: string,"outstanding_balance"?: number,"property_id"?: string,"status"?: Database["public"]['Enums']["arrangement_status"],"suppress_arrears_reminders"?: boolean,"tenant_id"?: string,"unit_id"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
       foreignKeyName: "payment_arrangements_agreed_by_fk"
       columns: ["company_id","agreed_by_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    },{
+      foreignKeyName: "payment_arrangements_closed_by_fk"
+      columns: ["company_id","closed_by_user_id"]
 isOneToOne: false
       referencedRelation: "company_users"
       referencedColumns: ["company_id","user_id"]
@@ -1432,14 +1476,14 @@ isOneToOne: false
                   ]
                 },"whatsapp_message_templates": {
                   Row: {
-                    "business_account_id": string,"category": string,"company_id": string,"created_at": string,"id": string,"language": string,"meta_template_id": string,"name": string,"rejected_reason": string | null,"status": string,"status_updated_at": string | null,"synced_at": string,"updated_at": string
+                    "body": string | null,"business_account_id": string,"category": string,"company_id": string,"created_at": string,"header_format": string | null,"id": string,"language": string,"meta_template_id": string,"name": string,"rejected_reason": string | null,"status": string,"status_updated_at": string | null,"synced_at": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "business_account_id": string,"category": string,"company_id": string,"created_at"?: string,"id"?: string,"language": string,"meta_template_id": string,"name": string,"rejected_reason"?: string | null,"status": string,"status_updated_at"?: string | null,"synced_at"?: string,"updated_at"?: string
+                    "body"?: string | null,"business_account_id": string,"category": string,"company_id": string,"created_at"?: string,"header_format"?: string | null,"id"?: string,"language": string,"meta_template_id": string,"name": string,"rejected_reason"?: string | null,"status": string,"status_updated_at"?: string | null,"synced_at"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "business_account_id"?: string,"category"?: string,"company_id"?: string,"created_at"?: string,"id"?: string,"language"?: string,"meta_template_id"?: string,"name"?: string,"rejected_reason"?: string | null,"status"?: string,"status_updated_at"?: string | null,"synced_at"?: string,"updated_at"?: string
+                    "body"?: string | null,"business_account_id"?: string,"category"?: string,"company_id"?: string,"created_at"?: string,"header_format"?: string | null,"id"?: string,"language"?: string,"meta_template_id"?: string,"name"?: string,"rejected_reason"?: string | null,"status"?: string,"status_updated_at"?: string | null,"synced_at"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -1648,6 +1692,9 @@ isOneToOne: false
 "claim_communication":
 { Args: { "p_communication_id": string,"p_company_id": string }; Returns: string
                            },
+"close_payment_arrangement":
+{ Args: { "p_arrangement_id": string,"p_company_id": string,"p_reason"?: string,"p_status": Database["public"]['Enums']["arrangement_status"] }; Returns: string
+                           },
 "communication_analytics":
 { Args: { "p_company_id": string,"p_from": string,"p_to": string }; Returns: {
               "agent_replies": number,"delivered_messages": number,"failed_messages": number,"handovers_by_agent": number,"handovers_opened": number,"inbound_messages": number,"out_of_hours_messages": number,"outbound_messages": number,"read_messages": number,"suggested_replies": number
@@ -1726,6 +1773,9 @@ isOneToOne: false
 "mark_statement_duplicate":
 { Args: { "p_company_id": string,"p_duplicate_of_statement_id": string,"p_statement_id": string }; Returns: string
                            },
+"record_arrangement_installment_outcome":
+{ Args: { "p_arrangement_id": string,"p_company_id": string,"p_installment_id": string,"p_note"?: string,"p_status": Database["public"]['Enums']["installment_status"] }; Returns: string
+                           },
 "record_communication_failed":
 { Args: { "p_claim"?: string,"p_communication_id": string,"p_company_id": string,"p_may_have_been_sent": boolean,"p_reason": string }; Returns: boolean
                            },
@@ -1734,6 +1784,9 @@ isOneToOne: false
                            },
 "record_communication_sent":
 { Args: { "p_communication_id": string,"p_company_id": string,"p_provider_message_id": string }; Returns: string
+                           },
+"record_payment_arrangement":
+{ Args: { "p_agreed_on"?: string,"p_company_id": string,"p_final_installment_date"?: string,"p_first_installment_date": string,"p_frequency": Database["public"]['Enums']["installment_frequency"],"p_installment_amount": number,"p_lease_id"?: string,"p_notes"?: string,"p_outstanding_balance": number,"p_property_id": string,"p_status"?: Database["public"]['Enums']["arrangement_status"],"p_tenant_id": string,"p_unit_id"?: string }; Returns: string
                            },
 "record_whatsapp_inbound_message":
 { Args: { "p_body": string,"p_company_id": string,"p_number_id": string,"p_profile_name": string,"p_provider_message_id": string,"p_sent_at": string,"p_user_id": string,"p_wa_id": string }; Returns: {
@@ -1867,6 +1920,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"set_message_type_template":
+{ Args: { "p_company_id": string,"p_message_type": Database["public"]['Enums']["message_type"],"p_variables"?: (string)[],"p_whatsapp_template_id": string }; Returns: string
+                           },
 "start_whatsapp_agent_run":
 { Args: { "p_communication_id": string,"p_company_id": string }; Returns: {
               "conversation_id": string,"outcome": string,"reply_communication_id": string,"run_id": string
@@ -1887,6 +1943,9 @@ isOneToOne: false
                            },
 "tenant_search_text":
 { Args: { "lease": Omit<Database["public"]['Tables']["leases"]['Row'], Database["public"]['Tables']["leases"]['ComputedFields']> }; Returns: string
+                           },
+"update_payment_arrangement":
+{ Args: { "p_agreed_on"?: string,"p_arrangement_id": string,"p_company_id": string,"p_final_installment_date"?: string,"p_first_installment_date"?: string,"p_frequency"?: Database["public"]['Enums']["installment_frequency"],"p_installment_amount"?: number,"p_notes"?: string,"p_outstanding_balance"?: number,"p_status"?: Database["public"]['Enums']["arrangement_status"] }; Returns: string
                            },
 "validate_tenant_whatsapp_number":
 { Args: { "p_company_id": string,"p_tenant_id": string,"p_whatsapp_number": string }; Returns: {

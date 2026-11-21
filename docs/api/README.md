@@ -149,6 +149,9 @@ From `backend/openapi.json`. "Writers" means `WRITER_ROLES`.
 | `GET /api/v1/unit-assignments` | `listUnitAssignments` | company | members |
 | `POST /api/v1/unit-assignments` | `assignTenantToUnit` | company | writers |
 | `POST /api/v1/unit-assignments/{assignmentId}/end` | `endUnitAssignment` | company | writers |
+| `GET /api/v1/message-templates` | `getMessageTemplateSettings` | company | members |
+| `PUT /api/v1/message-templates/{messageType}` | `chooseMessageTemplate` | company | `company_admin` |
+| `POST /api/v1/message-templates/sync` | `syncMessageTemplates` | company | `company_admin` |
 | `GET /api/v1/tenants` | `listTenants` | company | members |
 | `GET /api/v1/tenants/{tenantId}` | `getTenant` | company | members |
 | `POST /api/v1/tenants` | `createTenant` | company | writers |
@@ -175,11 +178,17 @@ From `backend/openapi.json`. "Writers" means `WRITER_ROLES`.
 | `POST /api/v1/statements/{statementId}/verify` | `verifyStatement` | company | writers |
 | `POST /api/v1/statements/{statementId}/reject` | `rejectStatement` | company | writers |
 | `POST /api/v1/statements/{statementId}/mark-duplicate` | `markStatementDuplicate` | company | writers |
+| `GET /api/v1/dashboard/summary` | `getDashboardSummary` | company | members |
 | `GET /api/v1/monitoring/events` | `listMonitoringEvents` | company | members |
 | `GET /api/v1/monitoring/events/{eventId}` | `getMonitoringEvent` | company | members |
 | `PATCH /api/v1/monitoring/events/{eventId}/status` | `updateMonitoringEventStatus` | company | writers |
 | `GET /api/v1/arrangements` | `listArrangements` | company | members |
 | `GET /api/v1/arrangements/{arrangementId}` | `getArrangement` | company | members |
+| `POST /api/v1/arrangements` | `createArrangement` | company | writers |
+| `PATCH /api/v1/arrangements/{arrangementId}` | `updateArrangement` | company | writers |
+| `POST /api/v1/arrangements/{arrangementId}/close` | `closeArrangement` | company | writers |
+| `POST /api/v1/arrangements/{arrangementId}/cancel` | `cancelArrangement` | company | writers |
+| `POST /api/v1/arrangements/{arrangementId}/installments/{installmentId}/outcome` | `recordInstallmentOutcome` | company | writers |
 | `GET /api/v1/communications` | `listCommunications` | company | members |
 | `GET /api/v1/communications/approvals` | `listPendingApprovals` | company | members |
 | `GET /api/v1/communications/{communicationId}` | `getCommunication` | company | members |
@@ -234,6 +243,7 @@ Behaviour worth knowing:
   trading names and the contact person. Each item also lists `currentUnits` (`unitId`, `unitNumber`, `propertyId`,
   `propertyName`): the units whose current tenant it is, by lease or assignment (`units_current_tenant_fk`). `getTenant`
   returns the plain `Tenant`.
+- **Message templates** (`getMessageTemplateSettings`, `chooseMessageTemplate`, `syncMessageTemplates`; ticket SG-01): every member reads the seven templated message types (the five tenant statement and payment types, then the owner types) with `audience`, the chosen template (`mapping`: Meta name, language, category, text, variables, `approvalStatus`, Meta's `metaStatus` and `rejectedReason`, `supportsDocumentAttachment`, `metaBodyChanged`, who chose it and when) and `sendable` (`messageTypeTemplateState` in @leaseguard/domain: chosen, approved by Meta and its text unchanged), plus `whatsappConnected`. A company admin chooses a synced template for a type (`{ whatsappTemplateId }`): the API checks `templateMappingProblems` first and answers 422 with every reason (not approved, authentication, a tenant type needs Utility, no text, named or gapped placeholders, banking details, forbidden tenant topics); the database checks again and refuses a template already sending another type (422 in its words); another company's template is 404, an untemplated type 400, anyone but a company admin 403. Choosing is audited. `syncMessageTemplates` queues `whatsapp-template-sync` for one connected number per WhatsApp Business Account (202 `{ queued, message }`; 409 without a connected number, 503 without Redis); the API never calls Meta. `listWhatsAppMessageTemplates` items also carry Meta's `body` and `headerFormat`.
 - **Unit assignments** (`listUnitAssignments`, `assignTenantToUnit`, `endUnitAssignment`; ticket M4-04): a writer
   assigns a tenant to a unit without a lease (`{ tenantId, unitId }`); the unit is occupied by that tenant straight
   away. A tenant may hold several units; a unit has one current tenant. The database refuses, and the API answers 409
@@ -338,6 +348,29 @@ Behaviour worth knowing:
   others. It answers 200 with `StatementsVerificationResultDto`: `verified` (`statementId`, `fileName`,
   `statementNumber?`, `monitoringQueued`) and `notVerified` (`statementId`, `fileName?` (absent when the statement is
   not in the company), `statementNumber?`, `reasons`: every reason, as `verifyStatement` would answer).
+- **Payment arrangements** (`createArrangement`, `updateArrangement`, `closeArrangement`, `cancelArrangement`,
+  `recordInstallmentOutcome`; ticket M7-03): monitoring records of an agreement; nothing collects, processes or
+  verifies a payment. `createArrangement` takes the tenant, the property, optionally the unit and lease (else the
+  tenant's single lease in force at the property), the outstanding balance, instalment amount and frequency, the first
+  instalment date, optionally the final instalment date (it must be the schedule's last due date), `status`
+  (`proposed` or `active`, default `active`), `agreedOn` (default today) and notes. The database generates the
+  instalments (`generateInstallmentSchedule`'s schedule) and checks the terms (`arrangementTermsProblems`'s words):
+  422 when they do not fit or the lease is not the tenant's at the property; 409 when the tenant already has an active
+  arrangement (one per tenant). `updateArrangement` edits a proposed or active one (omitted fields unchanged; status
+  proposed -> active only); changed terms regenerate the schedule, refused with 409 once an instalment outcome is
+  recorded. `closeArrangement` (`completed` or `defaulted`, an active one) and `cancelArrangement` (a reason required;
+  proposed or active) stamp `closedOn`, `closedByUserId` and `closeReason`; a closed arrangement answers 409 to every
+  write. `recordInstallmentOutcome` records what the property manager confirms (`confirmed_paid`, `missed`, `waived`;
+  `scheduled` clears it) on an active arrangement; a future instalment cannot be missed; it stamps
+  `outcomeRecordedByUserId` and `outcomeRecordedAt` (and `confirmedByUserId`/`confirmedOn` when paid). Every write
+  returns the arrangement with its instalments and is audited on it. While active, an arrangement keeps suppressing
+  the tenant's normal arrears reminders (`suppressArrearsReminders`); closing or cancelling resumes them. The daily
+  `arrangement-reminders` job raises `arrangement_attention` events for overdue instalments and for instalments a
+  verified statement of the lease shows were not covered (`installmentShortfallsOnStatements`: payments received below
+  that period's charges plus the instalments due), naming the statement with the calculation; never a tenant message.
+  `listArrangements` also filters by `propertyId`. Every arrangement response (list, get and each write) also names
+  its tenant (`tenantName`), property (`propertyName`), unit (`unitNumber`) and lease (`leaseReference`)
+  (`PaymentArrangementListItem`, to-one embeds over the composite foreign keys; ticket M7-04).
 - **Statement arrears** (`getStatementArrears`): the Statements page's figures, calculated by the domain
   `arrearsOverview` from the LATEST verified statement of each tenant's lease (a tenant with several leases or units has
   a statement per lease, and every one counts; a renewal that replaces the lease of the same unit supersedes the
@@ -351,6 +384,15 @@ Behaviour worth knowing:
   arrangement is in force for the tenant (`underArrangement`, on every lease of the tenant) and pauses reminders
   (`remindersSuppressed`). The minimum-balance threshold
   of the arrears rule decides when an event is raised, not what is owed, so it does not filter these figures.
+- **Dashboard summary** (`getDashboardSummary`, ticket M7-05): every PRD §7.1 figure of the active company in one
+  request, as the domain `DashboardSummary`: `properties` (not archived), `units` and `occupiedUnits` (units of those
+  properties; occupied is the unit's `occupancy_status`, which a current lease or an assigned tenant keeps occupied),
+  `activeLeases` (status `active`), `totalOutstanding`, `tenantsInArrears` and `pendingStatementReviews` (the statement
+  arrears figures above, so the dashboard and the Statements page never disagree; `asOf` is their day),
+  `activeArrangements` (status `active`), `pendingApprovals` (approval requests with decision `pending`) and the OPEN
+  monitoring events (`OPEN_EVENT_STATUSES`) of one type each (`DASHBOARD_EVENT_FIGURES`): `escalationDiscrepancies`,
+  `upcomingExpiries`, `renewalDeadlines`, `expiringGuarantees`. The counts are head-only parallel queries on indexed
+  columns through the caller's client. Monitoring figures, never transactions.
 - **Portfolio import** (upload a portfolio file) is three calls: `createPortfolioImportUploadUrl` returns a
   signed upload URL into the private `portfolio-imports` bucket and the `contentType` to send; the client
   uploads the CSV or XLSX file; `createPortfolioImport` (`scope` `properties`, or `units` with a
@@ -432,8 +474,28 @@ Behaviour worth knowing:
   form's create schema and `tenantInsertFrom` and creates it with the batch (`created` lists it as `tenant`
   with its `unitId` and `unitNumber`). A created tenant's WhatsApp number starts unvalidated and nothing is
   sent. `createTenant` / `updateTenant` take `accountReference` (unique per company, 409 on a duplicate).
-- **Monitoring status changes** follow the transitions in `@leaseguard/domain`; a disallowed move is
-  409 and dismissing requires a `note` (the dismissal reason).
+- **Monitoring list** (`listMonitoringEvents`, ticket M7-01): filters `status` or `open` (true: new, under review,
+  action required, in progress; false: resolved or dismissed), `priority`, `type`, `propertyId`, `unitId`,
+  `tenantId`, `leaseId`, `assignee` (a member's user id, or `unassigned`) and `due` (`overdue`: due before today;
+  `next_7_days` / `next_30_days` / `next_90_days`: due from today to n days from today, inclusive; judged on the
+  South African date by `dueWindowRange` in `@leaseguard/domain`); search on title, description and lease reference;
+  sort by `identifiedOn`, `dueDate` (events without one last), `priority` or `createdAt`. Each item is a
+  `MonitoringEventListItem`: the event plus `propertyName` and, when set, `unitNumber`, `tenantName` (trading name)
+  and `assigneeName` (the member's full name), read from the database with the event.
+- **Monitoring event detail** (`getMonitoringEvent`, ticket M7-02) answers the same `MonitoringEventListItem` as a list
+  row (the event with its calculation, plus the property, unit, tenant and assignee names), and so does a status change.
+- **Where an event came from**: every lease finding (escalation discrepancy, expiry, renewal deadline, guarantee expiry
+  and shortfall, deposit shortfall) and every arrears event carries `leaseId` and `leaseReference` with its property,
+  unit and tenant; escalation discrepancies and arrears events also carry the verified `statementId` they were read
+  from, and money findings the `calculation` (expected, actual, difference and each step). Arrears events record the
+  lease reference since ticket M7-06, so the list's lease-reference search finds them too (`tests/README.md`,
+  "Monitoring accuracy acceptance").
+- **Monitoring status changes** follow the transitions in `@leaseguard/domain` (`nextEventStatuses`, `canTransition`);
+  a disallowed move, or one from a status someone else changed meanwhile, is 409 and dismissing requires a `note`
+  (the dismissal reason, `statusChangeRequiresNote`); on other moves the note is stored as the resolution notes. An
+  event's history is its audit log: `listAuditLogs` with `entityType=monitoring_event&entityId=…` (audit readers;
+  property owners 403). Each entry carries the status change and, when the same move changed them, the
+  `resolution_notes` and `dismissal_reason` (migration `20261122003000_monitoring_event_status_history.sql`).
 - **Approvals** (`approveCommunication`): any `company_admin` or `property_manager` may approve,
   including the person who requested the approval (single-manager companies must be able to send);
   `read_only` and `property_owner` get 403. The caller is recorded as the approver. The message must

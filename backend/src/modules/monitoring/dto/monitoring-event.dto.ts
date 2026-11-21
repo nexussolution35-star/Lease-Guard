@@ -1,12 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import {
   EVENT_PRIORITIES,
+  MONITORING_DUE_WINDOWS,
   MONITORING_EVENT_STATUSES,
   MONITORING_EVENT_TYPES,
   type EventCalculation,
   type EventDismissal,
   type EventPriority,
+  type MonitoringDueWindow,
   type MonitoringEvent,
+  type MonitoringEventListItem,
   type MonitoringEventStatus,
   type MonitoringEventType,
 } from '@leaseguard/domain'
@@ -64,7 +67,15 @@ export class MonitoringEventDto implements MonitoringEvent {
   @ApiProperty({ format: 'date-time' }) updatedAt!: string
 }
 
-export const MonitoringEventPageDto = createPageDto(MonitoringEventDto, 'MonitoringEventPage')
+/** A monitoring event as the list shows it: the event plus the names of its property, unit, tenant and assignee. */
+export class MonitoringEventListItemDto extends MonitoringEventDto implements MonitoringEventListItem {
+  @ApiProperty() propertyName!: string
+  @ApiPropertyOptional({ description: 'Absent when the event names no unit' }) unitNumber?: string
+  @ApiPropertyOptional({ description: "The tenant's trading name; absent when the event names no tenant" }) tenantName?: string
+  @ApiPropertyOptional({ description: "The assigned member's full name; absent when nobody is assigned" }) assigneeName?: string
+}
+
+export const MonitoringEventPageDto = createPageDto(MonitoringEventListItemDto, 'MonitoringEventPage')
 
 export class MonitoringEventListQueryDto extends PageQueryDto {
   @ApiPropertyOptional({ enum: MONITORING_EVENT_SORT_FIELDS, enumName: 'MonitoringEventSortField' })
@@ -89,7 +100,26 @@ export class MonitoringEventListQueryDto extends PageQueryDto {
   propertyId?: string
 
   @ApiPropertyOptional({ format: 'uuid' })
+  unitId?: string
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  tenantId?: string
+
+  @ApiPropertyOptional({ format: 'uuid' })
   leaseId?: string
+
+  @ApiPropertyOptional({
+    description: "One member's user id (uuid), or `unassigned` for events nobody is assigned to",
+    example: 'unassigned',
+  })
+  assignee?: string
+
+  @ApiPropertyOptional({
+    enum: MONITORING_DUE_WINDOWS,
+    enumName: 'MonitoringDueWindow',
+    description: 'overdue: due before today; next_n_days: due from today to n days from today, inclusive (South African date)',
+  })
+  due?: MonitoringDueWindow
 }
 
 assertSchemaMatchesDto<z.infer<typeof monitoringEventListQuerySchema>, MonitoringEventListQueryDto>(true)

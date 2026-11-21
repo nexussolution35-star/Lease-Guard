@@ -105,6 +105,10 @@ export interface WhatsAppMessageTemplate {
   syncedAt: ISODateTime
   /** When Meta last changed the status (its status webhook), if after the last sync. */
   statusUpdatedAt?: ISODateTime
+  /** Meta's BODY text with numbered placeholders; absent when synced before LeaseGuard read template text. */
+  body?: string
+  /** Meta's HEADER format, e.g. `DOCUMENT` (carries the statement PDF). */
+  headerFormat?: string
 }
 
 /** A company's WhatsApp Business Account (Meta WABA) with its numbers. A company may hold several. */

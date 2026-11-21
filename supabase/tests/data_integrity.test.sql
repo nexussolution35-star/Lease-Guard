@@ -46,6 +46,8 @@ select set_config('request.jwt.claims', tests.claims('naledi.vdmerwe@nexussoluti
 set local role authenticated;
 
 -- ------------------------------------------------------------------ lease parties agree
+-- Signed-in users no longer write arrangements directly (20261121223100); the key holds for the service role.
+reset role;
 select throws_ok(
   $$insert into public.payment_arrangements (company_id, tenant_id, property_id, unit_id, lease_id, outstanding_balance,
       installment_amount, frequency, first_installment_date, final_installment_date, agreed_by_user_id, agreed_on)
@@ -53,6 +55,7 @@ select throws_ok(
       '40000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000001', 100, 50, 'monthly', '2026-12-01', '2027-01-01',
       '10000000-0000-4000-8000-000000000003', '2026-11-09')$$,
   '23503', null, 'an arrangement cannot name another tenant than its lease''s');
+set local role authenticated;
 select throws_ok(
   $$insert into public.statements (company_id, property_id, tenant_id, unit_id, lease_id, file_name, storage_path, mime_type,
       size_bytes, file_sha256, source_system, statement_date, period_start, period_end, uploaded_by_user_id)

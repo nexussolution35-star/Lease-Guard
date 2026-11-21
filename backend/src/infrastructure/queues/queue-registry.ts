@@ -66,6 +66,12 @@ export interface JobPayloads {
    * number they entered. Enqueued by the API after request_whatsapp_test_message; Meta's status webhook completes it.
    */
   'whatsapp-test-message': { companyId: EntityId; testMessageId: EntityId }
+  /**
+   * Sync the message templates of one connected number's WhatsApp Business Account from Meta (Settings → Message
+   * templates, ticket SG-01): their status, text and header format, reflected onto the company's own templates.
+   * Enqueued by the API when a company admin asks to sync again; one job per number, run again on each request.
+   */
+  'whatsapp-template-sync': { companyId: EntityId; numberId: EntityId }
 }
 
 export type QueueName = keyof JobPayloads
@@ -87,6 +93,7 @@ const JOB_KEY_FIELDS: { readonly [Q in QueueName]: readonly (keyof JobPayloads[Q
   'whatsapp-webhook': ['payloadSha256'],
   'whatsapp-agent': ['companyId', 'communicationId'],
   'whatsapp-test-message': ['companyId', 'testMessageId'],
+  'whatsapp-template-sync': ['companyId', 'numberId'],
 }
 
 export const QUEUE_NAMES = Object.keys(JOB_KEY_FIELDS) as QueueName[]

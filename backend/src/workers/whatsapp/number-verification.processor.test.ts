@@ -77,13 +77,26 @@ describe('DatabaseVerificationStore', () => {
   it('syncs templates and finishes through the service-role functions', async () => {
     const { store: s, queries } = store((q) => (q.table === 'rpc:finish_whatsapp_number_verification' ? { data: 'connected', error: null } : { data: 1, error: null }))
     await expect(
-      s.syncTemplates(COMPANY, '771001', [{ id: '9001', name: 'monthly_statement', language: 'en_ZA', category: 'UTILITY', status: 'APPROVED' }]),
+      s.syncTemplates(COMPANY, '771001', [
+        { id: '9001', name: 'monthly_statement', language: 'en_ZA', category: 'UTILITY', status: 'APPROVED', body: 'Good day {{1}}.', headerFormat: 'DOCUMENT' },
+      ]),
     ).resolves.toBe(1)
     await expect(s.finish(COMPANY, NUMBER)).resolves.toBe('connected')
     expect(queries[0]?.calls[0]?.[1]?.[0]).toEqual({
       p_company_id: COMPANY,
       p_business_account_id: '771001',
-      p_templates: [{ id: '9001', name: 'monthly_statement', language: 'en_ZA', category: 'UTILITY', status: 'APPROVED', rejected_reason: null }],
+      p_templates: [
+        {
+          id: '9001',
+          name: 'monthly_statement',
+          language: 'en_ZA',
+          category: 'UTILITY',
+          status: 'APPROVED',
+          rejected_reason: null,
+          body: 'Good day {{1}}.',
+          header_format: 'DOCUMENT',
+        },
+      ],
     })
     expect(queries[1]?.calls[0]?.[1]?.[0]).toEqual({ p_company_id: COMPANY, p_number_id: NUMBER })
   })

@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ApprovalsWaitingSummary } from '@/features/communications/components/ApprovalsWaitingSummary'
 import { CommunicationAnalyticsSummary } from '@/features/communications/components/CommunicationAnalyticsSummary'
+import { DashboardFigures } from '@/features/dashboard/components/DashboardFigures'
 import { WhatsAppSetupSummary } from '@/features/whatsapp-integration/components/WhatsAppSetupSummary'
 
 export const Route = createFileRoute('/')({
@@ -14,6 +15,8 @@ export const Route = createFileRoute('/')({
           <div className="flex min-w-0 flex-1 flex-col gap-8">
             {/* What waits on a person leads: the tenant messages awaiting a property manager's sign-off. */}
             <ApprovalsWaitingSummary showAction />
+            {/* Every PRD §7.1 figure from one request (ticket M7-05), each opening its filtered list. */}
+            <DashboardFigures />
             {/* Every member: the last 30 days of WhatsApp activity, with a link to the full figures (ticket 12). */}
             <CommunicationAnalyticsSummary />
           </div>
