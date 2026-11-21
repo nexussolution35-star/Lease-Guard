@@ -1852,6 +1852,21 @@ isOneToOne: false
               "communication_id": string,"outcome": string
             }[]
                            },
+"reports_arrears_accounts":
+{ Args: { "p_company_id": string }; Returns: {
+              "lease_id": string,"outstanding": number,"property_id": string,"statement_date": string,"statement_id": string,"tenant_id": string,"unit_id": string
+            }[]
+                           },
+"reports_property_figures":
+{ Args: { "p_company_id": string }; Returns: {
+              "active_leases": number,"monthly_rental_roll": number,"occupied_units": number,"open_events": number,"property_code": string,"property_id": string,"property_name": string,"property_status": Database["public"]['Enums']["property_status"],"unit_count": number,"unverified_leases": number,"vacant_units": number
+            }[]
+                           },
+"reports_unit_occupancy":
+{ Args: { "p_company_id": string }; Returns: {
+              "floor_area_sqm": number,"lease_id": string,"lease_reference": string,"occupancy_status": Database["public"]['Enums']["occupancy_status"],"property_id": string,"property_name": string,"tenant_id": string,"tenant_name": string,"tenant_source": string,"unit_id": string,"unit_number": string,"unit_type": Database["public"]['Enums']["unit_type"]
+            }[]
+                           },
 "request_whatsapp_test_message":
 { Args: { "p_company_id": string,"p_number_id": string,"p_template_id": string,"p_to_number": string }; Returns: {
               "outcome": string,"test_message_id": string

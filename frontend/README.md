@@ -29,7 +29,7 @@ src/
   features/account/        `GET`/`PATCH /me`, workspace resolution, remembered workspace, workspace gate,
                            edit-profile and change-password (send link) dialogs
   features/notifications/  Notification source and hooks (list, unread count, mark read)
-  features/reports/        Report definitions (static metadata)
+  features/reports/        Reports page and report frame (URL filters, CSV export, print), report views
   components/
     ui/                    shadcn/ui primitives
     shared/                DataTable, states (Loading/Error/Empty/NoActiveWorkspace), RecordQueryView, …

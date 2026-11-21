@@ -130,10 +130,34 @@ From `backend/openapi.json` and, for the reports service, `services/reports/open
 | Method and path | operationId | Scope | Roles |
 | --- | --- | --- | --- |
 | `GET /api/v1/reports` | `listReports` | company | members |
+| `GET /api/v1/reports/portfolio_overview` | `getPortfolioOverviewReport` | company | members |
+| `GET /api/v1/reports/occupancy` | `getOccupancyReport` | company | members |
 
 `GET /api/v1/reports` returns `{ reports: ReportDefinitionDto[] }`: the report catalogue (`REPORT_CATALOGUE` in
 `packages/domain/src/rules/reportCatalogue.ts`, the same list the web app shows), in display order. The service also
 answers `GET /health` and `GET /health/ready` on its own port; through the gateway those paths reach the core.
+
+**One endpoint pattern for every report** (ticket R-01): `GET /api/v1/reports/{reportId}`, read-only, open to every
+member role of the active company (`X-Company-Id`), answering `{ reportId, asOf, filters, data }` (`ReportEnvelope` in
+`packages/domain/src/types/reports.ts`): `asOf` is the South African date the figures are as at, `filters` the filters
+actually applied, `data` the report (`ReportResultMap[reportId]`). The shared query is `propertyId` (repeat for several),
+`from` and `to` (inclusive, `YYYY-MM-DD`, on the report's primary date) and `status` (repeat for several). A report
+ignores filters it does not offer (`REPORT_FILTER_SUPPORT` in `packages/domain/src/rules/reportFrame.ts`) and answers 400
+for a status it does not offer, a malformed id or date, or an unknown parameter; an unknown report id is 404. Every
+figure is computed by the reports service from the `public.reports_*` functions under the caller's RLS (403 for another
+company) and the domain rules; reports are monitoring summaries, never transactions.
+
+- `portfolio_overview`: per property, units, occupied and vacant units, occupancy, active leases, monthly rental roll
+  (current rental of the active leases with verified terms), outstanding (latest verified statement of each account at
+  the property) with tenants in arrears, and open monitoring events; totals in the same response. Counted as
+  `GET /dashboard/summary` counts: properties and units of properties that are not archived, occupied by occupancy
+  status, active leases by status `active`, the outstanding total and tenants in arrears by the rules of
+  `dashboard_arrears_totals`. An archived property is listed only while it still carries a balance or open events (or
+  with `status=archived`), and its units are not in the totals. Status filter: the property status. No date range.
+- `occupancy`: totals, by property and by unit type (occupied, vacant, under offer, unavailable, rate, floor areas), and
+  every unit of a property that is not archived with its occupancy status and current tenant: the current lease's
+  tenant, else the tenant assigned to it (`tenantSource` `lease` or `assignment`). Status filter: the occupancy status.
+  No date range.
 
 ### Core service
 

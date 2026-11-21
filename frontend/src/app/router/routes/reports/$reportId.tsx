@@ -1,11 +1,17 @@
-import { createFileRoute, useParams } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
-import { RecordNotFound, ScreenPlaceholder } from '@/components/layout'
+import { RecordNotFound } from '@/components/layout'
+import { ReportScreen } from '@/features/reports/components/ReportScreen'
 import { findReportDefinition } from '@/features/reports/reportDefinitions'
+import { reportSearchSchema } from '@/features/reports/reportSearch'
 
 export const Route = createFileRoute('/reports/$reportId')({
-  component: function ReportScreen() {
-    const { reportId } = useParams({ from: '/reports/$reportId' })
+  // The report frame's filters live in the URL; invalid values fall back to "no filter".
+  validateSearch: reportSearchSchema,
+  component: function ReportRoute() {
+    const { reportId } = Route.useParams()
+    const search = Route.useSearch()
+    const navigate = Route.useNavigate()
     const definition = findReportDefinition(reportId)
     if (!definition) {
       return (
@@ -18,6 +24,6 @@ export const Route = createFileRoute('/reports/$reportId')({
         />
       )
     }
-    return <ScreenPlaceholder title={definition.title} description={definition.description} />
+    return <ReportScreen definition={definition} search={search} onSearchChange={(next) => void navigate({ search: next, replace: true })} />
   },
 })

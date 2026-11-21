@@ -57,6 +57,12 @@ OpenAPI document (`services/reports/openapi.json`) and dev script. Report logic 
   `private.reports_require_member`), and writes only its own `reports_*` tables from its own `*_reports_*`
   migrations (`20261122020000_reports_service_access.sql`; the conventions are checked by
   `supabase/tests/reports_service_access.test.sql`).
+- **Reports.** Every report is `GET /api/v1/reports/{reportId}` with one shared query (property, date range, status)
+  and one answer shape (`{ reportId, asOf, filters, data }`). The service reads rows from the reporting functions and
+  puts each report together with the domain rules (`@leaseguard/domain` `rules/portfolioReports.ts`,
+  `rules/reportFrame.ts`), counted the way the dashboard counts; the web app's report frame
+  (`frontend/src/features/reports`) only shows the figures, keeps the filters in the URL, exports the rows shown as
+  CSV and prints.
 - **Between services: queues only.** A service asks another to act through Redis/BullMQ; it never writes another
   service's tables or calls another service's HTTP API. Anything the reports service sends (the weekly owner
   summary) goes to the core messaging pipeline by queue; only the core worker calls Meta.

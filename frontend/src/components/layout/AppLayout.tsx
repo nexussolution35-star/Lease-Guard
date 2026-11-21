@@ -30,21 +30,26 @@ export function AppLayout({ children, className }: AppLayoutProps) {
       >
         Skip to content
       </a>
-      <ResponsiveNavigation
-        collapsed={collapsed}
-        onToggleCollapsed={toggleCollapsed}
-        mobileOpen={mobileOpen}
-        onMobileOpenChange={setMobileOpen}
-      />
+      {/* The navigation and the top bar are left out of print (reports print their work area only). */}
+      <div className="contents print:hidden">
+        <ResponsiveNavigation
+          collapsed={collapsed}
+          onToggleCollapsed={toggleCollapsed}
+          mobileOpen={mobileOpen}
+          onMobileOpenChange={setMobileOpen}
+        />
+      </div>
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar onOpenNavigation={() => setMobileOpen(true)} />
+        <div className="contents print:hidden">
+          <Topbar onOpenNavigation={() => setMobileOpen(true)} />
+        </div>
         {/* With the sidebar retracted the page is centred (owner decision, 21 Nov 2026). */}
         <main
           id="main-content"
           tabIndex={-1}
           data-sidebar={collapsed ? 'collapsed' : 'expanded'}
           className={cn(
-            'group/main w-full flex-1 px-4 pt-6 pb-12 transition-[padding] duration-200 ease-out motion-reduce:transition-none focus:outline-none md:px-6 lg:px-8',
+            'group/main w-full flex-1 px-4 pt-6 pb-12 transition-[padding] duration-200 ease-out motion-reduce:transition-none focus:outline-none md:px-6 lg:px-8 print:p-0!',
             // Beside the full sidebar the page starts at its edge and stops at 92rem; with the rail it is at most
             // 76rem wide and centred. Both are paddings, so the change animates.
             collapsed

@@ -1,9 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { ScreenPlaceholder } from '@/components/layout'
+import { ReportCatalogueScreen } from '@/features/reports/components/ReportCatalogueScreen'
 
 export const Route = createFileRoute('/reports/')({
-  component: function ReportsScreen() {
-    return <ScreenPlaceholder title="Reports" description="Portfolio, arrears and monitoring reports." />
-  },
+  component: ReportCatalogueScreen,
 })

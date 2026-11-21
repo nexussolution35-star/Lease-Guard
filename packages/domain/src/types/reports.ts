@@ -2,8 +2,9 @@ import type { ArrangementStatus } from './arrangement.js'
 import type { EntityId, ISODate, ZAR } from './common.js'
 import type { DeliveryStatus, MessageType } from './communication.js'
 import type { EventPriority, MonitoringEventStatus, MonitoringEventType } from './monitoring.js'
+import type { PropertyStatus } from './property.js'
 import type { StatementSource, StatementStatus } from './statement.js'
-import type { UnitType } from './unit.js'
+import type { OccupancyStatus, UnitType } from './unit.js'
 
 /** Every report is computed from central data, scoped to the active company. */
 export const REPORT_IDS = [
@@ -31,6 +32,29 @@ export interface ReportFilters {
   statuses?: readonly string[]
 }
 
+/**
+ * The filters one report offers in the shared report frame (rules/reportFrame.ts `REPORT_FILTER_SUPPORT`): a report
+ * that does not offer a filter ignores it, and the frame does not show it.
+ */
+export interface ReportFilterSupport {
+  property: boolean
+  /** The primary date field the date range bounds (e.g. "Statement date"), or null without a date range. */
+  dateRange: { field: string } | null
+  /** The statuses the status filter offers, in display order, or null without a status filter. */
+  statuses: { label: string; values: readonly string[] } | null
+}
+
+/**
+ * What every report endpoint (`GET /api/v1/reports/{reportId}`) answers: the report's figures, the filters actually
+ * applied and the South African date the figures are as at.
+ */
+export interface ReportEnvelope<Id extends ReportId = ReportId> {
+  reportId: Id
+  asOf: ISODate
+  filters: ReportFilters
+  data: ReportResultMap[Id]
+}
+
 export interface ReportDefinition {
   id: ReportId
   title: string
@@ -45,26 +69,39 @@ export interface PortfolioPropertyRow {
   propertyId: EntityId
   propertyName: string
   code: string
+  /**
+   * An archived property is listed only while it still carries an outstanding balance or open events (or when the
+   * archived status is asked for), and its units are not counted in the report's totals, as on the dashboard.
+   */
+  status: PropertyStatus
   unitCount: number
   occupiedUnits: number
+  vacantUnits: number
   /** 0–1 */
   occupancyRate: number
   activeLeases: number
+  /** Current monthly rental of the active leases whose terms are verified. */
   monthlyRentalRoll: ZAR
+  /** Outstanding on the latest verified statement of each account at the property (the dashboard's rules). */
   outstanding: ZAR
+  /** Tenants with an outstanding balance at the property. */
+  tenantsInArrears: number
   openEvents: number
 }
 
 export interface PortfolioOverviewReport {
+  /** Properties under management: the listed properties that are not archived (as the dashboard). */
   propertyCount: number
   unitCount: number
   occupiedUnits: number
   vacantUnits: number
   occupancyRate: number
   activeLeases: number
+  /** Leases that have not ended whose terms are not verified yet: they drive no financial monitoring. */
   unverifiedLeases: number
   monthlyRentalRoll: ZAR
   totalOutstanding: ZAR
+  /** Distinct tenants with an outstanding balance (a tenant in arrears at two properties counts once). */
   tenantsInArrears: number
   openEvents: number
   properties: PortfolioPropertyRow[]
@@ -83,10 +120,32 @@ export interface OccupancyFigures {
   occupiedAreaSqm: number
 }
 
+/** Where a unit's current tenant comes from: its current lease, else the tenant assigned to it without a lease. */
+export const UNIT_TENANT_SOURCES = ['lease', 'assignment'] as const
+export type UnitTenantSource = (typeof UNIT_TENANT_SOURCES)[number]
+
+export interface OccupancyUnitRow {
+  unitId: EntityId
+  unitNumber: string
+  unitType: UnitType
+  floorAreaSqm: number
+  occupancyStatus: OccupancyStatus
+  propertyId: EntityId
+  propertyName: string
+  /** The unit's current tenant: its current lease's tenant, else its assigned tenant. */
+  tenantId?: EntityId
+  tenantName?: string
+  tenantSource?: UnitTenantSource
+  leaseId?: EntityId
+  leaseReference?: string
+}
+
 export interface OccupancyReport {
   totals: OccupancyFigures
   byProperty: (OccupancyFigures & { propertyId: EntityId; propertyName: string })[]
   byUnitType: (OccupancyFigures & { unitType: UnitType })[]
+  /** Every unit counted, of the properties that are not archived (as the dashboard). */
+  units: OccupancyUnitRow[]
 }
 
 // ---------------------------------------------------------------------------------- monitoring

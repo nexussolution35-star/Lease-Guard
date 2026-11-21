@@ -344,3 +344,17 @@
 @keyframes scroll-fade-end {
   from { --fade-end: var(--fade-size); }
 }
+
+/*
+ * Print (the report frame's Print button, and any page): only the work area prints. The app's chrome is marked
+ * `print:hidden` in AppLayout; tables print in full (no sideways scroll or edge fade) with their head repeated on each
+ * page and rows kept whole; the ground is white and colours print as shown.
+ */
+@media print {
+  @page { margin: 14mm 12mm; }
+  html, body { background: white; }
+  * { print-color-adjust: exact; }
+  [data-slot="table-container"] { overflow: visible !important; mask: none !important; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+}
