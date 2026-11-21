@@ -85,6 +85,7 @@ const DOMAIN_ONLY: Readonly<Record<string, string>> = {
   LEASE_EXPIRY_STATUSES: 'derived lease expiry state; computed',
   GUARANTEE_EXPIRY_STATES: 'derived guarantee state; computed',
   RENEWAL_DEADLINE_STATUSES: 'derived renewal notice state; computed',
+  RENEWAL_DEADLINE_ROW_STATUSES: 'subset of RENEWAL_DEADLINE_STATUSES a renewal deadlines report row can have (reports); computed',
   EXTRACTION_RESULT_STATUSES: 'document-processing service response contract; not stored as an enum',
   EXTRACTION_ISSUE_CODES: 'document-processing service response contract; not stored as an enum',
   EXTRACTION_ISSUE_SEVERITIES: 'document-processing service response contract; not stored as an enum',
