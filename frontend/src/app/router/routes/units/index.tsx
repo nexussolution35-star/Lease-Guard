@@ -1,9 +1,14 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, stripSearchParams } from '@tanstack/react-router'
 
-import { ScreenPlaceholder } from '@/components/layout'
+import { UnitListScreen } from '@/features/units/components/UnitListScreen'
+import { UNIT_LIST_DEFAULTS, unitListSearchSchema } from '@/features/units/listSearch'
 
 export const Route = createFileRoute('/units/')({
+  validateSearch: unitListSearchSchema,
+  search: { middlewares: [stripSearchParams(UNIT_LIST_DEFAULTS)] },
   component: function UnitsScreen() {
-    return <ScreenPlaceholder title="Units" description="Lettable units, occupancy and current tenants." />
+    const params = Route.useSearch()
+    const navigate = Route.useNavigate()
+    return <UnitListScreen params={params} onParamsChange={(next) => void navigate({ search: next, replace: true })} />
   },
 })

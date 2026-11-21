@@ -28,3 +28,34 @@ export interface Unit extends CompanyScoped {
   currentLeaseId?: EntityId
   description?: string
 }
+
+/** The property a listed unit belongs to, enough to name and link it. */
+export interface UnitPropertySummary {
+  id: EntityId
+  name: string
+  code: string
+}
+
+/** The tenant of a listed unit's active lease. */
+export interface UnitTenantSummary {
+  id: EntityId
+  tradingName: string
+}
+
+/** A listed unit's active lease: its reference and term (ISO dates). */
+export interface UnitLeaseSummary {
+  id: EntityId
+  reference: string
+  commencementDate: string
+  expiryDate: string
+}
+
+/**
+ * A unit as `GET /units` lists it: the unit with its property and, when it is let, the tenant and
+ * lease of its active lease (read from `currentTenantId` / `currentLeaseId`, never typed in).
+ */
+export interface UnitListItem extends Unit {
+  property: UnitPropertySummary
+  currentTenant?: UnitTenantSummary
+  currentLease?: UnitLeaseSummary
+}
