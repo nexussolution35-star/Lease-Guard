@@ -7,7 +7,6 @@ import {
   FileSpreadsheet,
   FileText,
   LayoutDashboard,
-  MessageCircle,
   Send,
   Settings,
   Users,
@@ -55,7 +54,6 @@ export const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'monitoring', label: 'Monitoring', to: '/monitoring', icon: Activity },
       { id: 'arrangements', label: 'Arrangements', to: '/arrangements', icon: CalendarClock },
       { id: 'communications', label: 'Communications', to: '/communications', icon: Send },
-      { id: 'whatsapp', label: 'WhatsApp', to: '/whatsapp', icon: MessageCircle },
     ],
   },
   {

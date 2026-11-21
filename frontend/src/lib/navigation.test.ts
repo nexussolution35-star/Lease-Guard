@@ -9,7 +9,7 @@ describe('NAV_SECTIONS', () => {
     expect(NAV_SECTIONS.map((s) => s.label)).toEqual([undefined, 'Portfolio', 'Operations', undefined])
     expect(NAV_ITEMS.map((i) => i.id)).toEqual([
       'dashboard', 'properties', 'units', 'tenants', 'leases', 'statements', 'monitoring',
-      'arrangements', 'communications', 'whatsapp', 'reports', 'settings',
+      'arrangements', 'communications', 'reports', 'settings',
     ])
   })
 })
@@ -34,7 +34,6 @@ describe('breadcrumbsFor', () => {
 
   it('uses nav labels for top-level sections', () => {
     expect(breadcrumbsFor('/properties')).toEqual([{ label: 'Properties' }])
-    expect(breadcrumbsFor('/whatsapp/')).toEqual([{ label: 'WhatsApp' }])
   })
 
   it('links every crumb but the last', () => {

@@ -1082,6 +1082,10 @@ Settings → Integrations → WhatsApp (`/settings/integrations/whatsapp`; `/set
 
 ## Web app: conversations inbox (ticket 05)
 
+> **Removed from the web app on 21 Nov 2026.** The owner dropped the WhatsApp tab (`/whatsapp`, `/whatsapp/conversations`)
+> and `frontend/src/features/whatsapp-conversations/`, because it overlapped with Communications. The backend
+> conversation, handover and reply API below is unchanged. The text below records how the removed screen worked.
+
 WhatsApp → Conversations (`/whatsapp/conversations`, `?conversation=<id>` opens one; `?page=` pages the list):
 every member of the active company sees its conversations, most recent first (contact name or number, or
 "WhatsApp user" when Meta shared neither; a "Tenant · name" badge for a linked tenant; the latest message; the
