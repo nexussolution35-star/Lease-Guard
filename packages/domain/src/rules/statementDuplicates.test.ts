@@ -24,6 +24,12 @@ describe('findDuplicateStatement', () => {
     expect(findDuplicateStatement({ ...base, tenantId: undefined }, existing)).toBeNull()
     expect(isDuplicate({ ...base, statementNumber: 'ST-999' }, existing)).toBe(false)
   })
+  it('no likely match while the period is not yet known', () => {
+    const base = { ...makeStatement(), file: { ...makeStatement().file, sha256: 'C'.repeat(64) }, statementNumber: 'ST-001' }
+    expect(findDuplicateStatement({ ...base, periodStart: undefined, periodEnd: undefined }, existing)).toBeNull()
+    const undated = [makeStatement({ id: 'u', file: { ...makeStatement().file, sha256: 'D'.repeat(64) }, statementNumber: 'ST-001', periodStart: undefined, periodEnd: undefined })]
+    expect(findDuplicateStatement({ ...base, periodStart: undefined, periodEnd: undefined }, undated)).toBeNull()
+  })
   it('skips itself and prefers exact over likely', () => {
     expect(findDuplicateStatement(existing[0], existing)).toBeNull()
     const both = [

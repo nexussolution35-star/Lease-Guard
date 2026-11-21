@@ -28,7 +28,6 @@ export const documentExtractionResultSchema = z.object({
   pageCount: z.number().int().nonnegative(),
   textLayer: z.boolean(),
   ocrUsed: z.boolean(),
-  openingBalance: zarDecimal.nullable(),
   fields: z.array(
     z.object({
       name: z.enum(EXTRACTION_FIELD_NAMES),

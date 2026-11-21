@@ -13,9 +13,11 @@ const result = extractionResult({
   fields: [
     field('tenant_name', 'TEST  trading'),
     field('unit_number', 'Shop 1'),
+    field('statement_number', null, { flagged: true, reason: 'not_found' }),
     field('statement_date', '2026-10-01'),
     field('period_start', '2026-10-01'),
     field('period_end', '2026-10-31'),
+    field('opening_balance', '1000.00', { confidence: 0.85, flagged: true, reason: 'low_confidence' }),
     field('rental_charged', '35000.00'),
     field('additional_charges', '1250.50', { confidence: 0.6 }),
     field('payments_received', null, { flagged: true, reason: 'not found' }),
@@ -38,12 +40,16 @@ describe('statement extraction mapping', () => {
     const byName = new Map(rows.map((row) => [row.name, row]))
     expect(byName.get('rental_charged')).toMatchObject({ value: 35000, flagged: false, confidence: 0.97 })
     expect(byName.get('total_due')).toMatchObject({ value: 36250.5, flagged: false })
-    for (const name of ['additional_charges', 'payments_received', 'outstanding_balance'] as const) {
+    for (const name of ['opening_balance', 'additional_charges', 'payments_received', 'outstanding_balance'] as const) {
       expect(byName.get(name)).not.toHaveProperty('value')
       expect(byName.get(name)).toMatchObject({ flagged: true })
     }
     expect(byName.get('outstanding_balance')?.raw_text).toBe('36250.50')
+    expect(byName.get('opening_balance')).toMatchObject({ raw_text: '1000.00', confidence: 0.85 })
     expect(byName.get('tenant_name')).toMatchObject({ value: 'TEST  trading', flagged: false })
+    // A statement number the document does not show is stored without a value and flagged, never guessed.
+    expect(byName.get('statement_number')).not.toHaveProperty('value')
+    expect(byName.get('statement_number')).toMatchObject({ flagged: true, confidence: 0.97 })
     expect(rows.every((row) => row.company_id === COMPANY && row.extraction_id === 'ext-1')).toBe(true)
   })
 

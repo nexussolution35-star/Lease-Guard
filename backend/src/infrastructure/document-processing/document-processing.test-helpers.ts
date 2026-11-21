@@ -8,7 +8,6 @@ export function extractionResult(overrides: Partial<DocumentExtractionResult> = 
     pageCount: 1,
     textLayer: true,
     ocrUsed: false,
-    openingBalance: '0.00',
     fields: EXTRACTION_FIELD_NAMES.map((name) => ({ name, rawText: name, value: 'x', confidence: 0.95, flagged: false, reason: null })),
     lineItems: [],
     overallConfidence: 0.95,

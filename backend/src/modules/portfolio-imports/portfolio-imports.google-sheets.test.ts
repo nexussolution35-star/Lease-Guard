@@ -49,7 +49,8 @@ const created = (q: RecordedQuery) =>
       : { data: null, error: null }
 
 function fakeStorage() {
-  return { upload: vi.fn(async () => undefined), removeObject: vi.fn(async () => undefined) } as unknown as StorageService & Record<string, ReturnType<typeof vi.fn>>
+  const mocks = { upload: vi.fn(async () => undefined), removeObject: vi.fn(async () => undefined) }
+  return mocks as unknown as StorageService & typeof mocks
 }
 
 function reader(answer: FetchedGoogleSheet | GoogleSheetError = { bytes: CSV, fileName: 'Rent roll - Units.csv' }) {

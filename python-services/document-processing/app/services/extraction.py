@@ -4,12 +4,14 @@ The service only reports what the document says. It never stores records; the ba
 what to do with the result after a person has reviewed it.
 """
 
+import logging
 import re
 from dataclasses import dataclass
 from datetime import date
 
 from app.core.config import ENGINE_NAME, ENGINE_VERSION
 from app.extractors.pdf import DocumentContent, read_document
+from app.parsers.mri import is_mri_statement, parse_mri_statement
 from app.parsers.statement import (
     ALWAYS_REVIEW_REASONS,
     FINANCIAL_FLAG_BELOW,
@@ -25,8 +27,11 @@ from app.schemas.v1 import (
     ExtractionStatus,
     Issue,
     LineItem,
+    StatementSource,
 )
 from app.validators.statement import validate_statement
+
+logger = logging.getLogger(__name__)
 
 ERROR_CONFIDENCE_CAP = 0.5
 """Overall confidence never exceeds this while an error-level issue is open."""
@@ -38,6 +43,9 @@ class Hints:
 
     tenant_names: tuple[str, ...] = ()
     unit_numbers: tuple[str, ...] = ()
+    source_system: StatementSource | None = None
+    """What the uploader says produced the PDF. A hint only: the layout is read from the document,
+    and a disagreement is logged, never acted on."""
 
 
 def extract_statement(
@@ -48,7 +56,7 @@ def extract_statement(
     if not any(page.lines for page in document.pages):
         return _failed(document, issues)
 
-    parsed = parse_statement(document)
+    parsed = read_statement(document, hints)
     issues.extend(parsed.issues)
     if not parsed.found_anything:
         issues.append(
@@ -60,6 +68,7 @@ def extract_statement(
         )
         return _failed(document, issues)
 
+    _choose_tenant(parsed, hints.tenant_names, issues)
     _check_hint(parsed.fields["tenant_name"], hints.tenant_names, issues, unit=False)
     _check_hint(parsed.fields["unit_number"], hints.unit_numbers, issues, unit=True)
     issues.extend(validate_statement(parsed, today=today))
@@ -75,13 +84,65 @@ def extract_statement(
         page_count=len(document.pages),
         text_layer=document.text_layer,
         ocr_used=document.ocr_used,
-        opening_balance=parsed.opening_balance,
         fields=fields,
         line_items=parsed.line_items,
         overall_confidence=round(overall, 2),
         issues=issues,
         status=review_status(fields, parsed.line_items, issues),
     )
+
+
+def read_statement(document: DocumentContent, hints: Hints) -> ParsedStatement:
+    """Use the reader for a layout recognised from the document; the general reader otherwise."""
+    mri = is_mri_statement(document)
+    if hints.source_system is not None and (hints.source_system == "MRI") != mri:
+        logger.info(
+            "statement layout differs from the source system hint",
+            extra={"source_system": hints.source_system, "layout": "mri" if mri else "generic"},
+        )
+    return parse_mri_statement(document) if mri else parse_statement(document)
+
+
+def _choose_tenant(parsed: ParsedStatement, hints: tuple[str, ...], issues: list[Issue]) -> None:
+    """When the document offers several lines that may be the tenant, keep the one that matches
+    an expected tenant name. With no match, or more than one, the value stays flagged."""
+    options = parsed.tenant_name_options
+    if len(options) < 2:
+        return
+    matching = [o for o in options if any(_matches(o, hint, unit=False) for hint in hints)]
+    extracted = parsed.fields["tenant_name"]
+    if len(matching) == 1:
+        extracted.value = matching[0]
+        extracted.confidence = max(extracted.confidence, 0.95)
+        extracted.reason = None  # `_check_hint` records the match
+        return
+    listed = ", ".join(repr(o) for o in options)
+    if matching:
+        extracted.value = matching[0]
+        extracted.confidence = min(extracted.confidence, 0.5)
+        extracted.flagged = True
+        # `_check_hint` keeps a conflicting value flagged even though it matches.
+        extracted.reason = "conflicting_values"
+        issues.append(
+            Issue(
+                code="conflicting_values",
+                severity="warning",
+                message=f"More than one recipient line ({listed}) matches an expected tenant; "
+                "choose the tenant.",
+                field="tenant_name",
+            )
+        )
+    elif not hints:
+        issues.append(
+            Issue(
+                code="low_confidence",
+                severity="warning",
+                message=f"The recipient block has {len(options)} lines ({listed}); any of them "
+                "may be the tenant's name. Choose the tenant.",
+                field="tenant_name",
+            )
+        )
+    # With hints and no match, `_check_hint` reports the mismatch.
 
 
 def review_status(
@@ -136,7 +197,6 @@ def _failed(document: DocumentContent, issues: list[Issue]) -> ExtractionResult:
         page_count=len(document.pages),
         text_layer=document.text_layer,
         ocr_used=document.ocr_used,
-        opening_balance=None,
         fields=[
             ExtractedField(
                 name=name, raw_text="", value=None, confidence=0.0, flagged=True, reason="not_read"
@@ -204,16 +264,6 @@ def _low_confidence(parsed: ParsedStatement) -> list[Issue]:
         and f.confidence < flag_threshold(f.name)
         and f.reason not in ALWAYS_REVIEW_REASONS
     ]
-    opening = parsed.opening_balance_confidence
-    if opening is not None and opening < FINANCIAL_FLAG_BELOW:
-        # The opening balance has no field of its own, but totals are reconciled against it.
-        issues.append(
-            Issue(
-                code="low_confidence",
-                severity="warning",
-                message=f"The opening balance was read with low confidence ({opening:.0%}).",
-            )
-        )
     flagged_items = sum(1 for item in parsed.line_items if item.flagged)
     if flagged_items:
         issues.append(

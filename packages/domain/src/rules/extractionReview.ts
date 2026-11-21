@@ -2,12 +2,15 @@ import {
   EXTRACTION_FIELD_NAMES,
   FINANCIAL_EXTRACTION_FIELDS,
   type DocumentExtractionField,
+  type DocumentExtractionIssue,
   type DocumentExtractionResult,
   type ExtractionFieldName,
+  type ISODate,
   type FinancialExtractionField,
   type ZAR,
   type ZarDecimal,
 } from '../types/index.js'
+import { formatSADate, isValidISODate } from './dates.js'
 
 /**
  * Review rules for document-extraction results.
@@ -108,5 +111,61 @@ export function assessDocumentExtraction(
     prefillableAmounts,
     hasBlockingIssues: result.issues.some((issue) => issue.severity === 'error'),
     requiresHumanReview: true,
+  }
+}
+
+/** Statement facts the uploader typed at upload. Every one is optional: they come from the document. */
+export interface TypedStatementFacts {
+  statementNumber?: string
+  statementDate?: ISODate
+  periodStart?: ISODate
+  periodEnd?: ISODate
+}
+
+const TYPED_FACT_FIELDS = [
+  ['statementNumber', 'statement_number', 'statement number'],
+  ['statementDate', 'statement_date', 'statement date'],
+  ['periodStart', 'period_start', 'period start'],
+  ['periodEnd', 'period_end', 'period end'],
+] as const satisfies readonly (readonly [keyof TypedStatementFacts, ExtractionFieldName, string])[]
+
+const normaliseNumber = (text: string): string => text.trim().replace(/\s+/g, ' ').toLowerCase()
+
+function sameTypedValue(name: ExtractionFieldName, documentValue: string, typed: string): boolean {
+  return name === 'statement_number' ? normaliseNumber(documentValue) === normaliseNumber(typed) : documentValue === typed
+}
+
+function shown(name: ExtractionFieldName, value: string): string {
+  return name !== 'statement_number' && isValidISODate(value) ? formatSADate(value) : `"${value}"`
+}
+
+/**
+ * Compares the extraction with what the uploader typed. A document value that differs from the typed
+ * one is flagged (reason `typed_value_mismatch`) and reported as an issue; the document's value is kept,
+ * never replaced by the typed one, and the typed value is never copied into a field the document did
+ * not show (that field is already flagged as missing). Pure; returns a new result.
+ */
+export function flagTypedValueMismatches(result: DocumentExtractionResult, typed: TypedStatementFacts): DocumentExtractionResult {
+  const issues: DocumentExtractionIssue[] = []
+  const mismatched = new Set<ExtractionFieldName>()
+  for (const [key, name, label] of TYPED_FACT_FIELDS) {
+    const typedValue = typed[key]
+    const field = result.fields.find((candidate) => candidate.name === name)
+    if (typedValue === undefined || !field || field.value === null) continue
+    if (sameTypedValue(name, field.value, typedValue)) continue
+    mismatched.add(name)
+    issues.push({
+      code: 'typed_value_mismatch',
+      severity: 'warning',
+      message: `The ${label} on the document (${shown(name, field.value)}) differs from the one typed at upload (${shown(name, typedValue)}).`,
+      field: name,
+    })
+  }
+  if (mismatched.size === 0) return result
+  return {
+    ...result,
+    status: result.status === 'extracted' ? 'needs_review' : result.status,
+    fields: result.fields.map((field) => (mismatched.has(field.name) ? { ...field, flagged: true, reason: 'typed_value_mismatch' } : field)),
+    issues: [...result.issues, ...issues],
   }
 }

@@ -11,9 +11,9 @@ package (`pnpm test`). Neither suite here is part of `pnpm test`: both need runn
 
 ```
 tests/
-  fixtures/      shared by both suites: world.ts (per-run test data), API process, Redis, local Supabase/SQL helpers, PDF generator, paths
+  fixtures/      shared by both suites: world.ts (per-run test data), API process, Redis, local Supabase/SQL helpers, PDF generator and sample statements, statements acceptance portfolio, paths
   integration/   vitest.config.ts, global-setup.ts, support/ (clients, row snapshots), *.test.ts
-  e2e/           playwright.config.ts, global-setup.ts (world), support/ (run-api.ts, app.ts locators, world.ts), *.spec.ts
+  e2e/           playwright.config.ts, global-setup.ts (world), support/ (run-api.ts, statement-worker.ts, app.ts locators, world.ts), *.spec.ts
   test-results/  output: API log, Playwright traces and screenshots (ignored by git)
 ```
 
@@ -92,6 +92,7 @@ API output goes to `tests/test-results/integration/api.log`.
 | `users-and-invitations.test.ts` | every member lists company A's members (only A's membership); the active-admin count filter; an admin changing their own role or removing themselves 403; other roles 403; an admin changes another member's role and back; removing a member still named on records 409; invite (email lower-cased, `pending`), duplicate 409, resend, revoke, revoke or resend again 409; inviting an existing member 409; invitations refused to other roles and to a non-member company (403). Invitations it creates are deleted in `afterAll` |
 | `whatsapp-acceptance-two-businesses.test.ts` | The acceptance scenario of the WhatsApp work (ticket 14), end to end; see below |
 | `whatsapp-test-number-import.test.ts` | The number import (ticket 15): runs the operator command `whatsapp:import-test-number` from this run's build (`backend/.dev-integration/operator/import-whatsapp-test-number.js`) with only its own seven settings, all local (so `backend/.env` is never read), against the world's company A. Dry run by default (nothing written), `--apply` refused without a terminal unless `--yes`, an unknown company and a number company B has connected refused (B named), then the import: the token in Vault for A only (never printed, never in the job), the account and number pending verification and marked imported; the worker's real number verification runs in the test process (`support/in-process-worker.ts`, own queue prefix `<run prefix>-import`) against the fake Graph API and connects it; the integration page's API shows it connected with every step passed and `operatorImportedAt`, and B's members never see it; re-running leaves a connected number alone; a newer token replaces the stored one (old secret deleted) and the number is verified again with it. Its rows, Vault secrets and Redis keys are deleted in `afterAll`; worker log `test-results/integration/worker-test-number-import.log` |
+| `statement-acceptance.test.ts` | Statements acceptance (ticket S-09), monitoring side: two units, tenants and verified leases added to the world's property DIP (`fixtures/statement-acceptance.ts`; lease 1 is the PRD's R35 000 at 8% a year example). Statements that are uploaded, under review, rejected (API) or a duplicate (API) carry no figures and raise no arrears or escalation event: the worker's real arrears and lease scans and the `statement-monitoring` job (built in this process from the backend source, service role, no queue consumed; log `test-results/integration/worker-statement-acceptance.log`) find nothing and the job skips them as `not_verified`. Once a statement is matched and verified through the API, the job raises the arrears event (the verified balance) and the escalation discrepancy (expected R37 800.00, R2 800.00 short), both naming the statement, its tenant and lease; running it again raises nothing new. The portfolio and everything raised from it are removed in `afterAll` |
 
 ### Acceptance scenario: two businesses stay apart
 
@@ -146,7 +147,8 @@ prerequisites as the suite (local Supabase, local Redis); nothing else to config
 3. Docker running and the local Supabase stack started with the current migrations (`pnpm db:start`;
    `pnpm exec supabase migration up` applies new ones). The database may be empty.
 4. A local Redis on `127.0.0.1:6379` (or set `E2E_REDIS_URL`; it must be local).
-5. Ports 3955 (API) and 5199 (web) free.
+5. The document-processing service's virtual environment, once per machine: `pnpm python:setup` (Python 3.14+).
+6. Ports 3955 (API), 3957 (document processing) and 5199 (web) free.
 
 ### How the environment is chosen
 
@@ -159,6 +161,13 @@ servers and never reuses one that is already running (`reuseExistingServer: fals
   (local Supabase URL and anon key, `API_CORS_ORIGINS=http://localhost:5199`, a unique `QUEUE_PREFIX`,
   every other variable from `.env.example`). Its log is `tests/test-results/e2e/api.log`. When Playwright
   stops it (SIGTERM), it stops the API, deletes the run's Redis keys and removes `backend/.dev-e2e`.
+- **Statement processing**, started by the same runner before the API and stopped with it: the document-processing
+  service (`python -m uvicorn app.main:app` from `python-services/document-processing/.venv` on port 3957, a random
+  token per run; log `tests/test-results/e2e/document-processing.log`) and the statement worker
+  (`e2e/support/statement-worker.ts`: the compiled `statement-processing` and `statement-monitoring` processors from
+  `backend/.dev-e2e`, built by hand as `WorkersModule` wires them, on the run's queue prefix with the local
+  service-role key; log `tests/test-results/e2e/worker.log`). Nothing else consumes the queues: no daily monitoring
+  dispatch, no message delivery, no WhatsApp or invitation jobs, so an approved message still stays queued.
 - **Web**: `vite --port 5199 --strictPort` (the frontend's own Vite binary) with `VITE_API_URL=http://127.0.0.1:3955` and the local
   `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in the process environment (they override `frontend/.env`).
 
@@ -180,7 +189,26 @@ never interfere. Changed values are restored by the tests themselves (and the wo
 | `not-found.spec.ts` | unknown route shows "Page not found" inside the shell; unknown report id shows "Report not found"; unknown property id shows "Property not found" |
 | `whatsapp-integration.spec.ts` | Settings → Integrations → WhatsApp with no Meta settings (the e2e API uses `.env.example`): a company admin sees "Requires Meta configuration or approval" naming each missing setting and its process, three features "Requires configuration", no numbers and nothing "Connected"; the old `/settings/whatsapp` link redirects; a read-only member sees the read-only notice and no connect action; a number stored through `import_whatsapp_number` (the number import, ticket 15; no worker, so it stays pending) shows "Nexus Solution connected this number with the number import", is never shown connected, and its disconnect confirmation and disconnected state point the admin to Nexus Solution |
 | `users.spec.ts` | Settings → Users: a company admin's own row shows "You" with role change and removal disabled and explained; invite a user (toast), the same email again is refused on the email field, revoke after confirmation (status Revoked, revoke disabled); a read-only member sees the notice, the member list and no invitations or actions. Invitations it creates are deleted in `afterAll` |
+| `statements-acceptance.spec.ts` | Statements acceptance (ticket S-09), PRD §13.3 and the statement side of §13.4, in its own Playwright project after every other spec. Two units, tenants and verified leases are added to the world's property DIP (`fixtures/statement-acceptance.ts`). A property manager uploads two generated statements (`fixtures/sample-statements.ts`) in two source-system layouts, Sage (label and value columns) and PropSys (`Label: value` headings and dated rows); a copy in the same upload is "Repeated in this upload" and the same file in a later upload "Already uploaded", linking to the statement on record, and neither is registered. The worker reads both into review with no arrears event. The review screen shows the original (its short-lived link returns the uploaded bytes), the values read, and flags the additional charges (garbled on the document: missing, left empty) and the total due (no cents: low confidence, not used); the manager enters both (each correction audited with before and after), saves the tenant, unit and lease proposed from the statement and verifies. The figures are saved with the verifier's sign-off; the worker raises the arrears event and the escalation discrepancy (expected R37 800.00, R2 800.00 short), both naming the statement, and closes its review event; no tenant message is created. The Statements page counts that balance only and links to the statement; the PropSys statement stays under review with its uncertain figures flagged and raises nothing. Removed in `afterAll` |
 
 Selectors are roles and accessible names from the UI (`navigation "Main"`, the workspace switcher's
 label, the table caption, pagination buttons), not CSS classes. Traces and screenshots of failures are
 written to `tests/test-results/e2e/results`.
+
+## Statements acceptance: PRD §13.3 and §13.4 (ticket S-09)
+
+Each §13.3 item and the statement side of §13.4, with the tests that prove it on the local stack. The browser
+journey is `e2e/statements-acceptance.spec.ts` (one test, one step per item below); the integration tests call the
+API and the worker's processors directly.
+
+| PRD item | Proved by |
+| --- | --- |
+| PDF statements can be uploaded | e2e journey, steps "upload the Sage statement …" and "upload the PropSys statement …" (two layouts, several files per upload, signed upload URL, queued for processing); `integration/statements.test.ts` (signed URL, upload, register, job queued) |
+| Original documents are retained | e2e journey, "the review screen keeps the original …" (the embedded original's short-lived link returns the uploaded bytes, SHA-256 equal); `integration/statement-review.test.ts` (download link for any member) |
+| Relevant information can be extracted | e2e journey: tenant, unit, statement number, date, period and figures read by the document-processing service from both layouts, and the extraction's tenant and unit proposal; `python-services/document-processing/tests` (parsers and validators) |
+| Uncertain information is flagged | e2e journey: a garbled amount is missing and left empty, an amount without cents is low confidence and not used, figures summed from rows and a balance not printed are flagged; Verify stays disabled until each is resolved |
+| Manual corrections can be made | e2e journey, "enter the values …": two corrections through the review screen, each with the corrector's sign-off and an audit entry with before and after; `integration/statement-review.test.ts` (correction and confirmation audit, read-only refused) |
+| Duplicate statements can be identified | e2e journey: the same file twice in one upload ("Repeated in this upload") and again in a later upload ("Already uploaded", linking to the statement on record), neither registered; `integration/statements.test.ts` (409 with the existing statement); `integration/statement-verification.test.ts` (mark as duplicate) |
+| Verified information is saved correctly | e2e journey, "verify …": number, dates, period, the six figures, tenant, unit, lease, verifier and time on the statement row, the sign-off on the screen; `integration/statement-verification.test.ts` (figures only through verification) |
+| Arrears are identified from verified statement information (§13.4) | e2e journey (arrears event after verifying, none before, none for the unverified statement or its tenant; the Statements page counts only the verified balance); `integration/statement-acceptance.test.ts` (uploaded, under review, rejected and duplicate statements raise nothing in the daily scans or the post-verification job); `integration/statement-arrears.test.ts` |
+| Monitoring events are traceable to their source data (§13.4) | e2e journey and `integration/statement-acceptance.test.ts`: the arrears event and the escalation discrepancy (R35 000 at 8%: expected R37 800, R2 800 short) name the verified statement, its tenant and lease, with the calculation |

@@ -11,6 +11,7 @@ export const statementListQuerySchema = listQuerySchema(STATEMENT_SORT_FIELDS, {
   tenantId: z.uuid().optional(),
   leaseId: z.uuid().optional(),
   sourceSystem: z.enum(STATEMENT_SOURCES).optional(),
+  uploadBatchId: z.string().trim().min(1).max(100).optional(),
 })
 export type StatementListQuery = z.infer<typeof statementListQuerySchema>
 
@@ -38,8 +39,10 @@ export const createStatementUploadUrlBodySchema = z.strictObject({
 export type CreateStatementUploadUrlBody = z.infer<typeof createStatementUploadUrlBodySchema>
 
 /**
- * Registers an uploaded file as a statement. The statement date and period are NOT NULL in the
- * database and are never guessed, so the uploader must state them.
+ * Registers an uploaded file as a statement. The statement date, period and number come from the
+ * document, so the uploader need not type them. Whatever is typed is kept as typed and compared with the
+ * document when the statement is processed: a difference is flagged for review, never silently replaced.
+ * A period is given whole (both ends) or not at all.
  */
 export const registerStatementBodySchema = z
   .strictObject({
@@ -54,16 +57,20 @@ export const registerStatementBodySchema = z
       .toLowerCase()
       .regex(/^[0-9a-f]{64}$/, 'must be a SHA-256 hex digest'),
     sourceSystem: z.enum(STATEMENT_SOURCES),
-    statementDate: isoDate,
-    periodStart: isoDate,
-    periodEnd: isoDate,
+    statementDate: isoDate.optional(),
+    periodStart: isoDate.optional(),
+    periodEnd: isoDate.optional(),
     tenantId: z.uuid().optional(),
     unitId: z.uuid().optional(),
     leaseId: z.uuid().optional(),
     statementNumber: z.string().trim().min(1).max(100).optional(),
     uploadBatchId: z.string().trim().min(1).max(100).optional(),
   })
-  .refine((body) => body.periodEnd >= body.periodStart, {
+  .refine((body) => (body.periodStart === undefined) === (body.periodEnd === undefined), {
+    path: ['periodEnd'],
+    message: 'give both periodStart and periodEnd, or neither',
+  })
+  .refine((body) => body.periodStart === undefined || body.periodEnd === undefined || body.periodEnd >= body.periodStart, {
     path: ['periodEnd'],
     message: 'must be on or after periodStart',
   })

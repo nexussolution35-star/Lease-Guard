@@ -2,6 +2,7 @@ import {
   EXTRACTION_FIELD_NAMES,
   EXTRACTION_ISSUE_CODES,
   EXTRACTION_ISSUE_SEVERITIES,
+  fieldResolution,
   type DocumentExtractionIssue,
   type ExtractedField,
   type Statement,
@@ -88,9 +89,9 @@ export function toStatement(
     file: toStoredFile(row),
     sourceSystem: row.source_system,
     ...(row.statement_number !== null ? { statementNumber: row.statement_number } : {}),
-    statementDate: row.statement_date,
-    periodStart: row.period_start,
-    periodEnd: row.period_end,
+    ...(row.statement_date !== null ? { statementDate: row.statement_date } : {}),
+    ...(row.period_start !== null ? { periodStart: row.period_start } : {}),
+    ...(row.period_end !== null ? { periodEnd: row.period_end } : {}),
     status: row.status,
     ...(row.upload_batch_id !== null ? { uploadBatchId: row.upload_batch_id } : {}),
     uploadedByUserId: row.uploaded_by_user_id,
@@ -108,6 +109,7 @@ export function toStatement(
     ...(row.delivered_communication_id ? { deliveredCommunicationId: row.delivered_communication_id } : {}),
     ...(row.duplicate_of_statement_id ? { duplicateOfStatementId: row.duplicate_of_statement_id } : {}),
     ...(row.processing_error !== null ? { processingError: row.processing_error } : {}),
+    ...(row.rejection_reason !== null ? { rejectionReason: row.rejection_reason } : {}),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -121,7 +123,7 @@ function toFieldValue(value: Json | null, column: string): string | number | nul
 
 export function toExtractedField(row: StatementExtractionFieldRow): ExtractedField {
   const corrected = toFieldValue(row.corrected_value, 'corrected_value')
-  return {
+  const field: Omit<ExtractedField, 'resolution'> = {
     name: row.name,
     rawText: row.raw_text,
     value: toFieldValue(row.value, 'value'),
@@ -129,7 +131,11 @@ export function toExtractedField(row: StatementExtractionFieldRow): ExtractedFie
     flagged: row.flagged,
     ...(corrected !== null ? { correctedValue: corrected } : {}),
     ...(row.corrected_by_user_id ? { correctedByUserId: row.corrected_by_user_id } : {}),
+    ...(row.corrected_at ? { correctedAt: row.corrected_at } : {}),
+    ...(row.confirmed_by_user_id ? { confirmedByUserId: row.confirmed_by_user_id } : {}),
+    ...(row.confirmed_at ? { confirmedAt: row.confirmed_at } : {}),
   }
+  return { ...field, resolution: fieldResolution(field) }
 }
 
 const FIELD_ORDER = new Map<string, number>(EXTRACTION_FIELD_NAMES.map((name, index) => [name, index]))

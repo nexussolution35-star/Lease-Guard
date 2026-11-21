@@ -61,14 +61,25 @@ export class RegisterStatementDto {
   @ApiProperty({ minimum: 1 }) sizeBytes!: number
   @ApiProperty({ pattern: '^[0-9a-fA-F]{64}$', description: 'SHA-256 hex digest of the uploaded file' }) sha256!: string
   @ApiProperty({ enum: STATEMENT_SOURCES, enumName: 'StatementSource' }) sourceSystem!: StatementSource
-  @ApiProperty({ format: 'date' }) statementDate!: string
-  @ApiProperty({ format: 'date' }) periodStart!: string
-  @ApiProperty({ format: 'date', description: 'On or after periodStart' }) periodEnd!: string
+  @ApiPropertyOptional({
+    format: 'date',
+    description: 'Optional: read from the document. When given, a document date that differs is flagged for review',
+  })
+  statementDate?: string
+  @ApiPropertyOptional({ format: 'date', description: 'Optional, with periodEnd: read from the document. A document period that differs is flagged' })
+  periodStart?: string
+  @ApiPropertyOptional({ format: 'date', description: 'Optional, with periodStart; on or after periodStart' })
+  periodEnd?: string
   @ApiPropertyOptional({ format: 'uuid' }) tenantId?: string
   @ApiPropertyOptional({ format: 'uuid' }) unitId?: string
   @ApiPropertyOptional({ format: 'uuid' }) leaseId?: string
-  @ApiPropertyOptional({ maxLength: 100 }) statementNumber?: string
-  @ApiPropertyOptional({ maxLength: 100 }) uploadBatchId?: string
+  @ApiPropertyOptional({ maxLength: 100, description: 'Optional: read from the document. A document number that differs is flagged' })
+  statementNumber?: string
+  @ApiPropertyOptional({
+    maxLength: 100,
+    description: 'Groups the statements uploaded together; listStatements filters on it (uploadBatchId) to follow the batch',
+  })
+  uploadBatchId?: string
 }
 
 assertSchemaMatchesDto<z.infer<typeof registerStatementBodySchema>, RegisterStatementDto>(true)

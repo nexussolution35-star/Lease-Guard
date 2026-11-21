@@ -23,6 +23,10 @@ const statementRow = {
   size_bytes: 120_000,
   source_system: 'MRI',
   status: 'uploaded',
+  statement_number: null as string | null,
+  statement_date: null as string | null,
+  period_start: null as string | null,
+  period_end: null as string | null,
 }
 
 const field = (name: DocumentExtractionField['name'], value: string | null, flagged = false): DocumentExtractionField => ({
@@ -38,9 +42,11 @@ const goodResult = extractionResult({
   fields: [
     field('tenant_name', 'Test Trading'),
     field('unit_number', 'Shop 1'),
+    field('statement_number', 'ST-1042'),
     field('statement_date', '2026-10-01'),
     field('period_start', '2026-10-01'),
     field('period_end', '2026-10-31'),
+    field('opening_balance', '0.00'),
     field('rental_charged', '35000.00'),
     field('additional_charges', '0.00'),
     field('payments_received', null, true),
@@ -153,6 +159,42 @@ describe('StatementProcessingProcessor', () => {
     expect(notifications).toEqual([
       expect.objectContaining({ type: 'statement_review', user_id: MANAGER, dedupe_key: `statement_review:${STATEMENT}:${MANAGER}`, link_entity_id: STATEMENT }),
     ])
+  })
+
+  it('stores the statement number and opening balance as fields with their confidence', async () => {
+    const { processor, queries } = harness()
+    await processor.process({ companyId: COMPANY, statementId: STATEMENT }, { attempt: 1, maxAttempts: 5 })
+    const [[fields]] = upsertsInto(queries, 'statement_extraction_fields')
+    expect(fields).toContainEqual(expect.objectContaining({ name: 'statement_number', value: 'ST-1042', confidence: 0.96, flagged: false }))
+    expect(fields).toContainEqual(expect.objectContaining({ name: 'opening_balance', value: 0, confidence: 0.96, flagged: false }))
+  })
+
+  it('flags a typed date, period or number the document disagrees with, keeping the document value', async () => {
+    const { processor, queries } = harness({
+      statement: { statement_number: 'ST-9999', statement_date: '2026-10-01', period_start: '2026-09-01', period_end: '2026-09-30' },
+    })
+    await processor.process({ companyId: COMPANY, statementId: STATEMENT }, { attempt: 1, maxAttempts: 5 })
+    const [[fields]] = upsertsInto(queries, 'statement_extraction_fields')
+    expect(fields).toContainEqual(expect.objectContaining({ name: 'statement_number', value: 'ST-1042', flagged: true }))
+    expect(fields).toContainEqual(expect.objectContaining({ name: 'period_start', value: '2026-10-01', flagged: true }))
+    expect(fields).toContainEqual(expect.objectContaining({ name: 'period_end', value: '2026-10-31', flagged: true }))
+    expect(fields).toContainEqual(expect.objectContaining({ name: 'statement_date', value: '2026-10-01', flagged: false }))
+
+    const [[extraction]] = upsertsInto(queries, 'statement_extractions')
+    expect((extraction as { issues: { code: string; field: string }[] }).issues.filter((i) => i.code === 'typed_value_mismatch').map((i) => i.field)).toEqual([
+      'statement_number',
+      'period_start',
+      'period_end',
+    ])
+    // The typed values stay on the statement as typed: only status and processing_error are written.
+    expect(statementUpdates(queries)).toEqual([
+      { status: 'processing', processing_error: null },
+      { status: 'review_required', processing_error: null },
+    ])
+    const [[events]] = upsertsInto(queries, 'monitoring_events')
+    expect((events as { description: string }[])[0].description).toContain(
+      'The document differs from what was typed at upload: statement number, period start, period end.',
+    )
   })
 
   it('raises the review event and notification BEFORE the statement leaves the processable statuses', async () => {

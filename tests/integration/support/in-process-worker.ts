@@ -67,8 +67,14 @@ function fileLogger(file: string): LoggerLike {
   return { log: write('info'), error: write('error'), warn: write('warn'), debug: write('debug'), verbose: write('verbose') }
 }
 
+/** Sends the worker processors' NestJS log output to `file` instead of the test output; returns the undo. */
+export function logWorkerToFile(file: string): () => void {
+  nestLogger().overrideLogger(fileLogger(file))
+  return () => nestLogger().overrideLogger(false)
+}
+
 /** Every worker setting from backend/.env.example, then the overrides: backend/.env is never read. */
-function workerEnvironment(overrides: Readonly<Record<string, string>>): Record<string, string> {
+export function workerEnvironment(overrides: Readonly<Record<string, string>>): Record<string, string> {
   const example = parseEnv(readFileSync(path.join(REPO_ROOT, 'backend', '.env.example'), 'utf8'))
   const env: Record<string, string> = {}
   for (const key of WORKER_ENV_KEYS) env[key] = overrides[key] ?? example[key] ?? ''

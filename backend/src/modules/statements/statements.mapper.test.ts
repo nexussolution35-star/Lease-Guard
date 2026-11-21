@@ -48,11 +48,20 @@ describe('statements mapper', () => {
       value: null,
       confidence: 0,
       flagged: true,
+      resolution: 'unresolved',
     })
     expect(
-      toExtractedField(extractionFieldRow({ corrected_value: 38_000, corrected_by_user_id: 'u1' })),
-    ).toMatchObject({ value: 37_800, correctedValue: 38_000, correctedByUserId: 'u1' })
+      toExtractedField(extractionFieldRow({ corrected_value: 38_000, corrected_by_user_id: 'u1', corrected_at: '2026-11-21T08:00:00+00:00' })),
+    ).toMatchObject({ value: 37_800, correctedValue: 38_000, correctedByUserId: 'u1', correctedAt: '2026-11-21T08:00:00+00:00', resolution: 'corrected' })
+    expect(toExtractedField(extractionFieldRow()).resolution).toBe('accepted')
     expect(() => toExtractedField(extractionFieldRow({ value: { nested: true } }))).toThrow(/object/)
+  })
+
+  it('maps a confirmation with who and when, resolving a flagged field', () => {
+    expect(
+      toExtractedField(extractionFieldRow({ flagged: true, confirmed_by_user_id: 'u1', confirmed_at: '2026-11-21T08:00:00+00:00' })),
+    ).toMatchObject({ confirmedByUserId: 'u1', confirmedAt: '2026-11-21T08:00:00+00:00', resolution: 'confirmed' })
+    expect(toExtractedField(extractionFieldRow({ flagged: true })).resolution).toBe('unresolved')
   })
 
   it('orders extraction fields canonically', () => {

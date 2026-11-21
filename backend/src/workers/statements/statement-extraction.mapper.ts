@@ -80,8 +80,9 @@ export function toExtractionInsert(
  * One row per extracted field. Financial values the domain assessment does not allow to be pre-filled
  * (missing, flagged, low confidence or unparseable) are stored WITHOUT a value and flagged, so an
  * uncertain amount is never presented as a figure; the raw document text stays for the reviewer.
- * Pre-fillable amounts are stored as numbers. Rows without a value omit `value`, so the insert must use
- * `defaultToNull: false` (the column default is JSON null). Every row is still only a proposal (status
+ * Pre-fillable amounts are stored as numbers. Rows without a value omit `value`; in a bulk insert PostgREST still
+ * sends SQL NULL for them, which the database stores as JSON null (trigger default_missing_value, migration
+ * 20261121183305). Every row is still only a proposal (status
  * pending_review); verified figures are written to the statement by a person, never by this job.
  */
 export function toExtractionFieldInserts(
@@ -106,8 +107,8 @@ export function toExtractionFieldInserts(
       extraction_id: extractionId,
       name: field.name,
       raw_text: field.rawText,
-      // A JSON null sent through the Data API becomes SQL NULL; the column default stores JSON null
-      // when `value` is omitted (insert with defaultToNull: false).
+      // A JSON null sent through the Data API becomes SQL NULL; the database stores JSON null for a row
+      // without `value` (column default, and trigger default_missing_value for bulk inserts).
       ...(value === null ? {} : { value }),
       confidence: confidence(field.confidence),
       flagged,

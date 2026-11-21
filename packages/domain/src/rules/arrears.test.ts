@@ -29,6 +29,7 @@ describe('ageArrears', () => {
     makeStatement({ id: 's5', tenantId: 't3', statementDate: '2026-10-01', closingBalance: 0 }), // not in arrears
     makeStatement({ id: 's6', tenantId: 't4', statementDate: '2026-10-01', closingBalance: undefined, totalDue: 1500.555 }),
     makeStatement({ id: 's7', tenantId: undefined, statementDate: '2026-10-01', closingBalance: 999 }), // unmatched
+    makeStatement({ id: 's8', tenantId: 't5', statementDate: undefined, closingBalance: 999 }), // undated: never aged from a guess
   ]
   it('uses latest verified statement per tenant', () => {
     const result = ageArrears(statements, today)

@@ -30,3 +30,8 @@ export interface ScanSummary extends RaiseResult {
   findings: number
   skipped?: 'company_inactive'
 }
+
+/** Limits a company scan to one tenant (monitoring right after one of its statements is verified). */
+export interface MonitoringScope {
+  tenantId?: EntityId
+}

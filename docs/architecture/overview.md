@@ -81,6 +81,7 @@ signed raw payload (the API cannot store it; the worker stores it first and the 
 | `lease-monitoring` | `companyId`, `asOf` | `monitoring-dispatch`, one job per active company | 1 |
 | `arrears-monitoring` | `companyId`, `asOf` | `monitoring-dispatch` | 1 |
 | `arrangement-reminders` | `companyId`, `asOf` | `monitoring-dispatch` | 1 |
+| `statement-monitoring` | `companyId`, `statementId` | API: `POST /statements/{id}/verify` (arrears and lease monitoring for that statement's tenant, at once) | 1 |
 | `whatsapp-webhook` | `payloadSha256`, `body`, `receivedAt` | API: `POST /webhooks/whatsapp` (Meta, signed) | 4 |
 
 Processors live under `backend/src/workers/` (`statements/`, `messaging/`, `monitoring/`,
@@ -213,6 +214,13 @@ bearer token.
   status `pending_review` plus one `statement_extraction_fields` row per field, and sets the statement
   to `review_required`. If extraction fails permanently, the statement is still `review_required`, with
   `processing_error` set, for manual entry. Nothing is guessed.
+- **Statement facts:** the statement number, statement date, period and opening balance are extraction
+  fields like the figures, each with a confidence and a flag (the opening balance is held to the money
+  bar; a missing statement number is only a warning, since not every statement prints one). The
+  uploader need not type the date, period or number; whatever was typed is compared with the document
+  by the domain rule `flagTypedValueMismatches`, and a difference flags the field with an issue
+  `typed_value_mismatch` (raised by the worker, never by the service). The document's value stays the
+  proposal; the typed value stays on the statement as typed. Verification writes the confirmed values.
 
 When the contract changes: change the TypeScript first, then the Python schema, then regenerate the
 service's `openapi.json` (`python-services/document-processing/scripts/export_openapi.py`).

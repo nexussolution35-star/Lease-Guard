@@ -1,26 +1,35 @@
 import { createHash } from 'node:crypto'
 
+/** x positions (points) of the cells of a multi-cell line: label, value, and a third column for amounts. */
+export const STATEMENT_PDF_COLUMNS = [56, 230, 450] as const
+
 /**
  * A minimal, structurally valid single-page PDF 1.4 (catalog, page tree, one A4 page, a Helvetica
  * text stream, a byte-exact cross-reference table and trailer), generated in memory so every test
  * run can upload a file with its own content and therefore its own SHA-256.
  *
- * `lines` are printed top to bottom. Only printable ASCII is allowed, so byte offsets equal string
+ * `lines` are printed top to bottom. A line given as several cells prints each cell at its own column
+ * (`STATEMENT_PDF_COLUMNS`), far enough apart for a PDF reader to see separate columns, the way accounting
+ * systems print a label beside its value. Only printable ASCII is allowed, so byte offsets equal string
  * offsets and nothing needs escaping beyond the PDF string delimiters.
  */
-export function buildStatementPdf(lines: readonly string[]): Uint8Array<ArrayBuffer> {
-  for (const line of lines) {
-    if (!/^[\x20-\x7e]*$/.test(line)) throw new Error(`PDF fixture lines must be printable ASCII: ${JSON.stringify(line)}`)
+export function buildStatementPdf(lines: readonly (string | readonly string[])[]): Uint8Array<ArrayBuffer> {
+  for (const cell of lines.flat()) {
+    if (!/^[\x20-\x7e]*$/.test(cell)) throw new Error(`PDF fixture lines must be printable ASCII: ${JSON.stringify(cell)}`)
   }
   const escape = (text: string) => text.replace(/[\\()]/g, (char) => `\\${char}`)
-  const content = [
-    'BT',
-    '/F1 11 Tf',
-    '14 TL',
-    '56 780 Td',
-    ...lines.map((line) => `(${escape(line)}) Tj T*`),
-    'ET',
-  ].join('\n')
+  const content = lines.every((line) => typeof line === 'string')
+    ? ['BT', '/F1 11 Tf', '14 TL', '56 780 Td', ...lines.map((line) => `(${escape(line)}) Tj T*`), 'ET'].join('\n')
+    : [
+        'BT',
+        '/F1 11 Tf',
+        ...lines.flatMap((line, row) =>
+          (typeof line === 'string' ? [line] : line).map(
+            (cell, column) => `1 0 0 1 ${STATEMENT_PDF_COLUMNS[column] ?? STATEMENT_PDF_COLUMNS.at(-1)} ${780 - row * 16} Tm (${escape(cell)}) Tj`,
+          ),
+        ),
+        'ET',
+      ].join('\n')
 
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',

@@ -98,7 +98,6 @@ def test_response_is_camel_case_with_nullable_properties_present(client: TestCli
         "pageCount",
         "textLayer",
         "ocrUsed",
-        "openingBalance",
         "fields",
         "lineItems",
         "overallConfidence",
@@ -191,5 +190,5 @@ def test_openapi_documents_the_contract(client: TestClient) -> None:
     assert "engineVersion" in result["properties"]
     assert set(result["required"]) == set(result["properties"])
     assert set(components["ErrorResponse"]["required"]) == {"code", "message", "errors"}
-    money = result["properties"]["openingBalance"]["anyOf"][0]
+    money = components["ExtractedField"]["properties"]["value"]["anyOf"][1]
     assert money == {"type": "string", "pattern": r"^-?\d{1,13}\.\d{2}$"}

@@ -4,6 +4,7 @@ import {
   EXTRACTION_ISSUE_CODES,
   EXTRACTION_ISSUE_SEVERITIES,
   EXTRACTION_STATUSES,
+  FIELD_RESOLUTIONS,
   LINE_ITEM_CATEGORIES,
   LINE_ITEM_KINDS,
   STATEMENT_SOURCES,
@@ -14,11 +15,13 @@ import {
   type ExtractionIssueSeverity,
   type ExtractionFieldName,
   type ExtractionStatus,
+  type FieldResolution,
   type LineItemCategory,
   type LineItemKind,
   type Statement,
   type StatementExtraction,
   type StatementLineItem,
+  type StatementListItem,
   type StatementSource,
   type StatementStatus,
   type StoredFile,
@@ -63,9 +66,12 @@ export class StatementDto implements Statement {
   @ApiProperty({ type: StoredFileDto }) file!: StoredFileDto
   @ApiProperty({ enum: STATEMENT_SOURCES, enumName: 'StatementSource' }) sourceSystem!: StatementSource
   @ApiPropertyOptional() statementNumber?: string
-  @ApiProperty({ format: 'date' }) statementDate!: string
-  @ApiProperty({ format: 'date' }) periodStart!: string
-  @ApiProperty({ format: 'date' }) periodEnd!: string
+  @ApiPropertyOptional({ format: 'date', description: 'Absent until typed at upload or confirmed from the document; always present once verified' })
+  statementDate?: string
+  @ApiPropertyOptional({ format: 'date', description: 'Present together with periodEnd; always present once verified' })
+  periodStart?: string
+  @ApiPropertyOptional({ format: 'date', description: 'Present together with periodStart; always present once verified' })
+  periodEnd?: string
   @ApiProperty({ enum: STATEMENT_STATUSES, enumName: 'StatementStatus' }) status!: StatementStatus
   @ApiPropertyOptional() uploadBatchId?: string
   @ApiProperty({ format: 'uuid' }) uploadedByUserId!: string
@@ -85,11 +91,25 @@ export class StatementDto implements Statement {
   @ApiPropertyOptional({ description: 'Why automatic processing could not complete; the statement needs manual review' })
   processingError?: string
   @ApiPropertyOptional({ format: 'uuid' }) duplicateOfStatementId?: string
+  @ApiPropertyOptional({ description: 'Why a writer rejected the statement (rejected statements only)' }) rejectionReason?: string
   @ApiProperty({ format: 'date-time' }) createdAt!: string
   @ApiProperty({ format: 'date-time' }) updatedAt!: string
 }
 
-export const StatementPageDto = createPageDto(StatementDto, 'StatementPage')
+/** A statement as the list shows it: with the names of its property and, once matched, its tenant and unit. */
+export class StatementListItemDto extends StatementDto implements StatementListItem {
+  @ApiProperty({ example: 'Acacia Park Shopping Centre' }) propertyName!: string
+  @ApiPropertyOptional({ description: "The tenant's trading name; absent until matched", example: 'Umoya Coffee' }) tenantName?: string
+  @ApiPropertyOptional({ description: 'Absent until matched', example: 'ACP-001' }) unitNumber?: string
+  @ApiProperty({
+    description:
+      'True when the statement is under review with nothing unresolved: every extracted field confirmed, corrected or ' +
+      'found without a flag, and the tenant, unit and lease set. Only these can be verified together (POST /statements/verify).',
+  })
+  readyToVerify!: boolean
+}
+
+export const StatementPageDto = createPageDto(StatementListItemDto, 'StatementPage')
 
 export class StatementListQueryDto extends PageQueryDto {
   @ApiPropertyOptional({ enum: STATEMENT_SORT_FIELDS, enumName: 'StatementSortField' })
@@ -109,6 +129,9 @@ export class StatementListQueryDto extends PageQueryDto {
 
   @ApiPropertyOptional({ enum: STATEMENT_SOURCES, enumName: 'StatementSource' })
   sourceSystem?: StatementSource
+
+  @ApiPropertyOptional({ maxLength: 100, description: 'Statements registered in one upload batch (uploadBatchId given at registration)' })
+  uploadBatchId?: string
 }
 
 assertSchemaMatchesDto<z.infer<typeof statementListQuerySchema>, StatementListQueryDto>(true)
@@ -125,6 +148,16 @@ export class ExtractedFieldDto implements ExtractedField {
   @ApiPropertyOptional({ ...FIELD_VALUE_SCHEMA, description: 'Value entered by the reviewer' })
   correctedValue?: string | number
   @ApiPropertyOptional({ format: 'uuid' }) correctedByUserId?: string
+  @ApiPropertyOptional({ format: 'date-time' }) correctedAt?: string
+  @ApiPropertyOptional({ format: 'uuid', description: 'Who confirmed the extracted value as correct' }) confirmedByUserId?: string
+  @ApiPropertyOptional({ format: 'date-time' }) confirmedAt?: string
+  @ApiProperty({
+    enum: FIELD_RESOLUTIONS,
+    enumName: 'FieldResolution',
+    description:
+      'corrected or confirmed by a reviewer; accepted when found without a flag; unresolved while flagged or missing and not yet confirmed or corrected',
+  })
+  resolution!: FieldResolution
 }
 
 /** A validation issue reported by the document-processing service. */

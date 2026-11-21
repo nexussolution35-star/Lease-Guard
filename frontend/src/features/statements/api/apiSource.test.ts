@@ -59,6 +59,15 @@ describe('createApiStatementSource', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
+  it('queues processing again with the explicit company', async () => {
+    const result = { statementId: TEST_RECORD_ID, status: 'uploaded', jobId: 'job-1', outcome: 'retried' }
+    const fetch = fakeFetch(202, result)
+    expect(await sourceWith(fetch).retryProcessing(TEST_COMPANY_ID, TEST_RECORD_ID)).toEqual(result)
+    expect(requestAt(fetch).method).toBe('POST')
+    expect(urlOf(fetch).pathname).toBe(`/api/v1/statements/${TEST_RECORD_ID}/process`)
+    expect(requestAt(fetch).headers.get('x-company-id')).toBe(TEST_COMPANY_ID)
+  })
+
   it('rethrows other API errors', async () => {
     const error = await sourceWith(forbiddenFetch()).get(TEST_COMPANY_ID, TEST_RECORD_ID).catch((e: unknown) => e)
     expect(error).toBeInstanceOf(ApiError)

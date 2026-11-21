@@ -1,4 +1,5 @@
-"""Service configuration, read from `backend/.env` (the server settings) and the process environment."""
+"""Service configuration, read from `backend/.env` (the server settings) and the process
+environment."""
 
 import logging
 from functools import lru_cache

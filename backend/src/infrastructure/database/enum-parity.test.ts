@@ -63,6 +63,8 @@ const PAIRS: { readonly [E in DbEnumName]: readonly string[] } = {
  * test until it is paired above or listed here with the reason.
  */
 const DOMAIN_ONLY: Readonly<Record<string, string>> = {
+  FIELD_REVIEW_REASON_KINDS: 'why a field is flagged, derived from extraction issues and the stored field by fieldReviewReasons; never stored',
+  FIELD_RESOLUTIONS: 'derived from statement_extraction_fields (corrected_value, confirmed_at, value, flagged) by fieldResolution; never stored',
   INVITATION_STATUSES: 'company_invitations.status is text with a check constraint (20261109101900), not an enum',
   ONBOARDING_STEPS: 'computed by the onboarding endpoint; never stored',
   OWNER_MESSAGE_TYPES: 'subset of message_type (communication eligibility rule)',

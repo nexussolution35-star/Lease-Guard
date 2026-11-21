@@ -18,6 +18,7 @@ import { MessageDeliveryProcessor } from './messaging/message-delivery.processor
 import { ArrangementRemindersProcessor } from './monitoring/arrangement-reminders.processor'
 import { ArrearsMonitoringProcessor } from './monitoring/arrears-monitoring.processor'
 import { LeaseMonitoringProcessor } from './monitoring/lease-monitoring.processor'
+import { StatementMonitoringProcessor } from './monitoring/statement-monitoring.processor'
 import { WorkerQueues } from './queues/worker-queues'
 import { MonitoringDispatchProcessor } from './scheduling/monitoring-dispatch.processor'
 import { MonitoringScheduler } from './scheduling/monitoring-scheduler'
@@ -66,6 +67,7 @@ const processors: Provider[] = [
   LeaseMonitoringProcessor,
   ArrearsMonitoringProcessor,
   ArrangementRemindersProcessor,
+  StatementMonitoringProcessor,
   StatementProcessingProcessor,
   MessageDeliveryProcessor,
   UserInvitationProcessor,

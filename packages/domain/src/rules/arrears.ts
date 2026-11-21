@@ -69,18 +69,19 @@ export function statementOutstanding(statement: Pick<Statement, 'closingBalance'
  * Per-tenant ageing. Only VERIFIED statements are considered (unverified / review_required /
  * duplicate are ignored). For each tenant the LATEST verified statement (by statementDate)
  * is authoritative; tenants whose latest balance is ≤ 0 are not in arrears and are omitted.
- * Balance is aged from that statement's date.
+ * Balance is aged from that statement's date. A verified statement always has one (the database
+ * requires it); a statement without a date is ignored rather than aged from a guess.
  */
 export function ageArrears(
   statements: readonly AgeableStatement[],
   today: ISODate,
   buckets: readonly number[] = DEFAULT_AGEING_BUCKETS,
 ): TenantArrears[] {
-  const latest = new Map<EntityId, AgeableStatement>()
+  const latest = new Map<EntityId, AgeableStatement & { statementDate: ISODate }>()
   for (const s of statements) {
-    if (s.status !== 'verified' || !s.tenantId) continue
+    if (s.status !== 'verified' || !s.tenantId || !s.statementDate) continue
     const prev = latest.get(s.tenantId)
-    if (!prev || compareISODate(s.statementDate, prev.statementDate) > 0) latest.set(s.tenantId, s)
+    if (!prev || compareISODate(s.statementDate, prev.statementDate) > 0) latest.set(s.tenantId, { ...s, statementDate: s.statementDate })
   }
   const out: TenantArrears[] = []
   for (const s of latest.values()) {

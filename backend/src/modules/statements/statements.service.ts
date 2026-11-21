@@ -1,14 +1,37 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import type { EntityId, Statement, StatementExtraction } from '@leaseguard/domain'
+import {
+  statementVerificationProblems,
+  type EntityId,
+  type LeaseCandidate,
+  type Statement,
+  type StatementExtraction,
+  type StatementListItem,
+} from '@leaseguard/domain'
 
 import { httpErrorFromDatabase, unwrapDatabase } from '../../common/http/database-errors'
 import { fetchAllRows } from '../../common/http/fetch-all'
 import { emptyPageWithTotal, isPageOutOfRange, rangeFor, searchFilter, type Page } from '../../common/http/pagination'
 import type { DbClient } from '../../infrastructure/database/rls-client.factory'
-import { toStatement, toStatementExtraction, type StatementLineItemRow, type StatementRow } from './statements.mapper'
+import {
+  toStatement,
+  toStatementExtraction,
+  type StatementExtractionFieldRow,
+  type StatementLineItemRow,
+  type StatementRow,
+} from './statements.mapper'
 import { STATEMENT_SORT_COLUMNS, type StatementListQuery } from './statements.schemas'
 
 const SEARCH_COLUMNS = ['file_name', 'statement_number'] as const
+
+/** A list row also names its property and, once matched, its tenant and unit (to-one embeds over the composite foreign keys). */
+const STATEMENT_LIST_SELECT =
+  '*, property:properties!statements_property_fk(name), tenant:tenants!statements_tenant_fk(trading_name), unit:units!statements_unit_fk(unit_number)'
+
+type StatementListRow = StatementRow & {
+  property: { name: string } | null
+  tenant: { trading_name: string } | null
+  unit: { unit_number: string } | null
+}
 
 /**
  * Reads statements, their line items and extractions for one company. Every query runs through the
@@ -16,14 +39,15 @@ const SEARCH_COLUMNS = ['file_name', 'statement_number'] as const
  */
 @Injectable()
 export class StatementsService {
-  async list(db: DbClient, companyId: EntityId, query: StatementListQuery): Promise<Page<Statement>> {
+  async list(db: DbClient, companyId: EntityId, query: StatementListQuery): Promise<Page<StatementListItem>> {
     const filtered = () => {
-      let request = db.from('statements').select('*', { count: 'exact' }).eq('company_id', companyId)
+      let request = db.from('statements').select(STATEMENT_LIST_SELECT, { count: 'exact' }).eq('company_id', companyId)
       if (query.status) request = request.eq('status', query.status)
       if (query.propertyId) request = request.eq('property_id', query.propertyId)
       if (query.tenantId) request = request.eq('tenant_id', query.tenantId)
       if (query.leaseId) request = request.eq('lease_id', query.leaseId)
       if (query.sourceSystem) request = request.eq('source_system', query.sourceSystem)
+      if (query.uploadBatchId) request = request.eq('upload_batch_id', query.uploadBatchId)
       if (query.search) request = request.or(searchFilter(SEARCH_COLUMNS, query.search))
       return request
     }
@@ -38,8 +62,23 @@ export class StatementsService {
       throw httpErrorFromDatabase(error, 'List statements')
     }
 
-    const rows = data ?? []
-    const items = await this.withChildren(db, companyId, rows)
+    const rows: StatementListRow[] = data ?? []
+    const statements = await this.withChildren(
+      db,
+      companyId,
+      rows.map(({ property: _property, tenant: _tenant, unit: _unit, ...row }) => row),
+    )
+    const ready = await this.readyToVerify(db, companyId, statements)
+    const items = statements.map((statement, index): StatementListItem => {
+      const { property, tenant, unit } = rows[index]!
+      return {
+        ...statement,
+        propertyName: property?.name ?? '',
+        ...(tenant ? { tenantName: tenant.trading_name } : {}),
+        ...(unit ? { unitNumber: unit.unit_number } : {}),
+        readyToVerify: ready.has(statement.id),
+      }
+    })
     return { items, total: count ?? 0, page: query.page, pageSize: query.pageSize }
   }
 
@@ -73,6 +112,61 @@ export class StatementsService {
       .eq('extraction_id', extraction.id)
     if (fieldsError) throw httpErrorFromDatabase(fieldsError, 'Get statement extraction fields')
     return toStatementExtraction(extraction, fields ?? [])
+  }
+
+  /**
+   * The statements of a page that can be verified now: under review, matched to a tenant, unit and lease, and with
+   * nothing unresolved by the domain rule the verification itself applies (`statementVerificationProblems`). Only
+   * the candidates' extractions, fields and leases are read: one query per table, not one per row.
+   */
+  private async readyToVerify(db: DbClient, companyId: EntityId, statements: readonly Statement[]): Promise<Set<EntityId>> {
+    const candidates = statements.filter(
+      (statement) => statement.status === 'review_required' && statement.extractionId && statement.tenantId && statement.unitId && statement.leaseId,
+    )
+    if (candidates.length === 0) return new Set()
+    const extractionIds = candidates.map((statement) => statement.extractionId!)
+    const leaseIds = [...new Set(candidates.map((statement) => statement.leaseId!))]
+
+    const [extractions, fields, leases] = await Promise.all([
+      db.from('statement_extractions').select('*').eq('company_id', companyId).in('id', extractionIds),
+      fetchAllRows<StatementExtractionFieldRow>('List statement extraction fields', (from, to) =>
+        db
+          .from('statement_extraction_fields')
+          .select('*')
+          .eq('company_id', companyId)
+          .in('extraction_id', extractionIds)
+          .order('extraction_id', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to),
+      ),
+      db.from('leases').select('id, reference, status, commencement_date, expiry_date').eq('company_id', companyId).in('id', leaseIds),
+    ])
+    if (extractions.error) throw httpErrorFromDatabase(extractions.error, 'List statement extractions')
+    if (leases.error) throw httpErrorFromDatabase(leases.error, 'List statement leases')
+
+    const fieldsByExtraction = new Map<EntityId, StatementExtractionFieldRow[]>()
+    for (const field of fields) {
+      const list = fieldsByExtraction.get(field.extraction_id)
+      if (list) list.push(field)
+      else fieldsByExtraction.set(field.extraction_id, [field])
+    }
+    const extractionById = new Map((extractions.data ?? []).map((row) => [row.id, toStatementExtraction(row, fieldsByExtraction.get(row.id) ?? [])]))
+    const leaseById = new Map(
+      (leases.data ?? []).map((row): [EntityId, LeaseCandidate] => [
+        row.id,
+        { id: row.id, reference: row.reference, status: row.status, commencementDate: row.commencement_date, expiryDate: row.expiry_date },
+      ]),
+    )
+
+    const ready = new Set<EntityId>()
+    for (const statement of candidates) {
+      const extraction = extractionById.get(statement.extractionId!) ?? null
+      const lease = leaseById.get(statement.leaseId!)
+      // A lease that cannot be read is not checked here; the statement is then not offered.
+      if (!lease) continue
+      if (statementVerificationProblems({ statement, extraction, lease }).length === 0) ready.add(statement.id)
+    }
+    return ready
   }
 
   /**

@@ -151,6 +151,8 @@ select lives_ok(
   'an owner message may reference a statement (no tenant to match)');
 
 -- ------------------------------------------------------------------ storage path shape
+-- Signed-in users never change a statement's file (S-04 column grants), so the path rule is checked as the database owner.
+reset role;
 select throws_ok(
   $$update public.statements set storage_path = '20000000-0000-4000-8000-000000000001/../20000000-0000-4000-8000-000000000002/70000000-0000-4000-8000-000000000003/KGP-2026-10.pdf'
     where id = '70000000-0000-4000-8000-000000000002'$$,
@@ -172,7 +174,6 @@ select lives_ok(
     where id = '70000000-0000-4000-8000-000000000002'$$,
   'a path in the API''s shape is accepted');
 -- Signed-in users never update a recorded lease document (M5-02), so the path rule is checked as the database owner.
-reset role;
 select throws_ok(
   $$update public.lease_documents set storage_path = '20000000-0000-4000-8000-000000000001/61000000-0000-4000-8000-000000000001/.hidden'
     where id = '61000000-0000-4000-8000-000000000001'$$,
@@ -196,6 +197,8 @@ select is(
 select throws_ok(
   $$update public.notifications set read = true, read_at = null where user_id = '10000000-0000-4000-8000-000000000003'$$,
   '23514', null, 'a read notification records when it was read');
+-- Signed-in users never reopen a verified statement nor write its figures (S-05), so the rule is checked as the owner.
+reset role;
 update public.statements set status = 'review_required', opening_balance = null, rental_charged = null,
   additional_charges = null, payments_received = null, closing_balance = null, total_due = null
 where id = '70000000-0000-4000-8000-000000000001';

@@ -16,9 +16,11 @@ def _parsed(
     defaults: dict[str, str | Decimal | None] = {
         "tenant_name": "Blue Crane",
         "unit_number": "12",
+        "statement_number": "ST-1",
         "statement_date": "2026-10-31",
         "period_start": "2026-10-01",
         "period_end": "2026-10-31",
+        "opening_balance": Decimal(opening) if opening else None,
         "rental_charged": Decimal("500.00"),
         "additional_charges": Decimal("100.00"),
         "payments_received": Decimal("400.00"),
@@ -31,7 +33,7 @@ def _parsed(
         )
         for name in EXTRACTION_FIELD_NAMES
     }
-    return ParsedStatement(fields, items or [], Decimal(opening) if opening else None)
+    return ParsedStatement(fields, items or [])
 
 
 def _item(kind: str, amount: str, description: str = "Rental") -> LineItem:
@@ -84,11 +86,13 @@ def test_missing_values_are_reported_not_filled() -> None:
     parsed = _parsed(opening=None, outstanding_balance=None)
     issues = validate_statement(parsed, today=TODAY)
     assert [(i.code, i.field) for i in issues] == [
+        ("missing_field", "opening_balance"),
         ("missing_field", "outstanding_balance"),
         ("cannot_reconcile", None),
     ]
+    assert parsed.fields["opening_balance"].flagged is True
     assert parsed.fields["outstanding_balance"].value is None
-    assert "opening balance, closing balance" in issues[1].message
+    assert "opening balance, closing balance" in issues[2].message
 
 
 def test_period_must_not_end_before_it_starts() -> None:
@@ -116,3 +120,13 @@ def test_duplicate_line_items_are_flagged() -> None:
     parsed = _parsed(items=items)
     assert _codes(parsed) == ["duplicate_line_item"]
     assert [i.flagged for i in parsed.line_items] == [True, True, False]
+
+
+def test_missing_statement_number_is_only_a_warning() -> None:
+    parsed = _parsed(statement_number=None)
+    issues = validate_statement(parsed, today=TODAY)
+    assert [(i.code, i.severity, i.field) for i in issues] == [
+        ("missing_field", "warning", "statement_number")
+    ]
+    assert parsed.fields["statement_number"].flagged is True
+    assert parsed.fields["statement_number"].value is None

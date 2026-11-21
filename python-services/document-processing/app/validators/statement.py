@@ -35,11 +35,15 @@ def validate_statement(parsed: ParsedStatement, *, today: date) -> list[Issue]:
     return issues
 
 
+OPTIONAL_ON_DOCUMENT = frozenset({"statement_number"})
+"""Fields many statements do not print. Missing, they are still flagged, but only as a warning."""
+
+
 def _missing_fields(parsed: ParsedStatement) -> list[Issue]:
     return [
         Issue(
             code="missing_field",
-            severity="error",
+            severity="warning" if name in OPTIONAL_ON_DOCUMENT else "error",
             message=f"{name.replace('_', ' ').capitalize()} was not found on the statement.",
             field=name,
         )
@@ -51,7 +55,7 @@ def _missing_fields(parsed: ParsedStatement) -> list[Issue]:
 def _reconcile(parsed: ParsedStatement) -> list[Issue]:
     """Opening balance + charges - payments - credits must equal the closing balance."""
     closing = parsed.money("outstanding_balance")
-    opening = parsed.opening_balance
+    opening = parsed.money("opening_balance")
     if parsed.line_items:
         charges, payments, credits = (
             sum((i.amount for i in parsed.line_items if i.kind == kind), Decimal("0.00"))

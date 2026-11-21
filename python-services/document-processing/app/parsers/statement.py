@@ -35,7 +35,12 @@ FINANCIAL_FLAG_BELOW = 0.9
 domain package, so an amount the backend would not pre-fill is also flagged here."""
 
 ALWAYS_REVIEW_REASONS = frozenset(
-    {"derived_from_line_items", "no_matching_line_items", "conflicting_values"}
+    {
+        "derived_from_line_items",
+        "no_matching_line_items",
+        "conflicting_values",
+        "recipient_block_has_several_lines",
+    }
 )
 """Values that were not printed as such, or not unambiguously: flagged whatever their confidence."""
 
@@ -51,6 +56,7 @@ _UNCERTAIN = 0.6
 Target = Literal[
     "tenant_name",
     "unit_number",
+    "statement_number",
     "statement_date",
     "period",
     "opening_balance",
@@ -78,6 +84,15 @@ _BALANCE_TARGETS: frozenset[Target] = frozenset(
 _LABEL_SYNONYMS: dict[Target, tuple[str, ...]] = {
     "tenant_name": ("tenant name", "tenant", "lessee", "account name"),
     "unit_number": ("unit number", "unit no", "unit", "shop no", "premises"),
+    "statement_number": (
+        "statement number",
+        "statement no",
+        "statement #",
+        "statement reference",
+        "statement ref",
+        "document number",
+        "document no",
+    ),
     "statement_date": ("statement date", "date of statement", "date issued"),
     "period": ("statement period", "billing period", "period"),
     "opening_balance": (
@@ -104,7 +119,10 @@ _LABELS: list[tuple[str, Target]] = sorted(
     key=lambda pair: -len(pair[0]),
 )
 
-_PAYMENT_WORDS = re.compile(r"\b(?:payment|paid|receipt|received|eft)\b", re.IGNORECASE)
+STATEMENT_NUMBER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9/_.-]{0,39}$")
+"""A statement number is one short token with at least one digit, e.g. `ST-1042` or `000123`."""
+
+PAYMENT_WORDS = re.compile(r"\b(?:payment|paid|receipt|received|eft)\b", re.IGNORECASE)
 _CATEGORY_PATTERNS: tuple[tuple[re.Pattern[str], LineItemCategory], ...] = (
     (re.compile(r"\bparking\b", re.I), "parking"),
     (re.compile(r"\bmarketing\b", re.I), "marketing_levy"),
@@ -158,10 +176,16 @@ def flag_threshold(name: ExtractionFieldName) -> float:
 class ParsedStatement:
     fields: dict[ExtractionFieldName, ExtractedField]
     line_items: list[LineItem]
-    opening_balance: Decimal | None
     issues: list[Issue] = field(default_factory=list)
-    opening_balance_confidence: float | None = None
-    """How the opening balance was read; `None` when it was not found."""
+    layout: str = "generic"
+    """Which reader produced this: `generic` (labels) or a recognised layout such as `mri`."""
+    tenant_name_options: tuple[str, ...] = ()
+    """Every line that may be the tenant's name when the document does not say which (MRI prints
+    a two-line recipient block). `fields["tenant_name"]` holds the first, flagged, until one of
+    them matches an expected tenant name."""
+    details: dict[str, str] = field(default_factory=dict)
+    """Values the layout prints that have no extraction field (property, ageing, ...); read for
+    cross-checks and logs, never sent on the wire."""
 
     def money(self, name: ExtractionFieldName) -> Decimal | None:
         value = self.fields[name].value
@@ -197,18 +221,7 @@ def parse_statement(document: DocumentContent) -> ParsedStatement:
 
     resolved = {t: c for t, cs in candidates.items() if (c := _resolve(cs, issues)) is not None}
     _derive_totals(resolved, items)
-    opening = resolved.get("opening_balance")
-    if opening is not None and isinstance(opening.value, Decimal):
-        opening_balance, opening_confidence = opening.value, round(opening.confidence, 2)
-    else:
-        opening_balance, opening_confidence = None, None
-    return ParsedStatement(
-        fields=_to_fields(resolved),
-        line_items=items,
-        opening_balance=opening_balance,
-        issues=issues,
-        opening_balance_confidence=opening_confidence,
-    )
+    return ParsedStatement(fields=_to_fields(resolved), line_items=items, issues=issues)
 
 
 def _norm(text: str) -> str:
@@ -220,7 +233,14 @@ def _match_label(line: TextLine) -> _Candidate | None:
     lowered = line.text.lower()
     for label, target in _LABELS:
         if first == label and len(line.cells) > 1:
-            value_text, base, reason = " ".join(line.cells[1:]), _EXACT_LABEL, None
+            values = line.cells[1:]
+            if target in _TEXT_TARGETS and any(_looks_like_label(v) for v in values):
+                # A row of column headings ("Account Name | Bank | Branch No. | ..."): the value,
+                # if any, is on another line, and other labels are never a value.
+                continue
+            value_text, base, reason = " ".join(values), _EXACT_LABEL, None
+            if target in _TEXT_TARGETS and len(values) > 1:
+                base, reason = _UNCERTAIN, "value_spans_several_columns"
         elif lowered.startswith(label) and not lowered[len(label) : len(label) + 1].isalnum():
             remainder = line.text[len(label) :]
             # "TENANT STATEMENT" is a title, not a tenant: free-text values need "Label: value".
@@ -237,6 +257,17 @@ def _match_label(line: TextLine) -> _Candidate | None:
     return None
 
 
+_LABEL_LIKE = re.compile(
+    r"(?:\bno\.?|\bnumber|\bname|\breference|\bref\.?|\bdate|\bcode|:)$", re.IGNORECASE
+)
+_KNOWN_LABELS = frozenset(label for label, _ in _LABELS)
+
+
+def _looks_like_label(text: str) -> bool:
+    """True for a cell that reads as a heading ("Branch No.", "Account Name", "Unit:")."""
+    return _norm(text) in _KNOWN_LABELS or _LABEL_LIKE.search(text.strip()) is not None
+
+
 def _interpret(
     target: Target, value_text: str, raw: str, base: float, reason: str | None
 ) -> _Candidate | None:
@@ -249,6 +280,13 @@ def _interpret(
         if not money.has_cents:
             base, reason = base * _NO_CENTS, reason or "amount_without_cents"
         return _Candidate(target, money.amount, raw, base, reason)
+    if target == "statement_number":
+        number = value_text.lstrip(".:#- ")
+        if not STATEMENT_NUMBER.match(number) or not any(ch.isdigit() for ch in number):
+            return None
+        if parse_date(number) is not None:
+            return None
+        return _Candidate(target, number, raw, base, reason)
     if target == "statement_date":
         parsed = parse_date(value_text)
         return _Candidate(target, parsed, raw, base, reason) if parsed else None
@@ -283,10 +321,10 @@ def _resolve(candidates: list[_Candidate], issues: list[Issue]) -> _Candidate | 
     return replace(first, confidence=min(first.confidence, 0.5), reason="conflicting_values")
 
 
-def _field_for(target: Target) -> ExtractionFieldName | None:
+def _field_for(target: Target) -> ExtractionFieldName:
     if target == "period":
         return "period_start"
-    return None if target == "opening_balance" else target
+    return target
 
 
 def _locate_header(table: Table) -> tuple[int, dict[str, int]] | None:
@@ -424,7 +462,7 @@ def _consume_row(
         LineItem(
             date=row.date,
             description=row.description,
-            category=_category(kind, row.description),
+            category=line_item_category(kind, row.description),
             kind=kind,
             amount=abs(money.amount),
             confidence=round(confidence, 2),
@@ -435,7 +473,7 @@ def _consume_row(
 
 def _direction(column: Column, money: Money, description: str) -> tuple[LineItemKind, bool]:
     """Returns the kind and whether the document states it (column or sign) unambiguously."""
-    payment_like = _PAYMENT_WORDS.search(description) is not None
+    payment_like = PAYMENT_WORDS.search(description) is not None
     if column == "debit":
         return "charge", True
     if column == "credit" or money.amount < 0:
@@ -444,7 +482,7 @@ def _direction(column: Column, money: Money, description: str) -> tuple[LineItem
     return ("payment", False) if payment_like else ("charge", True)
 
 
-def _category(kind: LineItemKind, description: str) -> LineItemCategory:
+def line_item_category(kind: LineItemKind, description: str) -> LineItemCategory:
     if kind == "payment":
         return "payment"
     if kind == "credit":

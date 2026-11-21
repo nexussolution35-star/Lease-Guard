@@ -33,6 +33,7 @@ export const EXTRACTION_ISSUE_CODES = [
   'conflicting_values',
   'unparsed_row',
   'hint_mismatch',
+  'typed_value_mismatch',
   'unsupported_layout',
   'scanned_without_ocr',
   'ocr_used',
@@ -61,6 +62,7 @@ export type DocumentProcessingErrorCode = (typeof DOCUMENT_PROCESSING_ERROR_CODE
 
 /** Extraction fields whose values are rand amounts. They are never accepted without review. */
 export const FINANCIAL_EXTRACTION_FIELDS = [
+  'opening_balance',
   'rental_charged',
   'additional_charges',
   'payments_received',
@@ -110,8 +112,6 @@ export interface DocumentExtractionResult {
   /** True when every page has a text layer. */
   textLayer: boolean
   ocrUsed: boolean
-  /** Balance brought forward, used to reconcile totals. Null when not found. */
-  openingBalance: ZarDecimal | null
   /** Exactly one entry per `ExtractionFieldName`. */
   fields: readonly DocumentExtractionField[]
   lineItems: readonly DocumentExtractionLineItem[]

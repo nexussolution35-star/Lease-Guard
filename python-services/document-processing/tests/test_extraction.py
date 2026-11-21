@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from app.schemas.v1 import EXTRACTION_FIELD_NAMES, ExtractedField, Issue, LineItem
 from app.services.extraction import review_status
 from conftest import (
+    HEADER,
     RULED_ROWS,
     TOTALS_FOOTER,
     UNRULED_FOOTER,
@@ -37,9 +38,11 @@ def test_ruled_statement_that_reconciles(client: TestClient) -> None:
     assert list(fields) == [
         "tenant_name",
         "unit_number",
+        "statement_number",
         "statement_date",
         "period_start",
         "period_end",
+        "opening_balance",
         "rental_charged",
         "additional_charges",
         "payments_received",
@@ -49,16 +52,19 @@ def test_ruled_statement_that_reconciles(client: TestClient) -> None:
     assert {name: f["value"] for name, f in fields.items()} == {
         "tenant_name": "Blue Crane Pharmacy (Pty) Ltd",
         "unit_number": "Shop 12",
+        "statement_number": "ST-2026-1042",
         "statement_date": "2026-10-31",
         "period_start": "2026-10-01",
         "period_end": "2026-10-31",
+        "opening_balance": "70000.00",
         "rental_charged": "35000.00",
         "additional_charges": "9950.50",
         "payments_received": "35000.00",
         "outstanding_balance": "79950.50",
         "total_due": "79950.50",
     }
-    assert body["openingBalance"] == "70000.00"
+    assert "openingBalance" not in body  # an extracted field like the others
+    assert fields["opening_balance"]["confidence"] >= 0.9
     # The statement prints no rental, charges or payments totals: they are summed from its line
     # items, so they are flagged for a person to confirm and the result is never `extracted`.
     derived = {"rental_charged", "additional_charges", "payments_received"}
@@ -90,7 +96,16 @@ def test_unruled_statement_with_mixed_formats_that_does_not_reconcile(client: Te
     assert fields["tenant_name"]["value"] == "Karoo Coffee Roasters"
     assert fields["statement_date"]["value"] == "2026-10-31"
     assert fields["period_end"]["reason"] == "period_from_month_label"
-    assert body["openingBalance"] == "12000.00"
+    assert fields["opening_balance"]["value"] == "12000.00"
+    # Statement numbers are not printed on every statement: missing, it is flagged as a warning.
+    assert fields["statement_number"]["value"] is None
+    assert fields["statement_number"]["flagged"] is True
+    assert {
+        "code": "missing_field",
+        "severity": "warning",
+        "message": "Statement number was not found on the statement.",
+        "field": "statement_number",
+    } in body["issues"]
     assert [(i["kind"], i["amount"]) for i in body["lineItems"]] == [
         ("charge", "35000.00"),
         ("charge", "1500.00"),
@@ -101,9 +116,11 @@ def test_unruled_statement_with_mixed_formats_that_does_not_reconcile(client: Te
     assert {
         "code": "low_confidence",
         "severity": "warning",
-        "message": "The opening balance was read with low confidence (85%).",
-        "field": None,
+        "message": "Opening balance was read with low confidence (85%).",
+        "field": "opening_balance",
     } in body["issues"]
+    assert fields["opening_balance"]["flagged"] is True
+    assert fields["opening_balance"]["reason"] == "low_confidence"
     reconcile = next(i for i in body["issues"] if i["code"] == "totals_do_not_reconcile")
     assert reconcile["severity"] == "error"
     assert "R 12 300,00" in reconcile["message"]
@@ -191,6 +208,7 @@ def test_money_is_serialised_as_two_decimal_strings(client: TestClient) -> None:
 # is `needs_review` whenever any financial field is flagged, missing or below the money threshold.
 
 FINANCIAL = (
+    "opening_balance",
     "rental_charged",
     "additional_charges",
     "payments_received",
@@ -235,6 +253,7 @@ def test_statement_with_printed_totals_is_extracted_without_flags(client: TestCl
     body = upload(client, statement_pdf(footer=TOTALS_FOOTER)).json()
     fields = _fields(body)
     assert [fields[name]["value"] for name in FINANCIAL] == [
+        "70000.00",
         "35000.00",
         "9950.50",
         "35000.00",
@@ -298,9 +317,11 @@ def _clean_fields(**overrides: dict[str, Any]) -> list[ExtractedField]:
     values: dict[str, str | Decimal] = {
         "tenant_name": "Blue Crane",
         "unit_number": "12",
+        "statement_number": "ST-1",
         "statement_date": "2026-10-31",
         "period_start": "2026-10-01",
         "period_end": "2026-10-31",
+        "opening_balance": Decimal("1000.00"),
         "rental_charged": Decimal("500.00"),
         "additional_charges": Decimal("100.00"),
         "payments_received": Decimal("400.00"),
@@ -355,3 +376,61 @@ def test_review_status_counts_flagged_line_items_and_issues() -> None:
     issue = Issue(code="ocr_used", severity="warning", message="OCR was used.")
     assert review_status(_clean_fields(), [item], []) == "needs_review"
     assert review_status(_clean_fields(), [], [issue]) == "needs_review"
+
+
+def test_missing_opening_balance_is_null_flagged_and_an_error(client: TestClient) -> None:
+    rows = [row for row in RULED_ROWS if "Brought Forward" not in row[1]]
+    body = upload(client, statement_pdf(rows=rows, footer=TOTALS_FOOTER)).json()
+    opening = _fields(body)["opening_balance"]
+    assert opening == {
+        "name": "opening_balance",
+        "rawText": "",
+        "value": None,
+        "confidence": 0.0,
+        "flagged": True,
+        "reason": "not_found",
+    }
+    assert {
+        "code": "missing_field",
+        "severity": "error",
+        "message": "Opening balance was not found on the statement.",
+        "field": "opening_balance",
+    } in body["issues"]
+    assert "cannot_reconcile" in _codes(body)
+    assert body["status"] == "needs_review"
+
+
+@pytest.mark.parametrize(
+    ("label", "value", "expected"),
+    [
+        ("Statement No:", "ST-2026-1042", "ST-2026-1042"),
+        ("Statement Number", "000123", "000123"),
+        ("Statement #", "INV/10/42", "INV/10/42"),
+        ("Document No.", "D 77", None),  # two tokens: not read as a number, never guessed
+        ("Statement Ref:", "October", None),  # no digit
+    ],
+)
+def test_statement_number_is_read_from_its_label(
+    client: TestClient, label: str, value: str, expected: str | None
+) -> None:
+    header = [(label, value) if h[0] == "Statement No:" else h for h in HEADER]
+    field = _fields(upload(client, statement_pdf(header=header)).json())["statement_number"]
+    assert field["value"] == expected
+    if expected is None:
+        assert field["flagged"] is True
+    else:
+        assert field["flagged"] is False
+        assert field["confidence"] >= 0.8
+
+
+def test_conflicting_statement_numbers_are_flagged(client: TestClient) -> None:
+    document = pymupdf.open(stream=statement_pdf(), filetype="pdf")
+    document[0].insert_text((50, 760), "Statement No: ST-2026-9999", fontsize=10)
+    body = upload(client, document.tobytes()).json()
+    field = _fields(body)["statement_number"]
+    assert field["flagged"] is True
+    assert field["reason"] == "conflicting_values"
+    assert any(
+        i["code"] == "conflicting_values" and i["field"] == "statement_number"
+        for i in body["issues"]
+    )

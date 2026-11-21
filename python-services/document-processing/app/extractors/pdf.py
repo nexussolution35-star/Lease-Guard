@@ -24,6 +24,9 @@ class PdfRejectedError(Exception):
         self.message = message
 
 
+Box = tuple[float, float, float, float]
+
+
 @dataclass(frozen=True, slots=True)
 class TextLine:
     """One visual line. Words separated by a wide gap are split into separate cells."""
@@ -31,6 +34,8 @@ class TextLine:
     cells: tuple[str, ...]
     page: int
     ocr: bool
+    boxes: tuple[Box, ...] = ()
+    """Each cell's `(x0, y0, x1, y1)` in PDF points, top-left origin; empty for OCR lines."""
 
     @property
     def text(self) -> str:
@@ -125,12 +130,21 @@ def _group_words(words: list[Word], page: int) -> list[TextLine]:
             rows.append((centre, height, [word]))
     lines: list[TextLine] = []
     for _, height, row in rows:
-        cells: list[list[str]] = []
+        cells: list[list[Word]] = []
         previous_end: float | None = None
         for word in sorted(row, key=lambda w: w[0]):
             if previous_end is None or word[0] - previous_end > height:
                 cells.append([])
-            cells[-1].append(word[4])
+            cells[-1].append(word)
             previous_end = word[2]
-        lines.append(TextLine(tuple(" ".join(c) for c in cells), page, False))
+        lines.append(
+            TextLine(
+                tuple(" ".join(w[4] for w in c) for c in cells),
+                page,
+                False,
+                tuple(
+                    (c[0][0], min(w[1] for w in c), c[-1][2], max(w[3] for w in c)) for c in cells
+                ),
+            )
+        )
     return lines

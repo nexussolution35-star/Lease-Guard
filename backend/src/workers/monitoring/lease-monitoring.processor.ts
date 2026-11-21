@@ -10,7 +10,7 @@ import { fetchAll } from '../shared/db'
 import { MonitoringOutputs } from '../shared/monitoring-outputs'
 import { loadMonitoringSettings } from '../shared/monitoring-settings'
 import { type BilledRental, leaseFindings } from './lease-monitoring.findings'
-import { loadRecordNames, type ScanSummary } from './monitoring-data'
+import { loadRecordNames, type MonitoringScope, type ScanSummary } from './monitoring-data'
 
 /**
  * Daily lease scan for one company: expiry, renewal notice deadlines, bank guarantee expiry and
@@ -29,7 +29,8 @@ export class LeaseMonitoringProcessor implements OnModuleInit {
     this.runtime.start('lease-monitoring', (payload) => this.scan(payload))
   }
 
-  async scan({ companyId, asOf }: JobPayloads['lease-monitoring']): Promise<ScanSummary> {
+  /** `scope.tenantId` limits the scan to one tenant's leases (right after a statement is verified). */
+  async scan({ companyId, asOf }: JobPayloads['lease-monitoring'], scope: MonitoringScope = {}): Promise<ScanSummary> {
     if (!isValidISODate(asOf)) throw new UnrecoverableError(`Invalid asOf date "${asOf}"`)
     const db = this.clients.get()
     const settings = await loadMonitoringSettings(db, companyId, (type, reason) =>
@@ -38,33 +39,32 @@ export class LeaseMonitoringProcessor implements OnModuleInit {
     if (!settings) return { findings: 0, created: 0, notified: 0, skipped: 'company_inactive' }
 
     const [leaseRows, statements, names] = await Promise.all([
-      fetchAll('Load verified leases', (from, to) =>
-        db
+      fetchAll('Load verified leases', (from, to) => {
+        const query = db
           .from('leases')
           .select('*, lease_bank_guarantees(*)')
           .eq('company_id', companyId)
           .eq('verified', true)
           .in('status', [...MONITORED_LEASE_STATUSES])
-          .order('id')
-          .range(from, to),
-      ),
-      fetchAll('Load verified statements', (from, to) =>
-        db
+        return (scope.tenantId ? query.eq('tenant_id', scope.tenantId) : query).order('id').range(from, to)
+      }),
+      fetchAll('Load verified statements', (from, to) => {
+        const query = db
           .from('statements')
           .select('id, lease_id, statement_date, period_start, rental_charged')
           .eq('company_id', companyId)
           .eq('status', 'verified')
           .not('lease_id', 'is', null)
-          .order('id')
-          .range(from, to),
-      ),
+        return (scope.tenantId ? query.eq('tenant_id', scope.tenantId) : query).order('id').range(from, to)
+      }),
       loadRecordNames(db, companyId),
     ])
 
     // The latest verified statement of each lease is the authoritative billed rental.
     const latest = new Map<EntityId, { statementDate: string } & BilledRental>()
     for (const row of statements) {
-      if (!row.lease_id || row.rental_charged === null) continue
+      // A verified statement always has its date and period (statements_verified_dates_check).
+      if (!row.lease_id || row.rental_charged === null || row.statement_date === null || row.period_start === null) continue
       const previous = latest.get(row.lease_id)
       if (previous && compareISODate(row.statement_date, previous.statementDate) <= 0) continue
       latest.set(row.lease_id, {
@@ -83,7 +83,7 @@ export class LeaseMonitoringProcessor implements OnModuleInit {
       asOf,
     })
     const result = await new MonitoringOutputs(db, companyId).raise(drafts)
-    this.logger.log({ companyId, asOf, leases: leaseRows.length, findings: drafts.length, ...result }, 'Lease monitoring complete')
+    this.logger.log({ companyId, asOf, ...scope, leases: leaseRows.length, findings: drafts.length, ...result }, 'Lease monitoring complete')
     return { findings: drafts.length, ...result }
   }
 }

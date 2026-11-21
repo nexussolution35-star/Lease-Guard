@@ -43,7 +43,7 @@ export function workspaceSwitcher(page: Page): Locator {
 /** Opens the workspace menu and chooses the company by (trading) name. */
 export async function switchWorkspace(page: Page, companyName: string): Promise<void> {
   await workspaceSwitcher(page).click()
-  await page.getByRole('menuitem', { name: new RegExp(companyName) }).click()
+  await page.getByRole('menuitemradio', { name: new RegExp(companyName) }).click()
   await expect(workspaceSwitcher(page)).toHaveAccessibleName(`Workspace: ${companyName}. Switch workspace`)
 }
 
@@ -63,7 +63,8 @@ export function notificationsButton(page: Page): Locator {
 /** Signs in through the login form (the page must show it) and waits for the application shell. */
 export async function signInWith(page: Page, email: string, password: string): Promise<void> {
   await page.getByLabel('Email address').fill(email)
-  await page.getByLabel('Password').fill(password)
+  // The field, not its Show password toggle (whose label also contains "password").
+  await page.getByRole('textbox', { name: /^Password/ }).fill(password)
   await page.getByRole('button', { name: 'Sign in' }).click()
 }
 

@@ -73,6 +73,22 @@ _Avoid_: Commit, publish, go live, activation
 A tenant's account statement imported from the property-management system, used for monitoring only.
 _Avoid_: Invoice, bill
 
+**Upload batch**:
+The statement PDFs a person uploads together for one property and source system. Each file is checked, registered and processed on its own; the batch only groups them so they can be followed on the statement list. A file identical to one already on record, or repeated within the batch, is linked to that statement and never processed twice.
+_Avoid_: Import, bulk upload
+
+**Flagged field**:
+A value read from a statement that LeaseGuard is not sure of: missing, low in confidence, not reconciling with the other figures, or different from what the uploader typed. A person must confirm or correct it; it is never guessed. Once confirmed or corrected (or found without a flag in the first place) a field is resolved; a value that was not found can only be entered, never confirmed.
+_Avoid_: Error, warning, low-confidence value
+
+**Statement verification**:
+A company admin's or property manager's confirmation that every field of a statement is resolved and that it belongs to the right tenant, unit and lease. Only a verified statement's figures count for arrears, escalation checks and balances. A statement under review with nothing left unresolved is **ready to verify**; several ready statements can be verified together, each still verified and audited on its own.
+_Avoid_: Approval, confirmation
+
+**Outstanding balance**:
+What a tenant's latest verified statement says they owe. A monitoring record, never a transaction; arrears ageing is measured from that statement's date.
+_Avoid_: Debt, amount owing, account balance
+
 **Payment arrangement**:
 An agreed schedule for a tenant to settle arrears; a monitoring record, not a transaction. An active one suppresses normal arrears reminders.
 _Avoid_: Payment plan, instalment agreement

@@ -1,4 +1,5 @@
-"""Test fixtures. Every PDF is generated at test time with PyMuPDF; nothing is checked in."""
+"""Test fixtures. PDFs are generated at test time with PyMuPDF, except the real statements in
+`tests/fixtures/statements` (the owner's test files)."""
 
 from collections.abc import Iterator
 
@@ -15,6 +16,7 @@ MAX_FILE_MB = 1
 HEADER = [
     ("Tenant:", "Blue Crane Pharmacy (Pty) Ltd"),
     ("Unit:", "Shop 12"),
+    ("Statement No:", "ST-2026-1042"),
     ("Statement Date:", "31 Oct 2026"),
     ("Period:", "01 Oct 2026 - 31 Oct 2026"),
 ]

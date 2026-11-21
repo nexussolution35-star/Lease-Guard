@@ -139,9 +139,11 @@
             "enum": [
               "tenant_name",
               "unit_number",
+              "statement_number",
               "statement_date",
               "period_start",
               "period_end",
+              "opening_balance",
               "rental_charged",
               "additional_charges",
               "payments_received",
@@ -181,7 +183,7 @@
                 "type": "null"
               }
             ],
-            "description": "Names and unit numbers as text, dates as ISO `YYYY-MM-DD`, money as a 2-decimal string. `null` when the value was not found; it is never guessed.",
+            "description": "Names, unit and statement numbers as text, dates as ISO `YYYY-MM-DD`, money as a 2-decimal string. `null` when the value was not found; it is never guessed.",
             "title": "Value"
           }
         },
@@ -232,19 +234,6 @@
             "title": "Ocr Used",
             "type": "boolean"
           },
-          "openingBalance": {
-            "anyOf": [
-              {
-                "pattern": "^-?\\d{1,13}\\.\\d{2}$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Balance brought forward, used to reconcile totals. `null` if not found.",
-            "title": "Opening Balance"
-          },
           "overallConfidence": {
             "maximum": 1.0,
             "minimum": 0.0,
@@ -277,7 +266,6 @@
           "pageCount",
           "textLayer",
           "ocrUsed",
-          "openingBalance",
           "fields",
           "lineItems",
           "overallConfidence",
@@ -316,6 +304,7 @@
               "conflicting_values",
               "unparsed_row",
               "hint_mismatch",
+              "typed_value_mismatch",
               "unsupported_layout",
               "scanned_without_ocr",
               "ocr_used"
@@ -329,9 +318,11 @@
                 "enum": [
                   "tenant_name",
                   "unit_number",
+                  "statement_number",
                   "statement_date",
                   "period_start",
                   "period_end",
+                  "opening_balance",
                   "rental_charged",
                   "additional_charges",
                   "payments_received",

@@ -130,7 +130,10 @@ insert into public.leases (company_id, reference, property_id, unit_id, tenant_i
 select throws_ok($$update public.properties set status = 'archived' where code = 'RBC'$$, 'P0001', null, 'a draft lease blocks archiving');
 update public.leases set status = 'pending_verification' where reference = 'RBC-L001';
 select throws_ok($$update public.properties set status = 'archived' where code = 'RBC'$$, 'P0001', null, 'a lease pending verification blocks archiving');
-update public.leases set status = 'expiring' where reference = 'RBC-L001';
+-- A live status needs verified terms (leases_live_status_verified_check).
+update public.leases set status = 'expiring', verified = true, verified_at = now(),
+    verified_by_user_id = (select user_id from public.company_users where company_id = (select nexus from tests.ids) order by user_id limit 1)
+  where reference = 'RBC-L001';
 select throws_ok($$update public.properties set status = 'archived' where code = 'RBC'$$, 'P0001', null, 'an expiring lease blocks archiving');
 update public.leases set status = 'expired' where reference = 'RBC-L001';
 select lives_ok($$update public.properties set status = 'archived' where code = 'RBC'$$, 'a property whose leases have all ended can be archived');

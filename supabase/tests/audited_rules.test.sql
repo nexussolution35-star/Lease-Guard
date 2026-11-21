@@ -4,7 +4,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 \ir fixtures/two_companies.psql
-select plan(38);
+select plan(39);
 
 create schema tests;
 grant usage on schema tests to authenticated, service_role;
@@ -98,7 +98,14 @@ select is((select count(*) from tests.audit((select pending_extraction from test
   where changes @> '[{"field":"status","before":"pending_review","after":"corrected"}]'),
   1::bigint, 'extraction status change is audited');
 
--- Statements are never verified with guessed (missing) figures.
+-- A signed-in user verifies only through public.verify_statement (S-05, statement_verification.test.sql); the
+-- figure and audit rules below hold for every role, so they are checked as the service role with the same user.
+select throws_ok(
+  $$update public.statements set status = 'verified' where id = (select review_statement from tests.ids)$$,
+  '42501', null, 'a signed-in user cannot verify a statement by setting its status'
+);
+reset role;
+set local role service_role;
 select throws_ok(
   $$update public.statements set status = 'verified' where id = (select review_statement from tests.ids)$$,
   '23514', null, 'a statement cannot be verified without its confirmed figures'
@@ -116,6 +123,8 @@ where id = (select review_statement from tests.ids);
 select is((select count(*) from tests.audit((select review_statement from tests.ids), 'update')
   where changes @> '[{"field":"rentalCharged","before":12345.67,"after":12000}]'),
   1::bigint, 'statement figure corrections are audited');
+reset role;
+set local role authenticated;
 
 -- ------------------------------------------------------------------ tenant message approval
 -- Delivery states (queued, sent) are recorded by the delivery worker (service role) since

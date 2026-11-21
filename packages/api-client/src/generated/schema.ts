@@ -827,6 +827,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/statements/arrears": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Outstanding balances and arrears ageing from verified statements
+         * @description Only each tenant's latest VERIFIED statement counts; statements in review never do. Balances are aged from the statement date into the company's arrears monitoring buckets. Tenants under an active payment arrangement are marked. Each entry names the statement its balance comes from. Monitoring figures, never transactions.
+         */
+        get: operations["getStatementArrears"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/statements": {
         parameters: {
             query?: never;
@@ -839,7 +859,7 @@ export interface paths {
         put?: never;
         /**
          * Register an uploaded statement file and queue it for extraction
-         * @description An identical file (SHA-256) already on record is refused with 409 and the existing statement. A likely duplicate (same tenant, period and number) is registered and returned as a warning for the reviewer. The SHA-256 is computed from the stored file and must equal sha256 (422 otherwise). Without tenantId or unitId, a statement filed against a lease takes the lease's tenant and unit.
+         * @description An identical file (SHA-256) already on record is refused with 409 and the existing statement, and the copy just uploaded is removed so it is never processed. A likely duplicate (same tenant, period and number) is registered and returned as a warning for the reviewer. The SHA-256 is computed from the stored file and must equal sha256 (422 otherwise). Without tenantId or unitId, a statement filed against a lease takes the lease's tenant and unit. The upload is audited; a new statement is always uploaded.
          */
         post: operations["registerStatement"];
         delete?: never;
@@ -915,10 +935,167 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Queue extraction for an uploaded statement again
-         * @description Idempotent: repeated calls return the same job id. A job still waiting or running is left alone; a job that failed, or completed without moving the statement on, is run again. `outcome` says which.
+         * Queue extraction for an uploaded statement again, or retry one whose processing failed
+         * @description Idempotent: repeated calls return the same job id. A job still waiting or running is left alone; a job that failed, or completed without moving the statement on, is run again. `outcome` says which. A statement whose automatic extraction failed (review_required with processingError) goes back to uploaded with the error cleared and is queued again; if it cannot be queued it is left as it was.
          */
         post: operations["processStatement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/statements/{statementId}/download-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A 5-minute link to a statement's original file */
+        get: operations["getStatementDownloadUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/statements/{statementId}/extraction/fields/{fieldName}/correction": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Enter the correct value of one extracted field
+         * @description The value is recorded as the correction beside the extracted value (which is kept), with who and when; any confirmation of the field is replaced. Audited with before and after. Returns the extraction.
+         */
+        put: operations["correctStatementField"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/statements/{statementId}/extraction/fields/{fieldName}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm that an extracted value is correct
+         * @description Resolves a flagged field with the extracted value, recording who and when, and drops any correction. A value the extractor did not find cannot be confirmed (422): enter it with correctStatementField. Confirming a confirmed field changes nothing. Audited with before and after. Returns the extraction.
+         */
+        post: operations["confirmStatementField"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/statements/{statementId}/match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the statement's tenant, unit and lease together
+         * @description The extraction's proposed match (matchedTenantId, matchedUnitId) is only a suggestion; this call sets the match. The unit must be on the statement's property. Without leaseId the tenant's lease of the unit in force on the statement date (the reviewed statement_date field, else the date typed at upload) is used; with it, that lease must be the tenant's lease of the unit and in force on that date. Audited. Returns the statement.
+         */
+        put: operations["setStatementMatch"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/statements/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify several statements, each on its own
+         * @description Verifies each statement exactly as POST /statements/{statementId}/verify does, one after another: its own checks, its own audit entry, its own closed review event and its own monitoring job. A statement that cannot be verified (not under review, a field unresolved, the match missing, not in the company) is listed in notVerified with every reason and never undoes the others. Answers 200 with both lists whatever the mix.
+         */
+        post: operations["verifyStatements"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/statements/{statementId}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify a statement: its reviewed values become its monitoring record
+         * @description Allowed once every extracted field is resolved (confirmed, corrected, or found without a flag) and the tenant, unit and lease are set (the lease in force on the reviewed statement date). Writes the reviewed number, date, period and figures onto the statement (balances are monitoring records, never transactions), records the verifier and time, closes the extraction review and the statement's review event, and queues arrears and lease (escalation) monitoring for the tenant at once. The only way figures reach a statement. Audited.
+         */
+        post: operations["verifyStatement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/statements/{statementId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject a statement under review, with a reason
+         * @description The reason is kept with the statement (rejectionReason); the extraction is closed as rejected and the statement's review event resolved. A rejected statement never counts for monitoring. Audited. Returns the statement.
+         */
+        post: operations["rejectStatement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/statements/{statementId}/mark-duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark a statement under review as a duplicate of another statement
+         * @description The other statement must be in the active company and not rejected or itself a duplicate. The extraction is closed as rejected and the statement's review event resolved; a duplicate never counts for monitoring. Audited. Returns the statement.
+         */
+        post: operations["markStatementDuplicate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3506,6 +3683,78 @@ export interface components {
             /** @example 300 */
             expiresInSeconds: number;
         };
+        ArrearsBucketDto: {
+            /**
+             * @description Ageing bucket: 'current', then one label per boundary in days ('30', '60', …); the last is open-ended ('120+')
+             * @example 30
+             */
+            bucket: string;
+            /**
+             * @description The days the bucket covers, in words
+             * @example 30–59 days
+             */
+            description: string;
+            /** @description Rands (ZAR), 2 decimals; the outstanding balances aged into this bucket */
+            outstanding: number;
+            tenantCount: number;
+        };
+        StatementArrearsEntryDto: {
+            /** Format: uuid */
+            tenantId: string;
+            tenantName: string;
+            /** Format: uuid */
+            propertyId: string;
+            propertyName: string;
+            /** Format: uuid */
+            unitId?: string;
+            unitNumber?: string;
+            /** Format: uuid */
+            leaseId?: string;
+            /**
+             * Format: uuid
+             * @description The tenant's latest verified statement, which the balance comes from
+             */
+            statementId: string;
+            /** Format: date */
+            statementDate: string;
+            /** @description Rands (ZAR), 2 decimals; the closing balance (or total due) of that statement, always above zero */
+            outstanding: number;
+            /** @description Days from the statement date to asOf */
+            ageDays: number;
+            /** @description Ageing bucket: 'current', then one label per boundary in days ('30', '60', …); the last is open-ended ('120+') */
+            bucket: string;
+            /** @description An active payment arrangement is in force for the tenant */
+            underArrangement: boolean;
+            /** @description That arrangement pauses the tenant's normal arrears reminders */
+            remindersSuppressed: boolean;
+            /**
+             * Format: uuid
+             * @description Who verified the statement
+             */
+            verifiedByUserId?: string;
+            /** Format: date-time */
+            verifiedAt?: string;
+        };
+        StatementArrearsSummaryDto: {
+            /**
+             * Format: date
+             * @description The South African calendar day balances are aged to (today)
+             */
+            asOf: string;
+            /** @description Bucket boundaries in days, from the company's arrears monitoring rule */
+            ageingBuckets: number[];
+            /** @description Rands (ZAR), 2 decimals; the sum of every tenant's outstanding balance */
+            totalOutstanding: number;
+            tenantsInArrears: number;
+            /** @description Tenants in arrears with an active payment arrangement */
+            tenantsUnderArrangement: number;
+            /** @description Statements waiting for review (review_required); they are not counted above */
+            pendingReview: number;
+            /** @description Every bucket of the configuration, in ageing order */
+            buckets: components["schemas"]["ArrearsBucketDto"][];
+            /** @description Tenants in arrears, largest balance first */
+            entries: components["schemas"]["StatementArrearsEntryDto"][];
+        };
         /** @enum {string} */
         StatementSortField: "statementDate" | "uploadedAt";
         /** @enum {string} */
@@ -3538,7 +3787,7 @@ export interface components {
             /** @description Extraction confidence for this line was below threshold */
             flagged: boolean;
         };
-        StatementDto: {
+        StatementListItemDto: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
@@ -3554,12 +3803,21 @@ export interface components {
             file: components["schemas"]["StoredFileDto"];
             sourceSystem: components["schemas"]["StatementSource"];
             statementNumber?: string;
-            /** Format: date */
-            statementDate: string;
-            /** Format: date */
-            periodStart: string;
-            /** Format: date */
-            periodEnd: string;
+            /**
+             * Format: date
+             * @description Absent until typed at upload or confirmed from the document; always present once verified
+             */
+            statementDate?: string;
+            /**
+             * Format: date
+             * @description Present together with periodEnd; always present once verified
+             */
+            periodStart?: string;
+            /**
+             * Format: date
+             * @description Present together with periodStart; always present once verified
+             */
+            periodEnd?: string;
             status: components["schemas"]["StatementStatus"];
             uploadBatchId?: string;
             /** Format: uuid */
@@ -3591,13 +3849,29 @@ export interface components {
             processingError?: string;
             /** Format: uuid */
             duplicateOfStatementId?: string;
+            /** @description Why a writer rejected the statement (rejected statements only) */
+            rejectionReason?: string;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+            /** @example Acacia Park Shopping Centre */
+            propertyName: string;
+            /**
+             * @description The tenant's trading name; absent until matched
+             * @example Umoya Coffee
+             */
+            tenantName?: string;
+            /**
+             * @description Absent until matched
+             * @example ACP-001
+             */
+            unitNumber?: string;
+            /** @description True when the statement is under review with nothing unresolved: every extracted field confirmed, corrected or found without a flag, and the tenant, unit and lease set. Only these can be verified together (POST /statements/verify). */
+            readyToVerify: boolean;
         };
         StatementPage: {
-            items: components["schemas"]["StatementDto"][];
+            items: components["schemas"]["StatementListItemDto"][];
             total: number;
             page: number;
             pageSize: number;
@@ -3639,23 +3913,100 @@ export interface components {
             /** @description SHA-256 hex digest of the uploaded file */
             sha256: string;
             sourceSystem: components["schemas"]["StatementSource"];
-            /** Format: date */
-            statementDate: string;
-            /** Format: date */
-            periodStart: string;
             /**
              * Format: date
-             * @description On or after periodStart
+             * @description Optional: read from the document. When given, a document date that differs is flagged for review
              */
-            periodEnd: string;
+            statementDate?: string;
+            /**
+             * Format: date
+             * @description Optional, with periodEnd: read from the document. A document period that differs is flagged
+             */
+            periodStart?: string;
+            /**
+             * Format: date
+             * @description Optional, with periodStart; on or after periodStart
+             */
+            periodEnd?: string;
             /** Format: uuid */
             tenantId?: string;
             /** Format: uuid */
             unitId?: string;
             /** Format: uuid */
             leaseId?: string;
+            /** @description Optional: read from the document. A document number that differs is flagged */
             statementNumber?: string;
+            /** @description Groups the statements uploaded together; listStatements filters on it (uploadBatchId) to follow the batch */
             uploadBatchId?: string;
+        };
+        StatementDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            companyId: string;
+            /** Format: uuid */
+            propertyId: string;
+            /** Format: uuid */
+            tenantId?: string;
+            /** Format: uuid */
+            unitId?: string;
+            /** Format: uuid */
+            leaseId?: string;
+            file: components["schemas"]["StoredFileDto"];
+            sourceSystem: components["schemas"]["StatementSource"];
+            statementNumber?: string;
+            /**
+             * Format: date
+             * @description Absent until typed at upload or confirmed from the document; always present once verified
+             */
+            statementDate?: string;
+            /**
+             * Format: date
+             * @description Present together with periodEnd; always present once verified
+             */
+            periodStart?: string;
+            /**
+             * Format: date
+             * @description Present together with periodStart; always present once verified
+             */
+            periodEnd?: string;
+            status: components["schemas"]["StatementStatus"];
+            uploadBatchId?: string;
+            /** Format: uuid */
+            uploadedByUserId: string;
+            /** Format: date-time */
+            uploadedAt: string;
+            /** Format: uuid */
+            extractionId?: string;
+            /** @description Rands (ZAR), 2 decimals. Present only once verified. */
+            openingBalance?: number;
+            /** @description Rands (ZAR), 2 decimals. Present only once verified. */
+            rentalCharged?: number;
+            /** @description Rands (ZAR), 2 decimals. Present only once verified. */
+            additionalCharges?: number;
+            /** @description Rands (ZAR), 2 decimals. Present only once verified. */
+            paymentsReceived?: number;
+            /** @description Rands (ZAR), 2 decimals; outstanding balance owed by the tenant. Present only once verified. */
+            closingBalance?: number;
+            /** @description Rands (ZAR), 2 decimals. Present only once verified. */
+            totalDue?: number;
+            lineItems: components["schemas"]["StatementLineItemDto"][];
+            /** Format: uuid */
+            verifiedByUserId?: string;
+            /** Format: date-time */
+            verifiedAt?: string;
+            /** Format: uuid */
+            deliveredCommunicationId?: string;
+            /** @description Why automatic processing could not complete; the statement needs manual review */
+            processingError?: string;
+            /** Format: uuid */
+            duplicateOfStatementId?: string;
+            /** @description Why a writer rejected the statement (rejected statements only) */
+            rejectionReason?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
         };
         /** @enum {string} */
         DuplicateReason: "identical_file" | "same_tenant_period_and_number";
@@ -3691,7 +4042,12 @@ export interface components {
             duplicate: components["schemas"]["DuplicateMatchDto"];
         };
         /** @enum {string} */
-        ExtractionFieldName: "tenant_name" | "unit_number" | "statement_date" | "period_start" | "period_end" | "rental_charged" | "additional_charges" | "payments_received" | "outstanding_balance" | "total_due";
+        ExtractionFieldName: "tenant_name" | "unit_number" | "statement_number" | "statement_date" | "period_start" | "period_end" | "opening_balance" | "rental_charged" | "additional_charges" | "payments_received" | "outstanding_balance" | "total_due";
+        /**
+         * @description corrected or confirmed by a reviewer; accepted when found without a flag; unresolved while flagged or missing and not yet confirmed or corrected
+         * @enum {string}
+         */
+        FieldResolution: "corrected" | "confirmed" | "accepted" | "unresolved";
         ExtractedFieldDto: {
             name: components["schemas"]["ExtractionFieldName"];
             /** @description Document text the value was read from */
@@ -3705,11 +4061,22 @@ export interface components {
             correctedValue?: string | number;
             /** Format: uuid */
             correctedByUserId?: string;
+            /** Format: date-time */
+            correctedAt?: string;
+            /**
+             * Format: uuid
+             * @description Who confirmed the extracted value as correct
+             */
+            confirmedByUserId?: string;
+            /** Format: date-time */
+            confirmedAt?: string;
+            /** @description corrected or confirmed by a reviewer; accepted when found without a flag; unresolved while flagged or missing and not yet confirmed or corrected */
+            resolution: components["schemas"]["FieldResolution"];
         };
         /** @enum {string} */
         ExtractionStatus: "pending_review" | "confirmed" | "corrected" | "rejected";
         /** @enum {string} */
-        ExtractionIssueCode: "missing_field" | "low_confidence" | "totals_do_not_reconcile" | "cannot_reconcile" | "invalid_period" | "statement_date_out_of_range" | "negative_amount" | "duplicate_line_item" | "conflicting_values" | "unparsed_row" | "hint_mismatch" | "unsupported_layout" | "scanned_without_ocr" | "ocr_used";
+        ExtractionIssueCode: "missing_field" | "low_confidence" | "totals_do_not_reconcile" | "cannot_reconcile" | "invalid_period" | "statement_date_out_of_range" | "negative_amount" | "duplicate_line_item" | "conflicting_values" | "unparsed_row" | "hint_mismatch" | "typed_value_mismatch" | "unsupported_layout" | "scanned_without_ocr" | "ocr_used";
         /** @enum {string} */
         ExtractionIssueSeverity: "error" | "warning";
         ExtractionIssueDto: {
@@ -3763,6 +4130,83 @@ export interface components {
             jobId: string;
             /** @description added: a new job was queued; already_queued: the job is still waiting or running and was left alone; retried: a permanently failed job was run again; requeued: a completed job that did not move the statement on was queued again */
             outcome: components["schemas"]["EnqueueOutcome"];
+        };
+        StatementDownloadUrlDto: {
+            /** @description Short-lived signed link to the original statement file */
+            url: string;
+            /** @example 300 */
+            expiresInSeconds: number;
+        };
+        CorrectExtractedFieldDto: {
+            /**
+             * @description Text for tenant_name, unit_number and statement_number; YYYY-MM-DD for dates; rands (ZAR, at most 2 decimals) for amounts
+             * @example 37800
+             */
+            value: string | number;
+        };
+        SetStatementMatchDto: {
+            /** Format: uuid */
+            tenantId: string;
+            /**
+             * Format: uuid
+             * @description A unit of the statement's property
+             */
+            unitId: string;
+            /**
+             * Format: uuid
+             * @description The tenant's lease of the unit; omit to use the lease in force on the statement date
+             */
+            leaseId?: string;
+        };
+        VerifyStatementsDto: {
+            /** @description The statements to verify, each once; each is verified on its own in this order */
+            statementIds: string[];
+        };
+        StatementVerifiedInBatchDto: {
+            /** Format: uuid */
+            statementId: string;
+            /** @example MSQ-Shop12-2026-10.pdf */
+            fileName?: string;
+            /** @example ST-1042 */
+            statementNumber?: string;
+            /** @description Whether monitoring for the statement's tenant was queued to run now (false: the daily run includes it) */
+            monitoringQueued: boolean;
+        };
+        StatementNotVerifiedDto: {
+            /** Format: uuid */
+            statementId: string;
+            /**
+             * @description Absent when the statement is not in the active company
+             * @example MSQ-Shop12-2026-10.pdf
+             */
+            fileName?: string;
+            /** @example ST-1042 */
+            statementNumber?: string;
+            /** @description Every reason the statement was not verified, as verifying it alone would answer */
+            reasons: string[];
+        };
+        StatementsVerificationResultDto: {
+            /** @description The statements verified, in the order given */
+            verified: components["schemas"]["StatementVerifiedInBatchDto"][];
+            /** @description The statements not verified, each with every reason, in the order given */
+            notVerified: components["schemas"]["StatementNotVerifiedDto"][];
+        };
+        StatementVerificationResultDto: {
+            /** @description The verified statement with its figures and verifier */
+            statement: components["schemas"]["StatementDto"];
+            /** @description Whether arrears and lease monitoring for the statement's tenant was queued to run now. False when the queue was down: the statement is verified either way and the daily monitoring run includes it. */
+            monitoringQueued: boolean;
+        };
+        RejectStatementDto: {
+            /** @description Why the statement is rejected (kept with the statement) */
+            reason: string;
+        };
+        MarkStatementDuplicateDto: {
+            /**
+             * Format: uuid
+             * @description The statement on record that this one duplicates (not rejected or itself a duplicate)
+             */
+            duplicateOfStatementId: string;
         };
         /** @enum {string} */
         MonitoringEventSortField: "identifiedOn" | "dueDate" | "priority" | "createdAt";
@@ -5029,24 +5473,29 @@ export type CreateLeaseDocumentUploadUrlDto = components['schemas']['CreateLease
 export type LeaseDocumentUploadUrlDto = components['schemas']['LeaseDocumentUploadUrlDto'];
 export type RegisterLeaseDocumentDto = components['schemas']['RegisterLeaseDocumentDto'];
 export type LeaseDocumentDownloadUrlDto = components['schemas']['LeaseDocumentDownloadUrlDto'];
+export type ArrearsBucketDto = components['schemas']['ArrearsBucketDto'];
+export type StatementArrearsEntryDto = components['schemas']['StatementArrearsEntryDto'];
+export type StatementArrearsSummaryDto = components['schemas']['StatementArrearsSummaryDto'];
 export type StatementSortField = components['schemas']['StatementSortField'];
 export type StatementStatus = components['schemas']['StatementStatus'];
 export type StoredFileDto = components['schemas']['StoredFileDto'];
 export type LineItemCategory = components['schemas']['LineItemCategory'];
 export type LineItemKind = components['schemas']['LineItemKind'];
 export type StatementLineItemDto = components['schemas']['StatementLineItemDto'];
-export type StatementDto = components['schemas']['StatementDto'];
+export type StatementListItemDto = components['schemas']['StatementListItemDto'];
 export type StatementPage = components['schemas']['StatementPage'];
 export type StatementUploadMimeType = components['schemas']['StatementUploadMimeType'];
 export type CreateStatementUploadUrlDto = components['schemas']['CreateStatementUploadUrlDto'];
 export type StatementUploadUrlDto = components['schemas']['StatementUploadUrlDto'];
 export type RegisterStatementDto = components['schemas']['RegisterStatementDto'];
+export type StatementDto = components['schemas']['StatementDto'];
 export type DuplicateReason = components['schemas']['DuplicateReason'];
 export type DuplicateConfidence = components['schemas']['DuplicateConfidence'];
 export type DuplicateMatchDto = components['schemas']['DuplicateMatchDto'];
 export type RegisterStatementResultDto = components['schemas']['RegisterStatementResultDto'];
 export type DuplicateStatementErrorDto = components['schemas']['DuplicateStatementErrorDto'];
 export type ExtractionFieldName = components['schemas']['ExtractionFieldName'];
+export type FieldResolution = components['schemas']['FieldResolution'];
 export type ExtractedFieldDto = components['schemas']['ExtractedFieldDto'];
 export type ExtractionStatus = components['schemas']['ExtractionStatus'];
 export type ExtractionIssueCode = components['schemas']['ExtractionIssueCode'];
@@ -5056,6 +5505,16 @@ export type StatementExtractionDto = components['schemas']['StatementExtractionD
 export type ProcessableStatementStatus = components['schemas']['ProcessableStatementStatus'];
 export type EnqueueOutcome = components['schemas']['EnqueueOutcome'];
 export type ProcessStatementResultDto = components['schemas']['ProcessStatementResultDto'];
+export type StatementDownloadUrlDto = components['schemas']['StatementDownloadUrlDto'];
+export type CorrectExtractedFieldDto = components['schemas']['CorrectExtractedFieldDto'];
+export type SetStatementMatchDto = components['schemas']['SetStatementMatchDto'];
+export type VerifyStatementsDto = components['schemas']['VerifyStatementsDto'];
+export type StatementVerifiedInBatchDto = components['schemas']['StatementVerifiedInBatchDto'];
+export type StatementNotVerifiedDto = components['schemas']['StatementNotVerifiedDto'];
+export type StatementsVerificationResultDto = components['schemas']['StatementsVerificationResultDto'];
+export type StatementVerificationResultDto = components['schemas']['StatementVerificationResultDto'];
+export type RejectStatementDto = components['schemas']['RejectStatementDto'];
+export type MarkStatementDuplicateDto = components['schemas']['MarkStatementDuplicateDto'];
 export type MonitoringEventSortField = components['schemas']['MonitoringEventSortField'];
 export type MonitoringEventStatus = components['schemas']['MonitoringEventStatus'];
 export type EventPriority = components['schemas']['EventPriority'];
@@ -8855,6 +9314,61 @@ export interface operations {
             };
         };
     };
+    getStatementArrears: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementArrearsSummaryDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     listStatements: {
         parameters: {
             query?: {
@@ -8869,6 +9383,8 @@ export interface operations {
                 tenantId?: string;
                 leaseId?: string;
                 sourceSystem?: components["schemas"]["StatementSource"];
+                /** @description Statements registered in one upload batch (uploadBatchId given at registration) */
+                uploadBatchId?: string;
             };
             header?: never;
             path?: never;
@@ -8988,7 +9504,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorDto"];
                 };
             };
-            /** @description File not uploaded, size or SHA-256 mismatch, or unknown property/tenant/unit/lease */
+            /** @description File not uploaded, not a PDF, size or SHA-256 mismatch, or unknown property/tenant/unit/lease */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -9261,8 +9777,642 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorDto"];
                 };
             };
-            /** @description The statement is already under review or final */
+            /** @description The statement is under review (and its processing did not fail) or final */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getStatementDownloadUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                statementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementDownloadUrlDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The statement is not in the active company, or its file is gone */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    correctStatementField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                statementId: string;
+                fieldName: components["schemas"]["ExtractionFieldName"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorrectExtractedFieldDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementExtractionDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Statement not found or not yet extracted */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The statement is not under review (uploaded, processing, verified, rejected or duplicate) or its extraction was already reviewed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a valid value for this field */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    confirmStatementField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                statementId: string;
+                fieldName: components["schemas"]["ExtractionFieldName"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementExtractionDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Statement not found or not yet extracted */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The statement is not under review (uploaded, processing, verified, rejected or duplicate) or its extraction was already reviewed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The value was not found on the statement */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    setStatementMatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                statementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetStatementMatchDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The statement is not under review */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The tenant, unit and lease do not belong together or to the statement's property, or no single lease was in force on the statement date (every reason listed) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    verifyStatements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyStatementsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementsVerificationResultDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    verifyStatement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                statementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementVerificationResultDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The statement is not under review (uploaded, processing, verified, rejected or duplicate) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description A field is unresolved, the tenant, unit or lease is missing, or the lease was not in force (every reason listed) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    rejectStatement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                statementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectStatementDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The statement is not under review (uploaded, processing, verified, rejected or duplicate) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    markStatementDuplicate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                statementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkStatementDuplicateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The statement is not under review (uploaded, processing, verified, rejected or duplicate) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The other statement is this one, not in the company, rejected or a duplicate */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

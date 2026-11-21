@@ -2,11 +2,13 @@ import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common'
 import {
   assessDocumentExtraction,
   DEFAULT_MIN_FINANCIAL_CONFIDENCE,
+  flagTypedValueMismatches,
   MONITORED_LEASE_STATUSES,
   type DocumentExtractionResult,
   type EntityId,
   type EventPriority,
   type ExtractionAssessment,
+  type TypedStatementFacts,
 } from '@leaseguard/domain'
 import { UnrecoverableError } from 'bullmq'
 
@@ -33,7 +35,22 @@ import {
 
 type StatementRow = Pick<
   Tables<'statements'>,
-  'id' | 'company_id' | 'property_id' | 'tenant_id' | 'unit_id' | 'lease_id' | 'file_name' | 'storage_path' | 'mime_type' | 'size_bytes' | 'source_system' | 'status'
+  | 'id'
+  | 'company_id'
+  | 'property_id'
+  | 'tenant_id'
+  | 'unit_id'
+  | 'lease_id'
+  | 'file_name'
+  | 'storage_path'
+  | 'mime_type'
+  | 'size_bytes'
+  | 'source_system'
+  | 'status'
+  | 'statement_number'
+  | 'statement_date'
+  | 'period_start'
+  | 'period_end'
 >
 
 export type StatementProcessingOutcome =
@@ -44,6 +61,15 @@ export type StatementProcessingOutcome =
 /** Statuses from which a statement may be (re)processed; anything else was already handled. */
 const PROCESSABLE = ['uploaded', 'processing'] as const
 const MAX_HINTS = 200
+
+function typedFacts(statement: StatementRow): TypedStatementFacts {
+  return {
+    ...(statement.statement_number !== null ? { statementNumber: statement.statement_number } : {}),
+    ...(statement.statement_date !== null ? { statementDate: statement.statement_date } : {}),
+    ...(statement.period_start !== null ? { periodStart: statement.period_start } : {}),
+    ...(statement.period_end !== null ? { periodEnd: statement.period_end } : {}),
+  }
+}
 
 /** A failure that retrying will not fix; the statement is left reviewable with this reason. */
 class PermanentStatementError extends Error {}
@@ -85,7 +111,9 @@ export class StatementProcessingProcessor implements OnModuleInit {
     const db = this.clients.get()
     const statementResult = await db
       .from('statements')
-      .select('id, company_id, property_id, tenant_id, unit_id, lease_id, file_name, storage_path, mime_type, size_bytes, source_system, status')
+      .select(
+        'id, company_id, property_id, tenant_id, unit_id, lease_id, file_name, storage_path, mime_type, size_bytes, source_system, status, statement_number, statement_date, period_start, period_end',
+      )
       .eq('company_id', companyId)
       .eq('id', statementId)
       .maybeSingle()
@@ -137,13 +165,16 @@ export class StatementProcessingProcessor implements OnModuleInit {
       throw new PermanentStatementError(`The file is larger than ${this.env.DOCUMENT_PROCESSING_MAX_FILE_MB} MB and cannot be extracted automatically`)
     }
     const [file, candidates] = await Promise.all([this.files.download(companyId, statement.storage_path), this.loadCandidates(db, statement)])
-    const result = await this.extractor.extract(file, statement.file_name, {
+    const extracted = await this.extractor.extract(file, statement.file_name, {
       companyId,
       statementId: statement.id,
       sourceSystem: statement.source_system,
       expectedTenantNames: [...new Set(candidates.tenants.flatMap((t) => t.names))].slice(0, MAX_HINTS),
       expectedUnitNumbers: [...new Set(candidates.units.flatMap((u) => u.names))].slice(0, MAX_HINTS),
     })
+    // What the uploader typed is compared with the document: a difference is flagged and reported as an
+    // issue, and the document's value stays the proposal (the typed value stays on the statement).
+    const result = flagTypedValueMismatches(extracted, typedFacts(statement))
 
     const assessment = assessDocumentExtraction(result, minConfidence)
     if (assessment.contractErrors.length > 0) {
@@ -166,7 +197,7 @@ export class StatementProcessingProcessor implements OnModuleInit {
     }
     await this.raiseReview(db, statement, reviewRule, {
       blocking: assessment.hasBlockingIssues || assessment.uncertainFinancialFields.length > 0,
-      description: this.reviewSummary(assessment, lineItems.skipped),
+      description: this.reviewSummary(assessment, lineItems.skipped, result),
     })
     await this.setStatus(db, statement, 'review_required', null)
     this.logger.log(
@@ -341,8 +372,12 @@ export class StatementProcessingProcessor implements OnModuleInit {
     }
   }
 
-  private reviewSummary(assessment: ExtractionAssessment, lineItemsSkipped: number): string {
+  private reviewSummary(assessment: ExtractionAssessment, lineItemsSkipped: number, result: DocumentExtractionResult): string {
     const parts = ['Extracted values are a proposal and must be checked before the statement is verified.']
+    const differs = result.issues.filter((issue) => issue.code === 'typed_value_mismatch' && issue.field !== null)
+    if (differs.length > 0) {
+      parts.push(`The document differs from what was typed at upload: ${differs.map((issue) => issue.field?.replaceAll('_', ' ')).join(', ')}.`)
+    }
     if (assessment.uncertainFinancialFields.length > 0) {
       parts.push(
         `Amounts that need entering or checking: ${assessment.uncertainFinancialFields.map((f) => `${f.name.replaceAll('_', ' ')} (${f.reason.replace('_', ' ')})`).join(', ')}.`,

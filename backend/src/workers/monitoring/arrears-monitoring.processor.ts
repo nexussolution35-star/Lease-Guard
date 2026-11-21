@@ -10,7 +10,7 @@ import { fetchAll } from '../shared/db'
 import { MonitoringOutputs } from '../shared/monitoring-outputs'
 import { loadMonitoringSettings } from '../shared/monitoring-settings'
 import { arrearsFindings, type ArrearsStatement } from './arrears-monitoring.findings'
-import { loadRecordNames, type ScanSummary } from './monitoring-data'
+import { loadRecordNames, type MonitoringScope, type ScanSummary } from './monitoring-data'
 
 /** Daily arrears ageing for one company from verified statements, honouring active payment arrangements. */
 @Injectable()
@@ -26,7 +26,8 @@ export class ArrearsMonitoringProcessor implements OnModuleInit {
     this.runtime.start('arrears-monitoring', (payload) => this.scan(payload))
   }
 
-  async scan({ companyId, asOf }: JobPayloads['arrears-monitoring']): Promise<ScanSummary & { suppressed: number }> {
+  /** `scope.tenantId` limits the scan to one tenant's statements (right after a statement is verified). */
+  async scan({ companyId, asOf }: JobPayloads['arrears-monitoring'], scope: MonitoringScope = {}): Promise<ScanSummary & { suppressed: number }> {
     if (!isValidISODate(asOf)) throw new UnrecoverableError(`Invalid asOf date "${asOf}"`)
     const db = this.clients.get()
     const settings = await loadMonitoringSettings(db, companyId, (type, reason) =>
@@ -35,16 +36,15 @@ export class ArrearsMonitoringProcessor implements OnModuleInit {
     if (!settings) return { findings: 0, created: 0, notified: 0, suppressed: 0, skipped: 'company_inactive' }
 
     const [statementRows, arrangements, names] = await Promise.all([
-      fetchAll('Load verified statements', (from, to) =>
-        db
+      fetchAll('Load verified statements', (from, to) => {
+        const query = db
           .from('statements')
           .select('id, tenant_id, property_id, unit_id, lease_id, status, statement_date, closing_balance, total_due')
           .eq('company_id', companyId)
           .eq('status', 'verified')
           .not('tenant_id', 'is', null)
-          .order('id')
-          .range(from, to),
-      ),
+        return (scope.tenantId ? query.eq('tenant_id', scope.tenantId) : query).order('id').range(from, to)
+      }),
       // The same arrangement read and mapping the outbound gate uses, so suppression cannot drift.
       loadReminderArrangements(db, companyId, { activeOnly: true }),
       loadRecordNames(db, companyId),
@@ -57,7 +57,8 @@ export class ArrearsMonitoringProcessor implements OnModuleInit {
       ...(row.unit_id ? { unitId: row.unit_id } : {}),
       ...(row.lease_id ? { leaseId: row.lease_id } : {}),
       status: row.status,
-      statementDate: row.statement_date,
+      // Always set on a verified statement (statements_verified_dates_check).
+      ...(row.statement_date !== null ? { statementDate: row.statement_date } : {}),
       ...(row.closing_balance !== null ? { closingBalance: row.closing_balance } : {}),
       ...(row.total_due !== null ? { totalDue: row.total_due } : {}),
     }))
@@ -65,7 +66,7 @@ export class ArrearsMonitoringProcessor implements OnModuleInit {
     const { drafts, suppressedTenantIds } = arrearsFindings({ statements, arrangements, settings, names, asOf })
     const result = await new MonitoringOutputs(db, companyId).raise(drafts)
     this.logger.log(
-      { companyId, asOf, findings: drafts.length, suppressed: suppressedTenantIds.length, ...result },
+      { companyId, asOf, ...scope, findings: drafts.length, suppressed: suppressedTenantIds.length, ...result },
       'Arrears monitoring complete',
     )
     return { findings: drafts.length, suppressed: suppressedTenantIds.length, ...result }

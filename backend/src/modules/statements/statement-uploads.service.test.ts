@@ -26,7 +26,12 @@ import { COMPANY, PROPERTY, SHA, STATEMENT, statementRow, TENANT, USER } from '.
 const PATH = `${COMPANY}/${STATEMENT}/MSQ-Shop12-2026-10.pdf`
 const EXISTING = '6f1d2c1e-0000-4000-8000-0000000000ff'
 /** The uploaded file's bytes, and their real SHA-256, which the server computes from the stored object. */
-const FILE = new Uint8Array(52_000).fill(7)
+/** A 52 000-byte file that starts like every PDF. */
+const FILE = (() => {
+  const bytes = new Uint8Array(52_000).fill(7)
+  bytes.set(new TextEncoder().encode('%PDF-1.7'))
+  return bytes
+})()
 const FILE_SHA = createHash('sha256').update(FILE).digest('hex')
 
 function body(overrides: Record<string, unknown> = {}): RegisterStatementBody {
@@ -145,7 +150,6 @@ describe('StatementUploadsService.register', () => {
       company_id: COMPANY,
       property_id: PROPERTY,
       file_sha256: FILE_SHA,
-      status: 'uploaded',
       uploaded_by_user_id: USER,
       unit_id: null,
       statement_number: null,
@@ -160,8 +164,47 @@ describe('StatementUploadsService.register', () => {
     expect(error).toBeInstanceOf(DuplicateStatementException)
     expect((error as DuplicateStatementException).getStatus()).toBe(409)
     expect((error as DuplicateStatementException).match).toMatchObject({ existingStatementId: EXISTING, confidence: 'exact', reason: 'identical_file' })
-    expect(queries).toHaveLength(1)
+    // The duplicate check, then whether a statement already points at this path; never an insert.
+    expect(queries).toHaveLength(2)
+    expect(queries.some((query) => callsTo(query, 'insert').length > 0)).toBe(false)
     expect(enqueue).not.toHaveBeenCalled()
+  })
+
+  it('never inserts a status: a new statement is uploaded by the column default, the only insertable state', async () => {
+    const { service, db, queries } = harness((query) =>
+      callsTo(query, 'insert').length ? { data: statementRow(), error: null } : { data: [], error: null },
+    )
+    await service.register(db, COMPANY, USER, body({ uploadBatchId: 'batch-7' }))
+    const row = callsTo(queries[1]!, 'insert')[0]?.[0] as Record<string, unknown>
+    expect(row).not.toHaveProperty('status')
+    expect(row).toMatchObject({ upload_batch_id: 'batch-7' })
+  })
+
+  it('removes the identical copy it was just sent, so the file on record is the only one processed', async () => {
+    const { service, db, queries, storageCalls } = harness((_query, index) =>
+      index === 0 ? { data: [statementRow({ id: EXISTING, file_sha256: FILE_SHA })], error: null } : { data: [], error: null },
+    )
+    await expect(service.register(db, COMPANY, USER, body())).rejects.toBeInstanceOf(DuplicateStatementException)
+    expect(callsTo(queries[1]!, 'eq')).toEqual([
+      ['company_id', COMPANY],
+      ['storage_path', PATH],
+    ])
+    expect(storageCalls.filter((call) => call.method === 'remove')).toEqual([{ bucket: 'statements', method: 'remove', args: [[PATH]] }])
+  })
+
+  it('never removes a file a statement points at: the same registration sent again only gets the 409', async () => {
+    const { service, db, storageCalls } = harness(() => ({ data: [statementRow({ id: EXISTING, file_sha256: FILE_SHA, storage_path: PATH })], error: null }))
+    await expect(service.register(db, COMPANY, USER, body())).rejects.toBeInstanceOf(DuplicateStatementException)
+    expect(storageCalls.some((call) => call.method === 'remove')).toBe(false)
+  })
+
+  it('keeps the plain 409 for a reused storage path without removing anything', async () => {
+    const { service, db, storageCalls } = harness((_query, index) => {
+      if (index === 1) return { data: null, error: { code: '23505', message: 'statements_pkey' } }
+      return { data: [], error: null }
+    })
+    await expect(service.register(db, COMPANY, USER, body())).rejects.toBeInstanceOf(ConflictException)
+    expect(storageCalls.some((call) => call.method === 'remove')).toBe(false)
   })
 
   it('registers a likely duplicate (same tenant and period) and returns it as a warning', async () => {
@@ -175,6 +218,35 @@ describe('StatementUploadsService.register', () => {
 
     expect(result.statement.status).toBe('uploaded')
     expect(result.duplicate).toMatchObject({ existingStatementId: EXISTING, confidence: 'likely', reason: 'same_tenant_period_and_number' })
+  })
+
+  it('registers a statement without a typed date, period or number, storing them as unknown', async () => {
+    const { service, db, queries } = harness((query) =>
+      callsTo(query, 'insert').length
+        ? { data: statementRow({ statement_date: null, period_start: null, period_end: null }), error: null }
+        : { data: [], error: null },
+    )
+    const result = await service.register(db, COMPANY, USER, body({ statementDate: undefined, periodStart: undefined, periodEnd: undefined }))
+
+    // Without a period only the file hash can find a duplicate; the document's period is checked at review.
+    expect(callsTo(queries[0]!, 'or')).toEqual([[`file_sha256.eq.${FILE_SHA}`]])
+    expect(callsTo(queries[1]!, 'insert')[0]?.[0]).toMatchObject({ statement_date: null, period_start: null, period_end: null, statement_number: null })
+    expect(result.statement).not.toHaveProperty('statementDate')
+    expect(result.statement).not.toHaveProperty('periodStart')
+    expect(result.statement).not.toHaveProperty('periodEnd')
+  })
+
+  it('keeps a typed date, period and number as typed', async () => {
+    const { service, db, queries } = harness((query) =>
+      callsTo(query, 'insert').length ? { data: statementRow(), error: null } : { data: [], error: null },
+    )
+    await service.register(db, COMPANY, USER, body({ statementNumber: 'ST-1042' }))
+    expect(callsTo(queries[1]!, 'insert')[0]?.[0]).toMatchObject({
+      statement_date: '2026-10-31',
+      period_start: '2026-10-01',
+      period_end: '2026-10-31',
+      statement_number: 'ST-1042',
+    })
   })
 
   it('only checks the file hash when no tenant is matched yet', async () => {
@@ -229,6 +301,14 @@ describe('StatementUploadsService.register', () => {
 
     const gone = harness(() => ({ data: [], error: null }), { file: null })
     await expect(gone.service.register(gone.db, COMPANY, USER, body())).rejects.toThrow(/Upload the file/)
+  })
+
+  it('refuses a stored file that is not a PDF by its content with 422, before any query', async () => {
+    const notPdf = new Uint8Array(52_000).fill(7)
+    const { service, db, queries } = harness(() => ({ data: [], error: null }), { file: notPdf })
+    const sha256 = createHash('sha256').update(notPdf).digest('hex')
+    await expect(service.register(db, COMPANY, USER, body({ sha256 }))).rejects.toThrow(/not a PDF/)
+    expect(queries).toHaveLength(0)
   })
 
   it('hashes the stored object and refuses a sha256 that does not match it with 422, before any query', async () => {
@@ -373,9 +453,14 @@ describe('StatementUploadsService.register links', () => {
 })
 
 describe('registerStatementBodySchema', () => {
-  it('requires the statement date and period instead of guessing them', () => {
-    const parsed = registerStatementBodySchema.safeParse({ ...body(), statementDate: undefined, periodStart: undefined })
-    expect(parsed.success).toBe(false)
+  it('accepts a statement without a typed date or period: they come from the document', () => {
+    const parsed = registerStatementBodySchema.safeParse({ ...body(), statementDate: undefined, periodStart: undefined, periodEnd: undefined })
+    expect(parsed.success).toBe(true)
+  })
+
+  it('takes a period whole or not at all', () => {
+    expect(registerStatementBodySchema.safeParse({ ...body(), periodStart: undefined }).success).toBe(false)
+    expect(registerStatementBodySchema.safeParse({ ...body(), periodEnd: undefined }).success).toBe(false)
   })
 
   it('rejects a period that ends before it starts, and non-PDF uploads', () => {
@@ -407,8 +492,56 @@ describe('StatementUploadsService.process', () => {
     await expect(service.process(db, COMPANY, STATEMENT)).resolves.toMatchObject({ status: 'uploaded', outcome: 'retried' })
   })
 
+  it('puts a statement whose processing failed back to uploaded, clearing the error, and queues it again', async () => {
+    const { service, db, queries, enqueueOrRetry } = harness(
+      (_query, index) =>
+        index === 0
+          ? { data: { id: STATEMENT, status: 'review_required', processing_error: 'The PDF could not be read' }, error: null }
+          : { data: { id: STATEMENT }, error: null },
+      { retryOutcome: 'retried' },
+    )
+    await expect(service.process(db, COMPANY, STATEMENT)).resolves.toEqual({
+      statementId: STATEMENT,
+      status: 'uploaded',
+      jobId: `statement-processing.${COMPANY}.${STATEMENT}`,
+      outcome: 'retried',
+    })
+    const reset = queries[1]!
+    expect(callsTo(reset, 'update')).toEqual([[{ status: 'uploaded', processing_error: null }]])
+    expect(callsTo(reset, 'eq')).toEqual([
+      ['company_id', COMPANY],
+      ['id', STATEMENT],
+      ['status', 'review_required'],
+    ])
+    expect(callsTo(reset, 'not')).toEqual([['processing_error', 'is', null]])
+    expect(enqueueOrRetry).toHaveBeenCalledWith('statement-processing', { companyId: COMPANY, statementId: STATEMENT })
+  })
+
+  it('puts a failed statement back as it was when the queue is down', async () => {
+    const { service, db, queries } = harness(
+      (_query, index) =>
+        index === 0
+          ? { data: { id: STATEMENT, status: 'review_required', processing_error: 'The PDF could not be read' }, error: null }
+          : { data: { id: STATEMENT }, error: null },
+      { enqueueFails: true },
+    )
+    await expect(service.process(db, COMPANY, STATEMENT)).rejects.toBeInstanceOf(ServiceUnavailableException)
+    expect(callsTo(queries[2]!, 'update')).toEqual([[{ status: 'review_required', processing_error: 'The PDF could not be read' }]])
+    expect(callsTo(queries[2]!, 'eq')).toContainEqual(['status', 'uploaded'])
+  })
+
+  it('refuses a retry when the failed statement changed in the meantime', async () => {
+    const { service, db, enqueueOrRetry } = harness((_query, index) =>
+      index === 0
+        ? { data: { id: STATEMENT, status: 'review_required', processing_error: 'The PDF could not be read' }, error: null }
+        : { data: null, error: null },
+    )
+    await expect(service.process(db, COMPANY, STATEMENT)).rejects.toBeInstanceOf(ConflictException)
+    expect(enqueueOrRetry).not.toHaveBeenCalled()
+  })
+
   it('refuses statements already under review or final', async () => {
-    const { service, db, enqueue, enqueueOrRetry } = harness(() => ({ data: { id: STATEMENT, status: 'review_required' }, error: null }))
+    const { service, db, enqueue, enqueueOrRetry } = harness(() => ({ data: { id: STATEMENT, status: 'review_required', processing_error: null }, error: null }))
     await expect(service.process(db, COMPANY, STATEMENT)).rejects.toBeInstanceOf(ConflictException)
     expect(enqueue).not.toHaveBeenCalled()
     expect(enqueueOrRetry).not.toHaveBeenCalled()

@@ -20,6 +20,15 @@ const OTHER = '6f1d2c1e-0000-4000-8000-0000000000ee'
 describe('StatementsService', () => {
   const service = new StatementsService()
 
+  it('follows one upload batch', async () => {
+    const { client, queries } = fakeDb(() => ({ data: [], error: null, count: 0 }))
+    await service.list(client, COMPANY, statementListQuerySchema.parse({ uploadBatchId: ' 0b8f6d1e-batch ' }))
+    expect(callsTo(queries[0]!, 'eq')).toEqual([
+      ['company_id', COMPANY],
+      ['upload_batch_id', '0b8f6d1e-batch'],
+    ])
+  })
+
   it('lists one company with filters and loads children in one query per table', async () => {
     const { client, queries } = fakeDb((query) => {
       if (query.table === 'statements') return { data: [statementRow(), statementRow({ id: OTHER })], error: null, count: 2 }
@@ -58,6 +67,112 @@ describe('StatementsService', () => {
       expect(callsTo(child, 'eq')).toEqual([['company_id', COMPANY]])
       expect(callsTo(child, 'in')).toEqual([['statement_id', [STATEMENT, OTHER]]])
     }
+  })
+
+  it('names the property and, once matched, the tenant and unit of each row', async () => {
+    const { client, queries } = fakeDb((query) => {
+      if (query.table === 'statements') {
+        return {
+          data: [
+            { ...statementRow(), property: { name: 'Acacia Park' }, tenant: { trading_name: 'Umoya Coffee' }, unit: { unit_number: 'G12' } },
+            { ...statementRow({ id: OTHER, tenant_id: null }), property: { name: 'Acacia Park' }, tenant: null, unit: null },
+          ],
+          error: null,
+          count: 2,
+        }
+      }
+      return { data: [], error: null }
+    })
+
+    const page = await service.list(client, COMPANY, statementListQuerySchema.parse({}))
+
+    expect(callsTo(queries[0]!, 'select')[0]?.[0]).toContain('property:properties!statements_property_fk(name)')
+    expect(page.items[0]).toMatchObject({ id: STATEMENT, propertyName: 'Acacia Park', tenantName: 'Umoya Coffee', unitNumber: 'G12' })
+    expect(page.items[1]).toMatchObject({ id: OTHER, propertyName: 'Acacia Park' })
+    expect(page.items[1]).not.toHaveProperty('tenantName')
+    expect(page.items[1]).not.toHaveProperty('unitNumber')
+    // The embeds are not leaked into the statement itself.
+    expect(page.items[0]).not.toHaveProperty('property')
+    expect(page.items[0]).not.toHaveProperty('tenant')
+  })
+
+  it('marks the statements ready to verify: under review, matched and with nothing unresolved', async () => {
+    const UNIT = '6f1d2c1e-0000-4000-8000-0000000000e1'
+    const LEASE = '6f1d2c1e-0000-4000-8000-0000000000f1'
+    const FLAGGED = '6f1d2c1e-0000-4000-8000-0000000000a5'
+    const UNMATCHED = '6f1d2c1e-0000-4000-8000-0000000000a6'
+    const VERIFIED = '6f1d2c1e-0000-4000-8000-0000000000a7'
+    const extractionOf = (id: string) => `${id.slice(0, -3)}e${id.slice(-2)}`
+    const matched = { status: 'review_required' as const, tenant_id: PROPERTY, unit_id: UNIT, lease_id: LEASE }
+    const values = {
+      tenant_name: 'Umoya Coffee',
+      unit_number: 'G12',
+      statement_number: 'ST-1',
+      statement_date: '2026-10-31',
+      period_start: '2026-10-01',
+      period_end: '2026-10-31',
+      opening_balance: 0,
+      rental_charged: 100,
+      additional_charges: 0,
+      payments_received: 0,
+      outstanding_balance: 100,
+      total_due: 100,
+    } as const
+    const fieldsOf = (statementId: string, flagged: boolean) =>
+      Object.entries(values).map(([name, value], index) =>
+        extractionFieldRow({
+          id: `${statementId.slice(0, -2)}${String(index).padStart(2, '0')}`,
+          extraction_id: extractionOf(statementId),
+          name: name as keyof typeof values,
+          value,
+          flagged: flagged && name === 'total_due',
+        }),
+      )
+    const { client, queries } = fakeDb((query) => {
+      if (query.table === 'statements') {
+        return {
+          data: [
+            statementRow(matched),
+            statementRow({ ...matched, id: FLAGGED }),
+            statementRow({ ...matched, id: UNMATCHED, lease_id: null }),
+            statementRow({ ...matched, id: VERIFIED, status: 'verified' }),
+          ],
+          error: null,
+          count: 4,
+        }
+      }
+      if (query.table === 'statement_extractions') {
+        if (callsTo(query, 'select')[0]?.[0] === 'id, statement_id') {
+          return { data: [STATEMENT, FLAGGED, UNMATCHED, VERIFIED].map((id) => ({ id: extractionOf(id), statement_id: id })), error: null }
+        }
+        return { data: [STATEMENT, FLAGGED].map((id) => extractionRow({ id: extractionOf(id), statement_id: id })), error: null }
+      }
+      if (query.table === 'statement_extraction_fields') return { data: [...fieldsOf(STATEMENT, false), ...fieldsOf(FLAGGED, true)], error: null }
+      if (query.table === 'leases') {
+        return { data: [{ id: LEASE, reference: 'L-1', status: 'active', commencement_date: '2026-01-01', expiry_date: '2030-12-31' }], error: null }
+      }
+      return { data: [], error: null }
+    })
+
+    const page = await service.list(client, COMPANY, statementListQuerySchema.parse({}))
+
+    expect(page.items.map((item) => [item.id, item.readyToVerify])).toEqual([
+      [STATEMENT, true],
+      [FLAGGED, false],
+      [UNMATCHED, false],
+      [VERIFIED, false],
+    ])
+    // Only the matched statements under review are checked, in one query per table.
+    const fields = queries.find((query) => query.table === 'statement_extraction_fields')!
+    expect(callsTo(fields, 'in')).toEqual([['extraction_id', [extractionOf(STATEMENT), extractionOf(FLAGGED)]]])
+    expect(callsTo(queries.find((query) => query.table === 'leases')!, 'in')).toEqual([['id', [LEASE]]])
+  })
+
+  it('reads nothing more when no statement of the page is matched and under review', async () => {
+    const { client, queries } = fakeDb((query) => (query.table === 'statements' ? { data: [statementRow()], error: null, count: 1 } : { data: [], error: null }))
+    const page = await service.list(client, COMPANY, statementListQuerySchema.parse({}))
+    expect(page.items[0]?.readyToVerify).toBe(false)
+    expect(queries.map((query) => query.table)).toEqual(['statements', 'statement_line_items', 'statement_extractions'])
   })
 
   it('returns every line item of a page beyond the Data API max_rows limit, ordered for stable paging', async () => {

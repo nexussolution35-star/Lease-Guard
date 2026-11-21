@@ -10,6 +10,9 @@ import {
 } from '@nestjs/common'
 import {
   findDuplicateStatement,
+  PDF_SIGNATURE_LENGTH,
+  processingFailed,
+  statementFileProblem,
   type DuplicateCandidate,
   type DuplicateMatch,
   type EntityId,
@@ -90,7 +93,7 @@ export class StatementUploadsService {
    *
    * Duplicates are checked with the domain rule `findDuplicateStatement` against the company's live
    * statements before inserting: an identical file (SHA-256) is refused with 409 naming the statement
-   * on record; a likely match (same tenant, period and number) is registered and returned as a warning
+   * on record, and the copy just uploaded is removed so it is never processed; a likely match (same tenant, period and number) is registered and returned as a warning
    * for the reviewer, because the period may be wrong. A concurrent registration of the same file loses
    * on the live unique index and is reported the same way.
    */
@@ -126,12 +129,12 @@ export class StatementUploadsService {
         sha256,
       },
       ...(tenantId ? { tenantId } : {}),
-      periodStart: body.periodStart,
-      periodEnd: body.periodEnd,
+      ...(body.periodStart ? { periodStart: body.periodStart } : {}),
+      ...(body.periodEnd ? { periodEnd: body.periodEnd } : {}),
       ...(body.statementNumber ? { statementNumber: body.statementNumber } : {}),
     }
     const duplicate = findDuplicateStatement(candidate, await this.liveCandidates(db, companyId, candidate))
-    if (duplicate?.confidence === 'exact') throw new DuplicateStatementException(duplicate)
+    if (duplicate?.confidence === 'exact') throw await this.refuseIdenticalFile(db, companyId, body.storagePath, duplicate)
 
     const { data: row, error } = await db
       .from('statements')
@@ -149,17 +152,19 @@ export class StatementUploadsService {
         file_sha256: sha256,
         source_system: body.sourceSystem,
         statement_number: body.statementNumber ?? null,
-        statement_date: body.statementDate,
-        period_start: body.periodStart,
-        period_end: body.periodEnd,
-        status: 'uploaded',
+        // As typed, or null: the document supplies them and processing flags any difference.
+        statement_date: body.statementDate ?? null,
+        period_start: body.periodStart ?? null,
+        period_end: body.periodEnd ?? null,
+        // Status is not insertable: a new statement is always `uploaded` (the column default). The database stamps
+        // the uploader and time from the session and audits the upload.
         upload_batch_id: body.uploadBatchId ?? null,
         uploaded_by_user_id: userId,
       })
       .select('*')
       .single()
     if (error) {
-      if (error.code === UNIQUE_VIOLATION) throw await this.conflictAfterRace(db, companyId, candidate)
+      if (error.code === UNIQUE_VIOLATION) throw await this.conflictAfterRace(db, companyId, candidate, body.storagePath)
       throw httpErrorFromDatabase(error, 'Register statement')
     }
 
@@ -168,33 +173,73 @@ export class StatementUploadsService {
   }
 
   /**
-   * Queues processing again for a statement that has not reached review. Idempotent per statement: a
-   * job still waiting or running is left alone, and a job that failed or completed without moving the
-   * statement on is run again (`QueueProducer.enqueueOrRetry`); `outcome` says which.
+   * Queues processing again for a statement that has not reached review, or whose automatic extraction
+   * failed (`processingFailed`: left `review_required` with `processing_error`). A failed statement goes
+   * back to `uploaded` with the error cleared (the audit trigger records the status change) before it is
+   * queued; if it cannot be queued it is put back as it was. Idempotent per statement: a job still waiting
+   * or running is left alone, and a job that failed or completed without moving the statement on is run
+   * again (`QueueProducer.enqueueOrRetry`); `outcome` says which.
    */
   async process(db: DbClient, companyId: EntityId, statementId: EntityId): Promise<ProcessStatementResult> {
     const row = unwrapDatabase(
-      await db.from('statements').select('id, status').eq('company_id', companyId).eq('id', statementId).maybeSingle(),
+      await db.from('statements').select('id, status, processing_error').eq('company_id', companyId).eq('id', statementId).maybeSingle(),
       'Get statement',
     )
+    if (processingFailed({ status: row.status, ...(row.processing_error !== null ? { processingError: row.processing_error } : {}) })) {
+      return this.retryFailed(db, companyId, row.id, row.processing_error ?? '')
+    }
     if (!isProcessable(row.status)) {
-      throw new ConflictException(`The statement is ${row.status.replace('_', ' ')}; only uploaded or processing statements can be processed`)
+      throw new ConflictException(
+        `The statement is ${row.status.replace('_', ' ')}; only uploaded or processing statements, or ones whose processing failed, can be processed`,
+      )
     }
     const { jobId, outcome } = await this.queue.enqueueOrRetry('statement-processing', { companyId, statementId: row.id })
     return { statementId: row.id, status: row.status, jobId, outcome }
   }
 
+  private async retryFailed(db: DbClient, companyId: EntityId, statementId: EntityId, processingError: string): Promise<ProcessStatementResult> {
+    const { data, error } = await db
+      .from('statements')
+      .update({ status: 'uploaded', processing_error: null })
+      .eq('company_id', companyId)
+      .eq('id', statementId)
+      .eq('status', 'review_required')
+      .not('processing_error', 'is', null)
+      .select('id')
+      .maybeSingle()
+    if (error) throw httpErrorFromDatabase(error, 'Reset failed statement')
+    if (!data) throw new ConflictException('The statement changed while it was being queued again; reload it and try again')
+    try {
+      const { jobId, outcome } = await this.queue.enqueueOrRetry('statement-processing', { companyId, statementId })
+      return { statementId, status: 'uploaded', jobId, outcome }
+    } catch (queueError) {
+      const restored = await db
+        .from('statements')
+        .update({ status: 'review_required', processing_error: processingError })
+        .eq('company_id', companyId)
+        .eq('id', statementId)
+        .eq('status', 'uploaded')
+      if (restored.error) {
+        this.logger.error(`Statement ${statementId} could not be restored after the queue refused it: ${restored.error.message}`)
+      }
+      throw queueError
+    }
+  }
+
   /**
    * SHA-256 (lowercase hex) of the object at storagePath, read through the caller's client. Refused with
-   * 422 when the object is gone, its size differs from sizeBytes, or the digest differs from body.sha256.
+   * 422 when the object is gone, its size differs from sizeBytes, it is not a PDF (`%PDF-` header), or the digest
+   * differs from body.sha256.
    */
   private async storedFileSha256(db: DbClient, body: RegisterStatementBody): Promise<string> {
     const file = await this.storage.download(db, this.storage.statementsBucket, body.storagePath)
     if (!file) throw new UnprocessableEntityException('Upload the file to storagePath before registering the statement')
     if (file.size !== body.sizeBytes) throw new UnprocessableEntityException('The uploaded file size does not match sizeBytes')
-    const sha256 = createHash('sha256')
-      .update(new Uint8Array(await file.arrayBuffer()))
-      .digest('hex')
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    // Checked by content, not by the declared type: the document-processing service reads PDFs only.
+    const problem = statementFileProblem({ sizeBytes: bytes.byteLength, head: bytes.subarray(0, PDF_SIGNATURE_LENGTH), maxBytes: this.storage.maxStatementBytes })
+    if (problem) throw new UnprocessableEntityException(problem.message)
+    const sha256 = createHash('sha256').update(bytes).digest('hex')
     if (sha256 !== body.sha256) {
       throw new UnprocessableEntityException('The SHA-256 of the uploaded file does not match sha256; upload the file again')
     }
@@ -244,7 +289,7 @@ export class StatementUploadsService {
     // Every interpolated value is validated or read from the database (hex digest, uuid, ISO date), so
     // it cannot alter the filter.
     const conditions = [`file_sha256.eq.${candidate.file.sha256}`]
-    if (candidate.tenantId) {
+    if (candidate.tenantId && candidate.periodStart && candidate.periodEnd) {
       conditions.push(`and(tenant_id.eq.${candidate.tenantId},period_start.eq.${candidate.periodStart},period_end.eq.${candidate.periodEnd})`)
     }
     const { data, error } = await db
@@ -258,8 +303,34 @@ export class StatementUploadsService {
     return (data ?? []).map(toExistingStatement)
   }
 
+  /**
+   * An identical file is never processed twice: the copy just uploaded is removed from the statements bucket and the
+   * 409 names the statement on record. A path that a statement already points at (the same registration sent again)
+   * is never removed. Removing is best effort; a copy left behind is harmless because no statement points at it.
+   */
+  private async refuseIdenticalFile(
+    db: DbClient,
+    companyId: EntityId,
+    storagePath: string,
+    match: DuplicateMatch,
+  ): Promise<DuplicateStatementException> {
+    try {
+      const { data, error } = await db
+        .from('statements')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('storage_path', storagePath)
+        .limit(1)
+      if (error) throw new Error(error.message)
+      if ((data ?? []).length === 0) await this.storage.removeObject(db, this.storage.statementsBucket, storagePath)
+    } catch (error) {
+      this.logger.warn(`Identical upload ${storagePath} was not removed: ${error instanceof Error ? error.message : String(error)}`)
+    }
+    return new DuplicateStatementException(match)
+  }
+
   /** A unique violation on insert: another request registered the same file, or the same storage path. */
-  private async conflictAfterRace(db: DbClient, companyId: EntityId, candidate: DuplicateCandidate): Promise<HttpException> {
+  private async conflictAfterRace(db: DbClient, companyId: EntityId, candidate: DuplicateCandidate, storagePath: string): Promise<HttpException> {
     const { data, error } = await db
       .from('statements')
       .select('*')
@@ -268,7 +339,7 @@ export class StatementUploadsService {
       .eq('file_sha256', candidate.file.sha256)
     if (error) return httpErrorFromDatabase(error, 'Check statement duplicates')
     const match: DuplicateMatch | null = findDuplicateStatement(candidate, (data ?? []).map(toExistingStatement))
-    if (match?.confidence === 'exact') return new DuplicateStatementException(match)
+    if (match?.confidence === 'exact') return this.refuseIdenticalFile(db, companyId, storagePath, match)
     return new ConflictException('A statement is already registered for this storage path; request a new upload URL')
   }
 
@@ -298,8 +369,8 @@ function toExistingStatement(row: StatementRow): ExistingStatement {
     id: row.id,
     file: toStoredFile(row),
     ...(row.tenant_id ? { tenantId: row.tenant_id } : {}),
-    periodStart: row.period_start,
-    periodEnd: row.period_end,
+    ...(row.period_start !== null ? { periodStart: row.period_start } : {}),
+    ...(row.period_end !== null ? { periodEnd: row.period_end } : {}),
     ...(row.statement_number !== null ? { statementNumber: row.statement_number } : {}),
   }
 }

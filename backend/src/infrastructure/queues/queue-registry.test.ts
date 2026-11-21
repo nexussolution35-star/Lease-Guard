@@ -18,6 +18,7 @@ describe('queue registry', () => {
       'lease-monitoring',
       'arrears-monitoring',
       'arrangement-reminders',
+      'statement-monitoring',
       'message-delivery',
       'monitoring-dispatch',
       'user-invitations',
@@ -26,6 +27,10 @@ describe('queue registry', () => {
       'whatsapp-agent',
       'whatsapp-test-message',
     ])
+  })
+
+  it('keys post-verification monitoring by its company and statement, so a statement is monitored once', () => {
+    expect(jobIdFor('statement-monitoring', { companyId: 'C1', statementId: 'S1' })).toBe('statement-monitoring.c1.s1')
   })
 
   it('keys a test message by its company and id, so a repeated request never sends it twice', () => {

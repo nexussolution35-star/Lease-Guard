@@ -138,7 +138,15 @@ upload URLs through the caller's own client, so storage policies apply to upload
 PDF, PNG and JPEG; lease documents PDF only. A lease document is recorded only after the API has read the stored file
 back (size, stored media type and the `%PDF-` header) and computed its SHA-256; the database stamps the uploader from
 `auth.uid()`, accepts only a file that is in the bucket, and keeps the record and its file (no update or delete by a
-signed-in user). Downloads are five-minute signed links issued through the caller's own client.
+signed-in user). A statement is registered only after the API has read the stored file back (size, the `%PDF-`
+header, SHA-256 equal to the one the browser computed); a signed-in caller inserts only the upload's own columns, so a
+new statement is always `uploaded` with no figures, its uploader and time are stamped from the session, and every
+registration is audited. An identical file already on record is refused and the copy just uploaded is removed.
+Downloads are five-minute signed links issued through the caller's own client. Figures reach a statement only through
+verification: a signed-in caller cannot write them (column grants), cannot move a statement into or out of verified,
+rejected or duplicate directly (`private.guard_statement_outcome`), and verifies, rejects or marks a duplicate only
+through `verify_statement`, `reject_statement` and `mark_statement_duplicate` (`SECURITY DEFINER`, writer of the company
+checked first), which copy the reviewed extraction's values and stamp the verifier from the session.
 
 Portfolio import files (CSV and XLSX exported from a company's own system) are kept in the private
 `portfolio-imports` bucket under the same path shape: members read; company admins and property managers

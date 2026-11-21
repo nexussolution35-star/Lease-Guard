@@ -47,7 +47,7 @@ function pendingMessage(page: Page, body: string) {
   return page.getByRole('article').filter({ hasText: body })
 }
 
-// No worker and no Meta run in e2e: an approved message stays queued for delivery. Company B is used for the decision
+// No message-delivery worker and no Meta run in e2e: an approved message stays queued for delivery. Company B is used for the decision
 // flow so the WhatsApp settings tests (company A, which must start with no number) are not disturbed.
 test.describe('Message approvals', () => {
   test('a property manager sees why a message cannot be sent, approves a deliverable one and rejects with a reason', async ({ page }) => {

@@ -11,7 +11,7 @@ Nullable properties are always present in the JSON (as `null` when absent), neve
 
 Money is a `Decimal` with exactly two decimal places, serialised in JSON as a string
 (`"35000.00"`) so no precision is lost. Positive amounts are rands owed by the tenant; a negative
-`openingBalance` or `outstandingBalance` is a credit balance.
+`opening_balance` or `outstanding_balance` field value is a credit balance.
 """
 
 from datetime import date
@@ -26,9 +26,11 @@ StatementSource = Literal["MRI", "MDA", "PropSys", "Sage", "other"]
 ExtractionFieldName = Literal[
     "tenant_name",
     "unit_number",
+    "statement_number",
     "statement_date",
     "period_start",
     "period_end",
+    "opening_balance",
     "rental_charged",
     "additional_charges",
     "payments_received",
@@ -36,6 +38,7 @@ ExtractionFieldName = Literal[
     "total_due",
 ]
 FinancialFieldName = Literal[
+    "opening_balance",
     "rental_charged",
     "additional_charges",
     "payments_received",
@@ -67,6 +70,9 @@ IssueCode = Literal[
     "conflicting_values",
     "unparsed_row",
     "hint_mismatch",
+    # Raised by the backend when the document differs from what the uploader typed; this service
+    # never sees typed values, so it never reports it.
+    "typed_value_mismatch",
     "unsupported_layout",
     "scanned_without_ocr",
     "ocr_used",
@@ -129,8 +135,8 @@ class ExtractedField(WireModel):
     name: ExtractionFieldName
     raw_text: str = Field(description="The document text the value was read from; empty if none.")
     value: str | Rand | None = Field(
-        description="Names and unit numbers as text, dates as ISO `YYYY-MM-DD`, money as a "
-        "2-decimal string. `null` when the value was not found; it is never guessed."
+        description="Names, unit and statement numbers as text, dates as ISO `YYYY-MM-DD`, "
+        "money as a 2-decimal string. `null` when the value was not found; it is never guessed."
     )
     confidence: Confidence
     flagged: bool = Field(description="True when a person must check this value.")
@@ -160,9 +166,6 @@ class ExtractionResult(WireModel):
     page_count: int = Field(ge=1)
     text_layer: bool = Field(description="True when every page has a text layer.")
     ocr_used: bool
-    opening_balance: Rand | None = Field(
-        description="Balance brought forward, used to reconcile totals. `null` if not found."
-    )
     fields: list[ExtractedField] = Field(description="Exactly one entry per extraction field.")
     line_items: list[LineItem]
     overall_confidence: Confidence

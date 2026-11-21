@@ -61,7 +61,9 @@ describe('DocumentProcessingClient', () => {
     expect(error).toMatchObject({ retryable: false, code: 'contract_violation' })
     expect(error.message).toMatch(/overallConfidence/)
 
-    const badMoney = extractionResult({ openingBalance: '35 000,00' })
+    const badMoney = extractionResult({
+      lineItems: [{ date: '2026-10-01', description: 'Rental', category: 'rental', kind: 'charge', amount: '35 000,00', confidence: 0.95, flagged: false }],
+    })
     expect(await failureOf(client(async () => jsonResponse(200, badMoney)).client.extract(pdf, 's.pdf', request))).toMatchObject({
       retryable: false,
     })

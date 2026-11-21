@@ -14,6 +14,12 @@ export interface JobPayloads {
   /** Daily arrears ageing of verified statements. */
   'arrears-monitoring': { companyId: EntityId; asOf: ISODate }
   /** Daily scan for arrangement instalments that are coming up or overdue. */
+  /**
+   * Arrears and lease monitoring (escalation discrepancies among them) for the tenant of one statement, run as soon as
+   * the statement is verified instead of waiting for the daily scan. Enqueued by the API on verification; one job per
+   * statement. The processor reads the statement itself and does nothing unless it is verified.
+   */
+  'statement-monitoring': { companyId: EntityId; statementId: EntityId }
   'arrangement-reminders': { companyId: EntityId; asOf: ISODate }
   /** Deliver one approved, eligible WhatsApp message (retried on transient provider failures). */
   'message-delivery': { companyId: EntityId; communicationId: EntityId }
@@ -73,6 +79,7 @@ const JOB_KEY_FIELDS: { readonly [Q in QueueName]: readonly (keyof JobPayloads[Q
   'lease-monitoring': ['companyId', 'asOf'],
   'arrears-monitoring': ['companyId', 'asOf'],
   'arrangement-reminders': ['companyId', 'asOf'],
+  'statement-monitoring': ['companyId', 'statementId'],
   'message-delivery': ['companyId', 'communicationId'],
   'monitoring-dispatch': ['asOf'],
   'user-invitations': ['companyId', 'invitationId'],

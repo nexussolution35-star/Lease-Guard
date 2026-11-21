@@ -158,11 +158,20 @@ From `backend/openapi.json`. "Writers" means `WRITER_ROLES`.
 | `POST /api/v1/leases/{leaseId}/verify` | `verifyLease` | company | writers |
 | `GET /api/v1/leases/{leaseId}/documents` | `listLeaseDocuments` | company | members |
 | `GET /api/v1/statements` | `listStatements` | company | members |
+| `GET /api/v1/statements/arrears` | `getStatementArrears` | company | members |
 | `POST /api/v1/statements/upload-url` | `createStatementUploadUrl` | company | writers |
 | `POST /api/v1/statements` | `registerStatement` | company | writers |
 | `GET /api/v1/statements/{statementId}` | `getStatement` | company | members |
 | `GET /api/v1/statements/{statementId}/extraction` | `getStatementExtraction` | company | members |
 | `POST /api/v1/statements/{statementId}/process` | `processStatement` | company | writers |
+| `GET /api/v1/statements/{statementId}/download-url` | `getStatementDownloadUrl` | company | members |
+| `PUT /api/v1/statements/{statementId}/extraction/fields/{fieldName}/correction` | `correctStatementField` | company | writers |
+| `POST /api/v1/statements/{statementId}/extraction/fields/{fieldName}/confirm` | `confirmStatementField` | company | writers |
+| `PUT /api/v1/statements/{statementId}/match` | `setStatementMatch` | company | writers |
+| `POST /api/v1/statements/verify` | `verifyStatements` | company | writers |
+| `POST /api/v1/statements/{statementId}/verify` | `verifyStatement` | company | writers |
+| `POST /api/v1/statements/{statementId}/reject` | `rejectStatement` | company | writers |
+| `POST /api/v1/statements/{statementId}/mark-duplicate` | `markStatementDuplicate` | company | writers |
 | `GET /api/v1/monitoring/events` | `listMonitoringEvents` | company | members |
 | `GET /api/v1/monitoring/events/{eventId}` | `getMonitoringEvent` | company | members |
 | `PATCH /api/v1/monitoring/events/{eventId}/status` | `updateMonitoringEventStatus` | company | writers |
@@ -246,9 +255,69 @@ Behaviour worth knowing:
   lease of the active company.
 
 - **Statement upload** is three calls: `createStatementUploadUrl` returns a signed upload URL into the
-  `statements` bucket; the client uploads the PDF; `registerStatement` records it, runs duplicate
-  detection (identical SHA-256 → 409; likely duplicate → registered with a warning) and enqueues
-  `statement-processing`. `processStatement` re-queues extraction.
+  `statements` bucket; the client uploads the PDF; `registerStatement` reads the stored file back (size,
+  `%PDF-` header and SHA-256 must match, 422 otherwise), records it, runs duplicate
+  detection (identical SHA-256 → 409 naming the statement on record, and the copy just uploaded is removed from the
+  bucket unless a statement already points at that path; likely duplicate → registered with a warning) and enqueues
+  `statement-processing`. A new statement is always `uploaded`: the database stamps the uploader and time from the
+  session and audits each registration as an `upload` (property, file, source system, SHA-256, `uploadBatchId`).
+  The upload screen (ticket S-03) sends many files as one batch: it gives every file the same `uploadBatchId`,
+  uploads a file repeated within the batch once (domain `repeatsWithinBatch`) and checks each file is a non-empty PDF
+  within the limit by its content before signing (domain `statementFileProblem`). `statementDate`, `periodStart`/`periodEnd` (both or neither) and `statementNumber`
+  are optional: they are read from the document, and a typed value the document disagrees with is flagged at
+  review, never replaced. Until verified, a `StatementDto` may have no `statementDate` or period; a
+  verified one always has them. A likely duplicate needs a known period, so an untyped upload is checked
+  by file hash only. `processStatement` re-queues extraction; a statement whose extraction failed
+  (`review_required` with `processingError`) goes back to `uploaded` with the error cleared and is queued again
+  (the status change is audited; if the queue is down it is put back as it was).
+- **Statement list** (`listStatements`): each row is a `StatementListItemDto`, the statement plus `propertyName` and,
+  once matched, `tenantName` and `unitNumber`. Filters `status`, `propertyId`, `tenantId`, `leaseId`, `sourceSystem`,
+  `uploadBatchId` (one upload batch);
+  `search` matches the file name and statement number. Figures are present only on verified statements.
+  `readyToVerify` is true when the statement is under review with nothing unresolved (every field resolved, the tenant,
+  unit and lease set, the lease in force: `statementVerificationProblems` finds nothing), worked out for the page's
+  matched statements under review in one query per table.
+- **Statement review** (ticket S-04): `getStatementDownloadUrl` signs a five-minute link to the original file for any
+  member. `getStatementExtraction` lists every field with its `resolution` (`fieldResolution` in the domain): `accepted`
+  (found without a flag), `confirmed` or `corrected` by a reviewer, or `unresolved` (flagged or missing). A writer resolves
+  a field with `correctStatementField` (`{ value }`: text for names and numbers, `YYYY-MM-DD` for dates, rands with at
+  most two decimals for amounts, checked by `parseFieldCorrection`; 422 otherwise) or `confirmStatementField` (the
+  extracted value is right; 422 for a value that was not found, which can only be entered). A correction replaces a
+  confirmation and confirming drops a correction; the extracted value is always kept. The database stamps who and when
+  and audits each change with before and after. `setStatementMatch` (`{ tenantId, unitId, leaseId? }`) sets the three
+  together: the extraction's `matchedTenantId`/`matchedUnitId` is only a proposal and is never applied by itself; the
+  unit must be on the statement's property; without `leaseId` the tenant's lease of the unit in force on the statement
+  date (the reviewed `statement_date` field, else the date typed at upload) is used, and an unknown date, no lease or
+  overlapping leases are refused with the reason; a chosen lease must be that tenant's lease of that unit and in force on
+  the date. Every problem is listed in one 422. All three writes answer 409 unless the statement is `review_required`
+  and its extraction `pending_review`.
+- **Statement outcome** (ticket S-05): `verifyStatement` is allowed once every field is resolved and the tenant, unit and
+  lease are set, the lease in force on the reviewed statement date (domain `statementVerificationProblems`; 422 listing
+  every reason otherwise, 409 unless `review_required`). The database function `verify_statement` writes the reviewed
+  values (the correction, else the extracted value) onto the statement: number, date, period and the six figures
+  (`outstanding_balance` becomes `closingBalance`); the client never sends figures, and this is the only way they reach a
+  statement. It stamps the verifier, closes the extraction (`confirmed`, or `corrected` when any value was entered) and
+  resolves the statement's `statement_review_required` event. The response is `StatementVerificationResultDto`
+  (`{ statement, monitoringQueued }`): the API queues `statement-monitoring`, which runs arrears and lease (escalation)
+  monitoring for that tenant at once; `monitoringQueued` is false when the queue was down (the daily run covers it).
+  `rejectStatement` (`{ reason }`, 1 to 1000 characters, kept as `rejectionReason`) and `markStatementDuplicate`
+  (`{ duplicateOfStatementId }`: another statement of the company that is not rejected or a duplicate, 422 otherwise)
+  close the extraction as `rejected` and resolve the review event. Every outcome is audited (`verify`, or `reject` for
+  rejected and duplicate).
+- **Verifying several statements** (ticket S-07): `verifyStatements` (`{ statementIds }`, 1 to 100 distinct ids) verifies
+  each statement in the order given exactly as `verifyStatement` does: its own checks, its own `verify_statement` call
+  (so its own audit entry and closed review event) and its own `statement-monitoring` job. A refusal never undoes the
+  others. It answers 200 with `StatementsVerificationResultDto`: `verified` (`statementId`, `fileName`,
+  `statementNumber?`, `monitoringQueued`) and `notVerified` (`statementId`, `fileName?` (absent when the statement is
+  not in the company), `statementNumber?`, `reasons`: every reason, as `verifyStatement` would answer).
+- **Statement arrears** (`getStatementArrears`): the Statements page's figures, calculated by the domain
+  `arrearsOverview` from each tenant's LATEST verified statement only (statements in review never count): `totalOutstanding`,
+  `tenantsInArrears`, `tenantsUnderArrangement`, one entry per bucket of the company's arrears monitoring rule
+  (`ageingBucketsDays`, default 30/60/90/120; every bucket listed, zero when empty), `pendingReview` (statements in
+  `review_required`) and `entries`: each tenant in arrears with the statement its balance comes from, its age and bucket
+  (aged from the statement date to today in South Africa, `asOf`), who verified it, and whether an active payment
+  arrangement is in force (`underArrangement`) and pauses reminders (`remindersSuppressed`). The minimum-balance threshold
+  of the arrears rule decides when an event is raised, not what is owed, so it does not filter these figures.
 - **Portfolio import** (upload a portfolio file) is three calls: `createPortfolioImportUploadUrl` returns a
   signed upload URL into the private `portfolio-imports` bucket and the `contentType` to send; the client
   uploads the CSV or XLSX file; `createPortfolioImport` (`scope` `properties`, or `units` with a
@@ -407,7 +476,6 @@ In the frontend, the single client instance is `getApiClient()` in `frontend/src
 Checked against `backend/openapi.json` and `backend/src`:
 
 - Archive, renewal or termination endpoints for leases (create, edit and verification exist).
-- Statement review: confirming or correcting extracted figures, and statement verification.
 - Creating or drafting outbound messages and templates; companies' WhatsApp settings.
 - WhatsApp webhooks (delivery status, inbound replies).
 - Request rate limiting.

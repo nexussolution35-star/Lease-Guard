@@ -8,14 +8,16 @@ import { REPO_ROOT, TEST_OUTPUT_ROOT } from '../fixtures/paths.ts'
 import { E2E_API_URL, E2E_WEB_PORT, E2E_WEB_URL } from './support/env.ts'
 
 /**
- * The real stack: the LeaseGuard API (built from backend/ into backend/.dev-e2e) and the Vite dev
- * server, both pointed at the LOCAL Supabase stack only. Refuses to start when Supabase is not local;
+ * The real stack: the LeaseGuard API (built from backend/ into backend/.dev-e2e, run with the statement worker and the
+ * document-processing service beside it) and the Vite dev server, all pointed at the LOCAL Supabase stack only. Refuses to start when Supabase is not local;
  * backend/.env and frontend/.env (which may name a hosted project) are never used for these processes.
  */
 const supabase = resolveLocalSupabaseSync()
 
 /** Specs that create or archive the world's portfolio records (see the projects below). */
 const WRITES_PORTFOLIO = ['**/property-management.spec.ts', '**/portfolio-import.spec.ts']
+/** The statements acceptance journey: adds units, tenants and leases and raises monitoring events (see below). */
+const STATEMENTS_ACCEPTANCE = ['**/statements-acceptance.spec.ts']
 
 export default defineConfig({
   testDir: '.',
@@ -37,7 +39,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: WRITES_PORTFOLIO,
+      testIgnore: [...WRITES_PORTFOLIO, ...STATEMENTS_ACCEPTANCE],
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
     },
     // Specs that add or archive portfolio records run after every other spec: several specs assert the
@@ -46,6 +48,14 @@ export default defineConfig({
       name: 'chromium-portfolio-writes',
       testMatch: WRITES_PORTFOLIO,
       dependencies: ['chromium'],
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
+    // The statements acceptance journey runs last and alone: it adds units, tenants and leases to a world property,
+    // and the statement worker raises monitoring events and notifications from them, which no other spec expects.
+    {
+      name: 'chromium-statements-acceptance',
+      testMatch: STATEMENTS_ACCEPTANCE,
+      dependencies: ['chromium-portfolio-writes'],
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
     },
   ],

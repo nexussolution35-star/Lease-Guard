@@ -10,7 +10,7 @@ import {
   ApiTags,
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger'
-import type { Statement, StatementExtraction } from '@leaseguard/domain'
+import type { Statement, StatementExtraction, StatementListItem } from '@leaseguard/domain'
 
 import { CompanyScoped, WRITER_ROLES } from '../../common/decorators/company-scoped.decorator'
 import { CurrentCompany } from '../../common/decorators/current-company.decorator'
@@ -57,7 +57,7 @@ export class StatementsController {
     @UserDb() db: DbClient,
     @CurrentCompany() company: CompanyContext,
     @Query(new ZodValidationPipe(statementListQuerySchema)) query: StatementListQueryDto,
-  ): Promise<Page<Statement>> {
+  ): Promise<Page<StatementListItem>> {
     return this.statements.list(db, company.companyId, query)
   }
 
@@ -86,15 +86,16 @@ export class StatementsController {
     operationId: 'registerStatement',
     summary: 'Register an uploaded statement file and queue it for extraction',
     description:
-      'An identical file (SHA-256) already on record is refused with 409 and the existing statement. A likely ' +
+      'An identical file (SHA-256) already on record is refused with 409 and the existing statement, and the copy just ' +
+      'uploaded is removed so it is never processed. A likely ' +
       'duplicate (same tenant, period and number) is registered and returned as a warning for the reviewer. The ' +
       'SHA-256 is computed from the stored file and must equal sha256 (422 otherwise). Without tenantId or unitId, ' +
-      'a statement filed against a lease takes the lease\'s tenant and unit.',
+      'a statement filed against a lease takes the lease\'s tenant and unit. The upload is audited; a new statement is always uploaded.',
   })
   @ApiCreatedResponse({ type: RegisterStatementResultDto })
   @ApiConflictResponse({ type: DuplicateStatementErrorDto, description: 'Identical file already registered' })
   @ApiPayloadTooLargeResponse({ type: ApiErrorDto, description: 'The file is larger than DOCUMENT_PROCESSING_MAX_FILE_MB' })
-  @ApiUnprocessableEntityResponse({ type: ApiErrorDto, description: 'File not uploaded, size or SHA-256 mismatch, or unknown property/tenant/unit/lease' })
+  @ApiUnprocessableEntityResponse({ type: ApiErrorDto, description: 'File not uploaded, not a PDF, size or SHA-256 mismatch, or unknown property/tenant/unit/lease' })
   register(
     @UserDb() db: DbClient,
     @CurrentCompany() company: CompanyContext,
@@ -139,14 +140,16 @@ export class StatementsController {
   @CompanyScoped({ roles: WRITER_ROLES })
   @ApiOperation({
     operationId: 'processStatement',
-    summary: 'Queue extraction for an uploaded statement again',
+    summary: 'Queue extraction for an uploaded statement again, or retry one whose processing failed',
     description:
       'Idempotent: repeated calls return the same job id. A job still waiting or running is left alone; a job ' +
-      'that failed, or completed without moving the statement on, is run again. `outcome` says which.',
+      'that failed, or completed without moving the statement on, is run again. `outcome` says which. A statement ' +
+      'whose automatic extraction failed (review_required with processingError) goes back to uploaded with the error ' +
+      'cleared and is queued again; if it cannot be queued it is left as it was.',
   })
   @ApiAcceptedResponse({ type: ProcessStatementResultDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
-  @ApiConflictResponse({ type: ApiErrorDto, description: 'The statement is already under review or final' })
+  @ApiConflictResponse({ type: ApiErrorDto, description: 'The statement is under review (and its processing did not fail) or final' })
   process(
     @UserDb() db: DbClient,
     @CurrentCompany() company: CompanyContext,

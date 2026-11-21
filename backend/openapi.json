@@ -5272,6 +5272,75 @@
         ]
       }
     },
+    "/api/v1/statements/arrears": {
+      "get": {
+        "description": "Only each tenant's latest VERIFIED statement counts; statements in review never do. Balances are aged from the statement date into the company's arrears monitoring buckets. Tenants under an active payment arrangement are marked. Each entry names the statement its balance comes from. Monitoring figures, never transactions.",
+        "operationId": "getStatementArrears",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementArrearsSummaryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Outstanding balances and arrears ageing from verified statements",
+        "tags": [
+          "statements"
+        ]
+      }
+    },
     "/api/v1/statements": {
       "get": {
         "operationId": "listStatements",
@@ -5365,6 +5434,16 @@
             "schema": {
               "$ref": "#/components/schemas/StatementSource"
             }
+          },
+          {
+            "name": "uploadBatchId",
+            "required": false,
+            "in": "query",
+            "description": "Statements registered in one upload batch (uploadBatchId given at registration)",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -5431,7 +5510,7 @@
         ]
       },
       "post": {
-        "description": "An identical file (SHA-256) already on record is refused with 409 and the existing statement. A likely duplicate (same tenant, period and number) is registered and returned as a warning for the reviewer. The SHA-256 is computed from the stored file and must equal sha256 (422 otherwise). Without tenantId or unitId, a statement filed against a lease takes the lease's tenant and unit.",
+        "description": "An identical file (SHA-256) already on record is refused with 409 and the existing statement, and the copy just uploaded is removed so it is never processed. A likely duplicate (same tenant, period and number) is registered and returned as a warning for the reviewer. The SHA-256 is computed from the stored file and must equal sha256 (422 otherwise). Without tenantId or unitId, a statement filed against a lease takes the lease's tenant and unit. The upload is audited; a new statement is always uploaded.",
         "operationId": "registerStatement",
         "parameters": [],
         "requestBody": {
@@ -5506,7 +5585,7 @@
             }
           },
           "422": {
-            "description": "File not uploaded, size or SHA-256 mismatch, or unknown property/tenant/unit/lease",
+            "description": "File not uploaded, not a PDF, size or SHA-256 mismatch, or unknown property/tenant/unit/lease",
             "content": {
               "application/json": {
                 "schema": {
@@ -5804,7 +5883,7 @@
     },
     "/api/v1/statements/{statementId}/process": {
       "post": {
-        "description": "Idempotent: repeated calls return the same job id. A job still waiting or running is left alone; a job that failed, or completed without moving the statement on, is run again. `outcome` says which.",
+        "description": "Idempotent: repeated calls return the same job id. A job still waiting or running is left alone; a job that failed, or completed without moving the statement on, is run again. `outcome` says which. A statement whose automatic extraction failed (review_required with processingError) goes back to uploaded with the error cleared and is queued again; if it cannot be queued it is left as it was.",
         "operationId": "processStatement",
         "parameters": [
           {
@@ -5868,7 +5947,7 @@
             }
           },
           "409": {
-            "description": "The statement is already under review or final",
+            "description": "The statement is under review (and its processing did not fail) or final",
             "content": {
               "application/json": {
                 "schema": {
@@ -5894,7 +5973,867 @@
             "company": []
           }
         ],
-        "summary": "Queue extraction for an uploaded statement again",
+        "summary": "Queue extraction for an uploaded statement again, or retry one whose processing failed",
+        "tags": [
+          "statements"
+        ]
+      }
+    },
+    "/api/v1/statements/{statementId}/download-url": {
+      "get": {
+        "operationId": "getStatementDownloadUrl",
+        "parameters": [
+          {
+            "name": "statementId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementDownloadUrlDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The statement is not in the active company, or its file is gone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "A 5-minute link to a statement's original file",
+        "tags": [
+          "statements"
+        ]
+      }
+    },
+    "/api/v1/statements/{statementId}/extraction/fields/{fieldName}/correction": {
+      "put": {
+        "description": "The value is recorded as the correction beside the extracted value (which is kept), with who and when; any confirmation of the field is replaced. Audited with before and after. Returns the extraction.",
+        "operationId": "correctStatementField",
+        "parameters": [
+          {
+            "name": "statementId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fieldName",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "$ref": "#/components/schemas/ExtractionFieldName"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectExtractedFieldDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementExtractionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Statement not found or not yet extracted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The statement is not under review (uploaded, processing, verified, rejected or duplicate) or its extraction was already reviewed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Not a valid value for this field",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Enter the correct value of one extracted field",
+        "tags": [
+          "statements"
+        ]
+      }
+    },
+    "/api/v1/statements/{statementId}/extraction/fields/{fieldName}/confirm": {
+      "post": {
+        "description": "Resolves a flagged field with the extracted value, recording who and when, and drops any correction. A value the extractor did not find cannot be confirmed (422): enter it with correctStatementField. Confirming a confirmed field changes nothing. Audited with before and after. Returns the extraction.",
+        "operationId": "confirmStatementField",
+        "parameters": [
+          {
+            "name": "statementId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fieldName",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "$ref": "#/components/schemas/ExtractionFieldName"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementExtractionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Statement not found or not yet extracted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The statement is not under review (uploaded, processing, verified, rejected or duplicate) or its extraction was already reviewed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The value was not found on the statement",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Confirm that an extracted value is correct",
+        "tags": [
+          "statements"
+        ]
+      }
+    },
+    "/api/v1/statements/{statementId}/match": {
+      "put": {
+        "description": "The extraction's proposed match (matchedTenantId, matchedUnitId) is only a suggestion; this call sets the match. The unit must be on the statement's property. Without leaseId the tenant's lease of the unit in force on the statement date (the reviewed statement_date field, else the date typed at upload) is used; with it, that lease must be the tenant's lease of the unit and in force on that date. Audited. Returns the statement.",
+        "operationId": "setStatementMatch",
+        "parameters": [
+          {
+            "name": "statementId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetStatementMatchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The statement is not under review",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The tenant, unit and lease do not belong together or to the statement's property, or no single lease was in force on the statement date (every reason listed)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Set the statement's tenant, unit and lease together",
+        "tags": [
+          "statements"
+        ]
+      }
+    },
+    "/api/v1/statements/verify": {
+      "post": {
+        "description": "Verifies each statement exactly as POST /statements/{statementId}/verify does, one after another: its own checks, its own audit entry, its own closed review event and its own monitoring job. A statement that cannot be verified (not under review, a field unresolved, the match missing, not in the company) is listed in notVerified with every reason and never undoes the others. Answers 200 with both lists whatever the mix.",
+        "operationId": "verifyStatements",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyStatementsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementsVerificationResultDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Verify several statements, each on its own",
+        "tags": [
+          "statements"
+        ]
+      }
+    },
+    "/api/v1/statements/{statementId}/verify": {
+      "post": {
+        "description": "Allowed once every extracted field is resolved (confirmed, corrected, or found without a flag) and the tenant, unit and lease are set (the lease in force on the reviewed statement date). Writes the reviewed number, date, period and figures onto the statement (balances are monitoring records, never transactions), records the verifier and time, closes the extraction review and the statement's review event, and queues arrears and lease (escalation) monitoring for the tenant at once. The only way figures reach a statement. Audited.",
+        "operationId": "verifyStatement",
+        "parameters": [
+          {
+            "name": "statementId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementVerificationResultDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The statement is not under review (uploaded, processing, verified, rejected or duplicate)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field is unresolved, the tenant, unit or lease is missing, or the lease was not in force (every reason listed)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Verify a statement: its reviewed values become its monitoring record",
+        "tags": [
+          "statements"
+        ]
+      }
+    },
+    "/api/v1/statements/{statementId}/reject": {
+      "post": {
+        "description": "The reason is kept with the statement (rejectionReason); the extraction is closed as rejected and the statement's review event resolved. A rejected statement never counts for monitoring. Audited. Returns the statement.",
+        "operationId": "rejectStatement",
+        "parameters": [
+          {
+            "name": "statementId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectStatementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The statement is not under review (uploaded, processing, verified, rejected or duplicate)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Reject a statement under review, with a reason",
+        "tags": [
+          "statements"
+        ]
+      }
+    },
+    "/api/v1/statements/{statementId}/mark-duplicate": {
+      "post": {
+        "description": "The other statement must be in the active company and not rejected or itself a duplicate. The extraction is closed as rejected and the statement's review event resolved; a duplicate never counts for monitoring. Audited. Returns the statement.",
+        "operationId": "markStatementDuplicate",
+        "parameters": [
+          {
+            "name": "statementId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkStatementDuplicateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The statement is not under review (uploaded, processing, verified, rejected or duplicate)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The other statement is this one, not in the company, rejected or a duplicate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Mark a statement under review as a duplicate of another statement",
         "tags": [
           "statements"
         ]
@@ -16379,6 +17318,178 @@
           "expiresInSeconds"
         ]
       },
+      "ArrearsBucketDto": {
+        "type": "object",
+        "properties": {
+          "bucket": {
+            "type": "string",
+            "description": "Ageing bucket: 'current', then one label per boundary in days ('30', '60', …); the last is open-ended ('120+')",
+            "example": "30"
+          },
+          "description": {
+            "type": "string",
+            "description": "The days the bucket covers, in words",
+            "example": "30–59 days"
+          },
+          "outstanding": {
+            "type": "number",
+            "description": "Rands (ZAR), 2 decimals; the outstanding balances aged into this bucket",
+            "minimum": 0
+          },
+          "tenantCount": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "bucket",
+          "description",
+          "outstanding",
+          "tenantCount"
+        ]
+      },
+      "StatementArrearsEntryDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitNumber": {
+            "type": "string"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "statementId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The tenant's latest verified statement, which the balance comes from"
+          },
+          "statementDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "outstanding": {
+            "type": "number",
+            "description": "Rands (ZAR), 2 decimals; the closing balance (or total due) of that statement, always above zero"
+          },
+          "ageDays": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Days from the statement date to asOf"
+          },
+          "bucket": {
+            "type": "string",
+            "description": "Ageing bucket: 'current', then one label per boundary in days ('30', '60', …); the last is open-ended ('120+')"
+          },
+          "underArrangement": {
+            "type": "boolean",
+            "description": "An active payment arrangement is in force for the tenant"
+          },
+          "remindersSuppressed": {
+            "type": "boolean",
+            "description": "That arrangement pauses the tenant's normal arrears reminders"
+          },
+          "verifiedByUserId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Who verified the statement"
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "tenantId",
+          "tenantName",
+          "propertyId",
+          "propertyName",
+          "statementId",
+          "statementDate",
+          "outstanding",
+          "ageDays",
+          "bucket",
+          "underArrangement",
+          "remindersSuppressed"
+        ]
+      },
+      "StatementArrearsSummaryDto": {
+        "type": "object",
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date",
+            "description": "The South African calendar day balances are aged to (today)"
+          },
+          "ageingBuckets": {
+            "description": "Bucket boundaries in days, from the company's arrears monitoring rule",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "totalOutstanding": {
+            "type": "number",
+            "description": "Rands (ZAR), 2 decimals; the sum of every tenant's outstanding balance",
+            "minimum": 0
+          },
+          "tenantsInArrears": {
+            "type": "number",
+            "minimum": 0
+          },
+          "tenantsUnderArrangement": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Tenants in arrears with an active payment arrangement"
+          },
+          "pendingReview": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Statements waiting for review (review_required); they are not counted above"
+          },
+          "buckets": {
+            "description": "Every bucket of the configuration, in ageing order",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArrearsBucketDto"
+            }
+          },
+          "entries": {
+            "description": "Tenants in arrears, largest balance first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatementArrearsEntryDto"
+            }
+          }
+        },
+        "required": [
+          "asOf",
+          "ageingBuckets",
+          "totalOutstanding",
+          "tenantsInArrears",
+          "tenantsUnderArrangement",
+          "pendingReview",
+          "buckets",
+          "entries"
+        ]
+      },
       "StatementSortField": {
         "type": "string",
         "enum": [
@@ -16508,7 +17619,7 @@
           "flagged"
         ]
       },
-      "StatementDto": {
+      "StatementListItemDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -16550,15 +17661,18 @@
           },
           "statementDate": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Absent until typed at upload or confirmed from the document; always present once verified"
           },
           "periodStart": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Present together with periodEnd; always present once verified"
           },
           "periodEnd": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Present together with periodStart; always present once verified"
           },
           "status": {
             "allOf": [
@@ -16632,6 +17746,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "rejectionReason": {
+            "type": "string",
+            "description": "Why a writer rejected the statement (rejected statements only)"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -16639,6 +17757,24 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "propertyName": {
+            "type": "string",
+            "example": "Acacia Park Shopping Centre"
+          },
+          "tenantName": {
+            "type": "string",
+            "description": "The tenant's trading name; absent until matched",
+            "example": "Umoya Coffee"
+          },
+          "unitNumber": {
+            "type": "string",
+            "description": "Absent until matched",
+            "example": "ACP-001"
+          },
+          "readyToVerify": {
+            "type": "boolean",
+            "description": "True when the statement is under review with nothing unresolved: every extracted field confirmed, corrected or found without a flag, and the tenant, unit and lease set. Only these can be verified together (POST /statements/verify)."
           }
         },
         "required": [
@@ -16647,15 +17783,14 @@
           "propertyId",
           "file",
           "sourceSystem",
-          "statementDate",
-          "periodStart",
-          "periodEnd",
           "status",
           "uploadedByUserId",
           "uploadedAt",
           "lineItems",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          "propertyName",
+          "readyToVerify"
         ]
       },
       "StatementPage": {
@@ -16664,7 +17799,7 @@
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/StatementDto"
+              "$ref": "#/components/schemas/StatementListItemDto"
             }
           },
           "total": {
@@ -16800,16 +17935,18 @@
           },
           "statementDate": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Optional: read from the document. When given, a document date that differs is flagged for review"
           },
           "periodStart": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Optional, with periodEnd: read from the document. A document period that differs is flagged"
           },
           "periodEnd": {
             "type": "string",
             "format": "date",
-            "description": "On or after periodStart"
+            "description": "Optional, with periodStart; on or after periodStart"
           },
           "tenantId": {
             "type": "string",
@@ -16825,11 +17962,13 @@
           },
           "statementNumber": {
             "type": "string",
-            "maxLength": 100
+            "maxLength": 100,
+            "description": "Optional: read from the document. A document number that differs is flagged"
           },
           "uploadBatchId": {
             "type": "string",
-            "maxLength": 100
+            "maxLength": 100,
+            "description": "Groups the statements uploaded together; listStatements filters on it (uploadBatchId) to follow the batch"
           }
         },
         "required": [
@@ -16839,10 +17978,161 @@
           "mimeType",
           "sizeBytes",
           "sha256",
+          "sourceSystem"
+        ]
+      },
+      "StatementDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "file": {
+            "$ref": "#/components/schemas/StoredFileDto"
+          },
+          "sourceSystem": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StatementSource"
+              }
+            ]
+          },
+          "statementNumber": {
+            "type": "string"
+          },
+          "statementDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Absent until typed at upload or confirmed from the document; always present once verified"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date",
+            "description": "Present together with periodEnd; always present once verified"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date",
+            "description": "Present together with periodStart; always present once verified"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StatementStatus"
+              }
+            ]
+          },
+          "uploadBatchId": {
+            "type": "string"
+          },
+          "uploadedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "extractionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "openingBalance": {
+            "type": "number",
+            "description": "Rands (ZAR), 2 decimals. Present only once verified."
+          },
+          "rentalCharged": {
+            "type": "number",
+            "description": "Rands (ZAR), 2 decimals. Present only once verified."
+          },
+          "additionalCharges": {
+            "type": "number",
+            "description": "Rands (ZAR), 2 decimals. Present only once verified."
+          },
+          "paymentsReceived": {
+            "type": "number",
+            "description": "Rands (ZAR), 2 decimals. Present only once verified."
+          },
+          "closingBalance": {
+            "type": "number",
+            "description": "Rands (ZAR), 2 decimals; outstanding balance owed by the tenant. Present only once verified."
+          },
+          "totalDue": {
+            "type": "number",
+            "description": "Rands (ZAR), 2 decimals. Present only once verified."
+          },
+          "lineItems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatementLineItemDto"
+            }
+          },
+          "verifiedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deliveredCommunicationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "processingError": {
+            "type": "string",
+            "description": "Why automatic processing could not complete; the statement needs manual review"
+          },
+          "duplicateOfStatementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rejectionReason": {
+            "type": "string",
+            "description": "Why a writer rejected the statement (rejected statements only)"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "propertyId",
+          "file",
           "sourceSystem",
-          "statementDate",
-          "periodStart",
-          "periodEnd"
+          "status",
+          "uploadedByUserId",
+          "uploadedAt",
+          "lineItems",
+          "createdAt",
+          "updatedAt"
         ]
       },
       "DuplicateReason": {
@@ -16972,15 +18262,27 @@
         "enum": [
           "tenant_name",
           "unit_number",
+          "statement_number",
           "statement_date",
           "period_start",
           "period_end",
+          "opening_balance",
           "rental_charged",
           "additional_charges",
           "payments_received",
           "outstanding_balance",
           "total_due"
         ]
+      },
+      "FieldResolution": {
+        "type": "string",
+        "enum": [
+          "corrected",
+          "confirmed",
+          "accepted",
+          "unresolved"
+        ],
+        "description": "corrected or confirmed by a reviewer; accepted when found without a flag; unresolved while flagged or missing and not yet confirmed or corrected"
       },
       "ExtractedFieldDto": {
         "type": "object",
@@ -17031,6 +18333,27 @@
           "correctedByUserId": {
             "type": "string",
             "format": "uuid"
+          },
+          "correctedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "confirmedByUserId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Who confirmed the extracted value as correct"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolution": {
+            "description": "corrected or confirmed by a reviewer; accepted when found without a flag; unresolved while flagged or missing and not yet confirmed or corrected",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldResolution"
+              }
+            ]
           }
         },
         "required": [
@@ -17038,7 +18361,8 @@
           "rawText",
           "value",
           "confidence",
-          "flagged"
+          "flagged",
+          "resolution"
         ]
       },
       "ExtractionStatus": {
@@ -17064,6 +18388,7 @@
           "conflicting_values",
           "unparsed_row",
           "hint_mismatch",
+          "typed_value_mismatch",
           "unsupported_layout",
           "scanned_without_ocr",
           "ocr_used"
@@ -17256,6 +18581,210 @@
           "status",
           "jobId",
           "outcome"
+        ]
+      },
+      "StatementDownloadUrlDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Short-lived signed link to the original statement file"
+          },
+          "expiresInSeconds": {
+            "type": "number",
+            "example": 300
+          }
+        },
+        "required": [
+          "url",
+          "expiresInSeconds"
+        ]
+      },
+      "CorrectExtractedFieldDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "description": "Text for tenant_name, unit_number and statement_number; YYYY-MM-DD for dates; rands (ZAR, at most 2 decimals) for amounts",
+            "example": 37800
+          }
+        },
+        "required": [
+          "value"
+        ]
+      },
+      "SetStatementMatchDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unit of the statement's property"
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The tenant's lease of the unit; omit to use the lease in force on the statement date"
+          }
+        },
+        "required": [
+          "tenantId",
+          "unitId"
+        ]
+      },
+      "VerifyStatementsDto": {
+        "type": "object",
+        "properties": {
+          "statementIds": {
+            "minItems": 1,
+            "maxItems": 100,
+            "uniqueItems": true,
+            "description": "The statements to verify, each once; each is verified on its own in this order",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "statementIds"
+        ]
+      },
+      "StatementVerifiedInBatchDto": {
+        "type": "object",
+        "properties": {
+          "statementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string",
+            "example": "MSQ-Shop12-2026-10.pdf"
+          },
+          "statementNumber": {
+            "type": "string",
+            "example": "ST-1042"
+          },
+          "monitoringQueued": {
+            "type": "boolean",
+            "description": "Whether monitoring for the statement's tenant was queued to run now (false: the daily run includes it)"
+          }
+        },
+        "required": [
+          "statementId",
+          "monitoringQueued"
+        ]
+      },
+      "StatementNotVerifiedDto": {
+        "type": "object",
+        "properties": {
+          "statementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string",
+            "description": "Absent when the statement is not in the active company",
+            "example": "MSQ-Shop12-2026-10.pdf"
+          },
+          "statementNumber": {
+            "type": "string",
+            "example": "ST-1042"
+          },
+          "reasons": {
+            "description": "Every reason the statement was not verified, as verifying it alone would answer",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "statementId",
+          "reasons"
+        ]
+      },
+      "StatementsVerificationResultDto": {
+        "type": "object",
+        "properties": {
+          "verified": {
+            "description": "The statements verified, in the order given",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatementVerifiedInBatchDto"
+            }
+          },
+          "notVerified": {
+            "description": "The statements not verified, each with every reason, in the order given",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatementNotVerifiedDto"
+            }
+          }
+        },
+        "required": [
+          "verified",
+          "notVerified"
+        ]
+      },
+      "StatementVerificationResultDto": {
+        "type": "object",
+        "properties": {
+          "statement": {
+            "description": "The verified statement with its figures and verifier",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StatementDto"
+              }
+            ]
+          },
+          "monitoringQueued": {
+            "type": "boolean",
+            "description": "Whether arrears and lease monitoring for the statement's tenant was queued to run now. False when the queue was down: the statement is verified either way and the daily monitoring run includes it."
+          }
+        },
+        "required": [
+          "statement",
+          "monitoringQueued"
+        ]
+      },
+      "RejectStatementDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "Why the statement is rejected (kept with the statement)"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "MarkStatementDuplicateDto": {
+        "type": "object",
+        "properties": {
+          "duplicateOfStatementId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The statement on record that this one duplicates (not rejected or itself a duplicate)"
+          }
+        },
+        "required": [
+          "duplicateOfStatementId"
         ]
       },
       "MonitoringEventSortField": {

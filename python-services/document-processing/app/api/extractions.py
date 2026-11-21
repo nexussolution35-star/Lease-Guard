@@ -82,7 +82,9 @@ async def create_extraction(
     if not looks_like_pdf(data) or (content_type and content_type not in _PDF_CONTENT_TYPES):
         raise ApiError(415, "unsupported_media_type", "Only PDF statements are accepted.")
 
-    hints = Hints(tuple(expected_tenant_names or ()), tuple(expected_unit_numbers or ()))
+    hints = Hints(
+        tuple(expected_tenant_names or ()), tuple(expected_unit_numbers or ()), source_system
+    )
     started = time.perf_counter()
     try:
         result = await run_in_threadpool(

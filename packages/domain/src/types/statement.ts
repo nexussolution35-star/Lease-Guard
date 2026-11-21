@@ -47,9 +47,11 @@ export interface StatementLineItem {
 export const EXTRACTION_FIELD_NAMES = [
   'tenant_name',
   'unit_number',
+  'statement_number',
   'statement_date',
   'period_start',
   'period_end',
+  'opening_balance',
   'rental_charged',
   'additional_charges',
   'payments_received',
@@ -57,6 +59,16 @@ export const EXTRACTION_FIELD_NAMES = [
   'total_due',
 ] as const
 export type ExtractionFieldName = (typeof EXTRACTION_FIELD_NAMES)[number]
+
+/**
+ * Where a reviewer stands with one extracted field:
+ * - `corrected`: the reviewer entered the value (`correctedValue`);
+ * - `confirmed`: the reviewer confirmed the extracted value is right;
+ * - `accepted`: the extractor found the value and did not flag it (nothing for the reviewer to do);
+ * - `unresolved`: flagged or missing, and neither confirmed nor corrected. A missing value can only be entered.
+ */
+export const FIELD_RESOLUTIONS = ['corrected', 'confirmed', 'accepted', 'unresolved'] as const
+export type FieldResolution = (typeof FIELD_RESOLUTIONS)[number]
 
 export interface ExtractedField {
   name: ExtractionFieldName
@@ -67,6 +79,12 @@ export interface ExtractedField {
   flagged: boolean
   correctedValue?: string | number
   correctedByUserId?: EntityId
+  correctedAt?: ISODateTime
+  /** Set when a reviewer confirmed the extracted value as correct (never together with a correction). */
+  confirmedByUserId?: EntityId
+  confirmedAt?: ISODateTime
+  /** Derived with `fieldResolution` (rules/statementReview.ts). */
+  resolution: FieldResolution
 }
 
 export const EXTRACTION_STATUSES = ['pending_review', 'confirmed', 'corrected', 'rejected'] as const
@@ -102,9 +120,13 @@ export interface Statement extends CompanyScoped {
   sourceSystem: StatementSource
   /** Accounting-system statement number, if printed on the document. */
   statementNumber?: string
-  statementDate: ISODate
-  periodStart: ISODate
-  periodEnd: ISODate
+  /**
+   * Statement date and period. They come from the document: the uploader may type them, but need not.
+   * Absent until known; a verified statement always carries all three.
+   */
+  statementDate?: ISODate
+  periodStart?: ISODate
+  periodEnd?: ISODate
   status: StatementStatus
   uploadBatchId?: string
   uploadedByUserId: EntityId
@@ -127,4 +149,24 @@ export interface Statement extends CompanyScoped {
   processingError?: string
   /** If marked duplicate, the statement it duplicates. */
   duplicateOfStatementId?: EntityId
+  /** If rejected, why (given by the writer who rejected it). */
+  rejectionReason?: string
+}
+
+/**
+ * A statement as the statement list shows it: the statement plus the names of its property and, once
+ * matched, its tenant and unit, so a row reads without a lookup per record.
+ */
+export interface StatementListItem extends Statement {
+  propertyName: string
+  /** The tenant's trading name; absent until the statement is matched to a tenant. */
+  tenantName?: string
+  /** Absent until the statement is matched to a unit. */
+  unitNumber?: string
+  /**
+   * True when the statement is under review with nothing unresolved: every extracted field confirmed, corrected or
+   * found without a flag, and its tenant, unit and lease set (`statementVerificationProblems` finds nothing). Only such
+   * statements may be verified together from the list.
+   */
+  readyToVerify: boolean
 }
