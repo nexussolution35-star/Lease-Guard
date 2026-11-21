@@ -267,7 +267,18 @@ export class StatementProcessingProcessor implements OnModuleInit {
           .order('id')
           .range(from, to),
       )
-      tenantIds = [...new Set(leases.map((lease) => lease.tenant_id))].slice(0, MAX_HINTS)
+      // Tenants assigned to the property's units without a lease are hints too (ticket M4-04).
+      const assignments = await fetchAll('Load property unit assignments', (from, to) =>
+        db
+          .from('unit_tenant_assignments')
+          .select('tenant_id')
+          .eq('company_id', companyId)
+          .eq('property_id', statement.property_id)
+          .is('ended_at', null)
+          .order('id')
+          .range(from, to),
+      )
+      tenantIds = [...new Set([...leases, ...assignments].map((row) => row.tenant_id))].slice(0, MAX_HINTS)
     }
     const tenantsResult =
       tenantIds.length === 0

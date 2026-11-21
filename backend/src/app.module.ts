@@ -24,6 +24,7 @@ import { PortfolioImportsModule } from './modules/portfolio-imports/portfolio-im
 import { PropertiesModule } from './modules/properties/properties.module'
 import { StatementsModule } from './modules/statements/statements.module'
 import { TenantsModule } from './modules/tenants/tenants.module'
+import { UnitAssignmentsModule } from './modules/unit-assignments/unit-assignments.module'
 import { UnitsModule } from './modules/units/units.module'
 import { UsersModule } from './modules/users/users.module'
 import { WhatsAppAgentModule } from './modules/whatsapp-agent/whatsapp-agent.module'
@@ -52,6 +53,7 @@ export class AppModule {
         PropertiesModule,
         PortfolioImportsModule,
         UnitsModule,
+        UnitAssignmentsModule,
         TenantsModule,
         LeasesModule,
         StatementsModule,

@@ -104,6 +104,29 @@ describe('arrearsFindings', () => {
     expect(notSuppressing.drafts).toHaveLength(1)
   })
 
+  it('raises the latest verified statement of every lease of a tenant, and suppresses all of them under an arrangement', () => {
+    const twoLeases = [
+      statement({ id: 'lease-a-sep', statementDate: '2026-09-01', closingBalance: 30000 }),
+      statement({ id: 'lease-a-oct', statementDate: '2026-10-01', closingBalance: 19036.48 }),
+      statement({ id: 'lease-b-oct', unitId: 'unit-2', leaseId: 'lease-2', statementDate: '2026-10-01', closingBalance: 5000 }),
+    ]
+    const { drafts } = arrearsFindings({ statements: twoLeases, arrangements: [], settings: settings(), names, asOf: AS_OF })
+    expect(drafts.map((draft) => [draft.statementId, draft.leaseId, draft.unitId, draft.calculation?.actualAmount])).toEqual([
+      ['lease-a-oct', LEASE, UNIT, 19036.48],
+      ['lease-b-oct', 'lease-2', 'unit-2', 5000],
+    ])
+    expect(drafts[0]?.calculation?.steps).toContain('Total across 2 leases of Test Trading: R 24 036,48')
+
+    const suppressed = arrearsFindings({ statements: twoLeases, arrangements: [activeArrangement], settings: settings(), names, asOf: AS_OF })
+    expect(suppressed).toEqual({ drafts: [], suppressedTenantIds: [TENANT] })
+  })
+
+  it('applies the minimum balance to what the tenant owes across its leases', () => {
+    const threshold = settings([rule({ event_type: 'arrears', config: { kind: 'arrears', minimumBalanceRands: 20000, ageingBucketsDays: [30, 60, 90] } })])
+    const twoLeases = [statement(), statement({ id: 'lease-b', unitId: 'unit-2', leaseId: 'lease-2', closingBalance: 1000 })]
+    expect(arrearsFindings({ statements: twoLeases, arrangements: [], settings: threshold, names, asOf: AS_OF }).drafts).toHaveLength(2)
+  })
+
   it('applies the company rule threshold and can be disabled', () => {
     const threshold = settings([rule({ event_type: 'arrears', config: { kind: 'arrears', minimumBalanceRands: 20000, ageingBucketsDays: [30, 60, 90] } })])
     expect(arrearsFindings({ statements: [statement()], arrangements: [], settings: threshold, names, asOf: AS_OF }).drafts).toEqual([])

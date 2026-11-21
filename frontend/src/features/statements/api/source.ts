@@ -93,6 +93,11 @@ export interface StatementSource {
   correctField(companyId: EntityId, id: EntityId, field: ExtractionFieldName, value: string | number): Promise<StatementExtraction>
   /** Confirms an extracted value as correct (writers only); resolves to the updated extraction. */
   confirmField(companyId: EntityId, id: EntityId, field: ExtractionFieldName): Promise<StatementExtraction>
+  /**
+   * Confirms that an optional field the extractor did not find (the statement number) is not on the statement
+   * (writers only); nothing is filled in. Resolves to the updated extraction.
+   */
+  confirmNotOnStatement(companyId: EntityId, id: EntityId, field: ExtractionFieldName): Promise<StatementExtraction>
   /** Sets the statement's tenant, unit and lease together (writers only); resolves to the updated statement. */
   setMatch(companyId: EntityId, id: EntityId, match: StatementMatch): Promise<Statement>
   /** Verifies a fully reviewed, matched statement (writers); refused with every reason while anything is unresolved. */

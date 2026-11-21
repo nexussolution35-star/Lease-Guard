@@ -12,7 +12,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard'
 import { fakeClients, httpContext } from '../../common/guards/guards.test-helpers'
 import type { LeaseGuardRequest } from '../../common/request-context'
-import { callsTo, fakeDb, type FakeResult, type RecordedQuery } from '../../common/testing/fake-db.test-helpers'
+import { callsTo, fakeDb, rpcArgs, type FakeResult, type RecordedQuery } from '../../common/testing/fake-db.test-helpers'
 import type { DbClient } from '../../infrastructure/database/rls-client.factory'
 import type { EnqueueOutcome, EnqueueResult, QueueProducer } from '../../infrastructure/queues/queue-producer'
 import { jobIdFor, type JobPayloads } from '../../infrastructure/queues/queue-registry'
@@ -435,6 +435,22 @@ describe('StatementUploadsService.register links', () => {
     expect(result.duplicate).toMatchObject({ existingStatementId: EXISTING, confidence: 'likely' })
   })
 
+  it("does not report the tenant's statement for another lease and unit as a likely duplicate", async () => {
+    const OTHER_LEASE = '6f1d2c1e-0000-4000-8000-00000000aaaa'
+    const OTHER_UNIT = '6f1d2c1e-0000-4000-8000-00000000bbbb'
+    const { service, db } = harness((query) => {
+      if (query.table === 'leases') return { data: matchingLease, error: null }
+      return callsTo(query, 'insert').length
+        ? { data: statementRow({ unit_id: UNIT, lease_id: LEASE }), error: null }
+        : {
+            data: [statementRow({ id: EXISTING, tenant_id: TENANT, unit_id: OTHER_UNIT, lease_id: OTHER_LEASE, statement_number: null, file_sha256: 'b'.repeat(64) })],
+            error: null,
+          }
+    })
+    const result = await service.register(db, COMPANY, USER, body({ leaseId: LEASE, tenantId: undefined, statementNumber: undefined }))
+    expect(result.duplicate).toBeNull()
+  })
+
   it('keeps the tenant and unit given in the body', async () => {
     const { service, db, queries } = linked({ lease: matchingLease, unit: { property_id: PROPERTY } })
     await service.register(db, COMPANY, USER, body({ leaseId: LEASE, unitId: UNIT }))
@@ -492,12 +508,12 @@ describe('StatementUploadsService.process', () => {
     await expect(service.process(db, COMPANY, STATEMENT)).resolves.toMatchObject({ status: 'uploaded', outcome: 'retried' })
   })
 
-  it('puts a statement whose processing failed back to uploaded, clearing the error, and queues it again', async () => {
+  it('puts a statement whose processing failed back to uploaded through the database function, and queues it again', async () => {
     const { service, db, queries, enqueueOrRetry } = harness(
       (_query, index) =>
         index === 0
           ? { data: { id: STATEMENT, status: 'review_required', processing_error: 'The PDF could not be read' }, error: null }
-          : { data: { id: STATEMENT }, error: null },
+          : { data: STATEMENT, error: null },
       { retryOutcome: 'retried' },
     )
     await expect(service.process(db, COMPANY, STATEMENT)).resolves.toEqual({
@@ -507,34 +523,31 @@ describe('StatementUploadsService.process', () => {
       outcome: 'retried',
     })
     const reset = queries[1]!
-    expect(callsTo(reset, 'update')).toEqual([[{ status: 'uploaded', processing_error: null }]])
-    expect(callsTo(reset, 'eq')).toEqual([
-      ['company_id', COMPANY],
-      ['id', STATEMENT],
-      ['status', 'review_required'],
-    ])
-    expect(callsTo(reset, 'not')).toEqual([['processing_error', 'is', null]])
+    // Never a direct status write: a signed-in caller has no UPDATE on statements.status or processing_error.
+    expect(reset.table).toBe('rpc:retry_statement_processing')
+    expect(rpcArgs(reset)).toEqual({ p_company_id: COMPANY, p_statement_id: STATEMENT })
+    expect(queries.flatMap((query) => callsTo(query, 'update'))).toEqual([])
     expect(enqueueOrRetry).toHaveBeenCalledWith('statement-processing', { companyId: COMPANY, statementId: STATEMENT })
   })
 
-  it('puts a failed statement back as it was when the queue is down', async () => {
+  it('leaves a reset statement uploaded when the queue is down, so processing it again queues it', async () => {
     const { service, db, queries } = harness(
       (_query, index) =>
         index === 0
           ? { data: { id: STATEMENT, status: 'review_required', processing_error: 'The PDF could not be read' }, error: null }
-          : { data: { id: STATEMENT }, error: null },
+          : { data: STATEMENT, error: null },
       { enqueueFails: true },
     )
     await expect(service.process(db, COMPANY, STATEMENT)).rejects.toBeInstanceOf(ServiceUnavailableException)
-    expect(callsTo(queries[2]!, 'update')).toEqual([[{ status: 'review_required', processing_error: 'The PDF could not be read' }]])
-    expect(callsTo(queries[2]!, 'eq')).toContainEqual(['status', 'uploaded'])
+    expect(queries.map((query) => query.table)).toEqual(['statements', 'rpc:retry_statement_processing'])
+    expect(queries.flatMap((query) => callsTo(query, 'update'))).toEqual([])
   })
 
   it('refuses a retry when the failed statement changed in the meantime', async () => {
     const { service, db, enqueueOrRetry } = harness((_query, index) =>
       index === 0
         ? { data: { id: STATEMENT, status: 'review_required', processing_error: 'The PDF could not be read' }, error: null }
-        : { data: null, error: null },
+        : { data: null, error: { code: 'P0001', message: "This statement's processing has not failed, so it is not processed again from the start." } },
     )
     await expect(service.process(db, COMPANY, STATEMENT)).rejects.toBeInstanceOf(ConflictException)
     expect(enqueueOrRetry).not.toHaveBeenCalled()

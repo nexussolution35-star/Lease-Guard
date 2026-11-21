@@ -24,6 +24,20 @@ describe('findDuplicateStatement', () => {
     expect(findDuplicateStatement({ ...base, tenantId: undefined }, existing)).toBeNull()
     expect(isDuplicate({ ...base, statementNumber: 'ST-999' }, existing)).toBe(false)
   })
+  it('matches statements without a number for the same tenant, lease and period, but not for another lease or unit', () => {
+    const file = makeStatement().file
+    const onRecord = [makeStatement({ id: 'n1', file: { ...file, sha256: 'E'.repeat(64) }, statementNumber: undefined, unitId: 'unit_a', leaseId: 'lease_a' })]
+    const same = makeStatement({ id: 'new', file: { ...file, sha256: 'F'.repeat(64) }, statementNumber: undefined, unitId: 'unit_a', leaseId: 'lease_a' })
+    expect(findDuplicateStatement(same, onRecord)).toMatchObject({ existingStatementId: 'n1', confidence: 'likely' })
+    expect(findDuplicateStatement(same, onRecord)?.description).not.toContain('number')
+    expect(findDuplicateStatement({ ...same, leaseId: 'lease_b', unitId: 'unit_b' }, onRecord)).toBeNull()
+    expect(findDuplicateStatement({ ...same, unitId: 'unit_b', leaseId: undefined }, onRecord)).toBeNull()
+    expect(findDuplicateStatement({ ...same, leaseId: 'lease_b', unitId: undefined }, onRecord)).toBeNull()
+    // Not yet matched to a unit or lease: the tenant and period alone still warn (a person decides).
+    expect(findDuplicateStatement({ ...same, unitId: undefined, leaseId: undefined }, onRecord)?.existingStatementId).toBe('n1')
+    // A number on one only: different documents.
+    expect(findDuplicateStatement({ ...same, statementNumber: 'ST-9' }, onRecord)).toBeNull()
+  })
   it('no likely match while the period is not yet known', () => {
     const base = { ...makeStatement(), file: { ...makeStatement().file, sha256: 'C'.repeat(64) }, statementNumber: 'ST-001' }
     expect(findDuplicateStatement({ ...base, periodStart: undefined, periodEnd: undefined }, existing)).toBeNull()

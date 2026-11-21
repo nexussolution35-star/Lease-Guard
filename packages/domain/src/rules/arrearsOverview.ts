@@ -6,6 +6,7 @@ import {
   ageingSummary,
   DEFAULT_AGEING_BUCKETS,
   describeAgeingBucket,
+  tenantCount,
   totalOutstanding,
   type AgeingBucketLabel,
   type TenantArrears,
@@ -15,12 +16,16 @@ import {
 export type ArrearsOverviewStatement = Pick<
   Statement,
   'id' | 'tenantId' | 'propertyId' | 'leaseId' | 'status' | 'statementDate' | 'closingBalance' | 'totalDue'
->
+> &
+  Partial<Pick<Statement, 'unitId'>>
 
 /** What the overview reads from a payment arrangement. */
 export type ArrearsOverviewArrangement = Pick<PaymentArrangement, 'tenantId' | 'status' | 'agreedOn' | 'closedOn' | 'suppressArrearsReminders'>
 
-/** One tenant in arrears: their latest verified statement's balance, aged, and whether an arrangement is in force. */
+/**
+ * One account in arrears: a tenant's latest verified statement for one lease, its balance aged, and whether an
+ * arrangement is in force for the tenant. A tenant with several leases has an entry per lease.
+ */
 export interface ArrearsOverviewEntry extends TenantArrears {
   /** An active payment arrangement is in force for the tenant on `asOf`. */
   underArrangement: boolean
@@ -34,6 +39,7 @@ export interface ArrearsOverviewBucket {
   /** The days the bucket covers, in words ("30–59 days"). */
   description: string
   outstanding: ZAR
+  /** Distinct tenants with a balance in the bucket. */
   tenantCount: number
 }
 
@@ -41,8 +47,11 @@ export interface ArrearsOverview {
   asOf: ISODate
   /** The ageing bucket boundaries in days (the company's arrears monitoring configuration). */
   ageingBuckets: number[]
+  /** Across every tenant and lease. */
   totalOutstanding: ZAR
+  /** Distinct tenants in arrears (on one lease or more). */
   tenantsInArrears: number
+  /** Distinct tenants in arrears under an active payment arrangement. */
   tenantsUnderArrangement: number
   buckets: ArrearsOverviewBucket[]
   /** Largest balance first. */
@@ -50,10 +59,11 @@ export interface ArrearsOverview {
 }
 
 /**
- * What a company's verified statements say it is owed on `asOf`. Only each tenant's LATEST verified statement counts
- * (domain `ageArrears`): unverified, rejected and duplicate statements never do, and a tenant whose latest balance is
- * zero or in credit is not in arrears. Balances are aged from the statement date into the configured buckets. A tenant
- * under an active payment arrangement is still in arrears (the balance is owed) and is marked as such.
+ * What a company's verified statements say it is owed on `asOf`. Only the LATEST verified statement of each tenant's
+ * lease counts (domain `ageArrears`), and the totals add up every lease: unverified, rejected and duplicate statements
+ * never count, and a lease whose latest balance is zero or in credit is not in arrears. Balances are aged from the
+ * statement date into the configured buckets. A tenant under an active payment arrangement is still in arrears (the
+ * balance is owed) and is marked as such on each of its entries; arrangements are per tenant.
  */
 export function arrearsOverview(input: {
   statements: readonly ArrearsOverviewStatement[]
@@ -71,19 +81,17 @@ export function arrearsOverview(input: {
     }),
   )
   const amounts = ageingSummary(entries, buckets)
-  const counts = new Map<AgeingBucketLabel, number>()
-  for (const entry of entries) counts.set(entry.bucket, (counts.get(entry.bucket) ?? 0) + 1)
   return {
     asOf,
     ageingBuckets: buckets,
     totalOutstanding: totalOutstanding(entries),
-    tenantsInArrears: entries.length,
-    tenantsUnderArrangement: entries.filter((entry) => entry.underArrangement).length,
+    tenantsInArrears: tenantCount(entries),
+    tenantsUnderArrangement: tenantCount(entries.filter((entry) => entry.underArrangement)),
     buckets: ageingBucketLabels(buckets).map((bucket) => ({
       bucket,
       description: describeAgeingBucket(bucket, buckets),
       outstanding: amounts[bucket] ?? 0,
-      tenantCount: counts.get(bucket) ?? 0,
+      tenantCount: tenantCount(entries.filter((entry) => entry.bucket === bucket)),
     })),
     entries,
   }

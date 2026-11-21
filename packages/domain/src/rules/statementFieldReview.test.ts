@@ -51,6 +51,12 @@ describe('fieldReviewReasons', () => {
     expect(reasons.map((reason) => reason.kind)).toEqual(['differs_from_typed'])
   })
 
+  it('offers a missing statement number to be confirmed as not on the statement', () => {
+    expect(fieldReviewReasons(field({ name: 'statement_number', value: null, rawText: '', flagged: true }))).toEqual([
+      { kind: 'missing', message: 'The statement number was not found on the statement: enter it, or confirm it is not on the statement.' },
+    ])
+  })
+
   it('says a missing value was not found, once', () => {
     expect(fieldReviewReasons(field({ value: null, rawText: '', flagged: true }))).toEqual([
       { kind: 'missing', message: 'The rental charged was not found on the statement: enter it.' },
@@ -76,13 +82,14 @@ describe('fieldReviewReasons', () => {
 
 describe('fieldReviewAction', () => {
   it('asks to enter a missing value and to confirm or correct a flagged one', () => {
-    expect(fieldReviewAction({ value: null, flagged: true })).toBe('enter')
-    expect(fieldReviewAction({ value: 37_800, flagged: true })).toBe('confirm_or_correct')
+    expect(fieldReviewAction({ name: 'rental_charged', value: null, flagged: true })).toBe('enter')
+    expect(fieldReviewAction({ name: 'rental_charged', value: 37_800, flagged: true })).toBe('confirm_or_correct')
   })
 
   it('has nothing left once accepted, confirmed or corrected', () => {
-    expect(fieldReviewAction({ value: 37_800, flagged: false })).toBe('none')
-    expect(fieldReviewAction({ value: 37_800, flagged: true, confirmedAt: '2026-11-21T08:00:00Z' })).toBe('none')
-    expect(fieldReviewAction({ value: null, flagged: true, correctedValue: 38_000 })).toBe('none')
+    expect(fieldReviewAction({ name: 'rental_charged', value: 37_800, flagged: false })).toBe('none')
+    expect(fieldReviewAction({ name: 'rental_charged', value: 37_800, flagged: true, confirmedAt: '2026-11-21T08:00:00Z' })).toBe('none')
+    expect(fieldReviewAction({ name: 'rental_charged', value: null, flagged: true, correctedValue: 38_000 })).toBe('none')
+    expect(fieldReviewAction({ name: 'statement_number', value: null, flagged: true, confirmedAt: '2026-11-21T08:00:00Z' })).toBe('none')
   })
 })

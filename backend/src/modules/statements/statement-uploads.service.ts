@@ -6,6 +6,7 @@ import {
   type HttpException,
   Injectable,
   Logger,
+  NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common'
 import {
@@ -93,7 +94,7 @@ export class StatementUploadsService {
    *
    * Duplicates are checked with the domain rule `findDuplicateStatement` against the company's live
    * statements before inserting: an identical file (SHA-256) is refused with 409 naming the statement
-   * on record, and the copy just uploaded is removed so it is never processed; a likely match (same tenant, period and number) is registered and returned as a warning
+   * on record, and the copy just uploaded is removed so it is never processed; a likely match (same tenant, period and number, not known to be for another unit or lease) is registered and returned as a warning
    * for the reviewer, because the period may be wrong. A concurrent registration of the same file loses
    * on the live unique index and is reported the same way.
    */
@@ -129,6 +130,8 @@ export class StatementUploadsService {
         sha256,
       },
       ...(tenantId ? { tenantId } : {}),
+      ...(unitId ? { unitId } : {}),
+      ...(body.leaseId ? { leaseId: body.leaseId } : {}),
       ...(body.periodStart ? { periodStart: body.periodStart } : {}),
       ...(body.periodEnd ? { periodEnd: body.periodEnd } : {}),
       ...(body.statementNumber ? { statementNumber: body.statementNumber } : {}),
@@ -175,8 +178,10 @@ export class StatementUploadsService {
   /**
    * Queues processing again for a statement that has not reached review, or whose automatic extraction
    * failed (`processingFailed`: left `review_required` with `processing_error`). A failed statement goes
-   * back to `uploaded` with the error cleared (the audit trigger records the status change) before it is
-   * queued; if it cannot be queued it is put back as it was. Idempotent per statement: a job still waiting
+   * back to `uploaded` with the error cleared through public.retry_statement_processing (the database checks
+   * the caller is a writer; a signed-in caller cannot write a statement's status or processing error directly,
+   * 20261121194500_statement_review_integrity.sql) before it is queued. If it cannot be queued it stays
+   * `uploaded`, like a registration the queue missed, and processing it again queues it. Idempotent per statement: a job still waiting
    * or running is left alone, and a job that failed or completed without moving the statement on is run
    * again (`QueueProducer.enqueueOrRetry`); `outcome` says which.
    */
@@ -186,7 +191,7 @@ export class StatementUploadsService {
       'Get statement',
     )
     if (processingFailed({ status: row.status, ...(row.processing_error !== null ? { processingError: row.processing_error } : {}) })) {
-      return this.retryFailed(db, companyId, row.id, row.processing_error ?? '')
+      return this.retryFailed(db, companyId, row.id)
     }
     if (!isProcessable(row.status)) {
       throw new ConflictException(
@@ -197,33 +202,17 @@ export class StatementUploadsService {
     return { statementId: row.id, status: row.status, jobId, outcome }
   }
 
-  private async retryFailed(db: DbClient, companyId: EntityId, statementId: EntityId, processingError: string): Promise<ProcessStatementResult> {
-    const { data, error } = await db
-      .from('statements')
-      .update({ status: 'uploaded', processing_error: null })
-      .eq('company_id', companyId)
-      .eq('id', statementId)
-      .eq('status', 'review_required')
-      .not('processing_error', 'is', null)
-      .select('id')
-      .maybeSingle()
-    if (error) throw httpErrorFromDatabase(error, 'Reset failed statement')
-    if (!data) throw new ConflictException('The statement changed while it was being queued again; reload it and try again')
-    try {
-      const { jobId, outcome } = await this.queue.enqueueOrRetry('statement-processing', { companyId, statementId })
-      return { statementId, status: 'uploaded', jobId, outcome }
-    } catch (queueError) {
-      const restored = await db
-        .from('statements')
-        .update({ status: 'review_required', processing_error: processingError })
-        .eq('company_id', companyId)
-        .eq('id', statementId)
-        .eq('status', 'uploaded')
-      if (restored.error) {
-        this.logger.error(`Statement ${statementId} could not be restored after the queue refused it: ${restored.error.message}`)
-      }
-      throw queueError
+  private async retryFailed(db: DbClient, companyId: EntityId, statementId: EntityId): Promise<ProcessStatementResult> {
+    const { data, error } = await db.rpc('retry_statement_processing', { p_company_id: companyId, p_statement_id: statementId })
+    if (error) {
+      throw httpErrorFromDatabase(error, 'Reset failed statement', {
+        // The statement is no longer a failed one (another request reset it, or it moved on).
+        P0001: () => new ConflictException('The statement changed while it was being queued again; reload it and try again'),
+      })
     }
+    if (!data) throw new NotFoundException('The record was not found')
+    const { jobId, outcome } = await this.queue.enqueueOrRetry('statement-processing', { companyId, statementId })
+    return { statementId, status: 'uploaded', jobId, outcome }
   }
 
   /**
@@ -369,6 +358,8 @@ function toExistingStatement(row: StatementRow): ExistingStatement {
     id: row.id,
     file: toStoredFile(row),
     ...(row.tenant_id ? { tenantId: row.tenant_id } : {}),
+    ...(row.unit_id ? { unitId: row.unit_id } : {}),
+    ...(row.lease_id ? { leaseId: row.lease_id } : {}),
     ...(row.period_start !== null ? { periodStart: row.period_start } : {}),
     ...(row.period_end !== null ? { periodEnd: row.period_end } : {}),
     ...(row.statement_number !== null ? { statementNumber: row.statement_number } : {}),

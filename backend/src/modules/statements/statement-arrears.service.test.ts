@@ -115,6 +115,29 @@ describe('StatementArrearsService', () => {
     ])
   })
 
+  it('totals the latest verified statement of every lease of a tenant, counting the tenant once', async () => {
+    const LEASE_A = '6f1d2c1e-0000-4000-8000-0000000000a1'
+    const LEASE_B = '6f1d2c1e-0000-4000-8000-0000000000b1'
+    const UNIT_B = '6f1d2c1e-0000-4000-8000-0000000000f2'
+    const { client } = fakeDb(
+      respondWith({
+        statements: [
+          verified('a-old', { lease_id: LEASE_A, statement_date: '2026-09-30', closing_balance: 30_000 }),
+          verified('a-new', { lease_id: LEASE_A }),
+          // The tenant's other unit: its own latest statement counts too, however old.
+          verified('b', { lease_id: LEASE_B, unit_id: UNIT_B, unit: { unit_number: 'Shop 14' }, statement_date: '2026-08-31', closing_balance: 3_000 }),
+        ],
+      }),
+    )
+    const summary = await service.summary(client, COMPANY, NOW)
+    expect(summary).toMatchObject({ totalOutstanding: 15_000, tenantsInArrears: 1 })
+    expect(summary.entries.map((e) => [e.statementId, e.leaseId, e.unitNumber, e.outstanding])).toEqual([
+      ['a-new', LEASE_A, 'Shop 12', 12_000],
+      ['b', LEASE_B, 'Shop 14', 3_000],
+    ])
+    expect(summary.buckets.find((b) => b.bucket === '60')).toMatchObject({ outstanding: 3_000, tenantCount: 1 })
+  })
+
   it("ages with the company's arrears monitoring buckets", async () => {
     const { client } = fakeDb(
       respondWith({

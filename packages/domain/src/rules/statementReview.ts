@@ -14,15 +14,40 @@ import { isFinancialExtractionField } from './extractionReview.js'
  * correction, and which lease a statement belongs to.
  *
  * Product rule: statements are never guessed. A flagged or missing value counts only once a person has
- * confirmed or corrected it, and a value the extractor did not find can only be entered, never confirmed.
+ * confirmed or corrected it, and a value the extractor did not find can only be entered, never confirmed, except
+ * that a reviewer may confirm an optional field (the statement number) is not on the statement.
  */
 
-/** Where a reviewer stands with one field. See `FieldResolution`. */
+/**
+ * Fields a statement may not print at all. Many statements carry no statement number, so a reviewer confirms that it
+ * is not on the statement instead of entering one (the confirmation is recorded and audited); nothing is filled in.
+ * Every other field needs a value. The database allows the same (statement_extraction_fields_confirm_value_check).
+ */
+export const OPTIONAL_EXTRACTION_FIELDS = ['statement_number'] as const satisfies readonly ExtractionFieldName[]
+
+export function isOptionalExtractionField(name: ExtractionFieldName): boolean {
+  return (OPTIONAL_EXTRACTION_FIELDS as readonly ExtractionFieldName[]).includes(name)
+}
+
+/** True when a reviewer confirmed that this optional field is not on the statement (no value, no correction, confirmed). */
+export function confirmedNotOnStatement(field: Pick<ExtractedField, 'name' | 'value' | 'correctedValue' | 'confirmedAt'>): boolean {
+  return field.value === null && field.correctedValue === undefined && field.confirmedAt !== undefined && isOptionalExtractionField(field.name)
+}
+
+/** Whether a reviewer may confirm that the field is not on the statement now: an optional field the extractor did not find. */
+export function canConfirmNotOnStatement(field: Pick<ExtractedField, 'name' | 'value' | 'correctedValue' | 'confirmedAt'>): boolean {
+  return field.value === null && isOptionalExtractionField(field.name) && !confirmedNotOnStatement(field)
+}
+
+/**
+ * Where a reviewer stands with one field. See `FieldResolution`. A missing value is unresolved until entered, except an
+ * optional field confirmed as not on the statement, which is `confirmed` (with no value).
+ */
 export function fieldResolution(
-  field: Pick<ExtractedField, 'value' | 'flagged' | 'correctedValue' | 'confirmedAt'>,
+  field: Pick<ExtractedField, 'name' | 'value' | 'flagged' | 'correctedValue' | 'confirmedAt'>,
 ): FieldResolution {
   if (field.correctedValue !== undefined) return 'corrected'
-  if (field.value === null) return 'unresolved'
+  if (field.value === null) return confirmedNotOnStatement(field) ? 'confirmed' : 'unresolved'
   if (field.confirmedAt !== undefined) return 'confirmed'
   return field.flagged ? 'unresolved' : 'accepted'
 }

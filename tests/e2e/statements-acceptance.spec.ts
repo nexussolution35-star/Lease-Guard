@@ -114,7 +114,7 @@ test.describe('Statements acceptance', () => {
 
       await expect(fileRow(page, files.sage)).toContainText('Queued for processing')
       await expect(fileRow(page, files.sageCopy)).toContainText('Repeated in this upload')
-      await expect(page.getByText('1 registered · 1 duplicate · 0 failed')).toBeVisible()
+      await expect(page.getByText('1 registered · 1 already uploaded · 0 failed')).toBeVisible()
       sageId = await linkedStatementId(fileRow(page, files.sage), 'Open the statement')
       expect(await linkedStatementId(fileRow(page, files.sageCopy), 'Open the statement')).toBe(sageId)
     })

@@ -21,7 +21,8 @@ export function StatementSelectionBar({ count, isPending, onVerify, onClear }: S
       <p className="text-sm text-foreground">
         <span className="tabular-nums">{statements(count)}</span> ready to verify selected
       </p>
-      <div className="flex items-center gap-2">
+      {/* ml-auto keeps the buttons on the right when they wrap under the count on a phone. */}
+      <div className="ml-auto flex items-center gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onClear} disabled={isPending}>
           Clear selection
         </Button>

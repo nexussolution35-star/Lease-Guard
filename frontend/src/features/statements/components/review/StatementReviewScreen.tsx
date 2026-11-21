@@ -385,10 +385,12 @@ function Outcome({ statement, signerOf, isWriter, problems, remainingId, ready }
             <StatusDot tone="danger">Processing failed</StatusDot>
             <p className="text-muted-foreground">{statement.processingError}</p>
             {isWriter ? (
-              <Button type="button" variant="outline" size="sm" onClick={() => void retryProcessing()} disabled={retry.isPending}>
-                <RotateCw aria-hidden="true" className={retry.isPending ? 'motion-safe:animate-spin' : undefined} />
-                {retry.isPending ? 'Queueing…' : 'Retry processing'}
-              </Button>
+              <div className="flex justify-end">
+                <Button type="button" variant="outline" size="sm" onClick={() => void retryProcessing()} disabled={retry.isPending}>
+                  <RotateCw aria-hidden="true" className={retry.isPending ? 'motion-safe:animate-spin' : undefined} />
+                  {retry.isPending ? 'Queueing…' : 'Retry processing'}
+                </Button>
+              </div>
             ) : null}
           </div>
         ) : null}

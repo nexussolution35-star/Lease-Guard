@@ -212,11 +212,11 @@ function MatchForm({ statement, extraction, defaults }: { statement: Statement; 
           options={leaseOptions}
           {...(noteForLease ? { description: noteForLease } : {})}
         />
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {saved ? <span className="text-xs text-muted-foreground">Saved</span> : null}
           <Button type="submit" variant="outline" disabled={form.formState.isSubmitting}>
             {form.formState.isSubmitting ? 'Saving…' : 'Save tenant, unit and lease'}
           </Button>
-          {saved ? <span className="text-xs text-muted-foreground">Saved</span> : null}
         </div>
       </form>
     </Form>

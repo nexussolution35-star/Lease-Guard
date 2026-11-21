@@ -1,5 +1,6 @@
 import {
   ageArrears,
+  arrearsByTenant,
   arrearsEventPriority,
   DEFAULT_AGEING_BUCKETS,
   formatSADate,
@@ -38,9 +39,11 @@ export interface ArrearsFindings {
 
 /**
  * Arrears findings for one company from VERIFIED statements only (domain `ageArrears`: the latest
- * verified statement per tenant is authoritative). Tenants with an active payment arrangement that
- * suppresses arrears reminders are skipped (domain `shouldSuppressArrearsReminder`): the arrangement is
- * monitored by the arrangement-reminders job instead. Each (statement, ageing bucket) is raised once.
+ * verified statement of each tenant's lease is authoritative, so a tenant with several leases is counted
+ * on every one). The minimum balance applies to what the tenant owes across its leases (domain
+ * `tenantsInArrears`). Tenants with an active payment arrangement that suppresses arrears reminders are
+ * skipped, on every lease (domain `shouldSuppressArrearsReminder`, per tenant): the arrangement is monitored
+ * by the arrangement-reminders job instead. Each (statement, ageing bucket) is raised once.
  */
 export function arrearsFindings(input: ArrearsScanInput): ArrearsFindings {
   const { settings, names, asOf } = input
@@ -52,40 +55,45 @@ export function arrearsFindings(input: ArrearsScanInput): ArrearsFindings {
 
   const drafts: EventDraft[] = []
   const suppressedTenantIds: EntityId[] = []
-  for (const entry of tenantsInArrears(ageArrears(input.statements, asOf, buckets), threshold)) {
-    if (shouldSuppressArrearsReminder(entry.tenantId, input.arrangements, asOf)) {
-      suppressedTenantIds.push(entry.tenantId)
+  for (const owing of arrearsByTenant(tenantsInArrears(ageArrears(input.statements, asOf, buckets), threshold))) {
+    if (shouldSuppressArrearsReminder(owing.tenantId, input.arrangements, asOf)) {
+      suppressedTenantIds.push(owing.tenantId)
       continue
     }
-    const tenant = names.tenant(entry.tenantId)
-    const unitId = units.get(entry.statementId)
-    const assignee = rule.defaultAssigneeUserId ?? names.managerOf(entry.propertyId)
-    drafts.push({
-      // One finding per statement AND ageing bucket: the event is raised once per bucket, so when the
-      // debt ages into a later bucket (higher priority) a new event, and its notification, are raised.
-      dedupeKey: `arrears:${entry.statementId}:${entry.bucket}`,
-      type: 'arrears',
-      propertyId: entry.propertyId,
-      ...(unitId ? { unitId } : {}),
-      tenantId: entry.tenantId,
-      ...(entry.leaseId ? { leaseId: entry.leaseId } : {}),
-      statementId: entry.statementId,
-      ...(rule.ruleId ? { ruleId: rule.ruleId } : {}),
-      title: `Arrears: ${tenant} owes ${formatZAR(entry.outstanding)}`,
-      description: `The verified statement of ${formatSADate(entry.statementDate)} shows ${formatZAR(entry.outstanding)} outstanding, ${dayCount(entry.ageDays)} old (ageing bucket ${entry.bucket}).`,
-      calculation: {
-        actualAmount: entry.outstanding,
-        steps: [
-          `Latest verified statement: ${formatSADate(entry.statementDate)}`,
-          `Outstanding balance: ${formatZAR(entry.outstanding)}`,
-          `Age on ${formatSADate(asOf)}: ${dayCount(entry.ageDays)} (bucket ${entry.bucket})`,
-        ],
-      },
-      identifiedOn: asOf,
-      priority: arrearsEventPriority(entry.bucket, buckets, rule.defaultPriority ?? 'medium'),
-      recommendedAction: 'Review the account and prepare a payment reminder for approval, or agree a payment arrangement.',
-      ...(assignee ? { assignedToUserId: assignee } : {}),
-    })
+    const tenant = names.tenant(owing.tenantId)
+    for (const entry of owing.entries) {
+      const unitId = units.get(entry.statementId)
+      const assignee = rule.defaultAssigneeUserId ?? names.managerOf(entry.propertyId)
+      drafts.push({
+        // One finding per statement AND ageing bucket: the event is raised once per bucket, so when the
+        // debt ages into a later bucket (higher priority) a new event, and its notification, are raised.
+        dedupeKey: `arrears:${entry.statementId}:${entry.bucket}`,
+        type: 'arrears',
+        propertyId: entry.propertyId,
+        ...(unitId ? { unitId } : {}),
+        tenantId: entry.tenantId,
+        ...(entry.leaseId ? { leaseId: entry.leaseId } : {}),
+        statementId: entry.statementId,
+        ...(rule.ruleId ? { ruleId: rule.ruleId } : {}),
+        title: `Arrears: ${tenant} owes ${formatZAR(entry.outstanding)}`,
+        description: `The verified statement of ${formatSADate(entry.statementDate)} shows ${formatZAR(entry.outstanding)} outstanding, ${dayCount(entry.ageDays)} old (ageing bucket ${entry.bucket}).`,
+        calculation: {
+          actualAmount: entry.outstanding,
+          steps: [
+            `Latest verified statement of the lease: ${formatSADate(entry.statementDate)}`,
+            `Outstanding balance: ${formatZAR(entry.outstanding)}`,
+            ...(owing.entries.length > 1
+              ? [`Total across ${owing.entries.length} leases of ${tenant}: ${formatZAR(owing.outstanding)}`]
+              : []),
+            `Age on ${formatSADate(asOf)}: ${dayCount(entry.ageDays)} (bucket ${entry.bucket})`,
+          ],
+        },
+        identifiedOn: asOf,
+        priority: arrearsEventPriority(entry.bucket, buckets, rule.defaultPriority ?? 'medium'),
+        recommendedAction: 'Review the account and prepare a payment reminder for approval, or agree a payment arrangement.',
+        ...(assignee ? { assignedToUserId: assignee } : {}),
+      })
+    }
   }
   return { drafts, suppressedTenantIds }
 }

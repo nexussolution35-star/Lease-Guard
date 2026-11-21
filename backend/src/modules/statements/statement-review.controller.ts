@@ -79,7 +79,8 @@ export class StatementReviewController {
     summary: 'Confirm that an extracted value is correct',
     description:
       'Resolves a flagged field with the extracted value, recording who and when, and drops any correction. A ' +
-      'value the extractor did not find cannot be confirmed (422): enter it with correctStatementField. Confirming ' +
+      'value the extractor did not find cannot be confirmed (422): enter it with correctStatementField, or, for the ' +
+      'statement number, confirm it is not on the statement (confirmStatementFieldNotOnStatement). Confirming ' +
       'a confirmed field changes nothing. Audited with before and after. Returns the extraction.',
   })
   @ApiParam(FIELD_PARAM)
@@ -94,6 +95,33 @@ export class StatementReviewController {
     @Param('fieldName', new ZodValidationPipe(extractionFieldNameSchema)) fieldName: ExtractionFieldName,
   ): Promise<StatementExtraction> {
     return this.review.confirmField(db, company.companyId, statementId, fieldName)
+  }
+
+  @Post(':statementId/extraction/fields/:fieldName/not-on-statement')
+  @HttpCode(HttpStatus.OK)
+  @CompanyScoped({ roles: WRITER_ROLES })
+  @ApiOperation({
+    operationId: 'confirmStatementFieldNotOnStatement',
+    summary: 'Confirm that an optional field is not on the statement',
+    description:
+      'For a statement that prints no statement number: resolves the statement_number field the extractor did not ' +
+      'find without a value, recording who and when, and drops any correction. Nothing is filled in; the verified ' +
+      'statement has no number. Only statement_number may be left out (422 for any other field), and only when the ' +
+      'extractor found no value (422: confirm or correct it instead). Confirming it again changes nothing. Audited. ' +
+      'Returns the extraction.',
+  })
+  @ApiParam(FIELD_PARAM)
+  @ApiOkResponse({ type: StatementExtractionDto })
+  @ApiNotFoundResponse({ type: ApiErrorDto, description: 'Statement not found or not yet extracted' })
+  @ApiConflictResponse({ type: ApiErrorDto, description: REVIEW_CLOSED })
+  @ApiUnprocessableEntityResponse({ type: ApiErrorDto, description: 'The field is required, or a value was found for it' })
+  confirmNotOnStatement(
+    @UserDb() db: DbClient,
+    @CurrentCompany() company: CompanyContext,
+    @Param('statementId', new ParseUUIDPipe()) statementId: string,
+    @Param('fieldName', new ZodValidationPipe(extractionFieldNameSchema)) fieldName: ExtractionFieldName,
+  ): Promise<StatementExtraction> {
+    return this.review.confirmFieldNotOnStatement(db, company.companyId, statementId, fieldName)
   }
 
   @Put(':statementId/match')

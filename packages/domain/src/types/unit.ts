@@ -1,4 +1,4 @@
-import type { CompanyScoped, EntityId } from './common.js'
+import type { CompanyScoped, EntityId, ISODateTime } from './common.js'
 
 export const UNIT_TYPES = [
   'anchor_retail',
@@ -23,10 +23,46 @@ export interface Unit extends CompanyScoped {
   floorAreaSqm: number
   floor?: string
   occupancyStatus: OccupancyStatus
-  /** Denormalised for fast table rendering; must agree with the active lease. */
+  /**
+   * The unit's current tenant: the current lease's tenant, else the tenant assigned to it (derived in the database,
+   * never typed in).
+   */
   currentTenantId?: EntityId
   currentLeaseId?: EntityId
+  /** The tenant assigned to the unit without a lease, while it is assigned (read from the API, never typed in). */
+  currentAssignment?: UnitAssignmentSummary
   description?: string
+}
+
+/** A unit's current assignment: who holds it without a lease, and since when. */
+export interface UnitAssignmentSummary {
+  id: EntityId
+  tenantId: EntityId
+  tenantName: string
+  assignedAt: ISODateTime
+}
+
+/**
+ * A tenant assigned to a unit directly, without a lease (owner decision, 21 Nov 2026). Current while `endedAt` is
+ * absent; an ended assignment is kept as history. A unit has at most one current assignment; a tenant may hold
+ * several units. An assignment never drives monitoring or tenant messages.
+ */
+export interface UnitTenantAssignment extends CompanyScoped {
+  propertyId: EntityId
+  unitId: EntityId
+  tenantId: EntityId
+  assignedAt: ISODateTime
+  /** Who assigned the unit; absent when the member has left the company. */
+  assignedByUserId?: EntityId
+  endedAt?: ISODateTime
+  endedByUserId?: EntityId
+}
+
+/** An assignment as `GET /unit-assignments` lists it: with the tenant, unit and property named. */
+export interface UnitTenantAssignmentListItem extends UnitTenantAssignment {
+  tenantName: string
+  unitNumber: string
+  propertyName: string
 }
 
 /** The property a listed unit belongs to, enough to name and link it. */
@@ -36,7 +72,7 @@ export interface UnitPropertySummary {
   code: string
 }
 
-/** The tenant of a listed unit's active lease. */
+/** A listed unit's current tenant: its current lease's tenant, else its assigned tenant. */
 export interface UnitTenantSummary {
   id: EntityId
   tradingName: string
@@ -51,8 +87,8 @@ export interface UnitLeaseSummary {
 }
 
 /**
- * A unit as `GET /units` lists it: the unit with its property and, when it is let, the tenant and
- * lease of its active lease (read from `currentTenantId` / `currentLeaseId`, never typed in).
+ * A unit as `GET /units` lists it: the unit with its property, its current tenant (the active lease's tenant, else the
+ * assigned tenant) and, when it is let, its active lease (read from `currentTenantId` / `currentLeaseId`, never typed in).
  */
 export interface UnitListItem extends Unit {
   property: UnitPropertySummary

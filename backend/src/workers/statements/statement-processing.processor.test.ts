@@ -14,7 +14,7 @@ const statementRow = {
   id: STATEMENT,
   company_id: COMPANY,
   property_id: PROPERTY,
-  tenant_id: TENANT,
+  tenant_id: TENANT as string | null,
   unit_id: null,
   lease_id: null,
   file_name: 'october.pdf',
@@ -334,5 +334,22 @@ describe('StatementProcessingProcessor', () => {
     const { processor, queries } = harness({ extract: async () => missingField })
     await expect(processor.process({ companyId: COMPANY, statementId: STATEMENT }, { attempt: 1, maxAttempts: 5 })).rejects.toThrow(/field "tenant_name" is missing/)
     expect(upsertsInto(queries, 'statement_extractions')).toEqual([])
+  })
+
+  it('offers the tenants assigned to the property\'s units without a lease as matching hints', async () => {
+    const { processor, queries, extract } = harness({
+      statement: { tenant_id: null },
+      respond: (query) =>
+        query.table === 'unit_tenant_assignments' && !isWrite(query) ? { data: [{ tenant_id: TENANT }], error: null } : undefined,
+    })
+    await processor.process({ companyId: COMPANY, statementId: STATEMENT }, { attempt: 1, maxAttempts: 5 })
+
+    const assignments = queries.find((q) => q.table === 'unit_tenant_assignments')
+    expect(eqValue(assignments!, 'company_id')).toBe(COMPANY)
+    expect(eqValue(assignments!, 'property_id')).toBe(PROPERTY)
+    expect(callsTo(assignments!, 'is')).toEqual([['ended_at', null]])
+    expect(extract).toHaveBeenCalledWith(expect.any(Blob), 'october.pdf', expect.objectContaining({ expectedTenantNames: ['Test Trading', 'Test Trading (Pty) Ltd'] }))
+    const [[extraction]] = upsertsInto(queries, 'statement_extractions')
+    expect(extraction).toMatchObject({ matched_tenant_id: TENANT })
   })
 })

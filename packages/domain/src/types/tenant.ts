@@ -60,8 +60,21 @@ export interface TenantLeaseSummary {
   propertyName: string
 }
 
-/** A row of the tenant list: the tenant, its current lease (absent when it has none) and its lease count. */
+/** A unit whose current tenant the tenant is (by its current lease, or assigned without a lease). */
+export interface TenantUnitSummary {
+  unitId: EntityId
+  unitNumber: string
+  propertyId: EntityId
+  propertyName: string
+}
+
+/**
+ * A row of the tenant list: the tenant, its current lease (absent when it has none), its lease count and the units it
+ * currently holds (by lease or assignment).
+ */
 export interface TenantListItem extends Tenant {
   currentLease?: TenantLeaseSummary
   leaseCount: number
+  /** Always sent by the API; optional so older fixtures stay valid. */
+  currentUnits?: TenantUnitSummary[]
 }

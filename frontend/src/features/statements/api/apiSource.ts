@@ -156,6 +156,16 @@ export function createApiStatementSource(api: ApiClient, send: typeof fetch = (.
       return extraction
     },
 
+    async confirmNotOnStatement(companyId, id, field) {
+      const extraction: StatementExtraction = await unwrap(
+        api.POST('/api/v1/statements/{statementId}/extraction/fields/{fieldName}/not-on-statement', {
+          params: { path: { statementId: id, fieldName: field } },
+          headers: { [COMPANY_ID_HEADER]: companyId },
+        }),
+      )
+      return extraction
+    },
+
     async setMatch(companyId, id, match) {
       const statement: Statement = await unwrap(
         api.PUT('/api/v1/statements/{statementId}/match', {

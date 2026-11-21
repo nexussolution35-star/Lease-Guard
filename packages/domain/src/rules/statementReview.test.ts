@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import type { ExtractedField } from '../types/index.js'
 import {
+  canConfirmNotOnStatement,
+  confirmedNotOnStatement,
   fieldResolution,
   leaseChoiceProblem,
   leaseInForceOn,
@@ -38,6 +40,23 @@ describe('fieldResolution', () => {
 
   it('never counts a confirmation of a value that was not found', () => {
     expect(fieldResolution(field({ value: null, flagged: true, confirmedAt: '2026-11-21T08:00:00Z' }))).toBe('unresolved')
+  })
+
+  it('counts a statement number confirmed as not on the statement, with no value', () => {
+    const missing = field({ name: 'statement_number', rawText: '', value: null, flagged: true })
+    expect(fieldResolution(missing)).toBe('unresolved')
+    expect(canConfirmNotOnStatement(missing)).toBe(true)
+    const absent = field({ name: 'statement_number', rawText: '', value: null, flagged: true, confirmedAt: '2026-11-21T08:00:00Z' })
+    expect(fieldResolution(absent)).toBe('confirmed')
+    expect(confirmedNotOnStatement(absent)).toBe(true)
+    expect(canConfirmNotOnStatement(absent)).toBe(false)
+    expect(resolvedFieldValue(absent)).toBeUndefined()
+  })
+
+  it('offers "not on the statement" only for an optional field the extractor did not find', () => {
+    expect(canConfirmNotOnStatement(field({ name: 'statement_number', value: 'ST-1', flagged: true }))).toBe(false)
+    expect(canConfirmNotOnStatement(field({ name: 'total_due', value: null, flagged: true }))).toBe(false)
+    expect(confirmedNotOnStatement(field({ name: 'total_due', value: null, flagged: true, confirmedAt: '2026-11-21T08:00:00Z' }))).toBe(false)
   })
 })
 

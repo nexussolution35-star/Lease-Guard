@@ -42,6 +42,28 @@ describe('arrearsOverview', () => {
     expect(overview.ageingBuckets).toEqual([30, 60, 90, 120])
   })
 
+  it('counts every lease of a tenant once in the totals and the tenant once in the counts', () => {
+    const overview = arrearsOverview({
+      statements: [
+        makeStatement({ id: 'a', tenantId: 't1', leaseId: 'lease-a', statementDate: '2026-10-01', closingBalance: 8000 }),
+        makeStatement({ id: 'b', tenantId: 't1', leaseId: 'lease-b', statementDate: '2026-10-15', closingBalance: 2000 }),
+        makeStatement({ id: 'c', tenantId: 't1', leaseId: 'lease-c', statementDate: '2026-11-01', closingBalance: 500 }),
+      ],
+      arrangements: [arrangement({ tenantId: 't1' })],
+      asOf,
+    })
+    expect(overview.totalOutstanding).toBe(10500)
+    expect(overview.tenantsInArrears).toBe(1)
+    expect(overview.tenantsUnderArrangement).toBe(1)
+    expect(overview.entries.map((e) => [e.statementId, e.underArrangement, e.remindersSuppressed])).toEqual([
+      ['a', true, true],
+      ['b', true, true],
+      ['c', true, true],
+    ])
+    expect(overview.buckets.find((b) => b.bucket === 'current')).toMatchObject({ outstanding: 2500, tenantCount: 1 })
+    expect(overview.buckets.find((b) => b.bucket === '30')).toMatchObject({ outstanding: 8000, tenantCount: 1 })
+  })
+
   it('uses the company’s buckets, in ageing order whatever order they were given in', () => {
     const overview = arrearsOverview({ statements, arrangements: [], asOf, buckets: [60, 14] })
     expect(overview.ageingBuckets).toEqual([14, 60])

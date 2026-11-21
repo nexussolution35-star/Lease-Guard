@@ -1,4 +1,6 @@
 import {
+  canConfirmNotOnStatement,
+  confirmedNotOnStatement,
   extractionFieldKind,
   fieldReviewAction,
   fieldReviewReasons,
@@ -10,7 +12,7 @@ import {
   type ExtractionFieldName,
   type FieldReviewReasonKind,
 } from '@leaseguard/domain'
-import { Check, PenLine } from 'lucide-react'
+import { Check, CircleSlash, PenLine } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -19,7 +21,7 @@ import { Button } from '@/components/ui/button'
 import { describeApiError } from '@/lib/data/apiErrors'
 import { labelFor } from '@/lib/labels'
 
-import { useConfirmStatementField } from '../../api/queries'
+import { useConfirmStatementField, useConfirmStatementFieldNotOnStatement } from '../../api/queries'
 import { CorrectFieldDialog } from './CorrectFieldDialog'
 
 const REASON_LABELS: Readonly<Record<FieldReviewReasonKind, string>> = {
@@ -51,12 +53,14 @@ export interface StatementFieldListProps {
 /**
  * Every extracted field, statement facts first and figures after: its value (the correction once entered), what the
  * statement printed, where the review stands with it as dot and text, and why it is flagged. A flagged value is
- * confirmed or corrected; a value that was not found can only be entered. What counts is worked out by the domain
+ * confirmed or corrected; a value that was not found can only be entered, except the statement number, which the
+ * reviewer may confirm is not on the statement (nothing is filled in). What counts is worked out by the domain
  * rules (`fieldResolution`, `fieldReviewReasons`); the API records who did what and when.
  */
 export function StatementFieldList({ statementId, fields, issues, canReview, signerOf }: StatementFieldListProps) {
   const [correcting, setCorrecting] = useState<ExtractedField | null>(null)
   const confirm = useConfirmStatementField(statementId)
+  const confirmAbsent = useConfirmStatementFieldNotOnStatement(statementId)
 
   async function confirmField(field: ExtractedField) {
     try {
@@ -64,6 +68,15 @@ export function StatementFieldList({ statementId, fields, issues, canReview, sig
       toast.success(`${labelFor(field.name)} confirmed`)
     } catch (error) {
       toast.error(`${labelFor(field.name)} was not confirmed`, { description: describeApiError(error, 'Try again in a moment.') })
+    }
+  }
+
+  async function confirmNotOnStatement(field: ExtractedField) {
+    try {
+      await confirmAbsent.mutateAsync(field.name)
+      toast.success(`Recorded that the ${labelFor(field.name).toLowerCase()} is not on the statement`)
+    } catch (error) {
+      toast.error(`${labelFor(field.name)} was not recorded as absent`, { description: describeApiError(error, 'Try again in a moment.') })
     }
   }
 
@@ -82,7 +95,9 @@ export function StatementFieldList({ statementId, fields, issues, canReview, sig
             canReview={canReview}
             signerOf={signerOf}
             confirming={confirm.isPending && confirm.variables === field.name}
+            confirmingAbsent={confirmAbsent.isPending && confirmAbsent.variables === field.name}
             onConfirm={() => void confirmField(field)}
+            onConfirmNotOnStatement={() => void confirmNotOnStatement(field)}
             onCorrect={() => setCorrecting(field)}
           />
         ))}
@@ -107,11 +122,13 @@ interface FieldRowProps {
   canReview: boolean
   signerOf: (userId: string | undefined) => string | undefined
   confirming: boolean
+  confirmingAbsent: boolean
   onConfirm: () => void
+  onConfirmNotOnStatement: () => void
   onCorrect: () => void
 }
 
-function FieldRow({ field, issues, canReview, signerOf, confirming, onConfirm, onCorrect }: FieldRowProps) {
+function FieldRow({ field, issues, canReview, signerOf, confirming, confirmingAbsent, onConfirm, onConfirmNotOnStatement, onCorrect }: FieldRowProps) {
   const label = labelFor(field.name)
   const reasons = fieldReviewReasons(field, issues)
   const action = fieldReviewAction(field)
@@ -126,7 +143,11 @@ function FieldRow({ field, issues, canReview, signerOf, confirming, onConfirm, o
           <Resolution field={field} signerOf={signerOf} />
         </div>
         <p className="text-sm font-medium break-words tabular-nums">
-          {shown === null ? <span className="font-normal text-muted-foreground">Not found</span> : formatFieldValue(field.name, shown)}
+          {shown === null ? (
+            <span className="font-normal text-muted-foreground">{confirmedNotOnStatement(field) ? 'Not on the statement' : 'Not found'}</span>
+          ) : (
+            formatFieldValue(field.name, shown)
+          )}
         </p>
         {printed !== '' && (field.correctedValue !== undefined || field.value === null || action !== 'none') ? (
           <p className="text-xs text-muted-foreground break-words">
@@ -145,11 +166,25 @@ function FieldRow({ field, issues, canReview, signerOf, confirming, onConfirm, o
         ) : null}
       </div>
       {canReview ? (
-        <div className="flex flex-wrap items-start gap-2 sm:justify-end">
+        // Actions sit on the right at every width, phones included.
+        <div className="flex flex-wrap items-start justify-end gap-2">
           {action === 'confirm_or_correct' ? (
             <Button type="button" variant="outline" size="sm" onClick={onConfirm} disabled={confirming} aria-label={`Confirm ${label.toLowerCase()}`}>
               <Check aria-hidden="true" />
               {confirming ? 'Confirming…' : 'Confirm'}
+            </Button>
+          ) : null}
+          {canConfirmNotOnStatement(field) ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onConfirmNotOnStatement}
+              disabled={confirmingAbsent}
+              aria-label={`Confirm the ${label.toLowerCase()} is not on the statement`}
+            >
+              <CircleSlash aria-hidden="true" />
+              {confirmingAbsent ? 'Recording…' : 'Not on the statement'}
             </Button>
           ) : null}
           <Button

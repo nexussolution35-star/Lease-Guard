@@ -94,7 +94,7 @@ const FILE_LINK_FRESH_MS = 4 * 60 * 1000
  * not refetched on focus, so the embedded document does not reload; a fresh link is fetched when it is shown again
  * after four minutes. Separate from the statement's own keys: refreshing the statement never reloads the document.
  */
-export function useStatementFileUrl(id: EntityId): UseQueryResult<string> {
+export function useStatementFileUrl(id: EntityId, options: { enabled?: boolean } = {}): UseQueryResult<string> {
   const companyId = useActiveCompanyId()
   return useQuery({
     queryKey: ['statement-file', companyId ?? '', id],
@@ -102,7 +102,7 @@ export function useStatementFileUrl(id: EntityId): UseQueryResult<string> {
       if (companyId === null) throw new Error('No workspace is selected.')
       return getStatementSource().downloadUrl(companyId, id)
     },
-    enabled: companyId !== null,
+    enabled: companyId !== null && (options.enabled ?? true),
     staleTime: FILE_LINK_FRESH_MS,
     gcTime: FILE_LINK_FRESH_MS,
     refetchOnWindowFocus: false,
@@ -131,6 +131,16 @@ export function useConfirmStatementField(id: EntityId): UseMutationResult<Statem
   const companyId = useActiveCompanyOrThrow()
   return useMutation({
     mutationFn: (field: ExtractionFieldName) => getStatementSource().confirmField(companyId(), id, field),
+    onSuccess: (extraction) => queryClient.setQueryData(statementExtractionKey(extraction.companyId, id), extraction),
+  })
+}
+
+/** Confirms that the statement does not print an optional field (the statement number; writers); stores the extraction. */
+export function useConfirmStatementFieldNotOnStatement(id: EntityId): UseMutationResult<StatementExtraction, Error, ExtractionFieldName> {
+  const queryClient = useQueryClient()
+  const companyId = useActiveCompanyOrThrow()
+  return useMutation({
+    mutationFn: (field: ExtractionFieldName) => getStatementSource().confirmNotOnStatement(companyId(), id, field),
     onSuccess: (extraction) => queryClient.setQueryData(statementExtractionKey(extraction.companyId, id), extraction),
   })
 }

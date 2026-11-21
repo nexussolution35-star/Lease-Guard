@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { makeStatement } from './__fixtures__/lease.js'
-import { ageArrears, ageingBucket, ageingBucketLabels, ageingSummary, describeAgeingBucket, tenantsInArrears, totalOutstanding } from './arrears.js'
+import {
+  ageArrears,
+  ageingBucket,
+  ageingBucketLabels,
+  ageingSummary,
+  arrearsByTenant,
+  describeAgeingBucket,
+  tenantCount,
+  tenantsInArrears,
+  totalOutstanding,
+} from './arrears.js'
 
 const today = '2026-11-06'
 
@@ -37,6 +47,37 @@ describe('ageArrears', () => {
     expect(result.find((r) => r.tenantId === 't1')).toMatchObject({ statementId: 's2', outstanding: 8000, ageDays: 36, bucket: '30' })
     expect(result.find((r) => r.tenantId === 't2')).toMatchObject({ statementId: 's4', outstanding: 20000, bucket: '120+' })
     expect(result.find((r) => r.tenantId === 't4')?.outstanding).toBe(1500.56)
+  })
+  it('keeps the latest verified statement of each lease of a tenant and totals across them', () => {
+    const twoLeases = [
+      makeStatement({ id: 'a-old', tenantId: 't1', leaseId: 'lease-a', statementDate: '2026-09-01', closingBalance: 12000 }),
+      makeStatement({ id: 'a-new', tenantId: 't1', leaseId: 'lease-a', statementDate: '2026-10-01', closingBalance: 8000 }),
+      // An older statement of the tenant's other lease still counts: it is that lease's latest.
+      makeStatement({ id: 'b', tenantId: 't1', leaseId: 'lease-b', statementDate: '2026-08-01', closingBalance: 4000 }),
+      makeStatement({ id: 'c', tenantId: 't2', leaseId: 'lease-c', statementDate: '2026-10-01', closingBalance: 5000 }),
+    ]
+    const result = ageArrears(twoLeases, today)
+    expect(result.map((r) => r.statementId)).toEqual(['a-new', 'c', 'b'])
+    expect(totalOutstanding(result)).toBe(17000)
+    expect(tenantCount(result)).toBe(2)
+    expect(arrearsByTenant(result)).toEqual([
+      { tenantId: 't1', outstanding: 12000, entries: [expect.objectContaining({ statementId: 'a-new' }), expect.objectContaining({ statementId: 'b' })] },
+      { tenantId: 't2', outstanding: 5000, entries: [expect.objectContaining({ statementId: 'c' })] },
+    ])
+    // The threshold applies to what the tenant owes across leases: R 8 000 + R 4 000 reaches R 10 000.
+    expect(tenantsInArrears(result, 10_000).map((r) => r.statementId)).toEqual(['a-new', 'b'])
+  })
+  it('supersedes a renewed lease by the next lease of the same unit, never counting the carried-forward balance twice', () => {
+    const renewed = [
+      // The replaced lease's last statement; its balance is carried into the renewal's first statement.
+      makeStatement({ id: 'old-lease', tenantId: 't1', unitId: 'u1', leaseId: 'lease-1', statementDate: '2026-08-01', closingBalance: 6000 }),
+      makeStatement({ id: 'renewal', tenantId: 't1', unitId: 'u1', leaseId: 'lease-2', statementDate: '2026-10-01', closingBalance: 9000 }),
+      // A second unit is a separate account and still counts.
+      makeStatement({ id: 'other-unit', tenantId: 't1', unitId: 'u2', leaseId: 'lease-3', statementDate: '2026-09-01', closingBalance: 1000 }),
+    ]
+    const result = ageArrears(renewed, today)
+    expect(result.map((r) => r.statementId)).toEqual(['renewal', 'other-unit'])
+    expect(totalOutstanding(result)).toBe(10000)
   })
   it('totals and thresholds', () => {
     const result = ageArrears(statements, today)

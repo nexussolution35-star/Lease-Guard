@@ -58,7 +58,8 @@ export interface TenantArrears {
 type AgeableStatement = Pick<
   Statement,
   'id' | 'tenantId' | 'propertyId' | 'leaseId' | 'status' | 'statementDate' | 'closingBalance' | 'totalDue'
->
+> &
+  Partial<Pick<Statement, 'unitId'>>
 
 /** Outstanding balance a VERIFIED statement reports; closingBalance preferred, then totalDue. */
 export function statementOutstanding(statement: Pick<Statement, 'closingBalance' | 'totalDue'>): ZAR {
@@ -66,22 +67,26 @@ export function statementOutstanding(statement: Pick<Statement, 'closingBalance'
 }
 
 /**
- * Per-tenant ageing. Only VERIFIED statements are considered (unverified / review_required /
- * duplicate are ignored). For each tenant the LATEST verified statement (by statementDate)
- * is authoritative; tenants whose latest balance is ≤ 0 are not in arrears and are omitted.
- * Balance is aged from that statement's date. A verified statement always has one (the database
- * requires it); a statement without a date is ignored rather than aged from a guess.
+ * Ageing per tenant and lease. Only VERIFIED statements are considered (unverified / review_required /
+ * duplicate are ignored). A tenant with several leases (units) gets a statement per lease, so for each
+ * account the LATEST verified statement (by statementDate) is authoritative, and a tenant owes the total across
+ * its accounts (`arrearsByTenant`). An account is the tenant's unit (the lease when the unit is not given): a
+ * renewal replaces the lease of the same unit and its statements carry the balance forward, so the replaced
+ * lease's last statement is superseded rather than counted twice. Accounts whose latest balance is ≤ 0 are not in arrears and are
+ * omitted. Balance is aged from that statement's date. A verified statement always has a date and a lease (the
+ * database requires them); a statement without a date is ignored rather than aged from a guess.
  */
 export function ageArrears(
   statements: readonly AgeableStatement[],
   today: ISODate,
   buckets: readonly number[] = DEFAULT_AGEING_BUCKETS,
 ): TenantArrears[] {
-  const latest = new Map<EntityId, AgeableStatement & { statementDate: ISODate }>()
+  const latest = new Map<string, AgeableStatement & { statementDate: ISODate }>()
   for (const s of statements) {
     if (s.status !== 'verified' || !s.tenantId || !s.statementDate) continue
-    const prev = latest.get(s.tenantId)
-    if (!prev || compareISODate(s.statementDate, prev.statementDate) > 0) latest.set(s.tenantId, { ...s, statementDate: s.statementDate })
+    const account = `${s.tenantId}|${s.unitId ? `unit:${s.unitId}` : `lease:${s.leaseId ?? ''}`}`
+    const prev = latest.get(account)
+    if (!prev || compareISODate(s.statementDate, prev.statementDate) > 0) latest.set(account, { ...s, statementDate: s.statementDate })
   }
   const out: TenantArrears[] = []
   for (const s of latest.values()) {
@@ -105,9 +110,42 @@ export function totalOutstanding(entries: readonly Pick<TenantArrears, 'outstand
   return sumZar(entries.map((e) => e.outstanding))
 }
 
-/** Entries whose outstanding balance is ≥ `threshold` (strictly > 0 when threshold is 0). */
+/** One tenant's arrears: the total across its leases and the entry of each lease in arrears (largest first). */
+export interface TenantArrearsTotal<E extends Pick<TenantArrears, 'tenantId' | 'outstanding'> = TenantArrears> {
+  tenantId: EntityId
+  outstanding: ZAR
+  entries: E[]
+}
+
+/** Entries grouped by tenant, each with its total across leases; largest total first. */
+export function arrearsByTenant<E extends Pick<TenantArrears, 'tenantId' | 'outstanding'>>(entries: readonly E[]): TenantArrearsTotal<E>[] {
+  const byTenant = new Map<EntityId, E[]>()
+  for (const entry of entries) byTenant.set(entry.tenantId, [...(byTenant.get(entry.tenantId) ?? []), entry])
+  return [...byTenant.entries()]
+    .map(([tenantId, own]) => ({
+      tenantId,
+      outstanding: totalOutstanding(own),
+      entries: [...own].sort((a, b) => b.outstanding - a.outstanding),
+    }))
+    .sort((a, b) => b.outstanding - a.outstanding)
+}
+
+/** The number of distinct tenants among the entries. */
+export function tenantCount(entries: readonly Pick<TenantArrears, 'tenantId'>[]): number {
+  return new Set(entries.map((entry) => entry.tenantId)).size
+}
+
+/**
+ * The entries of tenants whose total outstanding across their leases is ≥ `threshold` (strictly > 0 when threshold
+ * is 0). The threshold applies to what the tenant owes, not to each lease on its own.
+ */
 export function tenantsInArrears(entries: readonly TenantArrears[], threshold: ZAR = 0): TenantArrears[] {
-  return entries.filter((e) => (threshold > 0 ? e.outstanding >= threshold : e.outstanding > 0))
+  const owing = new Set(
+    arrearsByTenant(entries)
+      .filter((tenant) => (threshold > 0 ? tenant.outstanding >= threshold : tenant.outstanding > 0))
+      .map((tenant) => tenant.tenantId),
+  )
+  return entries.filter((entry) => owing.has(entry.tenantId))
 }
 
 /** Totals per bucket label (every label present, zero when empty). */

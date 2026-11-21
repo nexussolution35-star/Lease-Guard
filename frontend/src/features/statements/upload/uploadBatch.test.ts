@@ -1,9 +1,9 @@
 import { ApiError } from '@leaseguard/api-client'
-import type { Statement } from '@leaseguard/domain'
+import type { DuplicateMatch, Statement } from '@leaseguard/domain'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { StatementUploadInput, StatementUploadResult } from '../api/source'
-import { runUploadBatch, statementOf, type UploadFileState } from './uploadBatch'
+import { countOutcomes, runUploadBatch, statementOf, type UploadFileState } from './uploadBatch'
 
 const pdf = (name: string, body = name) => new File([`%PDF-1.7 ${body}`], name, { type: 'application/pdf' })
 /** A readable stand-in digest: the file's text, so equal content gives equal digests. */
@@ -104,5 +104,24 @@ describe('runUploadBatch', () => {
       onChange: () => {},
     })
     expect(most).toBe(2)
+  })
+})
+
+describe('countOutcomes', () => {
+  it('counts every settled file under exactly one outcome, a likely duplicate only as a likely duplicate', () => {
+    const duplicate: DuplicateMatch = { existingStatementId: 'other', reason: 'same_tenant_period_and_number', confidence: 'likely', description: 'Same tenant, period and number' }
+    const states: UploadFileState[] = [
+      { phase: 'queued', statementId: 'a', processingQueued: true },
+      { phase: 'queued', statementId: 'b', processingQueued: false },
+      { phase: 'likely_duplicate', statementId: 'c', processingQueued: true, duplicate },
+      { phase: 'identical', existingStatementId: 'd' },
+      { phase: 'repeat', repeatsIndex: 0 },
+      { phase: 'failed', reason: 'Too large' },
+      { phase: 'uploading' },
+    ]
+    const counts = countOutcomes(states)
+    expect(counts).toEqual({ registered: 2, likely_duplicate: 1, already_uploaded: 2, failed: 1 })
+    // Six settled files, six counted: nothing is counted twice, and the file still uploading is not counted yet.
+    expect(Object.values(counts).reduce((sum, count) => sum + count, 0)).toBe(6)
   })
 })

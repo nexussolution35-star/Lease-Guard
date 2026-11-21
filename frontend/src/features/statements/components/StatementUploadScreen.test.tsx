@@ -88,12 +88,32 @@ describe('StatementUploadScreen', () => {
     expect(row('broken.pdf')).toHaveTextContent('The uploaded file size does not match sizeBytes')
     expect(row('oct copy.pdf')).toHaveTextContent('Repeated in this upload')
     expect(within(row('oct copy.pdf')).getByRole('link', { name: 'Open the statement' })).toHaveAttribute('href', '/statements/oct.pdf-id')
-    expect(screen.getByText('1 registered · 2 duplicates · 1 failed')).toBeInTheDocument()
+    // Each file counts once: the file on record and the repeated copy are both "already uploaded", none twice.
+    expect(screen.getByRole('status')).toHaveTextContent('1 registered · 2 already uploaded · 1 failed')
 
     expect(fakeSource.upload).toHaveBeenCalledTimes(3)
     const batchIds = new Set(fakeSource.upload.mock.calls.map(([, input]) => input.uploadBatchId))
     expect(batchIds.size).toBe(1)
     expect(fakeSource.upload.mock.calls[0]?.[1]).toMatchObject({ propertyId: PROPERTY_ID, sourceSystem: 'Sage' })
+  })
+
+  it('counts a likely duplicate once, as a likely duplicate to check, so the summary adds up to the files', async () => {
+    fakeSource.upload.mockImplementation(async (_companyId, { file }) => ({
+      outcome: 'registered',
+      statement: { ...sampleRecord('statements'), id: `${file.name}-id` } as Statement,
+      processingQueued: true,
+      likelyDuplicate:
+        file.name === 'again.pdf'
+          ? { existingStatementId: ON_RECORD_ID, reason: 'same_tenant_period_and_number', confidence: 'likely', description: 'Same tenant, period and number' }
+          : null,
+    }))
+    await renderScreen()
+    await chooseProperty()
+    await userEvent.upload(screen.getByLabelText('Statement PDFs', { selector: 'input' }), [pdf('oct.pdf'), pdf('again.pdf')])
+    await userEvent.click(screen.getByRole('button', { name: 'Upload 2 statements' }))
+
+    expect(await screen.findByRole('link', { name: 'Follow this upload on the list' })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('1 registered · 1 likely duplicate to check · 0 failed')
   })
 
   it('asks for the property before uploading, and refuses a file that is not a PDF before it is sent', async () => {

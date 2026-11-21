@@ -125,7 +125,10 @@ select throws_ok(
   '42501', null, 'a signed-in user cannot delete a statement');
 
 -- ------------------------------------------------------------------ a closed review cannot change
+-- The extraction review is closed by the outcome functions only; close it as the service role here.
+reset role;
 update public.statement_extractions set status = 'corrected' where id = '71000000-0000-4000-8000-000000000001';
+set local role authenticated;
 select throws_ok(
   $$update public.statement_extraction_fields set corrected_value = '13000'
     where extraction_id = '71000000-0000-4000-8000-000000000001' and name = 'rental_charged'$$,

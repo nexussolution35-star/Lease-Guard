@@ -190,6 +190,48 @@ describe('StatementReviewService.confirmField', () => {
   })
 })
 
+describe('StatementReviewService.confirmFieldNotOnStatement', () => {
+  const missingNumber = () => extractionFieldRow({ name: 'statement_number', value: JSON_NULL, raw_text: '', confidence: 0, flagged: true })
+
+  it('confirms a statement number the extractor did not find as not on the statement, filling nothing in', async () => {
+    const { service, db, updates } = harness({ fields: [missingNumber()] })
+    await service.confirmFieldNotOnStatement(db, COMPANY, STATEMENT, 'statement_number')
+    const [update] = updates()
+    expect(update?.table).toBe('statement_extraction_fields')
+    const patch = callsTo(update!, 'update')[0]?.[0] as Record<string, unknown>
+    expect(patch).toMatchObject({ corrected_value: null })
+    expect(Object.keys(patch).sort()).toEqual(['confirmed_at', 'corrected_value'])
+    expect(callsTo(update!, 'eq')).toContainEqual(['name', 'statement_number'])
+  })
+
+  it('reads a confirmed missing number back as resolved, and confirming it again writes nothing', async () => {
+    const { service, db, updates } = harness({
+      fields: [{ ...missingNumber(), confirmed_at: '2026-11-21T08:00:00+00:00', confirmed_by_user_id: 'u1' }],
+    })
+    const extraction = await service.confirmFieldNotOnStatement(db, COMPANY, STATEMENT, 'statement_number')
+    expect(extraction.fields[0]).toMatchObject({ name: 'statement_number', value: null, resolution: 'confirmed' })
+    expect(updates()).toEqual([])
+  })
+
+  it('refuses any other field, and a number that was found (422), without writing', async () => {
+    const required = harness({ fields: [extractionFieldRow({ name: 'total_due', value: JSON_NULL, raw_text: '', flagged: true })] })
+    await expect(required.service.confirmFieldNotOnStatement(required.db, COMPANY, STATEMENT, 'total_due')).rejects.toThrow(
+      new UnprocessableEntityException('The total due is on every statement, so it must be entered or confirmed, not left out'),
+    )
+    expect(required.updates()).toEqual([])
+    const found = harness({ fields: [extractionFieldRow({ name: 'statement_number', value: 'ST-1', raw_text: 'ST-1', flagged: true })] })
+    await expect(found.service.confirmFieldNotOnStatement(found.db, COMPANY, STATEMENT, 'statement_number')).rejects.toThrow(
+      new UnprocessableEntityException('The statement number was found on the statement: confirm or correct it'),
+    )
+    expect(found.updates()).toEqual([])
+  })
+
+  it('refuses a statement that is not under review (409)', async () => {
+    const { service, db } = harness({ statement: { status: 'verified' }, fields: [missingNumber()] })
+    await expect(service.confirmFieldNotOnStatement(db, COMPANY, STATEMENT, 'statement_number')).rejects.toBeInstanceOf(ConflictException)
+  })
+})
+
 describe('StatementReviewService.setMatch', () => {
   const body = { tenantId: TENANT, unitId: UNIT }
 

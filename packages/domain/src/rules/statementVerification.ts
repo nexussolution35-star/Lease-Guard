@@ -1,14 +1,23 @@
 import { EXTRACTION_FIELD_NAMES, type Statement, type StatementExtraction } from '../types/index.js'
 import { compareISODate, formatSADate, isValidISODate } from './dates.js'
-import { EXTRACTION_FIELD_LABELS, fieldResolution, leaseInForceOn, resolvedFieldValue, type LeaseCandidate } from './statementReview.js'
+import {
+  EXTRACTION_FIELD_LABELS,
+  fieldResolution,
+  isOptionalExtractionField,
+  leaseInForceOn,
+  resolvedFieldValue,
+  type LeaseCandidate,
+} from './statementReview.js'
 
 /**
  * Whether a statement can be verified, and if not every reason why.
  *
  * Product rule: a statement's figures become its monitoring record only once a person has resolved every extracted
  * field (confirmed, corrected, or found without a flag) and set its tenant, unit and lease. Nothing is guessed: a
- * missing value must be entered. The database repeats the field and match checks when verifying
- * (public.verify_statement), so this list is what a reviewer is told, not the only guard.
+ * missing value must be entered, except the statement number, which a reviewer may confirm is not on the statement.
+ * The reviewed period must not end before it starts and the lease must have been in force on the reviewed statement
+ * date. The database repeats every check when verifying (public.verify_statement), so this list is what a reviewer
+ * is told, not the only guard.
  */
 
 export interface StatementVerificationInput {
@@ -31,9 +40,10 @@ export function statementVerificationProblems({ statement, extraction, lease }: 
   for (const name of EXTRACTION_FIELD_NAMES) {
     const field = extraction.fields.find((candidate) => candidate.name === name)
     const label = EXTRACTION_FIELD_LABELS[name]
+    if (field && fieldResolution(field) !== 'unresolved') continue
     if (!field || (field.value === null && field.correctedValue === undefined)) {
-      problems.push(`${label} was not found on the statement: enter it`)
-    } else if (fieldResolution(field) === 'unresolved') {
+      problems.push(`${label} was not found on the statement: ${isOptionalExtractionField(name) ? 'enter it, or confirm it is not on the statement' : 'enter it'}`)
+    } else {
       problems.push(`${label} is flagged: confirm or correct it`)
     }
   }

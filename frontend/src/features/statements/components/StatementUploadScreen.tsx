@@ -16,7 +16,7 @@ import { MAX_LIST_PAGE_SIZE } from '@/lib/data/listParams'
 import { isAwaitingWorkspace } from '@/lib/data/queries'
 
 import { useStatementUploader } from '../api/queries'
-import { isSettled, runUploadBatch, statementOf, type UploadFileState } from '../upload/uploadBatch'
+import { countOutcomes, isSettled, runUploadBatch, statementOf, UPLOAD_OUTCOMES, type UploadFileState, type UploadOutcome } from '../upload/uploadBatch'
 
 const PAGE_TITLE = 'Upload statements'
 const ACCEPT = 'application/pdf,.pdf'
@@ -107,6 +107,29 @@ function FileOutcome({ item, items }: { item: ChosenFile; items: readonly Chosen
     default:
       return null
   }
+}
+
+const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
+
+/** Each outcome in the batch summary, in words. */
+const OUTCOME_WORDS: Readonly<Record<UploadOutcome, (count: number) => string>> = {
+  registered: (count) => `${count} registered`,
+  likely_duplicate: (count) => plural(count, 'likely duplicate to check', 'likely duplicates to check'),
+  already_uploaded: (count) => `${count} already uploaded`,
+  failed: (count) => `${count} failed`,
+}
+
+/**
+ * The finished batch in one line. Every file counts once (a likely duplicate under likely duplicates only, never also
+ * as registered), so the numbers add up to the files; registered and failed always show, the duplicate outcomes only
+ * when a file came to them.
+ */
+function batchSummary(states: readonly UploadFileState[]): string {
+  const counts = countOutcomes(states)
+  return UPLOAD_OUTCOMES
+    .filter((outcome) => outcome === 'registered' || outcome === 'failed' || counts[outcome] > 0)
+    .map((outcome) => OUTCOME_WORDS[outcome](counts[outcome]))
+    .join(' · ')
 }
 
 /** A fresh id for one upload batch; the statement list follows the batch by it. */
@@ -239,12 +262,6 @@ export function StatementUploadScreen() {
     setError(undefined)
   }
 
-  const counts = {
-    registered: items.filter((item) => item.state.phase === 'queued' || item.state.phase === 'likely_duplicate').length,
-    duplicates: items.filter((item) => item.state.phase === 'identical' || item.state.phase === 'repeat' || item.state.phase === 'likely_duplicate').length,
-    failed: items.filter((item) => item.state.phase === 'failed').length,
-  }
-
   return (
     <section>
       <PageHeader title={PAGE_TITLE} />
@@ -313,7 +330,7 @@ export function StatementUploadScreen() {
                 return (
                   <li key={item.key} className="flex flex-col gap-1 py-2.5 text-sm sm:flex-row sm:items-start sm:gap-4">
                     <div className="min-w-0 flex-1 space-y-1">
-                      <p className="truncate">
+                      <p className="truncate" title={item.file.name}>
                         <span className="font-medium">{item.file.name}</span>
                         <span className="text-muted-foreground tabular-nums"> · {formatBytes(item.file.size)}</span>
                       </p>
@@ -365,16 +382,16 @@ export function StatementUploadScreen() {
             </p>
           ) : null}
 
-          {started ? (
-            <div className="space-y-3 pt-1" aria-live="polite">
-              <ProgressIndicator label={`${settled} of ${items.length} files done`} value={(settled / Math.max(1, items.length)) * 100} />
-              {finished ? (
-                <p className="text-sm tabular-nums">
-                  {counts.registered} registered · {counts.duplicates} {counts.duplicates === 1 ? 'duplicate' : 'duplicates'} · {counts.failed} failed
-                </p>
-              ) : null}
-            </div>
-          ) : null}
+          {/*
+            Progress is the progress bar's to convey; only the finished summary is announced. The status region stays in
+            the page from the start so assistive technology is already watching it when the summary appears.
+          */}
+          <div className={started ? 'space-y-3 pt-1' : undefined}>
+            {started ? <ProgressIndicator label={`${settled} of ${items.length} files done`} value={(settled / Math.max(1, items.length)) * 100} /> : null}
+            <p role="status" className="text-sm tabular-nums empty:hidden">
+              {finished ? batchSummary(items.map((item) => item.state)) : null}
+            </p>
+          </div>
 
           {/* Buttons on the right, the primary one last (owner rule: no buttons on the left). */}
           <div className="flex flex-wrap justify-end gap-2 pt-1">

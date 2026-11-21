@@ -10,7 +10,7 @@ import {
 } from '@leaseguard/domain'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { renderWithRouter } from '@/components/layout/testRouter'
 import { Toaster } from '@/components/ui/sonner'
@@ -28,6 +28,7 @@ const fakeStatements = vi.hoisted(() => ({
   getExtraction: vi.fn<StatementSource['getExtraction']>(),
   downloadUrl: vi.fn<StatementSource['downloadUrl']>(),
   confirmField: vi.fn<StatementSource['confirmField']>(),
+  confirmNotOnStatement: vi.fn<StatementSource['confirmNotOnStatement']>(),
   correctField: vi.fn<StatementSource['correctField']>(),
   setMatch: vi.fn<StatementSource['setMatch']>(),
   verify: vi.fn<StatementSource['verify']>(),
@@ -169,6 +170,27 @@ function renderScreen(record: Statement) {
 
 const rowOf = async (label: string) => screen.findByRole('listitem', { name: label })
 
+/** Sets the viewport the screen sees through `matchMedia`: wide embeds the PDF (from `md`), narrow is a phone. */
+function viewportIs(width: 'wide' | 'narrow') {
+  vi.spyOn(window, 'matchMedia').mockImplementation(
+    (query: string) =>
+      ({
+        matches: width === 'wide' && query === '(min-width: 48rem)',
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }) as MediaQueryList,
+  )
+}
+
+afterEach(() => {
+  vi.mocked(window.matchMedia).mockRestore?.()
+})
+
 beforeEach(() => {
   localStorage.clear()
   resetWorkspace()
@@ -190,6 +212,7 @@ beforeEach(() => {
 
 describe('StatementReviewScreen', () => {
   it('always shows the original statement beside the values, and opens it in a new tab', async () => {
+    viewportIs('wide')
     await renderScreen(statement())
     expect(await screen.findByTitle('Original statement: october.pdf')).toHaveAttribute('src', FILE_URL)
 
@@ -199,6 +222,14 @@ describe('StatementReviewScreen', () => {
     await waitFor(() => expect(tab.location.href).toBe(FILE_URL))
     expect(tab.opener).toBeNull()
     open.mockRestore()
+  })
+
+  it('on a phone offers the original in a new tab and does not download it into the page', async () => {
+    viewportIs('narrow')
+    await renderScreen(statement())
+    expect(await screen.findByRole('button', { name: 'Open in a new tab' })).toBeInTheDocument()
+    expect(screen.queryByTitle('Original statement: october.pdf')).not.toBeInTheDocument()
+    expect(fakeStatements.downloadUrl).not.toHaveBeenCalled()
   })
 
   it('says why a field is flagged and offers Confirm for a value that was read, Enter for one that was not', async () => {
@@ -250,6 +281,31 @@ describe('StatementReviewScreen', () => {
     expect(fakeStatements.confirmField).toHaveBeenCalledWith(NEXUS_ID, STATEMENT_ID, 'statement_date')
     expect(await within(await rowOf('Statement date')).findByText('Naledi van der Merwe')).toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('button', { name: 'Verify' })).toBeEnabled())
+  })
+
+  it('records that a statement prints no number, without filling one in; a required field cannot be left out', async () => {
+    const noNumber = { value: null, rawText: '', flagged: true }
+    fakeStatements.getExtraction.mockResolvedValue(extraction({ statement_number: noNumber, outstanding_balance: { value: null, rawText: '', flagged: true } }))
+    fakeStatements.confirmNotOnStatement.mockResolvedValue(
+      extraction({
+        statement_number: { ...noNumber, confirmedAt: '2026-11-21T08:00:00Z', confirmedByUserId: MANAGER },
+        outstanding_balance: { value: null, rawText: '', flagged: true },
+      }),
+    )
+    await renderScreen(statement(MATCHED))
+
+    const outstanding = /^the statement number was not found on the statement: enter it, or confirm it is not on the statement$/i
+    expect(await screen.findByText(outstanding)).toBeInTheDocument()
+    expect(within(await rowOf('Outstanding balance')).queryByRole('button', { name: /not on the statement/i })).not.toBeInTheDocument()
+
+    await userEvent.click(within(await rowOf('Statement number')).getByRole('button', { name: 'Confirm the statement number is not on the statement' }))
+    expect(fakeStatements.confirmNotOnStatement).toHaveBeenCalledWith(NEXUS_ID, STATEMENT_ID, 'statement_number')
+    const row = await rowOf('Statement number')
+    expect(await within(row).findByText('Not on the statement')).toBeInTheDocument()
+    expect(within(row).queryByRole('button', { name: /not on the statement/i })).not.toBeInTheDocument()
+    // The verification checklist no longer lists it (the field's original reason stays, as for any resolved field).
+    await waitFor(() => expect(screen.queryByText(outstanding)).not.toBeInTheDocument())
+    expect(fakeStatements.correctField).not.toHaveBeenCalled()
   })
 
   it('enters a missing amount, checked by the domain rule', async () => {

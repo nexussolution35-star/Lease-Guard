@@ -4,7 +4,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 \ir fixtures/two_companies.psql
-select plan(39);
+select plan(40);
 
 create schema tests;
 grant usage on schema tests to authenticated, service_role;
@@ -91,12 +91,22 @@ select is((select corrected_by_user_id from public.statement_extraction_fields
 select is((select count(*) from tests.audit((select pending_extraction from tests.ids), 'update')
   where changes @> '[{"field":"rental_charged","after":12345.67}]'),
   1::bigint, 'a field correction writes an audit row with the corrected value');
+-- An extraction review is closed only by the outcome functions (20261121194500_statement_review_integrity.sql); the
+-- stamp and audit rules hold for every role, so they are checked as the service role with the same user.
+select throws_ok(
+  $$update public.statement_extractions set status = 'corrected' where id = (select pending_extraction from tests.ids)$$,
+  '42501', null, 'a signed-in user cannot close an extraction review directly'
+);
+reset role;
+set local role service_role;
 update public.statement_extractions set status = 'corrected' where id = (select pending_extraction from tests.ids);
 select is((select reviewed_by_user_id from public.statement_extractions where id = (select pending_extraction from tests.ids)),
   (select naledi from tests.ids), 'extraction review records the reviewer');
 select is((select count(*) from tests.audit((select pending_extraction from tests.ids), 'update')
   where changes @> '[{"field":"status","before":"pending_review","after":"corrected"}]'),
   1::bigint, 'extraction status change is audited');
+reset role;
+set local role authenticated;
 
 -- A signed-in user verifies only through public.verify_statement (S-05, statement_verification.test.sql); the
 -- figure and audit rules below hold for every role, so they are checked as the service role with the same user.

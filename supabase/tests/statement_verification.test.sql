@@ -92,8 +92,7 @@ select throws_ok(
   '42501', null, 'nor the statement date');
 select throws_ok(
   $$update public.statements set status = 'rejected' where id = '70000000-0000-4000-8000-000000000011'$$,
-  '42501', 'A statement is verified, rejected or marked as a duplicate only through its review.',
-  'nor reject a statement by changing its status');
+  '42501', null, 'nor reject a statement by changing its status (no direct status writes since 20261121194500)');
 select throws_ok(
   $$update public.statements set duplicate_of_statement_id = '70000000-0000-4000-8000-000000000001' where id = '70000000-0000-4000-8000-000000000012'$$,
   '42501', null, 'nor link a duplicate directly');

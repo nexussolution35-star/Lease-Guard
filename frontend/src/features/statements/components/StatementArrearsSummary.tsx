@@ -113,7 +113,9 @@ export function StatementArrearsSummary() {
   const isLoading = query.isPending
   const showTenants = (next: AgeingBucketLabel | null) => {
     setBucket(next)
-    tableRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    // A smooth scroll is motion: it jumps instead for people who asked for reduced motion.
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    tableRef.current?.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' })
   }
   const rows = (summary?.entries ?? []).filter((entry) => bucket === null || entry.bucket === bucket)
   const underArrangement = summary?.tenantsUnderArrangement ?? 0
@@ -203,7 +205,7 @@ export function StatementArrearsSummary() {
               caption={bucket === null ? 'Tenants in arrears' : `Tenants in arrears, ${bucketName(bucket)}`}
               columns={columns(verifierName)}
               rows={rows}
-              getRowId={(entry) => entry.tenantId}
+              getRowId={(entry) => entry.statementId}
               isLoading={isLoading}
               onRowClick={(entry) => void navigate({ to: '/statements/$statementId', params: { statementId: entry.statementId } })}
               emptyState={

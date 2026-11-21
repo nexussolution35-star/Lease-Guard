@@ -44,6 +44,41 @@ export function statementOf(state: UploadFileState): EntityId | undefined {
   return undefined
 }
 
+/** What a settled file came to, for the batch summary: each file counts under exactly one outcome. */
+export type UploadOutcome = 'registered' | 'likely_duplicate' | 'already_uploaded' | 'failed'
+
+/** The summary's outcomes in the order it lists them. */
+export const UPLOAD_OUTCOMES: readonly UploadOutcome[] = ['registered', 'likely_duplicate', 'already_uploaded', 'failed']
+
+/** The outcome a file counts under, or undefined while it is still under way. */
+export function outcomeOf(state: UploadFileState): UploadOutcome | undefined {
+  switch (state.phase) {
+    case 'queued':
+      return 'registered'
+    case 'likely_duplicate':
+      // Registered too, but counted only here: it needs checking against the other statement before it is verified.
+      return 'likely_duplicate'
+    case 'identical':
+    case 'repeat':
+      // Nothing new was registered: the file is on record already, or another copy in this upload was sent.
+      return 'already_uploaded'
+    case 'failed':
+      return 'failed'
+    default:
+      return undefined
+  }
+}
+
+/** How many files came to each outcome. Every settled file counts once, so the counts add up to the settled files. */
+export function countOutcomes(states: readonly UploadFileState[]): Readonly<Record<UploadOutcome, number>> {
+  const counts: Record<UploadOutcome, number> = { registered: 0, likely_duplicate: 0, already_uploaded: 0, failed: 0 }
+  for (const state of states) {
+    const outcome = outcomeOf(state)
+    if (outcome) counts[outcome] += 1
+  }
+  return counts
+}
+
 export interface UploadBatchOptions {
   files: readonly File[]
   propertyId: EntityId

@@ -1,6 +1,6 @@
 import type { DocumentExtractionIssue, ExtractedField, ExtractionFieldName, ExtractionIssueCode } from '../types/index.js'
 import { isFinancialExtractionField } from './extractionReview.js'
-import { EXTRACTION_FIELD_LABELS, fieldResolution } from './statementReview.js'
+import { EXTRACTION_FIELD_LABELS, fieldResolution, isOptionalExtractionField } from './statementReview.js'
 
 /**
  * Why an extracted field needs a person, in the reviewer's words, from what the extraction reported.
@@ -62,7 +62,8 @@ export function fieldReviewReasons(
         message: `${label} was read as “${read}” but not with enough certainty to use: enter it from the statement.`,
       })
     } else if (read === '') {
-      reasons.push({ kind: 'missing', message: `${label} was not found on the statement: enter it.` })
+      const action = isOptionalExtractionField(field.name) ? 'enter it, or confirm it is not on the statement' : 'enter it'
+      reasons.push({ kind: 'missing', message: `${label} was not found on the statement: ${action}.` })
     } else {
       reasons.push({ kind: 'missing', message: `${label} was read as “${read}” but no value could be taken from it: enter it.` })
     }
@@ -76,7 +77,11 @@ export function fieldReviewReasons(
 /** What the reviewer can do with a field now: enter a value, confirm or correct one, or nothing (resolved). */
 export type FieldReviewAction = 'enter' | 'confirm_or_correct' | 'none'
 
-export function fieldReviewAction(field: Pick<ExtractedField, 'value' | 'flagged' | 'correctedValue' | 'confirmedAt'>): FieldReviewAction {
+/**
+ * `enter` also covers an optional field (the statement number) the extractor did not find: the reviewer may instead
+ * confirm it is not on the statement (`canConfirmNotOnStatement`).
+ */
+export function fieldReviewAction(field: Pick<ExtractedField, 'name' | 'value' | 'flagged' | 'correctedValue' | 'confirmedAt'>): FieldReviewAction {
   if (fieldResolution(field) !== 'unresolved') return 'none'
   return field.value === null ? 'enter' : 'confirm_or_correct'
 }

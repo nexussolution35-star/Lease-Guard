@@ -12,7 +12,8 @@ export interface DuplicateMatch {
 }
 
 /** Minimal shape needed for duplicate checks; `id` optional for not-yet-saved candidates. */
-export type DuplicateCandidate = Pick<Statement, 'file' | 'tenantId' | 'periodStart' | 'periodEnd' | 'statementNumber'> & {
+export type DuplicateCandidate = Pick<Statement, 'file' | 'tenantId' | 'periodStart' | 'periodEnd' | 'statementNumber'> &
+  Partial<Pick<Statement, 'unitId' | 'leaseId'>> & {
   id?: EntityId
 }
 
@@ -21,6 +22,10 @@ export type ExistingStatement = DuplicateCandidate & { id: EntityId }
 function sameMetadata(a: DuplicateCandidate, b: DuplicateCandidate): boolean {
   // An unmatched tenant or an unknown period (not yet read from the document) never matches.
   if (!a.tenantId || !b.tenantId || !a.periodStart || !a.periodEnd) return false
+  // A tenant with several leases gets a statement per lease (unit) for the same period, often without a number:
+  // statements known to be for different units or leases are different statements.
+  if (a.unitId && b.unitId && a.unitId !== b.unitId) return false
+  if (a.leaseId && b.leaseId && a.leaseId !== b.leaseId) return false
   return (
     a.tenantId === b.tenantId &&
     a.periodStart === b.periodStart &&
@@ -33,7 +38,8 @@ function sameMetadata(a: DuplicateCandidate, b: DuplicateCandidate): boolean {
  * Find the first statement the candidate duplicates. Order of checks:
  * 1. identical file (sha256 equal) → `exact`
  * 2. same tenantId + periodStart + periodEnd + statementNumber → `likely`
- *    (both statementNumbers undefined counts as equal; an unmatched tenant or unknown period never matches).
+ *    (both statementNumbers undefined counts as equal, since many statements print no number; an unmatched tenant or
+ *    unknown period never matches, nor do statements known to be for different units or leases).
  * A record with the candidate's own id is skipped. Exact matches win over likely ones.
  */
 export function findDuplicateStatement(

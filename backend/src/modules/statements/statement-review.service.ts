@@ -1,5 +1,9 @@
 import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common'
 import {
+  canConfirmNotOnStatement,
+  confirmedNotOnStatement,
+  EXTRACTION_FIELD_LABELS,
+  isOptionalExtractionField,
   leaseChoiceProblem,
   leaseInForceOn,
   parseFieldCorrection,
@@ -83,9 +87,34 @@ export class StatementReviewService {
   async confirmField(db: DbClient, companyId: EntityId, statementId: EntityId, name: ExtractionFieldName): Promise<StatementExtraction> {
     const { extraction, field } = await this.reviewableField(db, companyId, statementId, name)
     if (field.value === null) {
-      throw new UnprocessableEntityException('This value was not found on the statement, so it cannot be confirmed: enter it instead')
+      throw new UnprocessableEntityException(
+        isOptionalExtractionField(name)
+          ? 'This value was not found on the statement, so it cannot be confirmed: enter it, or confirm it is not on the statement'
+          : 'This value was not found on the statement, so it cannot be confirmed: enter it instead',
+      )
     }
     if (field.resolution === 'confirmed') return extraction
+    // The database stamps the time and the confirming user; the value sent only marks the field confirmed.
+    await this.updateField(db, companyId, extraction.id, name, { corrected_value: null, confirmed_at: new Date().toISOString() })
+    return this.statements.getExtraction(db, companyId, statementId)
+  }
+
+  /**
+   * Confirms that an optional field (the statement number) is not on the statement: the field keeps no value and is
+   * resolved by the confirmation, which the database stamps and audits; nothing is filled in. Any correction is
+   * dropped. Only a field the extractor did not find, and only an optional one, may be confirmed absent (422
+   * otherwise). Confirming it again changes nothing.
+   */
+  async confirmFieldNotOnStatement(db: DbClient, companyId: EntityId, statementId: EntityId, name: ExtractionFieldName): Promise<StatementExtraction> {
+    const label = EXTRACTION_FIELD_LABELS[name]
+    if (!isOptionalExtractionField(name)) {
+      throw new UnprocessableEntityException(`${label} is on every statement, so it must be entered or confirmed, not left out`)
+    }
+    const { extraction, field } = await this.reviewableField(db, companyId, statementId, name)
+    if (confirmedNotOnStatement(field)) return extraction
+    if (!canConfirmNotOnStatement(field)) {
+      throw new UnprocessableEntityException(`${label} was found on the statement: confirm or correct it`)
+    }
     // The database stamps the time and the confirming user; the value sent only marks the field confirmed.
     await this.updateField(db, companyId, extraction.id, name, { corrected_value: null, confirmed_at: new Date().toISOString() })
     return this.statements.getExtraction(db, companyId, statementId)

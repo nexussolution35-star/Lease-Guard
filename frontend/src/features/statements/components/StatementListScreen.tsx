@@ -310,112 +310,110 @@ export function StatementListScreen({ params, onParamsChange, lead }: StatementL
         isPending={verifyMany.isPending}
         onConfirm={verifySelected}
       />
-      <div aria-busy={query.isFetching || undefined}>
-        <DataTable
-          caption="Statements in this workspace"
-          columns={columns({
-            verifierName,
-            ...(isWriter ? { retry: (statement: StatementListItem) => void retryProcessing(statement) } : {}),
-            ...(retry.isPending && retry.variables ? { retryingId: retry.variables } : {}),
-          })}
-          rows={page?.items ?? []}
-          getRowId={(statement) => statement.id}
-          {...(isWriter && readyIds.size > 0
-            ? {
-                selectable: true,
-                selectedIds: selected,
-                onSelectionChange: setSelectedIds,
-                isRowSelectable: (statement: StatementListItem) => statement.readyToVerify,
-                rowSelectionLabel: (statement: StatementListItem) => `Select ${statement.file.fileName} to verify`,
+      <DataTable
+        caption="Statements in this workspace"
+        columns={columns({
+          verifierName,
+          ...(isWriter ? { retry: (statement: StatementListItem) => void retryProcessing(statement) } : {}),
+          ...(retry.isPending && retry.variables ? { retryingId: retry.variables } : {}),
+        })}
+        rows={page?.items ?? []}
+        getRowId={(statement) => statement.id}
+        {...(isWriter && readyIds.size > 0
+          ? {
+              selectable: true,
+              selectedIds: selected,
+              onSelectionChange: setSelectedIds,
+              isRowSelectable: (statement: StatementListItem) => statement.readyToVerify,
+              rowSelectionLabel: (statement: StatementListItem) => `Select ${statement.file.fileName} to verify`,
+            }
+          : {})}
+        isLoading={query.isPending || isPastEnd}
+        error={query.isError ? query.error : null}
+        onRetry={() => void query.refetch()}
+        sort={sort}
+        onSortChange={(next) => {
+          if (isSortField(next.field)) update({ sort: next.field, direction: next.direction })
+        }}
+        onRowClick={(statement) => void navigate({ to: '/statements/$statementId', params: { statementId: statement.id } })}
+        emptyState={
+          <DataTableEmptyState
+            isFiltered={isFiltered}
+            onClearFilters={clearFilters}
+            {...(isFiltered
+              ? {}
+              : {
+                  title: 'No statements yet',
+                  description: isWriter ? 'Upload the first tenant statements of this workspace.' : 'Statements uploaded to this workspace appear here.',
+                })}
+          />
+        }
+        toolbar={
+          <>
+            <DataTableToolbar
+              search={{
+                value: params.search ?? '',
+                onChange: (search) => update({ search: search.trim() === '' ? undefined : search }),
+                placeholder: 'Search file name or statement number…',
+                label: 'Search statements',
+              }}
+              filters={
+                <>
+                  <SingleSelectFilter<StatementStatus>
+                    label="Status"
+                    allLabel="All statuses"
+                    value={params.status}
+                    options={STATUS_OPTIONS}
+                    onChange={(status) => update({ status })}
+                  />
+                  <SingleSelectFilter<string>
+                    label="Property"
+                    allLabel="All properties"
+                    value={params.propertyId}
+                    options={propertyOptions}
+                    onChange={(propertyId) => update({ propertyId })}
+                  />
+                  <SingleSelectFilter<StatementSource>
+                    label="Source"
+                    allLabel="All source systems"
+                    value={params.sourceSystem}
+                    options={SOURCE_OPTIONS}
+                    onChange={(sourceSystem) => update({ sourceSystem })}
+                  />
+                  {params.uploadBatchId ? (
+                    <FilterChips chips={[{ id: 'uploadBatchId', label: 'One upload batch', onRemove: () => update({ uploadBatchId: undefined }) }]} />
+                  ) : null}
+                  {isFiltered ? (
+                    <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
+                      Clear filters
+                    </Button>
+                  ) : null}
+                </>
               }
-            : {})}
-          isLoading={query.isPending || isPastEnd}
-          error={query.isError ? query.error : null}
-          onRetry={() => void query.refetch()}
-          sort={sort}
-          onSortChange={(next) => {
-            if (isSortField(next.field)) update({ sort: next.field, direction: next.direction })
-          }}
-          onRowClick={(statement) => void navigate({ to: '/statements/$statementId', params: { statementId: statement.id } })}
-          emptyState={
-            <DataTableEmptyState
-              isFiltered={isFiltered}
-              onClearFilters={clearFilters}
-              {...(isFiltered
-                ? {}
-                : {
-                    title: 'No statements yet',
-                    description: isWriter ? 'Upload the first tenant statements of this workspace.' : 'Statements uploaded to this workspace appear here.',
-                  })}
             />
-          }
-          toolbar={
-            <>
-              <DataTableToolbar
-                search={{
-                  value: params.search ?? '',
-                  onChange: (search) => update({ search: search.trim() === '' ? undefined : search }),
-                  placeholder: 'Search file name or statement number…',
-                  label: 'Search statements',
-                }}
-                filters={
-                  <>
-                    <SingleSelectFilter<StatementStatus>
-                      label="Status"
-                      allLabel="All statuses"
-                      value={params.status}
-                      options={STATUS_OPTIONS}
-                      onChange={(status) => update({ status })}
-                    />
-                    <SingleSelectFilter<string>
-                      label="Property"
-                      allLabel="All properties"
-                      value={params.propertyId}
-                      options={propertyOptions}
-                      onChange={(propertyId) => update({ propertyId })}
-                    />
-                    <SingleSelectFilter<StatementSource>
-                      label="Source"
-                      allLabel="All source systems"
-                      value={params.sourceSystem}
-                      options={SOURCE_OPTIONS}
-                      onChange={(sourceSystem) => update({ sourceSystem })}
-                    />
-                    {params.uploadBatchId ? (
-                      <FilterChips chips={[{ id: 'uploadBatchId', label: 'One upload batch', onRemove: () => update({ uploadBatchId: undefined }) }]} />
-                    ) : null}
-                    {isFiltered ? (
-                      <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
-                        Clear filters
-                      </Button>
-                    ) : null}
-                  </>
-                }
+            {selected.length > 0 ? (
+              <StatementSelectionBar
+                count={selected.length}
+                isPending={verifyMany.isPending}
+                onVerify={() => setConfirmingVerify(true)}
+                onClear={() => setSelectedIds([])}
               />
-              {selected.length > 0 ? (
-                <StatementSelectionBar
-                  count={selected.length}
-                  isPending={verifyMany.isPending}
-                  onVerify={() => setConfirmingVerify(true)}
-                  onClear={() => setSelectedIds([])}
-                />
-              ) : null}
-            </>
-          }
-          {...(page && !isPastEnd
-            ? {
-                pagination: {
-                  page: page.page,
-                  pageSize: page.pageSize,
-                  total: page.total,
-                  pageSizeOptions: [...LIST_PAGE_SIZE_OPTIONS],
-                  onPageChange: (next: number) => onParamsChange({ ...params, page: next }),
-                  onPageSizeChange: (pageSize: number) => update({ pageSize }),
-                },
-              }
-            : {})}
-        />
-      </div>
+            ) : null}
+          </>
+        }
+        {...(page && !isPastEnd
+          ? {
+              pagination: {
+                page: page.page,
+                pageSize: page.pageSize,
+                total: page.total,
+                pageSizeOptions: [...LIST_PAGE_SIZE_OPTIONS],
+                onPageChange: (next: number) => onParamsChange({ ...params, page: next }),
+                onPageSizeChange: (pageSize: number) => update({ pageSize }),
+              },
+            }
+          : {})}
+      />
     </section>
   )
 }

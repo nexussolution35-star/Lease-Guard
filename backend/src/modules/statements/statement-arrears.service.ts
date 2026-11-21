@@ -41,8 +41,9 @@ interface VerifiedRow {
 }
 
 /**
- * What a company's verified statements say it is owed, calculated by the domain `arrearsOverview` (each tenant's
- * latest verified statement, aged into the company's arrears monitoring buckets, active payment arrangements marked)
+ * What a company's verified statements say it is owed, calculated by the domain `arrearsOverview` (the latest
+ * verified statement of each tenant's lease, totalled across leases and aged into the company's arrears monitoring
+ * buckets, active payment arrangements marked per tenant; an entry per tenant and lease)
  * plus the number of statements still waiting for review. Every read runs through the caller's RLS-bound client and
  * filters by company. A monitoring record, never a transaction.
  */
@@ -71,6 +72,7 @@ export class StatementArrearsService {
       id: row.id,
       propertyId: row.property_id,
       ...(row.tenant_id ? { tenantId: row.tenant_id } : {}),
+      ...(row.unit_id ? { unitId: row.unit_id } : {}),
       ...(row.lease_id ? { leaseId: row.lease_id } : {}),
       status: row.status,
       ...(row.statement_date !== null ? { statementDate: row.statement_date } : {}),

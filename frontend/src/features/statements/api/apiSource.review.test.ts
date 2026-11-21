@@ -52,6 +52,14 @@ describe('createApiStatementSource review', () => {
     expect(urlOf(confirmed).pathname).toBe(`/api/v1/statements/${TEST_RECORD_ID}/extraction/fields/statement_date/confirm`)
   })
 
+  it('confirms with POST that the statement number is not on the statement', async () => {
+    const absent = fakeFetch(200, extraction)
+    expect(await sourceWith(absent).confirmNotOnStatement(TEST_COMPANY_ID, TEST_RECORD_ID, 'statement_number')).toEqual(extraction)
+    expect(requestAt(absent).method).toBe('POST')
+    expect(urlOf(absent).pathname).toBe(`/api/v1/statements/${TEST_RECORD_ID}/extraction/fields/statement_number/not-on-statement`)
+    expect(requestAt(absent).headers.get('x-company-id')).toBe(TEST_COMPANY_ID)
+  })
+
   it('sets the match with PUT and rethrows a refusal', async () => {
     const fetch = fakeFetch(200, statement)
     const match = { tenantId: TEST_FILTER_ID, unitId: TEST_FILTER_ID }

@@ -54,12 +54,25 @@ describe('statementVerificationProblems', () => {
       },
     })
     expect(problems).toEqual([
-      'The statement number was not found on the statement: enter it',
+      'The statement number was not found on the statement: enter it, or confirm it is not on the statement',
       'The rental charged is flagged: confirm or correct it',
       'The total due was not found on the statement: enter it',
       'The tenant is not set',
       'The unit is not set',
       'The lease is not set',
+    ])
+  })
+
+  it('verifies a statement without a number once the reviewer confirms it is not on the statement', () => {
+    expect(statementVerificationProblems(input({ name: 'statement_number', value: null, flagged: true }))).toEqual([
+      'The statement number was not found on the statement: enter it, or confirm it is not on the statement',
+    ])
+    expect(statementVerificationProblems(input({ name: 'statement_number', value: null, flagged: true, confirmedAt: '2026-11-21T08:00:00Z' }))).toEqual([])
+  })
+
+  it('never lets any other missing value be confirmed as not on the statement', () => {
+    expect(statementVerificationProblems(input({ name: 'total_due', value: null, flagged: true, confirmedAt: '2026-11-21T08:00:00Z' }))).toEqual([
+      'The total due was not found on the statement: enter it',
     ])
   })
 
