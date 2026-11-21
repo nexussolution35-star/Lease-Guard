@@ -15,6 +15,21 @@ describe('REPORT_FILTER_SUPPORT', () => {
   })
 })
 
+describe('REPORT_FILTER_SUPPORT for lease monitoring and rental discrepancies', () => {
+  it('offers event statuses over the identified date, and the comparison outcome over the billing period', () => {
+    expect(REPORT_FILTER_SUPPORT.lease_monitoring).toMatchObject({
+      dateRange: { field: 'Identified' },
+      statuses: { values: ['new', 'under_review', 'action_required', 'in_progress', 'resolved', 'dismissed'] },
+    })
+    expect(REPORT_FILTER_SUPPORT.rental_discrepancies).toMatchObject({
+      dateRange: { field: 'Billing period' },
+      statuses: { values: ['outside_tolerance', 'within_tolerance'] },
+    })
+    expect(reportFilterProblems('rental_discrepancies', { statuses: ['resolved'] })).toHaveLength(1)
+    expect(reportFilterProblems('lease_monitoring', { from: '2026-02-01', to: '2026-01-01' })).toEqual(['to: the date range ends before it starts'])
+  })
+})
+
 describe('reportFilterProblems', () => {
   it('refuses a status the report does not offer', () => {
     expect(reportFilterProblems('occupancy', { statuses: ['occupied'] })).toEqual([])
@@ -25,7 +40,7 @@ describe('reportFilterProblems', () => {
 
   it('ignores filters the report does not offer', () => {
     expect(reportFilterProblems('portfolio_overview', { from: 'not a date', to: '2026-01-01' })).toEqual([])
-    expect(reportFilterProblems('lease_monitoring', { statuses: ['anything'] })).toEqual([])
+    expect(reportFilterProblems('occupancy', { from: '2026-02-01', to: '2026-01-01' })).toEqual([])
   })
 })
 

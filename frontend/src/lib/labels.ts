@@ -1,4 +1,4 @@
-import type { MessageTypeTemplateStatus } from '@leaseguard/domain'
+import { RENEWAL_DEADLINE_THRESHOLDS, type DeliveryOutcome, type MessageTypeTemplateStatus } from '@leaseguard/domain'
 
 /**
  * Display labels and visual tones for every LeaseGuard enum value.
@@ -89,6 +89,20 @@ const LABEL_OVERRIDES: Readonly<Record<string, string>> = {
   en_ZA: 'English (South Africa)',
   af: 'Afrikaans',
   en: 'English',
+  // lease expiry buckets and renewal deadlines (reports)
+  months_0_3: 'Within 3 months',
+  months_3_6: '3–6 months',
+  months_6_12: '6–12 months',
+  later: 'Later than 12 months',
+  due_critical: `Due within ${RENEWAL_DEADLINE_THRESHOLDS.critical} days`,
+  due_soon: `Due within ${RENEWAL_DEADLINE_THRESHOLDS.soon} days`,
+  upcoming: `Due within ${RENEWAL_DEADLINE_THRESHOLDS.upcoming} days`,
+  exercised: 'Option exercised',
+  // approval waiting time (communication activity report)
+  under_1_day: 'Under a day',
+  '1_3_days': '1–3 days',
+  '3_7_days': '3–7 days',
+  over_7_days: 'More than 7 days',
   // audit
   workspace_switch: 'Workspace switch',
   reset_demo_data: 'Reset demo data',
@@ -174,6 +188,15 @@ const TONES: Readonly<Record<string, Tone>> = {
   pending_verification_whatsapp: 'warning',
   disconnected: 'warning',
   error: 'danger',
+  // lease expiry buckets and renewal deadlines (reports)
+  months_0_3: 'warning',
+  due_critical: 'danger',
+  due_soon: 'warning',
+  upcoming: 'info',
+  exercised: 'success',
+  // rental comparison outcome (reports)
+  outside_tolerance: 'danger',
+  within_tolerance: 'success',
   // priorities
   low: 'neutral',
   medium: 'info',
@@ -225,4 +248,12 @@ export const MESSAGE_TEMPLATE_STATE_TONES: Readonly<Record<MessageTypeTemplateSt
   rejected: 'danger',
   removed: 'danger',
   text_changed: 'warning',
+}
+
+/** What became of a message handed to WhatsApp for sending (communication activity report). */
+export const DELIVERY_OUTCOME_LABELS: Readonly<Record<DeliveryOutcome, string>> = {
+  pending: 'Sent, not delivered yet',
+  delivered: 'Delivered, not read',
+  read: 'Read',
+  failed: 'Failed',
 }
