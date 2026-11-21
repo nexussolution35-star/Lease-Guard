@@ -1,4 +1,4 @@
-import type { EntityId, ISODate, ISODateTime } from '@leaseguard/domain'
+import type { EntityId, ISODate, ISODateTime, OwnerSummaryDeliveryJob } from '@leaseguard/domain'
 import type { DefaultJobOptions } from 'bullmq'
 
 /**
@@ -72,6 +72,13 @@ export interface JobPayloads {
    * Enqueued by the API when a company admin asks to sync again; one job per number, run again on each request.
    */
   'whatsapp-template-sync': { companyId: EntityId; numberId: EntityId }
+  /**
+   * Record and send one property owner's weekly summary (ticket R-07). Enqueued by the reports service's worker
+   * (services/reports, ADR 0003) once it has stored the summary; the core records it as an owner_weekly_summary
+   * communication (record_owner_weekly_summary_message: once per owner and week) and hands it to message-delivery.
+   * The payload is the cross-service contract `OwnerSummaryDeliveryJob` of @leaseguard/domain.
+   */
+  'owner-summary-delivery': OwnerSummaryDeliveryJob
 }
 
 export type QueueName = keyof JobPayloads
@@ -94,6 +101,7 @@ const JOB_KEY_FIELDS: { readonly [Q in QueueName]: readonly (keyof JobPayloads[Q
   'whatsapp-agent': ['companyId', 'communicationId'],
   'whatsapp-test-message': ['companyId', 'testMessageId'],
   'whatsapp-template-sync': ['companyId', 'numberId'],
+  'owner-summary-delivery': ['companyId', 'summaryId'],
 }
 
 export const QUEUE_NAMES = Object.keys(JOB_KEY_FIELDS) as QueueName[]

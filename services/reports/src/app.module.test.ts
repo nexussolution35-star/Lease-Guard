@@ -2,7 +2,7 @@ import 'reflect-metadata'
 
 import type { INestApplication } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
-import { REPORT_CATALOGUE, REPORT_IDS } from '@leaseguard/domain'
+import { reportCatalogueFor, REPORT_IDS } from '@leaseguard/domain'
 import { COMPANY_ID_HEADER, configureServiceApp, RlsClientFactory } from '@leaseguard/service-kit'
 import { fakeClients } from '@leaseguard/service-kit/testing'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -152,7 +152,10 @@ describe('reports service', () => {
   it('serves the report catalogue to a member of the active company', async () => {
     const response = await get('/api/v1/reports', { authorization: 'Bearer member.jwt', [COMPANY_ID_HEADER]: COMPANY_ID })
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ reports: REPORT_CATALOGUE.map((report) => ({ ...report })) })
+    // The member is read-only: the weekly owner summary is a company admin's, so it is not listed.
+    const body = (await response.json()) as { reports: { id: string }[] }
+    expect(body).toEqual({ reports: reportCatalogueFor('read_only').map((report) => ({ ...report })) })
+    expect(body.reports.map((report) => report.id)).not.toContain('owner_weekly_summary')
   })
 
   it('requires a verified access token', async () => {
@@ -230,6 +233,13 @@ describe('reports service', () => {
     expect((await get('/api/v1/reports/occupancy?propertyId=not-a-uuid', member)).status).toBe(400)
     expect((await get('/api/v1/reports/occupancy?sort=name', member)).status).toBe(400)
     expect((await get('/api/v1/reports/owner_summary', member)).status).toBe(404)
+  })
+
+  it('previews the weekly owner summary for company admins only (R-07)', async () => {
+    // The member is read-only: the company's owner summaries are a company admin's to preview.
+    expect((await get('/api/v1/reports/owner_weekly_summary', member)).status).toBe(403)
+    expect((await get('/api/v1/reports/owner_weekly_summary', { [COMPANY_ID_HEADER]: COMPANY_ID })).status).toBe(401)
+    expect((await get('/api/v1/reports/owner_weekly_summary', { authorization: 'Bearer outsider.jwt', [COMPANY_ID_HEADER]: COMPANY_ID })).status).toBe(403)
   })
 
   it('applies the same login and company checks to every report', async () => {

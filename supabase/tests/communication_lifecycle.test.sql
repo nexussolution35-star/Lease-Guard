@@ -128,6 +128,7 @@ select set_eq(
     ('rejected', 'sent', 'record_sent', 'system'),
     -- The AI agent's own reply to a contact (20261111100100), only inside complete_whatsapp_agent_run.
     ('pending_approval', 'approved', 'agent_approve', 'system'),
+    ('pending_approval', 'approved', 'schedule_approve', 'system'),
     ('draft', 'pending_approval', 'submit', 'user'), ('pending_approval', 'approved', 'decide', 'user'),
     ('pending_approval', 'rejected', 'decide', 'user'), ('approved', 'rejected', 'stop', 'user'),
     ('queued', 'rejected', 'stop', 'user'), ('failed', 'rejected', 'stop', 'user'),

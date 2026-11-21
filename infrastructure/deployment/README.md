@@ -15,6 +15,7 @@ and none needs payment or banking credentials.
 | API, the core service (NestJS, HTTP) | `backend/Dockerfile` | `node dist/main.js` (default) | `API_PORT` (3000) | `GET /health` liveness, `GET /health/ready` readiness |
 | Reports service (NestJS, HTTP) | `services/reports/Dockerfile` | `node dist/main.js` (default) | `REPORTS_PORT` (3100) | `GET /health` liveness, `GET /health/ready` readiness |
 | Worker (NestJS, BullMQ) | `backend/Dockerfile` (same image) | `node dist/worker.js` | none | no HTTP; process liveness only |
+| Reports worker (NestJS, BullMQ; R-07) | `services/reports/Dockerfile` (same image) | `node dist/worker.js` | none | no HTTP; process liveness only. Computes and hands over the weekly owner summaries; one or more replicas (the dispatch schedule is an idempotent upsert, jobs have deterministic ids) |
 | Document processing (FastAPI) | `python-services/document-processing/Dockerfile` | default (uvicorn on 8000) | 8000 | `GET /health` liveness, `GET /health/ready` readiness |
 | Frontend (static SPA on nginx) | `frontend/Dockerfile` | default | 8080 | `GET /healthz` |
 | Database, Auth, Storage | Supabase (managed project) | n/a | n/a | n/a |
@@ -93,6 +94,7 @@ documents each variable. Give each process only its own variables.
 | `LOG_LEVEL` | yes | yes | yes | `fatal` … `trace`, `silent` |
 | `API_PORT` | yes | | | |
 | `REPORTS_PORT`, `REPORTS_CORS_ORIGINS` | | | | reports service only (with `NODE_ENV`, `LOG_LEVEL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `REDIS_URL`, as for the API; see `services/reports/.env.example`). Never the service-role key |
+| reports worker | | | | `NODE_ENV`, `LOG_LEVEL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `REDIS_URL` and `QUEUE_PREFIX` (the core's prefix: it enqueues `owner-summary-delivery` for the core worker). Nothing else |
 | `API_CORS_ORIGINS` | yes | | | the frontend's origin(s), comma separated |
 | `SUPABASE_URL` | yes | yes | | |
 | `SUPABASE_ANON_KEY` | yes | | | public key; requests run under Row Level Security |

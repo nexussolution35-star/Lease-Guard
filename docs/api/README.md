@@ -142,8 +142,10 @@ From `backend/openapi.json` and, for the reports service, `services/reports/open
 | `GET /api/v1/reports/deposits_guarantees` | `getDepositsGuaranteesReport` | company | members |
 | `GET /api/v1/reports/statement_processing` | `getStatementProcessingReport` | company | members |
 | `GET /api/v1/reports/communication_activity` | `getCommunicationActivityReport` | company | members |
+| `GET /api/v1/reports/owner_weekly_summary` | `getOwnerWeeklySummaryReport` | company | company admins |
 `GET /api/v1/reports` returns `{ reports: ReportDefinitionDto[] }`: the report catalogue (`REPORT_CATALOGUE` in
-`packages/domain/src/rules/reportCatalogue.ts`, the same list the web app shows), in display order. The service also
+`packages/domain/src/rules/reportCatalogue.ts`, the same list the web app shows), in display order, narrowed to the
+reports the caller's role may open (`reportCatalogueFor`: the weekly owner summary is listed for company admins only). The service also
 answers `GET /health` and `GET /health/ready` on its own port; through the gateway those paths reach the core.
 
 **One endpoint pattern for every report** (ticket R-01): `GET /api/v1/reports/{reportId}`, read-only, open to every
@@ -203,6 +205,20 @@ company) and the domain rules; reports are monitoring summaries, never transacti
   their reason. Without filters the messages awaiting approval equal the dashboard's `pendingApprovals`. Read-only:
   nothing is sent, approved or retried from it. Status filter: the delivery status. Date range: the date the message
   was recorded (South African). The property filter leaves out messages without a property.
+- `owner_weekly_summary` (R-07, company admins only; 403 for every other role): this week's WhatsApp portfolio summary of
+  each owner of the company's properties (PRD §4.1, §6.4, §12.9), computed by `@leaseguard/domain`
+  `rules/ownerWeeklySummary.ts` from the same report rules, narrowed to the owner's properties: the outstanding total
+  from verified statements and its change since the owner's previous stored summary (`reports_owner_summaries`), the
+  open events that are critical, high or overdue, the current rental discrepancies outside tolerance, the guarantees in
+  force inside their notice days and the items needing the owner's attention (overdue or action-required events,
+  arrangements with missed or overdue instalments, security shortfalls, expired guarantees), each with the record it is
+  about. Per owner: the template values (`{{1}}` owner name, `{{2}}` week, `{{3}}` the summary in one line, en-ZA and
+  ZAR, no bank details), the WhatsApp text of the template chosen for `owner_weekly_summary`, why it would not be sent
+  (the company's blockers: no approved template, a template with more than three placeholders, no connected number; the
+  owner's: not an active property owner, no WhatsApp number), and this week's stored summary with its message's delivery
+  status. Also the week (Monday), the company's owner summary day and the next send date. Property filter: the owners
+  of those properties (each summary still covers every property its owner owns). Sending is the reports worker's job;
+  this endpoint only reads.
 - `lease_monitoring` (R-02): every monitoring event of the company, the open ones by default (new, under review, action
   required, in progress: `OPEN_EVENT_STATUSES`, as the monitoring list and the dashboard count them), each with its age
   in days on the "as at" date (`ageBucket` 0-7, 8-30, 31-90, 90+) and whether it is overdue (open, due before the "as

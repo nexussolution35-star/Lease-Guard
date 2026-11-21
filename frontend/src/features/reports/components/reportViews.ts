@@ -12,6 +12,7 @@ import { RentalDiscrepanciesReportView } from './RentalDiscrepanciesReportView'
 import { RenewalDeadlinesReportView } from './RenewalDeadlinesReportView'
 import { CommunicationActivityReportView } from './CommunicationActivityReportView'
 import { StatementProcessingReportView } from './StatementProcessingReportView'
+import { OwnerWeeklySummaryReportView } from './OwnerWeeklySummaryReportView'
 import type { ReportViewProps } from './reportViewProps'
 
 /** The view of each report the reports service serves; each ticket that builds a report adds its view here. */
@@ -27,4 +28,5 @@ export const REPORT_VIEWS: { readonly [Id in AvailableReportId]: ComponentType<R
   deposits_guarantees: DepositsGuaranteesReportView,
   statement_processing: StatementProcessingReportView,
   communication_activity: CommunicationActivityReportView,
+  owner_weekly_summary: OwnerWeeklySummaryReportView,
 }

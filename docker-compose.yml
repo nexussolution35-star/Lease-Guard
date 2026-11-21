@@ -149,6 +149,31 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # The reports worker (ticket R-07): the same image as the reports service, no HTTP. On each company's owner summary
+  # day it computes, stores and hands every property owner's weekly summary to the core worker (queue
+  # owner-summary-delivery), which sends it. It holds the service-role key; the reports service itself never does.
+  reports-worker:
+    image: leaseguard-reports:local
+    command: ["node", "dist/worker.js"]
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SUPABASE_URL: ${DOCKER_SUPABASE_URL:-http://host.docker.internal:54321}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      REDIS_URL: redis://redis:6379
+      QUEUE_PREFIX: ${QUEUE_PREFIX:-leaseguard}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+      reports:
+        condition: service_started
+    healthcheck:
+      disable: true
+    stop_grace_period: 30s
+    restart: unless-stopped
+
   # One origin for the web app (infrastructure/gateway): /api/v1/reports to the reports service, the rest to the API.
   gateway:
     build:

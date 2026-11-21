@@ -47,6 +47,8 @@ const REPORT_REQUESTS: { [Id in AvailableReportId]: ReportRequest<Id> } = {
     unwrap(api.GET('/api/v1/reports/statement_processing', { params: { query }, headers: headersFor(companyId) })),
   communication_activity: (api, companyId, query) =>
     unwrap(api.GET('/api/v1/reports/communication_activity', { params: { query }, headers: headersFor(companyId) })),
+  owner_weekly_summary: (api, companyId, query) =>
+    unwrap(api.GET('/api/v1/reports/owner_weekly_summary', { params: { query }, headers: headersFor(companyId) })),
 }
 
 /** Reports from the reports service through the gateway, for the company named explicitly. */

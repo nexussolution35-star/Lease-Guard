@@ -288,6 +288,20 @@ describe('checkOutbound: blockers', () => {
   })
 })
 
+describe('checkOutbound: weekly owner summaries approved by the schedule (ticket R-07)', () => {
+  const scheduleApproval: Row = { ...approved, decided_by_user_id: null, approved_by_schedule: true }
+
+  it('delivers an owner summary the schedule approved, with no person named', async () => {
+    expect(await blockers({ communication: ownerMessage, approvals: [scheduleApproval] })).toEqual([])
+  })
+
+  it('never accepts a schedule approval for any other message, a tenant message above all', async () => {
+    const refusal = 'Only a weekly owner summary to a property owner is approved by the schedule; a person approves this message'
+    expect(await blockers({ approvals: [scheduleApproval] })).toContain(refusal)
+    expect(await blockers({ communication: { ...ownerMessage, message_type: 'owner_query_response' }, approvals: [scheduleApproval] })).toContain(refusal)
+  })
+})
+
 describe('checkOutbound: failed reads', () => {
   it.each(['communications', 'tenants', 'payment_arrangements', 'whatsapp_phone_numbers'])('throws MessagingReadError when %s cannot be read', async (table) => {
     const failure = check({ failing: { [table]: { code: 'PGRST000', message: 'connection refused' } } })

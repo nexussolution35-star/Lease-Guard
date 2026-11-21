@@ -241,6 +241,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/owner_weekly_summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Weekly owner summary: this week's WhatsApp portfolio summary of each property owner, and its send
+         * @description Company admins only. Per owner of the company's properties: the outstanding total from verified statements and its change since the owner's previous stored summary, the important open monitoring events, the rental discrepancies outside tolerance, the guarantees expiring and the items needing the owner's attention, the WhatsApp text of the template chosen for owner_weekly_summary, why it would not be sent (no approved template, no connected number, no owner number), and this week's stored summary with its message's delivery status. Filter: propertyId (the owners of those properties).
+         */
+        get: operations["getOwnerWeeklySummaryReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -291,7 +311,7 @@ export interface components {
             requestId: string | null;
         };
         /** @enum {string} */
-        ReportId: "portfolio_overview" | "occupancy" | "lease_monitoring" | "rental_discrepancies" | "lease_expiry" | "renewal_deadlines" | "deposits_guarantees" | "arrears" | "payment_arrangements" | "statement_processing" | "communication_activity";
+        ReportId: "portfolio_overview" | "occupancy" | "lease_monitoring" | "rental_discrepancies" | "lease_expiry" | "renewal_deadlines" | "deposits_guarantees" | "arrears" | "payment_arrangements" | "statement_processing" | "communication_activity" | "owner_weekly_summary";
         ReportDefinitionDto: {
             id: components["schemas"]["ReportId"];
             /** @example Portfolio overview */
@@ -1348,6 +1368,171 @@ export interface components {
             reportId: "communication_activity";
             data: components["schemas"]["CommunicationActivityReportDto"];
         };
+        OwnerSummaryTemplateDto: {
+            metaTemplateName: string;
+            /** @example en_ZA */
+            language: string;
+            sendable: boolean;
+            summary: string;
+        };
+        OwnerSummaryPropertyDto: {
+            /** Format: uuid */
+            propertyId: string;
+            /** @example Maponya Square */
+            propertyName: string;
+        };
+        OwnerSummaryPreviousDto: {
+            /** Format: date */
+            weekStart: string;
+            /** @description ZAR */
+            totalOutstanding: number;
+        };
+        OwnerSummaryEventDto: {
+            /** Format: uuid */
+            eventId: string;
+            /** @enum {string} */
+            type: "rental_escalation_discrepancy" | "lease_expiry" | "renewal_notice_deadline" | "guarantee_expiry" | "guarantee_shortfall" | "deposit_shortfall" | "arrears" | "arrangement_attention" | "statement_review_required";
+            title: string;
+            /** @enum {string} */
+            priority: "low" | "medium" | "high" | "critical";
+            /** @enum {string} */
+            status: "new" | "under_review" | "action_required" | "in_progress" | "resolved" | "dismissed";
+            /** Format: uuid */
+            propertyId: string;
+            propertyName: string;
+            /** Format: date */
+            identifiedOn: string;
+            /** Format: date */
+            dueDate?: string;
+            overdue: boolean;
+        };
+        OwnerSummaryDiscrepancyDto: {
+            /** Format: uuid */
+            leaseId: string;
+            leaseReference: string;
+            tenantName: string;
+            /** Format: uuid */
+            propertyId: string;
+            propertyName: string;
+            /** @description Escalated contractual rental (ZAR). */
+            expected: number;
+            /** @description Rental billed on the latest verified statement (ZAR). */
+            billed: number;
+            /** @description expected − billed (ZAR); positive = under-billed. */
+            difference: number;
+        };
+        OwnerSummaryGuaranteeDto: {
+            /** Format: uuid */
+            leaseId: string;
+            reference: string;
+            tenantName: string;
+            /** Format: uuid */
+            propertyId: string;
+            propertyName: string;
+            guaranteeBank?: string;
+            /** @description ZAR */
+            guaranteeAmount?: number;
+            /** Format: date */
+            expiresOn: string;
+            daysUntilExpiry: number;
+        };
+        OwnerSummaryRecordDto: {
+            /** @enum {string} */
+            entity: "monitoring_event" | "payment_arrangement" | "lease";
+            /** Format: uuid */
+            id: string;
+        };
+        OwnerSummaryAttentionItemDto: {
+            /** @enum {string} */
+            kind: "overdue_event" | "action_required_event" | "arrangement_instalments" | "security_shortfall" | "guarantee_expired";
+            title: string;
+            /** Format: uuid */
+            propertyId: string;
+            propertyName: string;
+            record: components["schemas"]["OwnerSummaryRecordDto"];
+        };
+        OwnerWeeklySummaryDto: {
+            /** Format: uuid */
+            ownerUserId: string;
+            ownerName: string;
+            /**
+             * Format: date
+             * @description Monday of the week.
+             */
+            weekStart: string;
+            /** Format: date */
+            asOf: string;
+            properties: components["schemas"]["OwnerSummaryPropertyDto"][];
+            /** @description Outstanding on the latest verified statements at the owner's properties (ZAR). */
+            totalOutstanding: number;
+            tenantsInArrears: number;
+            /** @description ZAR */
+            outstandingUnderArrangement: number;
+            /** @description The owner's previous stored summary; null for the first. */
+            previous: components["schemas"]["OwnerSummaryPreviousDto"] | null;
+            /** @description Change in the outstanding total since the previous summary (ZAR). */
+            outstandingChange: number | null;
+            openEventCount: number;
+            importantEvents: components["schemas"]["OwnerSummaryEventDto"][];
+            discrepancies: components["schemas"]["OwnerSummaryDiscrepancyDto"][];
+            /** @description ZAR */
+            discrepancyMonthlyDifference: number;
+            expiringGuarantees: components["schemas"]["OwnerSummaryGuaranteeDto"][];
+            attention: components["schemas"]["OwnerSummaryAttentionItemDto"][];
+        };
+        OwnerSummaryDeliveryDto: {
+            /** Format: uuid */
+            summaryId: string;
+            /** @enum {string} */
+            status: "ready" | "blocked" | "handed_over";
+            /** Format: date-time */
+            computedAt: string;
+            blockers: string[];
+            /**
+             * Format: uuid
+             * @description The owner_weekly_summary communication (message history).
+             */
+            communicationId?: string;
+            /** @enum {string} */
+            deliveryStatus?: "draft" | "pending_approval" | "approved" | "queued" | "sent" | "delivered" | "read" | "failed" | "rejected" | "received";
+            failureReason?: string;
+            /** Format: date-time */
+            sentAt?: string;
+        };
+        OwnerWeeklySummaryPreviewDto: {
+            summary: components["schemas"]["OwnerWeeklySummaryDto"];
+            /** @description {{1}} owner name, {{2}} week, {{3}} the summary in one line. */
+            values: string[];
+            /** @description The WhatsApp text: the chosen template filled in. */
+            message?: string;
+            /** @description Why it would not be sent now; empty when it would. */
+            blockers: string[];
+            delivery?: components["schemas"]["OwnerSummaryDeliveryDto"];
+        };
+        OwnerWeeklySummaryReportDto: {
+            /** Format: date */
+            weekStart: string;
+            /** @enum {string} */
+            sendWeekday: "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+            /** Format: date */
+            nextSendOn: string;
+            /** @description Why the company sends no owner summary now (template, number). */
+            blockers: string[];
+            template?: components["schemas"]["OwnerSummaryTemplateDto"];
+            owners: components["schemas"]["OwnerWeeklySummaryPreviewDto"][];
+        };
+        OwnerWeeklySummaryResponseDto: {
+            /**
+             * Format: date
+             * @description The South African date the figures are as at.
+             * @example 2026-11-21
+             */
+            asOf: string;
+            filters: components["schemas"]["ReportFiltersDto"];
+            /** @enum {string} */
+            reportId: "owner_weekly_summary";
+            data: components["schemas"]["OwnerWeeklySummaryReportDto"];
+        };
         LivenessResponse: {
             /** @enum {string} */
             status: "ok";
@@ -1462,6 +1647,19 @@ export type PendingApprovalRowDto = components['schemas']['PendingApprovalRowDto
 export type CommunicationActivityRowDto = components['schemas']['CommunicationActivityRowDto'];
 export type CommunicationActivityReportDto = components['schemas']['CommunicationActivityReportDto'];
 export type CommunicationActivityResponseDto = components['schemas']['CommunicationActivityResponseDto'];
+export type OwnerSummaryTemplateDto = components['schemas']['OwnerSummaryTemplateDto'];
+export type OwnerSummaryPropertyDto = components['schemas']['OwnerSummaryPropertyDto'];
+export type OwnerSummaryPreviousDto = components['schemas']['OwnerSummaryPreviousDto'];
+export type OwnerSummaryEventDto = components['schemas']['OwnerSummaryEventDto'];
+export type OwnerSummaryDiscrepancyDto = components['schemas']['OwnerSummaryDiscrepancyDto'];
+export type OwnerSummaryGuaranteeDto = components['schemas']['OwnerSummaryGuaranteeDto'];
+export type OwnerSummaryRecordDto = components['schemas']['OwnerSummaryRecordDto'];
+export type OwnerSummaryAttentionItemDto = components['schemas']['OwnerSummaryAttentionItemDto'];
+export type OwnerWeeklySummaryDto = components['schemas']['OwnerWeeklySummaryDto'];
+export type OwnerSummaryDeliveryDto = components['schemas']['OwnerSummaryDeliveryDto'];
+export type OwnerWeeklySummaryPreviewDto = components['schemas']['OwnerWeeklySummaryPreviewDto'];
+export type OwnerWeeklySummaryReportDto = components['schemas']['OwnerWeeklySummaryReportDto'];
+export type OwnerWeeklySummaryResponseDto = components['schemas']['OwnerWeeklySummaryResponseDto'];
 export type LivenessResponse = components['schemas']['LivenessResponse'];
 export type DependencyCheck = components['schemas']['DependencyCheck'];
 export type ReadinessChecks = components['schemas']['ReadinessChecks'];
@@ -2187,6 +2385,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CommunicationActivityResponseDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getOwnerWeeklySummaryReport: {
+        parameters: {
+            query?: {
+                /** @description Only these properties (repeat the parameter for several). */
+                propertyId?: string[];
+                /** @description Inclusive start of the date range on the report's primary date. */
+                from?: string;
+                /** @description Inclusive end of the date range on the report's primary date. */
+                to?: string;
+                /** @description Only records with these statuses (repeat the parameter for several). */
+                status?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerWeeklySummaryResponseDto"];
                 };
             };
             /** @description Invalid request or missing X-Company-Id header */

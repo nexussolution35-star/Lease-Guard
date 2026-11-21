@@ -14,7 +14,8 @@ Related: [API conventions](../api/README.md) · [Database](../database/README.md
 | Web app | `frontend/` (Vite SPA) | 5173 (`pnpm dev:frontend`) | Supabase Auth (sign-in), and every service through the gateway (one base URL, `VITE_API_URL`). Nothing at all in demo mode. |
 | Gateway | Vite dev proxy in development (`frontend/vite.config.ts`); nginx in deployment (`infrastructure/gateway`) | 5173 in development (the dev server itself); 8081 in `docker-compose.yml` | Routes by path (`infrastructure/gateway/routes.json`): `/api/v1/reports` to the reports service, everything else to the API. |
 | API (core service) | `backend/src/main.ts` | `API_PORT` (3000) | Supabase with the anon key plus the caller's JWT; Redis (enqueue only). |
-| Reports service | `services/reports/src/main.ts` | `REPORTS_PORT` (3100, `pnpm dev:reports`) | Supabase with the anon key plus the caller's JWT (read-only `reports_*` functions and its own `reports_*` tables); Redis (readiness; queues to the core messaging pipeline). |
+| Reports service | `services/reports/src/main.ts` | `REPORTS_PORT` (3100, `pnpm dev:reports`) | Supabase with the anon key plus the caller's JWT (read-only `reports_*` functions and its own `reports_*` tables); Redis (readiness). |
+| Reports worker | `services/reports/src/worker.ts` (same image, `node dist/worker.js`) | none (`pnpm dev:reports-worker`) | Supabase with the service-role key, through the `reports_*` functions only (naming the company) and its own `reports_*` tables; Redis (its own queues, and `owner-summary-delivery` to the core worker). |
 | Worker | `backend/src/worker.ts` | none (no HTTP) | Supabase with the service-role key; Redis; document processing; WhatsApp Cloud API. |
 | Document processing | `python-services/document-processing/` (FastAPI) | 8000 | Nothing. Stateless; called only by the worker. |
 | Supabase | `supabase/` (local stack via the Supabase CLI) | 54321 (API), 54322 (Postgres) | Postgres with RLS, Auth, Storage. |
@@ -66,6 +67,18 @@ OpenAPI document (`services/reports/openapi.json`) and dev script. Report logic 
 - **Between services: queues only.** A service asks another to act through Redis/BullMQ; it never writes another
   service's tables or calls another service's HTTP API. Anything the reports service sends (the weekly owner
   summary) goes to the core messaging pipeline by queue; only the core worker calls Meta.
+- **Weekly owner summary (R-07).** The reports worker (`services/reports/src/worker.ts`, its own process, no HTTP)
+  runs a BullMQ job scheduler `weekly-owner-summary-dispatch` (`0 7 * * *`, Africa/Johannesburg) on its queue
+  `reports-owner-summary-dispatch`: it lists the active companies (`reports_owner_summary_companies`) and queues
+  `reports-owner-summary` (`companyId`, `asOf`; job id per company and week) for each whose owner summary day
+  (`companies.owner_summary_weekday`, Monday by default) is today. That job computes every owner's summary with the same
+  `OwnerSummaryService` the Reports page previews (`rules/ownerWeeklySummary.ts`), stores it in `reports_owner_summaries`
+  (once per company, owner and week; a summary handed over is final, a blocked one is computed again on a later run of
+  the week) and, when nothing blocks it, enqueues the core's `owner-summary-delivery` (`OwnerSummaryDeliveryJob`,
+  `companyId` and `summaryId`, job id `ownerSummaryDeliveryJobId`). The core worker reads the stored summary through
+  `reports_owner_summary_message`, fills the chosen template and records the message with
+  `record_owner_weekly_summary_message`, then queues `message-delivery`. The reports worker holds the service-role key
+  (it runs with no caller), as the core worker does; the reports HTTP service never does.
 
 The web app runs in one of two modes, fixed per build by `VITE_DATA_SOURCE`:
 
@@ -127,6 +140,7 @@ signed raw payload (the API cannot store it; the worker stores it first and the 
 | `arrangement-reminders` | `companyId`, `asOf` | `monitoring-dispatch` (overdue instalments, and instalments a verified statement shows were not covered, become `arrangement_attention` events; upcoming ones notify the property manager; never a tenant message) | 1 |
 | `statement-monitoring` | `companyId`, `statementId` | API: `POST /statements/{id}/verify` (arrears and lease monitoring for that statement's tenant, at once) | 1 |
 | `whatsapp-webhook` | `payloadSha256`, `body`, `receivedAt` | API: `POST /webhooks/whatsapp` (Meta, signed) | 4 |
+| `owner-summary-delivery` | `companyId`, `summaryId` | The reports worker (R-07), once per stored weekly owner summary: the core records it as an approved `owner_weekly_summary` (once per owner and week) and queues `message-delivery`; owners only, never a tenant | 1 |
 
 Processors live under `backend/src/workers/` (`statements/`, `messaging/`, `monitoring/`,
 `scheduling/`). Reliability is layered:
@@ -213,6 +227,7 @@ imports, no I/O and no clock reads; date-sensitive functions take `today` explic
 | `extractionReview.ts` | Assessment of an extraction proposal for review |
 | `monitoringWorkflow.ts` | Allowed monitoring event status transitions (enforced in the database by `update_monitoring_event_status`, the same moves) |
 | `communicationEligibility.ts`, `messageContent.ts` | Who may receive which message type; banking details and forbidden tenant topics in message text |
+| `ownerWeeklySummary.ts` | The weekly owner summary (R-07): the week (Monday) and the company's day, each owner's figures from the report rules narrowed to their properties, the change since the previous stored summary, the one-line template values, and why it would not be sent (template, number, owner) |
 
 Who executes them:
 

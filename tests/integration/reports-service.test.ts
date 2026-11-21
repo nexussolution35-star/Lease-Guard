@@ -1,5 +1,5 @@
 import { unwrap } from '@leaseguard/api-client'
-import { REPORT_CATALOGUE } from '@leaseguard/domain'
+import { REPORT_CATALOGUE, reportCatalogueFor } from '@leaseguard/domain'
 import { describe, expect, it } from 'vitest'
 
 import { apiErrorOf, gatewayAs, integration } from './support/clients.ts'
@@ -19,10 +19,13 @@ describe('reports service through the gateway', () => {
   })
 
   it('serves the report catalogue at /api/v1/reports to every member role of the active company', async () => {
-    for (const user of ['admin', 'manager', 'readOnly', 'owner'] as const) {
+    const roles = { admin: 'company_admin', manager: 'property_manager', readOnly: 'read_only', owner: 'property_owner' } as const
+    for (const [user, role] of Object.entries(roles) as [keyof typeof roles, (typeof roles)[keyof typeof roles]][]) {
       const catalogue = await unwrap(gatewayAs(user, 'a').GET('/api/v1/reports'))
-      expect(catalogue.reports, user).toEqual(REPORT_CATALOGUE.map((report) => ({ ...report })))
+      // Each role sees the reports it may open: the weekly owner summary is a company admin's (R-07).
+      expect(catalogue.reports, user).toEqual(reportCatalogueFor(role).map((report) => ({ ...report })))
     }
+    expect((await unwrap(gatewayAs('admin', 'a').GET('/api/v1/reports'))).reports).toHaveLength(REPORT_CATALOGUE.length)
   })
 
   it('is served by the reports service, not the core API', async () => {

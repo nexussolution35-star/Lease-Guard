@@ -5,7 +5,7 @@ import type { EntityId, ReportDefinition, ReportEnvelope, ReportFilters, ReportI
  * builds a report adds its id here and its request in `apiSource.ts`; the Reports page opens the others as "not
  * available yet".
  */
-export const AVAILABLE_REPORT_IDS = ['portfolio_overview', 'occupancy', 'lease_monitoring', 'rental_discrepancies', 'lease_expiry', 'renewal_deadlines', 'deposits_guarantees', 'arrears', 'payment_arrangements', 'statement_processing', 'communication_activity'] as const satisfies readonly ReportId[]
+export const AVAILABLE_REPORT_IDS = ['portfolio_overview', 'occupancy', 'lease_monitoring', 'rental_discrepancies', 'lease_expiry', 'renewal_deadlines', 'deposits_guarantees', 'arrears', 'payment_arrangements', 'statement_processing', 'communication_activity', 'owner_weekly_summary'] as const satisfies readonly ReportId[]
 export type AvailableReportId = (typeof AVAILABLE_REPORT_IDS)[number]
 
 export function isAvailableReportId(id: ReportId): id is AvailableReportId {

@@ -74,14 +74,14 @@ isOneToOne: false
                   ]
                 },"communications": {
                   Row: {
-                    "arrangement_id": string | null,"attachment_file_name": string | null,"attachment_mime_type": string | null,"attachment_sha256": string | null,"attachment_size_bytes": number | null,"attachment_storage_path": string | null,"body": string,"channel": Database["public"]['Enums']["channel"],"company_id": string,"company_number": string,"contact_id": string | null,"conversation_id": string | null,"counterparty_number": string | null,"created_at": string,"created_by_user_id": string | null,"delivered_at": string | null,"direction": Database["public"]['Enums']["message_direction"],"external_message_id": string | null,"failure_reason": string | null,"id": string,"lease_id": string | null,"message_type": Database["public"]['Enums']["message_type"],"owner_user_id": string | null,"property_id": string | null,"read_at": string | null,"received_at": string | null,"recipient_type": Database["public"]['Enums']["recipient_type"],"send_uncertain_since": string | null,"sent_at": string | null,"statement_id": string | null,"status": Database["public"]['Enums']["delivery_status"],"template_id": string | null,"tenant_id": string | null,"updated_at": string
+                    "arrangement_id": string | null,"attachment_file_name": string | null,"attachment_mime_type": string | null,"attachment_sha256": string | null,"attachment_size_bytes": number | null,"attachment_storage_path": string | null,"body": string,"channel": Database["public"]['Enums']["channel"],"company_id": string,"company_number": string,"contact_id": string | null,"conversation_id": string | null,"counterparty_number": string | null,"created_at": string,"created_by_user_id": string | null,"delivered_at": string | null,"direction": Database["public"]['Enums']["message_direction"],"external_message_id": string | null,"failure_reason": string | null,"id": string,"lease_id": string | null,"message_type": Database["public"]['Enums']["message_type"],"owner_summary_week": string | null,"owner_user_id": string | null,"property_id": string | null,"read_at": string | null,"received_at": string | null,"recipient_type": Database["public"]['Enums']["recipient_type"],"send_uncertain_since": string | null,"sent_at": string | null,"statement_id": string | null,"status": Database["public"]['Enums']["delivery_status"],"template_id": string | null,"tenant_id": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "arrangement_id"?: string | null,"attachment_file_name"?: string | null,"attachment_mime_type"?: string | null,"attachment_sha256"?: string | null,"attachment_size_bytes"?: number | null,"attachment_storage_path"?: string | null,"body": string,"channel": Database["public"]['Enums']["channel"],"company_id": string,"company_number": string,"contact_id"?: string | null,"conversation_id"?: string | null,"counterparty_number"?: string | null,"created_at"?: string,"created_by_user_id"?: string | null,"delivered_at"?: string | null,"direction": Database["public"]['Enums']["message_direction"],"external_message_id"?: string | null,"failure_reason"?: string | null,"id"?: string,"lease_id"?: string | null,"message_type": Database["public"]['Enums']["message_type"],"owner_user_id"?: string | null,"property_id"?: string | null,"read_at"?: string | null,"received_at"?: string | null,"recipient_type": Database["public"]['Enums']["recipient_type"],"send_uncertain_since"?: string | null,"sent_at"?: string | null,"statement_id"?: string | null,"status"?: Database["public"]['Enums']["delivery_status"],"template_id"?: string | null,"tenant_id"?: string | null,"updated_at"?: string
+                    "arrangement_id"?: string | null,"attachment_file_name"?: string | null,"attachment_mime_type"?: string | null,"attachment_sha256"?: string | null,"attachment_size_bytes"?: number | null,"attachment_storage_path"?: string | null,"body": string,"channel": Database["public"]['Enums']["channel"],"company_id": string,"company_number": string,"contact_id"?: string | null,"conversation_id"?: string | null,"counterparty_number"?: string | null,"created_at"?: string,"created_by_user_id"?: string | null,"delivered_at"?: string | null,"direction": Database["public"]['Enums']["message_direction"],"external_message_id"?: string | null,"failure_reason"?: string | null,"id"?: string,"lease_id"?: string | null,"message_type": Database["public"]['Enums']["message_type"],"owner_summary_week"?: string | null,"owner_user_id"?: string | null,"property_id"?: string | null,"read_at"?: string | null,"received_at"?: string | null,"recipient_type": Database["public"]['Enums']["recipient_type"],"send_uncertain_since"?: string | null,"sent_at"?: string | null,"statement_id"?: string | null,"status"?: Database["public"]['Enums']["delivery_status"],"template_id"?: string | null,"tenant_id"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "arrangement_id"?: string | null,"attachment_file_name"?: string | null,"attachment_mime_type"?: string | null,"attachment_sha256"?: string | null,"attachment_size_bytes"?: number | null,"attachment_storage_path"?: string | null,"body"?: string,"channel"?: Database["public"]['Enums']["channel"],"company_id"?: string,"company_number"?: string,"contact_id"?: string | null,"conversation_id"?: string | null,"counterparty_number"?: string | null,"created_at"?: string,"created_by_user_id"?: string | null,"delivered_at"?: string | null,"direction"?: Database["public"]['Enums']["message_direction"],"external_message_id"?: string | null,"failure_reason"?: string | null,"id"?: string,"lease_id"?: string | null,"message_type"?: Database["public"]['Enums']["message_type"],"owner_user_id"?: string | null,"property_id"?: string | null,"read_at"?: string | null,"received_at"?: string | null,"recipient_type"?: Database["public"]['Enums']["recipient_type"],"send_uncertain_since"?: string | null,"sent_at"?: string | null,"statement_id"?: string | null,"status"?: Database["public"]['Enums']["delivery_status"],"template_id"?: string | null,"tenant_id"?: string | null,"updated_at"?: string
+                    "arrangement_id"?: string | null,"attachment_file_name"?: string | null,"attachment_mime_type"?: string | null,"attachment_sha256"?: string | null,"attachment_size_bytes"?: number | null,"attachment_storage_path"?: string | null,"body"?: string,"channel"?: Database["public"]['Enums']["channel"],"company_id"?: string,"company_number"?: string,"contact_id"?: string | null,"conversation_id"?: string | null,"counterparty_number"?: string | null,"created_at"?: string,"created_by_user_id"?: string | null,"delivered_at"?: string | null,"direction"?: Database["public"]['Enums']["message_direction"],"external_message_id"?: string | null,"failure_reason"?: string | null,"id"?: string,"lease_id"?: string | null,"message_type"?: Database["public"]['Enums']["message_type"],"owner_summary_week"?: string | null,"owner_user_id"?: string | null,"property_id"?: string | null,"read_at"?: string | null,"received_at"?: string | null,"recipient_type"?: Database["public"]['Enums']["recipient_type"],"send_uncertain_since"?: string | null,"sent_at"?: string | null,"statement_id"?: string | null,"status"?: Database["public"]['Enums']["delivery_status"],"template_id"?: string | null,"tenant_id"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -378,14 +378,14 @@ isOneToOne: false
                   ]
                 },"message_approvals": {
                   Row: {
-                    "communication_id": string,"company_id": string,"created_at": string,"decided_at": string | null,"decided_by_agent_run_id": string | null,"decided_by_user_id": string | null,"decision": Database["public"]['Enums']["approval_decision"],"id": string,"reason": string | null,"requested_at": string,"requested_by_user_id": string | null,"updated_at": string
+                    "approved_by_schedule": boolean,"communication_id": string,"company_id": string,"created_at": string,"decided_at": string | null,"decided_by_agent_run_id": string | null,"decided_by_user_id": string | null,"decision": Database["public"]['Enums']["approval_decision"],"id": string,"reason": string | null,"requested_at": string,"requested_by_user_id": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "communication_id": string,"company_id": string,"created_at"?: string,"decided_at"?: string | null,"decided_by_agent_run_id"?: string | null,"decided_by_user_id"?: string | null,"decision"?: Database["public"]['Enums']["approval_decision"],"id"?: string,"reason"?: string | null,"requested_at"?: string,"requested_by_user_id"?: string | null,"updated_at"?: string
+                    "approved_by_schedule"?: boolean,"communication_id": string,"company_id": string,"created_at"?: string,"decided_at"?: string | null,"decided_by_agent_run_id"?: string | null,"decided_by_user_id"?: string | null,"decision"?: Database["public"]['Enums']["approval_decision"],"id"?: string,"reason"?: string | null,"requested_at"?: string,"requested_by_user_id"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "communication_id"?: string,"company_id"?: string,"created_at"?: string,"decided_at"?: string | null,"decided_by_agent_run_id"?: string | null,"decided_by_user_id"?: string | null,"decision"?: Database["public"]['Enums']["approval_decision"],"id"?: string,"reason"?: string | null,"requested_at"?: string,"requested_by_user_id"?: string | null,"updated_at"?: string
+                    "approved_by_schedule"?: boolean,"communication_id"?: string,"company_id"?: string,"created_at"?: string,"decided_at"?: string | null,"decided_by_agent_run_id"?: string | null,"decided_by_user_id"?: string | null,"decision"?: Database["public"]['Enums']["approval_decision"],"id"?: string,"reason"?: string | null,"requested_at"?: string,"requested_by_user_id"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -858,6 +858,32 @@ isOneToOne: false
       referencedColumns: ["company_id","user_id"]
     },{
       foreignKeyName: "properties_owner_fk"
+      columns: ["company_id","owner_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    }
+                  ]
+                },"reports_owner_summaries": {
+                  Row: {
+                    "as_of": string,"blockers": (string)[],"company_id": string,"computed_at": string,"created_at": string,"handed_over_at": string | null,"id": string,"owner_user_id": string,"status": string,"summary": NonNullable<Json>,"template_values": (string)[],"total_outstanding": number,"updated_at": string,"week_start": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "as_of": string,"blockers"?: (string)[],"company_id": string,"computed_at"?: string,"created_at"?: string,"handed_over_at"?: string | null,"id"?: string,"owner_user_id": string,"status": string,"summary": NonNullable<Json>,"template_values": (string)[],"total_outstanding": number,"updated_at"?: string,"week_start": string
+                  }
+                  Update: {
+                    "as_of"?: string,"blockers"?: (string)[],"company_id"?: string,"computed_at"?: string,"created_at"?: string,"handed_over_at"?: string | null,"id"?: string,"owner_user_id"?: string,"status"?: string,"summary"?: NonNullable<Json>,"template_values"?: (string)[],"total_outstanding"?: number,"updated_at"?: string,"week_start"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "reports_owner_summaries_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "reports_owner_summaries_owner_fk"
       columns: ["company_id","owner_user_id"]
 isOneToOne: false
       referencedRelation: "company_users"
@@ -1790,6 +1816,11 @@ isOneToOne: false
 "record_communication_sent":
 { Args: { "p_communication_id": string,"p_company_id": string,"p_provider_message_id": string }; Returns: string
                            },
+"record_owner_weekly_summary_message":
+{ Args: { "p_body": string,"p_company_id": string,"p_owner_user_id": string,"p_week_start": string }; Returns: {
+              "communication_id": string,"outcome": string,"reason": string
+            }[]
+                           },
 "record_payment_arrangement":
 { Args: { "p_agreed_on"?: string,"p_company_id": string,"p_final_installment_date"?: string,"p_first_installment_date": string,"p_frequency": Database["public"]['Enums']["installment_frequency"],"p_installment_amount": number,"p_lease_id"?: string,"p_notes"?: string,"p_outstanding_balance": number,"p_property_id": string,"p_status"?: Database["public"]['Enums']["arrangement_status"],"p_tenant_id": string,"p_unit_id"?: string }; Returns: string
                            },
@@ -1900,6 +1931,31 @@ isOneToOne: false
 "reports_monitoring_events":
 { Args: { "p_company_id": string }; Returns: {
               "calculation": Json,"due_date": string,"event_id": string,"event_type": Database["public"]['Enums']["monitoring_event_type"],"identified_on": string,"lease_id": string,"lease_reference": string,"priority": Database["public"]['Enums']["event_priority"],"property_id": string,"property_name": string,"statement_date": string,"statement_id": string,"statement_period_start": string,"status": Database["public"]['Enums']["monitoring_event_status"],"tenant_id": string,"tenant_name": string,"title": string,"unit_number": string
+            }[]
+                           },
+"reports_owner_summaries_stored":
+{ Args: { "p_company_id": string,"p_week_start": string }; Returns: {
+              "blockers": (string)[],"communication_id": string,"computed_at": string,"delivery_status": Database["public"]['Enums']["delivery_status"],"failure_reason": string,"owner_user_id": string,"previous_total_outstanding": number,"previous_week_start": string,"sent_at": string,"status": string,"summary_id": string
+            }[]
+                           },
+"reports_owner_summary_channel":
+{ Args: { "p_company_id": string }; Returns: {
+              "approval_status": Database["public"]['Enums']["template_approval_status"],"body": string,"category": string,"language": string,"mapped_at": string,"meta_body": string,"meta_rejected_reason": string,"meta_status": string,"meta_template_id": string,"meta_template_name": string,"owner_summary_weekday": Database["public"]['Enums']["weekday"],"supports_document_attachment": boolean,"template_id": string,"variables": (string)[],"whatsapp_connected": boolean
+            }[]
+                           },
+"reports_owner_summary_companies":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "company_id": string,"owner_summary_weekday": Database["public"]['Enums']["weekday"]
+            }[]
+                           },
+"reports_owner_summary_message":
+{ Args: { "p_company_id": string,"p_summary_id": string }; Returns: {
+              "owner_user_id": string,"status": string,"template_values": (string)[],"week_start": string
+            }[]
+                           },
+"reports_owner_summary_owners":
+{ Args: { "p_company_id": string }; Returns: {
+              "owner_name": string,"owner_role": Database["public"]['Enums']["user_role"],"owner_status": Database["public"]['Enums']["user_status"],"owner_user_id": string,"properties": Json,"whatsapp_number": string
             }[]
                            },
 "reports_payment_arrangements":

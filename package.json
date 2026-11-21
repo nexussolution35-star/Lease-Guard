@@ -9,11 +9,12 @@
     "pnpm": ">=12"
   },
   "scripts": {
-    "dev": "pnpm run \"/^dev:(frontend|backend|worker|reports)$/\"",
+    "dev": "pnpm run \"/^dev:(frontend|backend|worker|reports|reports-worker)$/\"",
     "dev:frontend": "pnpm --filter @leaseguard/frontend dev",
     "dev:backend": "pnpm --filter @leaseguard/backend dev",
     "dev:worker": "pnpm --filter @leaseguard/backend dev:worker",
     "dev:reports": "pnpm --filter @leaseguard/reports dev",
+    "dev:reports-worker": "pnpm --filter @leaseguard/reports dev:worker",
     "dev:python": "bash infrastructure/scripts/python.sh dev",
     "build": "pnpm -r --workspace-concurrency=1 build",
     "typecheck": "pnpm -r typecheck",

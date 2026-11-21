@@ -116,7 +116,7 @@ An outbound communication to a tenant. Only statement and payment-related types 
 _Avoid_: Tenant notification, reminder (as the general term)
 
 **Approval**:
-A company member's recorded decision to release, or reject, a specific tenant message.
+A company member's recorded decision to release, or reject, a specific tenant message. Two messages are approved by the company's own configuration instead: the AI agent's replies to contacts, and the weekly owner summary, approved by the company's owner summary schedule and its chosen template.
 _Avoid_: Sign-off, review
 
 **Deliverable**:
@@ -236,6 +236,10 @@ _Avoid_: Ping, sample message
 **WhatsApp activation**:
 A company admin's recorded decision that the company is live on WhatsApp, refused until every required WhatsApp setup step is verified.
 _Avoid_: Go-live switch, enabling WhatsApp (which reads as connecting a number)
+
+**Weekly owner summary**:
+A property owner's weekly WhatsApp portfolio summary, computed from verified records on the company's owner summary day: outstanding balances and their change since the owner's previous summary, important monitoring events, significant rental discrepancies, expiring guarantees and items needing the owner's attention. Sent to owners only, through the approved template chosen for it, and stored so the next week's change is exact.
+_Avoid_: Owner report, owner digest, weekly report
 
 **Communication analytics**:
 A company's WhatsApp figures over a range of South African calendar days: messages received and sent (with how many WhatsApp reported delivered, read or failed), handovers opened, and the AI agent's answers, out-of-hours messages and suggested replies; only that company's own records count, and test messages never do.

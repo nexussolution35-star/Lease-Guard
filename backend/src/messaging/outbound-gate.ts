@@ -87,7 +87,10 @@ export type OutboundVerdict =
   | { readonly deliverable: false; readonly blockers: readonly string[] }
 
 type CommunicationRow = Tables<'communications'>
-type ApprovalRow = Pick<Tables<'message_approvals'>, 'id' | 'decision' | 'requested_at' | 'decided_by_user_id' | 'decided_by_agent_run_id'>
+type ApprovalRow = Pick<
+  Tables<'message_approvals'>,
+  'id' | 'decision' | 'requested_at' | 'decided_by_user_id' | 'decided_by_agent_run_id' | 'approved_by_schedule'
+>
 
 /** The approval the gate judges: the recorded governing one, or the caller's own decision to grant it. */
 type GoverningApproval = { decision: ApprovalRow['decision']; approverRecorded: boolean } | undefined
@@ -109,7 +112,7 @@ export async function checkOutbound(
     db.from('communications').select('*').eq('company_id', companyId).eq('id', communicationId).maybeSingle(),
     db
       .from('message_approvals')
-      .select('id, decision, requested_at, decided_by_user_id, decided_by_agent_run_id')
+      .select('id, decision, requested_at, decided_by_user_id, decided_by_agent_run_id, approved_by_schedule')
       .eq('company_id', companyId)
       .eq('communication_id', communicationId),
   ])
@@ -122,11 +125,18 @@ export async function checkOutbound(
   const recorded = currentApproval(readOrThrow(approvalsResult, 'Load message approvals', []))
   // The company's AI agent approves only its own replies to contacts (ticket 10); a person approves everything else.
   const agentApproved = recorded !== undefined && Boolean(recorded.decided_by_agent_run_id) && !recorded.decided_by_user_id
+  // A weekly owner summary is approved by the company's owner summary schedule (ticket R-07), never a tenant message.
+  const scheduleApproved =
+    recorded !== undefined && recorded.approved_by_schedule && !recorded.decided_by_user_id && !recorded.decided_by_agent_run_id
+  const scheduleApprovable = communication.message_type === 'owner_weekly_summary' && communication.recipient_type === 'property_owner'
   const approval: GoverningApproval = options.asIfApproved
     ? { decision: 'approved', approverRecorded: true }
     : recorded && {
         decision: recorded.decision,
-        approverRecorded: recorded.decided_by_user_id !== null || (agentApproved && communication.recipient_type === 'contact'),
+        approverRecorded:
+          recorded.decided_by_user_id !== null ||
+          (agentApproved && communication.recipient_type === 'contact') ||
+          (scheduleApproved && scheduleApprovable),
       }
 
   const thread = communication.recipient_type === 'contact' ? await loadReplyThread(db, companyId, communication.conversation_id) : undefined
@@ -144,7 +154,13 @@ export async function checkOutbound(
     // with the tenant's eligibility below (canSendTenantMessage owns that hard constraint).
     ...(communication.recipient_type !== 'tenant' ? optional(approvalBlocker(approval)) : []),
     ...(approval?.decision === 'approved' && !approval.approverRecorded
-      ? [agentApproved ? 'Only a reply to a contact can be approved by the AI agent; a person approves this message' : 'The message approval does not record who approved it']
+      ? [
+          agentApproved
+            ? 'Only a reply to a contact can be approved by the AI agent; a person approves this message'
+            : scheduleApproved
+              ? 'Only a weekly owner summary to a property owner is approved by the schedule; a person approves this message'
+              : 'The message approval does not record who approved it',
+        ]
       : []),
     ...recipient,
     ...checkOutboundMessage(communication.body, communication.recipient_type).errors,

@@ -28,8 +28,12 @@ URL and the keys come from the same project and that the stack is running (`pnpm
 
 ## Services and the gateway in development
 
-`pnpm dev` starts the web app, the core API, the worker and the reports service (`services/reports`, ADR 0003) in
-parallel. Start one on its own with `pnpm dev:frontend`, `dev:backend`, `dev:worker` or `dev:reports`.
+`pnpm dev` starts the web app, the core API, the worker, the reports service (`services/reports`, ADR 0003) and the
+reports worker (the weekly owner summaries, R-07) in parallel. Start one on its own with `pnpm dev:frontend`,
+`dev:backend`, `dev:worker`, `dev:reports` or `dev:reports-worker`. The reports worker has no HTTP; it reads
+`SUPABASE_SERVICE_ROLE_KEY` and `QUEUE_PREFIX` from `services/reports/.env`, else from `backend/.env`, and runs its
+dispatch every day at 07:00 South African time (a company's summaries go out on its owner summary day, Settings →
+Monitoring). The core worker must run too: it sends what the reports worker hands over.
 
 | Process | Address | Configuration |
 | --- | --- | --- |
@@ -49,7 +53,7 @@ services/reports/.env`). A variable missing there and in the environment is read
 settings only (`NODE_ENV`, `LOG_LEVEL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `REDIS_URL`), so it reaches the same
 Supabase project and Redis as the core without copying the key. Its own settings default for development
 (`REPORTS_PORT` 3100, `REPORTS_CORS_ORIGINS` `http://localhost:5173`), so `pnpm dev` runs it without a
-`services/reports/.env`. It never reads the service-role key. Like the API, it starts while Supabase or Redis is down and answers `/health/ready` with 503.
+`services/reports/.env`. It never reads the service-role key (only the reports worker does). Like the API, it starts while Supabase or Redis is down and answers `/health/ready` with 503.
 
 Both services' dev runners compile `@leaseguard/domain` and `@leaseguard/service-kit` first when their output is stale
 (`packages/service-kit/scripts/workspace-build.mjs`, one lock for every runner), and restart when either changes.

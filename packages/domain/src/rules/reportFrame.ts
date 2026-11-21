@@ -42,6 +42,9 @@ export const REPORT_FILTER_SUPPORT: Readonly<Record<ReportId, ReportFilterSuppor
   // Messages recorded in the range (South African date). The status is the message's delivery status. The property
   // filter leaves out messages with no property (an owner's weekly summary covers the portfolio).
   communication_activity: { property: true, dateRange: { field: 'Message date' }, statuses: { label: 'Message status', values: DELIVERY_STATUSES } },
+  // This week's summary of each property owner. The property filter keeps the owners of the selected properties (each
+  // summary still covers every property its owner owns); no date range (always this week) and no status.
+  owner_weekly_summary: { property: true, dateRange: null, statuses: null },
 }
 
 const unique = <T>(values: readonly T[]): T[] => [...new Set(values)]

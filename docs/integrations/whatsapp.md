@@ -986,6 +986,32 @@ sequenceDiagram
   created through the developer app cannot be onboarded through Embedded Signup at all, so the import is the way to
   connect it.
 
+## Weekly owner summaries (reports ticket R-07)
+
+Each property owner receives a weekly portfolio summary on WhatsApp (PRD §4.1, §6.4). The reports service computes it;
+the core messaging pipeline sends it (ADR 0003).
+
+- **When.** The reports worker (`services/reports/src/worker.ts`) checks every day at 07:00 South African time which
+  companies have their owner summary day today (`companies.owner_summary_weekday`, Settings → Monitoring, Monday unless
+  changed) and runs each one once per week.
+- **What.** Per owner of the company's properties: the outstanding total from verified statements and its change since
+  the owner's previous stored summary, the important monitoring events, the significant rental discrepancies, the
+  expiring guarantees and the items needing the owner's attention (`@leaseguard/domain` `rules/ownerWeeklySummary.ts`).
+  The summary is stored (`reports_owner_summaries`) so next week's change is exact.
+- **Template.** The approved template a company admin chose for `owner_weekly_summary` (Settings → Message templates).
+  LeaseGuard fills `{{1}}` the owner's name, `{{2}}` the week (en-ZA date) and `{{3}}` the summary in one line (template
+  parameters cannot hold line breaks); a template with more placeholders cannot carry it. No bank details: the text is
+  checked like every message.
+- **Sending.** The reports worker enqueues `owner-summary-delivery` (`companyId`, `summaryId`). The core worker reads the
+  stored summary (`reports_owner_summary_message`), fills the template and records an `owner_weekly_summary`
+  communication with `record_owner_weekly_summary_message`: to the owner's WhatsApp number, from the company's own
+  (default connected) number, approved by the company's schedule (`message_approvals.approved_by_schedule`) instead of a
+  person, once per owner and week. It then goes through `message-delivery` like every other message: the outbound gate,
+  the claim, the send and the status callbacks, so it appears in the message history with its delivery status.
+- **Never sent** to a tenant (owners only, checked by the domain rules, the database and the gate), and never without an
+  approved template and a connected number: then nothing is handed over, nothing is recorded, and the Reports page
+  (Weekly owner summary, company admins) says why.
+
 ## Seams
 
 | Seam | Where | Used by |

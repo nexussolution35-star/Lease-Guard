@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { OWNER_SUMMARY_DELIVERY_QUEUE, ownerSummaryDeliveryJobId } from '@leaseguard/domain'
 
 import {
   companyIdOf,
@@ -27,11 +28,14 @@ describe('queue registry', () => {
       'whatsapp-agent',
       'whatsapp-test-message',
       'whatsapp-template-sync',
+      OWNER_SUMMARY_DELIVERY_QUEUE,
     ])
   })
 
   it('keys a template sync by its company and number, so repeated requests share one run', () => {
     expect(jobIdFor('whatsapp-template-sync', { companyId: 'C1', numberId: 'N1' })).toBe('whatsapp-template-sync.c1.n1')
+    // The reports service names the jobs it enqueues for the core the same way (@leaseguard/domain).
+    expect(jobIdFor('owner-summary-delivery', { companyId: 'C1', summaryId: 'S1' })).toBe(ownerSummaryDeliveryJobId({ companyId: 'C1', summaryId: 'S1' }))
   })
 
   it('keys post-verification monitoring by its company and statement, so a statement is monitored once', () => {

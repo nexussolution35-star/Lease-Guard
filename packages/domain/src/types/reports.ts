@@ -7,6 +7,7 @@ import type { StatementSource, StatementStatus } from './statement.js'
 import type { OccupancyStatus, UnitType } from './unit.js'
 import type { ISODateTime } from './common.js'
 import type { ApprovalDecision, Channel, MessageDirection, RecipientType } from './communication.js'
+import type { OwnerWeeklySummaryReport } from './ownerSummary.js'
 
 /** Every report is computed from central data, scoped to the active company. */
 export const REPORT_IDS = [
@@ -21,6 +22,7 @@ export const REPORT_IDS = [
   'payment_arrangements',
   'statement_processing',
   'communication_activity',
+  'owner_weekly_summary',
 ] as const
 export type ReportId = (typeof REPORT_IDS)[number]
 
@@ -685,6 +687,7 @@ export interface ReportResultMap {
   payment_arrangements: PaymentArrangementsReport
   statement_processing: StatementProcessingReport
   communication_activity: CommunicationActivityReport
+  owner_weekly_summary: OwnerWeeklySummaryReport
 }
 
 /** PRD 7.1 dashboard figures. */

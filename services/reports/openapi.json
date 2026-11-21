@@ -1334,6 +1334,121 @@
         ]
       }
     },
+    "/api/v1/reports/owner_weekly_summary": {
+      "get": {
+        "description": "Company admins only. Per owner of the company's properties: the outstanding total from verified statements and its change since the owner's previous stored summary, the important open monitoring events, the rental discrepancies outside tolerance, the guarantees expiring and the items needing the owner's attention, the WhatsApp text of the template chosen for owner_weekly_summary, why it would not be sent (no approved template, no connected number, no owner number), and this week's stored summary with its message's delivery status. Filter: propertyId (the owners of those properties).",
+        "operationId": "getOwnerWeeklySummaryReport",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "description": "Only these properties (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive start of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive end of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Only records with these statuses (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerWeeklySummaryResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Weekly owner summary: this week's WhatsApp portfolio summary of each property owner, and its send",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "HealthController_liveness",
@@ -1463,7 +1578,8 @@
           "arrears",
           "payment_arrangements",
           "statement_processing",
-          "communication_activity"
+          "communication_activity",
+          "owner_weekly_summary"
         ]
       },
       "ReportDefinitionDto": {
@@ -4661,6 +4777,557 @@
           },
           "data": {
             "$ref": "#/components/schemas/CommunicationActivityReportDto"
+          }
+        },
+        "required": [
+          "asOf",
+          "filters",
+          "reportId",
+          "data"
+        ]
+      },
+      "OwnerSummaryTemplateDto": {
+        "type": "object",
+        "properties": {
+          "metaTemplateName": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string",
+            "example": "en_ZA"
+          },
+          "sendable": {
+            "type": "boolean"
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "metaTemplateName",
+          "language",
+          "sendable",
+          "summary"
+        ]
+      },
+      "OwnerSummaryPropertyDto": {
+        "type": "object",
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string",
+            "example": "Maponya Square"
+          }
+        },
+        "required": [
+          "propertyId",
+          "propertyName"
+        ]
+      },
+      "OwnerSummaryPreviousDto": {
+        "type": "object",
+        "properties": {
+          "weekStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "totalOutstanding": {
+            "type": "number",
+            "description": "ZAR"
+          }
+        },
+        "required": [
+          "weekStart",
+          "totalOutstanding"
+        ]
+      },
+      "OwnerSummaryEventDto": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "rental_escalation_discrepancy",
+              "lease_expiry",
+              "renewal_notice_deadline",
+              "guarantee_expiry",
+              "guarantee_shortfall",
+              "deposit_shortfall",
+              "arrears",
+              "arrangement_attention",
+              "statement_review_required"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "new",
+              "under_review",
+              "action_required",
+              "in_progress",
+              "resolved",
+              "dismissed"
+            ]
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "identifiedOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "overdue": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "eventId",
+          "type",
+          "title",
+          "priority",
+          "status",
+          "propertyId",
+          "propertyName",
+          "identifiedOn",
+          "overdue"
+        ]
+      },
+      "OwnerSummaryDiscrepancyDto": {
+        "type": "object",
+        "properties": {
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseReference": {
+            "type": "string"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "expected": {
+            "type": "number",
+            "description": "Escalated contractual rental (ZAR)."
+          },
+          "billed": {
+            "type": "number",
+            "description": "Rental billed on the latest verified statement (ZAR)."
+          },
+          "difference": {
+            "type": "number",
+            "description": "expected − billed (ZAR); positive = under-billed."
+          }
+        },
+        "required": [
+          "leaseId",
+          "leaseReference",
+          "tenantName",
+          "propertyId",
+          "propertyName",
+          "expected",
+          "billed",
+          "difference"
+        ]
+      },
+      "OwnerSummaryGuaranteeDto": {
+        "type": "object",
+        "properties": {
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "guaranteeBank": {
+            "type": "string"
+          },
+          "guaranteeAmount": {
+            "type": "number",
+            "description": "ZAR"
+          },
+          "expiresOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "daysUntilExpiry": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "leaseId",
+          "reference",
+          "tenantName",
+          "propertyId",
+          "propertyName",
+          "expiresOn",
+          "daysUntilExpiry"
+        ]
+      },
+      "OwnerSummaryRecordDto": {
+        "type": "object",
+        "properties": {
+          "entity": {
+            "type": "string",
+            "enum": [
+              "monitoring_event",
+              "payment_arrangement",
+              "lease"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "entity",
+          "id"
+        ]
+      },
+      "OwnerSummaryAttentionItemDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "overdue_event",
+              "action_required_event",
+              "arrangement_instalments",
+              "security_shortfall",
+              "guarantee_expired"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "record": {
+            "$ref": "#/components/schemas/OwnerSummaryRecordDto"
+          }
+        },
+        "required": [
+          "kind",
+          "title",
+          "propertyId",
+          "propertyName",
+          "record"
+        ]
+      },
+      "OwnerWeeklySummaryDto": {
+        "type": "object",
+        "properties": {
+          "ownerUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ownerName": {
+            "type": "string"
+          },
+          "weekStart": {
+            "type": "string",
+            "format": "date",
+            "description": "Monday of the week."
+          },
+          "asOf": {
+            "type": "string",
+            "format": "date"
+          },
+          "properties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwnerSummaryPropertyDto"
+            }
+          },
+          "totalOutstanding": {
+            "type": "number",
+            "description": "Outstanding on the latest verified statements at the owner's properties (ZAR)."
+          },
+          "tenantsInArrears": {
+            "type": "number"
+          },
+          "outstandingUnderArrangement": {
+            "type": "number",
+            "description": "ZAR"
+          },
+          "previous": {
+            "nullable": true,
+            "description": "The owner's previous stored summary; null for the first.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OwnerSummaryPreviousDto"
+              }
+            ]
+          },
+          "outstandingChange": {
+            "type": "number",
+            "nullable": true,
+            "description": "Change in the outstanding total since the previous summary (ZAR)."
+          },
+          "openEventCount": {
+            "type": "number"
+          },
+          "importantEvents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwnerSummaryEventDto"
+            }
+          },
+          "discrepancies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwnerSummaryDiscrepancyDto"
+            }
+          },
+          "discrepancyMonthlyDifference": {
+            "type": "number",
+            "description": "ZAR"
+          },
+          "expiringGuarantees": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwnerSummaryGuaranteeDto"
+            }
+          },
+          "attention": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwnerSummaryAttentionItemDto"
+            }
+          }
+        },
+        "required": [
+          "ownerUserId",
+          "ownerName",
+          "weekStart",
+          "asOf",
+          "properties",
+          "totalOutstanding",
+          "tenantsInArrears",
+          "outstandingUnderArrangement",
+          "previous",
+          "outstandingChange",
+          "openEventCount",
+          "importantEvents",
+          "discrepancies",
+          "discrepancyMonthlyDifference",
+          "expiringGuarantees",
+          "attention"
+        ]
+      },
+      "OwnerSummaryDeliveryDto": {
+        "type": "object",
+        "properties": {
+          "summaryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "blocked",
+              "handed_over"
+            ]
+          },
+          "computedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "communicationId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The owner_weekly_summary communication (message history)."
+          },
+          "deliveryStatus": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "pending_approval",
+              "approved",
+              "queued",
+              "sent",
+              "delivered",
+              "read",
+              "failed",
+              "rejected",
+              "received"
+            ]
+          },
+          "failureReason": {
+            "type": "string"
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "summaryId",
+          "status",
+          "computedAt",
+          "blockers"
+        ]
+      },
+      "OwnerWeeklySummaryPreviewDto": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/OwnerWeeklySummaryDto"
+          },
+          "values": {
+            "description": "{{1}} owner name, {{2}} week, {{3}} the summary in one line.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "message": {
+            "type": "string",
+            "description": "The WhatsApp text: the chosen template filled in."
+          },
+          "blockers": {
+            "description": "Why it would not be sent now; empty when it would.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "delivery": {
+            "$ref": "#/components/schemas/OwnerSummaryDeliveryDto"
+          }
+        },
+        "required": [
+          "summary",
+          "values",
+          "blockers"
+        ]
+      },
+      "OwnerWeeklySummaryReportDto": {
+        "type": "object",
+        "properties": {
+          "weekStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "sendWeekday": {
+            "type": "string",
+            "enum": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday"
+            ]
+          },
+          "nextSendOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "blockers": {
+            "description": "Why the company sends no owner summary now (template, number).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "template": {
+            "$ref": "#/components/schemas/OwnerSummaryTemplateDto"
+          },
+          "owners": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwnerWeeklySummaryPreviewDto"
+            }
+          }
+        },
+        "required": [
+          "weekStart",
+          "sendWeekday",
+          "nextSendOn",
+          "blockers",
+          "owners"
+        ]
+      },
+      "OwnerWeeklySummaryResponseDto": {
+        "type": "object",
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date",
+            "description": "The South African date the figures are as at.",
+            "example": "2026-11-21"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/ReportFiltersDto"
+          },
+          "reportId": {
+            "type": "string",
+            "enum": [
+              "owner_weekly_summary"
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/OwnerWeeklySummaryReportDto"
           }
         },
         "required": [

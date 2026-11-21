@@ -15,6 +15,7 @@ import { UserInvitationProcessor } from './invitations/user-invitation.processor
 import { JobRunRecorderService } from './jobs/job-run-recorder'
 import { ProcessorRuntime } from './jobs/processor-runtime'
 import { MessageDeliveryProcessor } from './messaging/message-delivery.processor'
+import { OwnerSummaryDeliveryProcessor } from './messaging/owner-summary-delivery.processor'
 import { ArrangementRemindersProcessor } from './monitoring/arrangement-reminders.processor'
 import { ArrearsMonitoringProcessor } from './monitoring/arrears-monitoring.processor'
 import { LeaseMonitoringProcessor } from './monitoring/lease-monitoring.processor'
@@ -71,6 +72,7 @@ const processors: Provider[] = [
   StatementMonitoringProcessor,
   StatementProcessingProcessor,
   MessageDeliveryProcessor,
+  OwnerSummaryDeliveryProcessor,
   UserInvitationProcessor,
   WhatsAppNumberVerificationProcessor,
   WhatsAppWebhookProcessor,

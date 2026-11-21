@@ -1,4 +1,9 @@
-import { RENEWAL_DEADLINE_THRESHOLDS, type DeliveryOutcome, type MessageTypeTemplateStatus } from '@leaseguard/domain'
+import {
+  RENEWAL_DEADLINE_THRESHOLDS,
+  type DeliveryOutcome,
+  type MessageTypeTemplateStatus,
+  type OwnerWeeklySummaryPreview,
+} from '@leaseguard/domain'
 
 /**
  * Display labels and visual tones for every LeaseGuard enum value.
@@ -256,4 +261,52 @@ export const DELIVERY_OUTCOME_LABELS: Readonly<Record<DeliveryOutcome, string>> 
   delivered: 'Delivered, not read',
   read: 'Read',
   failed: 'Failed',
+}
+
+/**
+ * Where an owner's summary stands this week on the Reports page (ticket R-07): the delivery status of its message once
+ * the core recorded it, else what the weekly job stored, else not run yet. Display only; the figures and the reasons
+ * come from the reports service.
+ */
+export type OwnerSummarySendState = 'not_run' | 'blocked' | 'handing_over' | 'approved' | 'queued' | 'sent' | 'delivered' | 'read' | 'failed'
+
+export function ownerSummarySendState(owner: Pick<OwnerWeeklySummaryPreview, 'delivery'>): OwnerSummarySendState {
+  const delivery = owner.delivery
+  if (!delivery) return 'not_run'
+  if (delivery.status === 'blocked') return 'blocked'
+  switch (delivery.deliveryStatus) {
+    case 'approved':
+    case 'queued':
+    case 'sent':
+    case 'delivered':
+    case 'read':
+    case 'failed':
+      return delivery.deliveryStatus
+    default:
+      return 'handing_over'
+  }
+}
+
+export const OWNER_SUMMARY_SEND_LABELS: Readonly<Record<OwnerSummarySendState, string>> = {
+  not_run: 'Not sent yet this week',
+  blocked: 'Not sent',
+  handing_over: 'Handed over for sending',
+  approved: 'Waiting to send',
+  queued: 'Sending',
+  sent: 'Sent',
+  delivered: 'Delivered',
+  read: 'Read',
+  failed: 'Failed',
+}
+
+export const OWNER_SUMMARY_SEND_TONES: Readonly<Record<OwnerSummarySendState, Tone>> = {
+  not_run: 'neutral',
+  blocked: 'warning',
+  handing_over: 'info',
+  approved: 'info',
+  queued: 'info',
+  sent: 'success',
+  delivered: 'success',
+  read: 'success',
+  failed: 'danger',
 }

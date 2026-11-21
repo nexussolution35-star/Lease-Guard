@@ -1,3 +1,4 @@
+import type { UserRole } from '../types/index.js'
 import { REPORT_IDS, type ReportDefinition, type ReportId } from '../types/reports.js'
 
 /**
@@ -17,6 +18,7 @@ export const REPORT_CATALOGUE: readonly ReportDefinition[] = [
   { id: 'payment_arrangements', title: 'Payment arrangements', description: 'Arrangement status, balance under arrangement and missed instalments.', icon: 'handshake' },
   { id: 'statement_processing', title: 'Statement processing', description: 'Statement statuses, extraction confidence and duplicates.', icon: 'file-text' },
   { id: 'communication_activity', title: 'Communication activity', description: 'WhatsApp messages by type and status, and approval turnaround.', icon: 'message-square' },
+  { id: 'owner_weekly_summary', title: 'Weekly owner summary', description: 'This week’s WhatsApp portfolio summary for each property owner, and whether it was sent.', icon: 'send' },
 ]
 
 export function isReportId(value: string): value is ReportId {
@@ -26,4 +28,17 @@ export function isReportId(value: string): value is ReportId {
 /** The catalogue entry of a report id, or undefined for an unknown id. */
 export function findReportDefinition(id: string): ReportDefinition | undefined {
   return isReportId(id) ? REPORT_CATALOGUE.find((definition) => definition.id === id) : undefined
+}
+
+/**
+ * The roles that may open a report: every member role, except the weekly owner summary, which a company admin previews
+ * (it holds every owner's portfolio and the WhatsApp text sent to them; ticket R-07).
+ */
+export const REPORT_ROLES: Readonly<Partial<Record<ReportId, readonly UserRole[]>>> = {
+  owner_weekly_summary: ['company_admin'],
+}
+
+/** The catalogue a member with `role` sees: the reports that role may open. */
+export function reportCatalogueFor(role: UserRole): ReportDefinition[] {
+  return REPORT_CATALOGUE.filter((definition) => REPORT_ROLES[definition.id]?.includes(role) ?? true)
 }

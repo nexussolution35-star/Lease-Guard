@@ -43,8 +43,12 @@ Two layers, deliberately redundant:
    company's record is 404 even when its id is known. See
    [Database](../database/README.md#row-level-security-model).
 
-The worker is the only process with the service-role key, which bypasses RLS. Its queries always
-filter by `company_id` explicitly, and job payloads name their company.
+The core worker and the reports worker (R-07) are the only processes with the service-role key, which bypasses RLS.
+Their queries always filter by `company_id` explicitly, and job payloads name their company. The reports worker
+computes every company's weekly owner summaries with no caller, so it cannot use a caller's token: it reads company
+data only through the `reports_*` functions (each names the company; `private.reports_require_member` lets the service
+role through only with a company), writes only `reports_owner_summaries`, and asks the core to send by queue. The
+reports HTTP service never holds the key.
 
 Signed-in users can also reach the Supabase Data API directly with their own token and the public
 anon key. That is why RLS, constraints and triggers, not the API, are the security boundary for data.
@@ -62,6 +66,7 @@ only what its own schema declares:
 | --- | --- | --- |
 | API | `loadApiEnv` in `backend/src/config/env.ts` | only `API_ENV_KEYS`; never the service-role key, the document-processing token or WhatsApp tokens |
 | Worker | `loadWorkerEnv` | `WORKER_ENV_KEYS` plus variables matching `WHATSAPP_ACCESS_TOKEN_KEY` (`^WHATSAPP_ACCESS_TOKEN_[0-9A-F]{32}$`: one per company, named by its uuid without dashes in uppercase) |
+| Reports worker (`services/reports/src/worker.ts`) | `loadReportsWorkerEnv` in `services/reports/src/worker/worker-env.ts` | `NODE_ENV`, `LOG_LEVEL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `REDIS_URL`, `QUEUE_PREFIX` only (from `services/reports/.env`, else `backend/.env`); the reports HTTP service (`loadReportsEnv`) never reads the service-role key |
 | Number import command (operator, `pnpm whatsapp:import-test-number`) | `loadNumberImportEnv` | `NUMBER_IMPORT_ENV_KEYS` only: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `REDIS_URL`, `QUEUE_PREFIX` and the test number's `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_MESSAGING_ACCOUNT_ID`; the file is read only when one of them is missing from the process |
 | Document processing | pydantic-settings (`python-services/document-processing/app/core/config.py`, `extra="ignore"`) | its declared fields only |
 | Web app | Vite | only `VITE_*` variables reach the browser |
@@ -219,6 +224,8 @@ Enforced in several places, from the strictest outwards:
 | A decision is made once | Approving or rejecting an already decided message is 409 (`decide_communication` locks the message and only decides one still awaiting approval) |
 | Every status change follows the lifecycle, for every API role | `private.communication_status_transitions`, enforced by `private.guard_message_write` for signed-in users and the service role (only the database owner is exempt). Signed-in users can only submit, decide, reopen a never-approved message, and stop one; claiming, recording sends and failures, and WhatsApp statuses are service-role functions. The content lock applies to the service role too |
 | A message is sent at most once | The worker claims a message (`approved` to `queued`, one winner) immediately before sending, and the claim records `send_uncertain_since`. A possibly sent message (claimed, or failed with an unknown outcome) is never claimed or retried automatically; only a person can create a new message. Only the run holding the claim (its token) can hand it back or record that its send did not happen, so another run of the same job cannot erase the fact while a send is in flight. The service role cannot write status or delivery columns outside the lifecycle functions, nor record `sent` without a WhatsApp message id. A send that went out while the message was failed or stopped is still recorded as sent |
+| Weekly owner summaries go to property owners only, and only with an approved template and a connected number | Owners only: `canSendOwnerMessage` (an active `property_owner` member with a WhatsApp number) in the reports service's blockers, in `record_owner_weekly_summary_message` and again in the outbound gate; `communications_recipient_check` and `guard_schedule_approval` (the schedule approves only an outbound `owner_weekly_summary` to a property owner). No approved `owner_weekly_summary` template or no connected number: the reports worker hands nothing over, the recorder creates nothing, and the Reports page says why. Its text holds monitoring figures only, checked for bank details (`checkOutboundMessage`). One message per owner and week (`communications_owner_summary_week_key`) |
+| A weekly owner summary is approved by the company's schedule, not a person | `message_approvals.approved_by_schedule`, written only by `record_owner_weekly_summary_message` (service role); the outbound gate accepts it only for an `owner_weekly_summary` to a property owner and refuses it for any other message |
 | Inbound messages are not part of the outbound lifecycle | A `received` message never changes status; only the backend (the webhook, next) creates one |
 
 The outbound gate (`checkOutbound`, `backend/src/messaging/outbound-gate.ts`) runs twice with the
