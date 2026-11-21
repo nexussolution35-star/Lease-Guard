@@ -120,7 +120,7 @@ export function TenantFormDialog({ open, onOpenChange, tenant, onSaved }: Tenant
             <TextField control={form.control} name="registrationNumber" label="Registration number" maxLength={50} />
             <TextField control={form.control} name="vatNumber" label="VAT number" inputMode="numeric" maxLength={20} />
             <TextField control={form.control} name="industry" label="Industry" maxLength={100} />
-            <TextField control={form.control} name="email" label="Accounts email" type="email" autoComplete="email" maxLength={254} />
+            <TextField control={form.control} name="email" label="Accounts email" type="email" autoComplete="off" maxLength={254} />
           </FormSection>
           <FormSection title="WhatsApp" description="Statements and payment reminders go to this number once it is validated.">
             <TextField
@@ -134,7 +134,8 @@ export function TenantFormDialog({ open, onOpenChange, tenant, onSaved }: Tenant
               }
               placeholder="+27 82 123 4567"
               inputMode="tel"
-              autoComplete="tel"
+              type="tel"
+              autoComplete="off"
               maxLength={30}
               required
               className="sm:col-span-2"
@@ -148,10 +149,12 @@ export function TenantFormDialog({ open, onOpenChange, tenant, onSaved }: Tenant
               name="contactPhone"
               label="Phone"
               description="The WhatsApp number when left empty."
+              type="tel"
               inputMode="tel"
+              autoComplete="off"
               maxLength={30}
             />
-            <TextField control={form.control} name="contactEmail" label="Email" type="email" maxLength={254} />
+            <TextField control={form.control} name="contactEmail" label="Email" type="email" autoComplete="off" maxLength={254} />
           </FormSection>
           <FormSection title="Notes">
             <TextAreaField control={form.control} name="notes" label="Notes" rows={3} maxLength={2000} className="sm:col-span-2" />

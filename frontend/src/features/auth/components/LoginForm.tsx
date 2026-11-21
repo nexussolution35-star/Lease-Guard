@@ -38,8 +38,8 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
             <AlertDescription>{rootError}</AlertDescription>
           </Alert>
         ) : null}
-        <TextField control={form.control} name="email" label="Email address" type="email" autoComplete="email" inputMode="email" required />
-        <TextField control={form.control} name="password" label="Password" type="password" autoComplete="current-password" required />
+        <TextField control={form.control} name="email" label="Email address" type="email" autoComplete="username" required />
+        <TextField control={form.control} name="password" label="Password" type="password" autoComplete="current-password" revealable required />
         <FormActions submitLabel="Sign in" isSubmitting={form.formState.isSubmitting} className="sm:justify-stretch [&>div]:w-full [&_button]:w-full" />
       </form>
     </Form>

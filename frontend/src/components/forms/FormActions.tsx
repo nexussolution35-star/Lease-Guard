@@ -9,7 +9,8 @@ export interface FormActionsProps {
   onCancel?: () => void
   isSubmitting?: boolean
   submitDisabled?: boolean
-  align?: 'start' | 'end' | 'between'
+  /** Buttons always end on the right (owner rule: no buttons on the left); `between` puts `extra` on the left of them. */
+  align?: 'end' | 'between'
   /** Extra controls rendered before the cancel / submit buttons. */
   extra?: ReactNode
   /** Stick to the bottom of the viewport on mobile (static from `sm` up). */
@@ -18,7 +19,6 @@ export interface FormActionsProps {
 }
 
 const ALIGN_CLASSES: Record<NonNullable<FormActionsProps['align']>, string> = {
-  start: 'sm:justify-start',
   end: 'sm:justify-end',
   between: 'sm:justify-between',
 }
@@ -39,7 +39,7 @@ export function FormActions({
     <div
       data-slot="form-actions"
       className={cn(
-        'flex flex-col-reverse gap-2 sm:flex-row sm:items-center',
+        'flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end',
         ALIGN_CLASSES[align],
         sticky &&
           'sticky bottom-0 z-10 -mx-4 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none',

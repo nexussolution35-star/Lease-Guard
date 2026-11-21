@@ -77,7 +77,7 @@ export function ForgotPasswordScreen() {
               <AlertDescription>{rootError}</AlertDescription>
             </Alert>
           ) : null}
-          <TextField control={form.control} name="email" label="Email address" type="email" autoComplete="email" inputMode="email" required />
+          <TextField control={form.control} name="email" label="Email address" type="email" autoComplete="username" required />
           <FormActions
             submitLabel="Send reset link"
             isSubmitting={form.formState.isSubmitting}

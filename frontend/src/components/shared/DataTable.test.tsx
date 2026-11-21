@@ -57,7 +57,7 @@ describe('DataTable', () => {
       <DataTable columns={columns} rows={rows} getRowId={(r) => r.id} caption="Tenants" onSortChange={onSortChange} />,
     )
     const header = screen.getByRole('columnheader', { name: /tenant/i })
-    expect(header).toHaveAttribute('aria-sort', 'none')
+    expect(header).not.toHaveAttribute('aria-sort')
     await userEvent.click(screen.getByRole('button', { name: /tenant/i }))
     expect(onSortChange).toHaveBeenLastCalledWith({ field: 'name', direction: 'asc' })
 
@@ -72,6 +72,7 @@ describe('DataTable', () => {
       />,
     )
     expect(screen.getByRole('columnheader', { name: /tenant/i })).toHaveAttribute('aria-sort', 'ascending')
+    expect(screen.getByText('Sorted by Tenant, ascending')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /tenant/i }))
     expect(onSortChange).toHaveBeenLastCalledWith({ field: 'name', direction: 'desc' })
     // Non-sortable column has no sort button.
@@ -110,5 +111,56 @@ describe('DataTable', () => {
     expect(onSelectionChange).toHaveBeenLastCalledWith(['a'])
     await userEvent.click(screen.getByRole('checkbox', { name: /select all/i }))
     expect(onSelectionChange).toHaveBeenLastCalledWith(['a', 'b'])
+  })
+
+  it('offers selection only on selectable rows, and select-all takes only those', async () => {
+    const onSelectionChange = vi.fn()
+    render(
+      <DataTable
+        columns={columns}
+        rows={rows}
+        getRowId={(r) => r.id}
+        caption="Tenants"
+        selectable
+        selectedIds={[]}
+        onSelectionChange={onSelectionChange}
+        isRowSelectable={(r) => r.id === 'b'}
+        rowSelectionLabel={(r) => `Select ${r.name}`}
+      />,
+    )
+    expect(screen.queryByRole('checkbox', { name: 'Select Alpha Traders' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('checkbox', { name: /select all/i }))
+    expect(onSelectionChange).toHaveBeenLastCalledWith(['b'])
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Select Beta Foods' }))
+    expect(onSelectionChange).toHaveBeenLastCalledWith(['b'])
+  })
+
+  it('shows no select-all when no row on the page is selectable', () => {
+    render(<DataTable columns={columns} rows={rows} getRowId={(r) => r.id} caption="Tenants" selectable isRowSelectable={() => false} />)
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  })
+
+  it('renders the rowHeader column as a row header', () => {
+    const withHeader: DataTableColumn<Row>[] = [{ ...columns[0]!, rowHeader: true }, columns[1]!]
+    render(<DataTable columns={withHeader} rows={rows} getRowId={(r) => r.id} caption="Tenants" />)
+    expect(screen.getByRole('rowheader', { name: 'Alpha Traders' })).toHaveAttribute('scope', 'row')
+    expect(screen.getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['1000', '2000'])
+  })
+
+  it('with rowLinkInCell, keeps the click but leaves the in-cell link as the only tab stop', async () => {
+    const onRowClick = vi.fn()
+    const linked: DataTableColumn<Row>[] = [
+      { id: 'name', header: 'Tenant', cell: (r) => <a href={`#${r.id}`}>{r.name}</a> },
+      columns[1]!,
+    ]
+    render(
+      <DataTable columns={linked} rows={rows} getRowId={(r) => r.id} caption="Tenants" onRowClick={onRowClick} rowLinkInCell />,
+    )
+    const row = screen.getByRole('row', { name: /Beta Foods/ })
+    expect(row).not.toHaveAttribute('tabindex')
+    await userEvent.click(within(row).getByText('2000'))
+    expect(onRowClick).toHaveBeenLastCalledWith(rows[1])
+    await userEvent.tab()
+    expect(screen.getByRole('link', { name: 'Alpha Traders' })).toHaveFocus()
   })
 })

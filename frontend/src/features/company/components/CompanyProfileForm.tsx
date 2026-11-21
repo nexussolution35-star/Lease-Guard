@@ -98,9 +98,9 @@ export function CompanyProfileForm({ company }: CompanyProfileFormProps) {
           <TextField control={form.control} name="contactEmail" label="Contact email" type="email" autoComplete="email" maxLength={320} required />
           <TextField control={form.control} name="contactPhone" label="Contact phone" autoComplete="tel" inputMode="tel" maxLength={30} required />
         </FormSection>
-        <div className={cn('flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-4', SETTINGS_ROW_ACTIONS)}>
-          <FormActions submitLabel="Save changes" align="start" isSubmitting={form.formState.isSubmitting} submitDisabled={!form.formState.isDirty} />
+        <div className={cn('flex flex-col gap-x-4 gap-y-2 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between', SETTINGS_ROW_ACTIONS)}>
           <p className="text-xs text-muted-foreground">Changes are recorded in the audit log.</p>
+          <FormActions submitLabel="Save changes" isSubmitting={form.formState.isSubmitting} submitDisabled={!form.formState.isDirty} />
         </div>
       </form>
     </Form>

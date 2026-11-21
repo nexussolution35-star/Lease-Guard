@@ -16,11 +16,11 @@ export function SidebarHeader({ collapsed = false, className }: SidebarHeaderPro
         aria-label="LeaseGuard dashboard"
         className={cn(
           // Same height as the top bar, so the brand row and the trail share one line.
-          'flex h-14 items-center rounded-md px-2 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
-          collapsed && 'justify-center px-0',
+          // px-2.5 centres the 20px mark in the 56px rail, so it stays put while the wordmark fades.
+          'flex h-14 items-center rounded-md px-2.5 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-hidden',
         )}
       >
-        <BrandMark markOnly={collapsed} />
+        <BrandMark wordmarkHidden={collapsed} />
       </AppLink>
       {/* The signed-in user's company workspaces from `GET /me`. */}
       <WorkspaceSwitcher collapsed={collapsed} />

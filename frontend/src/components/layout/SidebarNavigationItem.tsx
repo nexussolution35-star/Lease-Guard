@@ -24,18 +24,20 @@ export function SidebarNavigationItem({ item, active, collapsed = false, onNavig
       data-active={active ? 'true' : undefined}
       className={cn(
         // 40px rows in the mobile drawer (touch), 32px in the desktop sidebar.
-        'flex h-8 items-center gap-2.5 rounded-md px-2 text-sm text-foreground/85 transition-colors max-md:h-10',
-        'hover:bg-accent/50 hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+        // px-3 puts the icon at the centre of the 56px rail too, so it never moves when the sidebar collapses.
+        'flex h-8 items-center gap-2.5 rounded-md px-3 text-sm whitespace-nowrap text-foreground/85 transition-colors max-md:h-10',
+        'hover:bg-accent/50 hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-hidden',
         '[&>svg]:text-muted-foreground',
         // Active: one surface step up, with a hairline highlight on its top edge.
         active &&
           'bg-accent font-medium text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.08)] hover:bg-accent [&>svg]:text-foreground',
-        collapsed && 'justify-center px-0',
         className,
       )}
     >
       <Icon className="size-4 shrink-0" aria-hidden="true" />
-      {collapsed ? null : <span className="truncate">{item.label}</span>}
+      <span aria-hidden={collapsed || undefined} className={cn('truncate transition-opacity duration-200 ease-out motion-reduce:transition-none', collapsed && 'opacity-0')}>
+        {item.label}
+      </span>
     </AppLink>
   )
 

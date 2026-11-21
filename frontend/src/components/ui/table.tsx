@@ -3,11 +3,20 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+interface TableProps extends React.ComponentProps<"table"> {
+  /**
+   * Props for the horizontally scrolling container, e.g. `role="region"`, `aria-labelledby` and
+   * `tabIndex={0}` so keyboard users can scroll a table that overflows (scrollbars are hidden).
+   */
+  containerProps?: React.ComponentProps<"div">
+}
+
+function Table({ className, containerProps, ...props }: TableProps) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      {...containerProps}
+      className={cn("relative w-full overflow-x-auto", containerProps?.className)}
     >
       <table
         data-slot="table"

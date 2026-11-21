@@ -18,7 +18,8 @@ export function AppSidebar({ collapsed = false, onToggleCollapsed, className }: 
       aria-label="Sidebar"
       data-collapsed={collapsed ? 'true' : 'false'}
       className={cn(
-        'rail sticky top-0 h-svh shrink-0 flex-col',
+        // The width slides; everything inside keeps its place and labels fade, so nothing jumps (owner, 21 Nov 2026).
+        'rail sticky top-0 h-svh shrink-0 flex-col overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none',
         collapsed ? 'w-14' : 'w-60',
         className,
       )}

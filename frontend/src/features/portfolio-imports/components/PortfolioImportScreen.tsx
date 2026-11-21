@@ -150,13 +150,13 @@ function UploadStep({ scope, property, onImported }: { scope: PortfolioImportSco
               <span className="text-muted-foreground tabular-nums"> · {formatBytes(file.size)}</span>
             </p>
           ) : null}
-          <div className="flex flex-wrap gap-2 pt-1">
+          <div className="flex flex-wrap justify-end gap-2 pt-1">
+            <Button asChild type="button" variant="ghost">
+              <AppLink to={property ? `/properties/${encodeURIComponent(property.id)}` : '/properties'}>Cancel</AppLink>
+            </Button>
             <Button type="button" onClick={() => void submit()} disabled={upload.isPending}>
               <Upload aria-hidden="true" />
               {upload.isPending ? 'Uploading…' : 'Upload file'}
-            </Button>
-            <Button asChild type="button" variant="ghost">
-              <AppLink to={property ? `/properties/${encodeURIComponent(property.id)}` : '/properties'}>Cancel</AppLink>
             </Button>
           </div>
           <div className="mt-4 border-t border-border pt-5">
@@ -177,10 +177,12 @@ function UploadStep({ scope, property, onImported }: { scope: PortfolioImportSco
               </li>
             ))}
           </ul>
-          <Button type="button" variant="outline" size="sm" onClick={() => downloadTemplate(scope)}>
-            <Download aria-hidden="true" />
-            Download the CSV template
-          </Button>
+          <div className="flex justify-end">
+            <Button type="button" variant="outline" size="sm" onClick={() => downloadTemplate(scope)}>
+              <Download aria-hidden="true" />
+              Download the CSV template
+            </Button>
+          </div>
         </section>
       </div>
       <div className="mt-10">

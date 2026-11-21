@@ -24,6 +24,9 @@ describe('SidebarNavigationItem', () => {
   it('uses the label as the accessible name and hides the text when collapsed', async () => {
     await renderWithRouter(<SidebarNavigationItem item={item} active={false} collapsed />, '/')
     const link = await screen.findByRole('link', { name: 'Properties' })
-    expect(link).not.toHaveTextContent('Properties')
+    // The label stays in place, faded and hidden from assistive technology, so the rail animates without jumps.
+    const label = link.querySelector('span')
+    expect(label).toHaveAttribute('aria-hidden', 'true')
+    expect(label).toHaveClass('opacity-0')
   })
 })

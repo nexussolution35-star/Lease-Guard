@@ -34,8 +34,8 @@ export function leaseTermScale(leases: readonly TermLease[], today: ISODate): Te
   const end = leases.map((l) => l.expiryDate).reduce((a, b) => (compareISODate(a, b) >= 0 ? a : b))
   const span = daysBetween(start, end)
 
-  const bars = [...leases]
-    .sort((a, b) => compareISODate(a.commencementDate, b.commencementDate) || a.reference.localeCompare(b.reference))
+  const bars = leases
+    .toSorted((a, b) => compareISODate(a.commencementDate, b.commencementDate) || a.reference.localeCompare(b.reference))
     .map((lease) => {
       const deadline = renewalNoticeDeadline(lease)
       const onAxis = deadline !== null && compareISODate(deadline, start) >= 0 && compareISODate(deadline, end) <= 0

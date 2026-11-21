@@ -37,6 +37,7 @@ describe('DateDisplay', () => {
 
   it('renders an em dash for missing values', () => {
     render(<DateDisplay value={null} />)
-    expect(screen.getByText('—')).toBeInTheDocument()
+    expect(screen.getByText('—')).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.getByText('No date')).toHaveClass('sr-only')
   })
 })

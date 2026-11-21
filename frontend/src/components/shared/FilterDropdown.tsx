@@ -52,7 +52,7 @@ export function FilterDropdown<T extends string>({ label, options, selected, onC
           <ChevronDown className="text-muted-foreground" aria-hidden="true" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-64 p-0">
+      <PopoverContent align="start" className="w-64 p-0" aria-label={label}>
         <fieldset className="max-h-72 space-y-0.5 overflow-y-auto overscroll-contain p-2">
           <legend className="sr-only">{label}</legend>
           {options.length === 0 ? <p className="px-2 py-3 text-sm text-muted-foreground">No options</p> : null}

@@ -36,7 +36,14 @@ export function WorkspaceSwitcher({ collapsed = false, className }: WorkspaceSwi
         {sortedMemberships(memberships).map((membership) => {
           const isActive = membership.companyId === activeMembership?.companyId
           return (
-            <DropdownMenuItem key={membership.companyId} className="gap-2.5" onSelect={() => switchWorkspace(membership)}>
+            <DropdownMenuItem
+              key={membership.companyId}
+              // A single choice: exposed as a radio item, with the check kept on the right.
+              role="menuitemradio"
+              aria-checked={isActive}
+              className="gap-2.5"
+              onSelect={() => switchWorkspace(membership)}
+            >
               <Avatar className="size-6 rounded-sm">
                 <AvatarFallback className="rounded-sm text-xs font-semibold">{membership.company.initials}</AvatarFallback>
               </Avatar>
@@ -47,7 +54,7 @@ export function WorkspaceSwitcher({ collapsed = false, className }: WorkspaceSwi
                   {membership.company.status === 'active' ? null : ` · ${labelFor(membership.company.status)}`}
                 </span>
               </span>
-              {isActive ? <Check className="size-4 text-foreground" aria-label="Active workspace" /> : null}
+              {isActive ? <Check className="size-4 text-foreground" aria-hidden="true" /> : null}
             </DropdownMenuItem>
           )
         })}

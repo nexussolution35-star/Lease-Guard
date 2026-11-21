@@ -31,7 +31,7 @@ export function TabsNavigation({ tabs, value, defaultValue, onValueChange, class
       onValueChange={onValueChange}
       className={cn('gap-4', className)}
     >
-      <div className="-mx-1 overflow-x-auto border-b border-border px-1">
+      <div className="-mx-1 scroll-fade-x border-b border-border px-1">
         <TabsList variant="line" className="w-max justify-start">
           {tabs.map(({ value: tabValue, label, count, icon: Icon }) => (
             <TabsTrigger key={tabValue} value={tabValue} className="flex-none px-3">

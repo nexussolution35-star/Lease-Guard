@@ -89,10 +89,12 @@ export function ConnectWhatsAppBusiness({ capabilities }: { capabilities: WhatsA
           </span>
         </p>
       )}
-      <Button type="button" variant="outline" onClick={startSignup} disabled={!configured || busy}>
-        {busy ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
-        {step.kind === 'in_popup' ? 'Waiting for Meta…' : complete.isPending ? 'Connecting…' : 'Connect WhatsApp Business'}
-      </Button>
+      <div className="flex justify-end">
+        <Button type="button" variant="outline" onClick={startSignup} disabled={!configured || busy}>
+          {busy ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
+          {step.kind === 'in_popup' ? 'Waiting for Meta…' : complete.isPending ? 'Connecting…' : 'Connect WhatsApp Business'}
+        </Button>
+      </div>
       {prepare.isError ? (
         <Alert variant="destructive">
           <AlertTriangle aria-hidden="true" />

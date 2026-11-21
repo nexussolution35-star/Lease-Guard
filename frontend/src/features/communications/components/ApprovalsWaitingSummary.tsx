@@ -69,7 +69,7 @@ export function ApprovalsWaitingSummary({ showAction = false, className }: Appro
               ) : null}
             </div>
             {withButton ? (
-              <Button asChild size="sm" className="sm:ml-auto">
+              <Button asChild size="sm" className="ml-auto">
                 <AppLink to="/communications/approvals">Review messages</AppLink>
               </Button>
             ) : null}

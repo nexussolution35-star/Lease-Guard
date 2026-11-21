@@ -56,7 +56,7 @@ export function AccountMenu({ className }: AccountMenuProps) {
         <DropdownMenuTrigger
           aria-label={`Account menu for ${name}`}
           className={cn(
-            'flex items-center gap-2 rounded-md p-1 text-left transition-colors hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+            'flex items-center gap-2 rounded-md p-1 text-left transition-colors hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-hidden',
             className,
           )}
         >

@@ -37,7 +37,7 @@ export function RelatedRecords({ title, items, emptyLabel = 'None', viewAllHref,
         {viewAllHref ? (
           <AppLink
             to={viewAllHref}
-            className="rounded-sm text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+            className="rounded-sm text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-hidden"
           >
             View all
           </AppLink>
@@ -65,7 +65,7 @@ export function RelatedRecords({ title, items, emptyLabel = 'None', viewAllHref,
                 {item.href ? (
                   <AppLink
                     to={item.href}
-                    className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset"
+                    className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-hidden focus-visible:ring-inset"
                   >
                     {content}
                   </AppLink>

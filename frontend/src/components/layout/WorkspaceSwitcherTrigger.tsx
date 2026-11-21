@@ -18,9 +18,10 @@ export function WorkspaceSwitcherTrigger({ initials, name, caption, collapsed, c
     <DropdownMenuTrigger
       aria-label={`Workspace: ${name}. Switch workspace`}
       className={cn(
-        'flex w-full items-center gap-2.5 rounded-md text-left text-sm transition-colors',
-        'hover:bg-accent/60 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none data-[state=open]:bg-accent/60',
-        collapsed ? 'h-10 justify-center' : 'h-12 border border-border px-2',
+        'flex h-12 w-full items-center gap-2.5 rounded-md border text-left text-sm whitespace-nowrap transition-[padding,border-color,background-color] duration-200 ease-out motion-reduce:transition-none',
+        'hover:bg-accent/60 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-hidden data-[state=open]:bg-accent/60',
+        // Collapsed, 5px padding centres the 28px initials in the rail; the name fades rather than disappearing.
+        collapsed ? 'border-transparent px-[5px]' : 'border-border px-2',
         className,
       )}
     >
@@ -30,15 +31,13 @@ export function WorkspaceSwitcherTrigger({ initials, name, caption, collapsed, c
       >
         {initials}
       </span>
-      {collapsed ? null : (
-        <>
+      <span aria-hidden={collapsed || undefined} className={cn('flex min-w-0 flex-1 items-center gap-2.5 transition-opacity duration-200 ease-out motion-reduce:transition-none', collapsed && 'opacity-0')}>
           <span className="min-w-0 flex-1">
             <span className="block truncate font-medium leading-5">{name}</span>
             {caption ? <span className="block truncate text-xs leading-4 text-muted-foreground">{caption}</span> : null}
           </span>
           <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-        </>
-      )}
+      </span>
     </DropdownMenuTrigger>
   )
 }

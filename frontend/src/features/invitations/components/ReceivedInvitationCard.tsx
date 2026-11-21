@@ -32,7 +32,7 @@ export function ReceivedInvitationCard({ invitation, onAccept, onDecline, pendin
           <DateDisplay value={invitation.createdAt} />
         </p>
       </div>
-      <div className="flex shrink-0 gap-2">
+      <div className="flex shrink-0 gap-2 self-end sm:self-auto">
         <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={onDecline}>
           {pending === 'decline' ? <Loader2 className="animate-spin" aria-hidden="true" /> : <X aria-hidden="true" />}
           Decline

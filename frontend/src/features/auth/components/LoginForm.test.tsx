@@ -7,7 +7,7 @@ import { LoginForm } from './LoginForm'
 
 function setup(onSubmit = vi.fn<(values: { email: string; password: string }) => Promise<void>>(async () => undefined)) {
   render(<LoginForm onSubmit={onSubmit} />)
-  return { onSubmit, email: screen.getByLabelText(/email address/i), password: screen.getByLabelText(/password/i) }
+  return { onSubmit, email: screen.getByLabelText(/email address/i), password: screen.getByLabelText(/^password/i) }
 }
 
 describe('LoginForm', () => {
@@ -44,5 +44,20 @@ describe('LoginForm', () => {
     await userEvent.type(password, 'wrong')
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
     expect(await screen.findByText('The email address or password is incorrect.')).toBeInTheDocument()
+  })
+
+  it('offers the saved account and lets the password be shown, hiding it again on submit', async () => {
+    const { email, password } = setup()
+    expect(email).toHaveAttribute('autocomplete', 'username')
+    expect(password).toHaveAttribute('type', 'password')
+    const toggle = screen.getByRole('button', { name: 'Show password' })
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    await userEvent.click(toggle)
+    expect(password).toHaveAttribute('type', 'text')
+    expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.type(email, 'sipho.dlamini@nexussolution.co.za')
+    await userEvent.type(password, 'a-test-password')
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    expect(password).toHaveAttribute('type', 'password')
   })
 })

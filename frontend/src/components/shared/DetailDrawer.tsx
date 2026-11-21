@@ -31,7 +31,7 @@ export function DetailDrawer({
         side={side}
         className={cn(
           'gap-0',
-          side === 'right' ? 'w-full sm:max-w-lg' : 'max-h-[85vh] rounded-t-lg',
+          side === 'right' ? 'w-full sm:max-w-lg' : 'max-h-[85dvh] rounded-t-lg',
           className,
         )}
       >

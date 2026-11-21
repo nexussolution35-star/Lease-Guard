@@ -162,7 +162,7 @@ function MultiSelectControl<T extends string>({
                     type="button"
                     onClick={() => toggle(option.value)}
                     aria-label={`Remove ${option.label}`}
-                    className="rounded-sm p-0.5 outline-none hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    className="rounded-sm p-0.5 outline-hidden hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   >
                     <X className="size-3" aria-hidden="true" />
                   </button>

@@ -64,7 +64,7 @@ export function FormValidationSummary({
                 <a
                   href={`#${fieldIdFor(path)}`}
                   onClick={(event) => focusField(event, path)}
-                  className="rounded-sm underline underline-offset-2 outline-none hover:decoration-2 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  className="rounded-sm underline underline-offset-2 outline-hidden hover:decoration-2 focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 >
                   {fieldLabel}: {message}
                 </a>

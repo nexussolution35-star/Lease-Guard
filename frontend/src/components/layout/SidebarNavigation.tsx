@@ -17,17 +17,16 @@ export function SidebarNavigation({ collapsed = false, onNavigate, className }: 
 
   return (
     <nav aria-label="Main" className={cn('flex flex-col gap-6', className)}>
-      {NAV_SECTIONS.map((section, index) => (
+      {NAV_SECTIONS.map((section) => (
         <div
           key={section.id}
           {...(section.label ? { role: 'group', 'aria-labelledby': `nav-section-${section.id}` } : {})}
-          // The rail has no captions, so a hairline separates its groups.
-          className={cn(collapsed && index > 0 && 'border-t border-border pt-6')}
+          // Captions keep their space on the rail (faded out), so the icons never shift up or down.
         >
           {section.label ? (
             <p
               id={`nav-section-${section.id}`}
-              className={cn('px-2 pb-2 text-xs leading-4 text-muted-foreground', collapsed && 'sr-only')}
+              className={cn('px-3 pb-2 text-xs leading-4 whitespace-nowrap text-muted-foreground transition-opacity duration-200 ease-out motion-reduce:transition-none', collapsed && 'opacity-0')}
             >
               {section.label}
             </p>

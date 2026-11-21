@@ -101,7 +101,7 @@ export function MonitoringSettingsForm({ settings }: MonitoringSettingsFormProps
           <SelectField control={form.control} name="ownerSummaryWeekday" label="Day of the week" options={WEEKDAY_OPTIONS} required />
         </FormSection>
         <div className={cn('border-t border-border pt-4', SETTINGS_ROW_ACTIONS)}>
-          <FormActions submitLabel="Save changes" align="start" isSubmitting={form.formState.isSubmitting} submitDisabled={!form.formState.isDirty} />
+          <FormActions submitLabel="Save changes" isSubmitting={form.formState.isSubmitting} submitDisabled={!form.formState.isDirty} />
         </div>
       </form>
     </Form>

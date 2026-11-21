@@ -40,7 +40,7 @@ const TREND_ICONS: Readonly<Record<MetricTrend['direction'], LucideIcon>> = {
 /** A flat cell of the `MetricGrid` stat strip; the grid draws the frame and the hairlines. */
 const CARD_CLASSES = 'flex h-full min-w-0 flex-col gap-2 bg-card px-5 py-4 text-left text-card-foreground'
 const INTERACTIVE_CLASSES =
-  'transition-colors hover:bg-muted/50 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset'
+  'transition-colors hover:bg-muted/50 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-hidden focus-visible:ring-inset'
 
 export function MetricCard({
   label,

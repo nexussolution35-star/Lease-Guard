@@ -81,10 +81,12 @@ function StepItem({
         ) : null}
         {step.step === 'test_message' && latestTestMessage ? <LatestTestMessage message={latestTestMessage} /> : null}
         {isAdmin && step.step === 'test_message' && step.state !== 'blocked' ? (
-          <Button type="button" size="sm" variant="outline" className="mt-1" onClick={onSendTest}>
-            <Send aria-hidden="true" />
-            {step.state === 'done' ? 'Send another test message' : 'Send test message'}
-          </Button>
+          <div className="flex justify-end">
+            <Button type="button" size="sm" variant="outline" className="mt-1" onClick={onSendTest}>
+              <Send aria-hidden="true" />
+              {step.state === 'done' ? 'Send another test message' : 'Send test message'}
+            </Button>
+          </div>
         ) : null}
       </div>
       <div className="col-start-2 sm:col-start-3 sm:row-start-1 sm:justify-self-start">
@@ -133,7 +135,7 @@ function Activation({ setup, isAdmin }: { setup: WhatsAppSetup; isAdmin: boolean
         </p>
         {isAdmin ? (
           <>
-            <Button type="button" size="sm" variant="outline" onClick={() => setConfirming(true)}>
+            <Button type="button" size="sm" variant="outline" className="self-end sm:self-auto" onClick={() => setConfirming(true)}>
               <Power aria-hidden="true" />
               Deactivate
             </Button>
@@ -159,7 +161,7 @@ function Activation({ setup, isAdmin }: { setup: WhatsAppSetup; isAdmin: boolean
           : 'WhatsApp can be activated once every required step is verified.'}
       </p>
       {isAdmin ? (
-        <Button type="button" size="sm" disabled={!setup.readyForActivation || change.isPending} onClick={() => void run(true).catch(() => undefined)}>
+        <Button type="button" size="sm" className="self-end sm:self-auto" disabled={!setup.readyForActivation || change.isPending} onClick={() => void run(true).catch(() => undefined)}>
           <Power aria-hidden="true" />
           Activate WhatsApp
         </Button>

@@ -37,5 +37,5 @@ export function workspaceName(membership: WorkspaceMembership): string {
 
 /** Memberships for the switcher: alphabetical by display name (en-ZA collation). */
 export function sortedMemberships(memberships: readonly WorkspaceMembership[]): WorkspaceMembership[] {
-  return [...memberships].sort((a, b) => workspaceName(a).localeCompare(workspaceName(b), 'en-ZA'))
+  return memberships.toSorted((a, b) => workspaceName(a).localeCompare(workspaceName(b), 'en-ZA'))
 }

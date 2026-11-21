@@ -60,7 +60,12 @@ export function FormDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => (isPending ? undefined : onOpenChange(next))}>
-      <DialogContent className={cn('flex max-h-[90vh] flex-col gap-0 p-0', SIZE_CLASSES[size])}>
+      <DialogContent
+        className={cn('flex max-h-[90dvh] flex-col gap-0 p-0', SIZE_CLASSES[size])}
+        // A stray click outside never throws away a half-filled form (owner, 21 Nov 2026); Esc, the close button and
+        // Cancel still close it.
+        onInteractOutside={(event) => event.preventDefault()}
+      >
         <form onSubmit={handleSubmit} noValidate className="flex min-h-0 flex-1 flex-col">
           <DialogHeader className="px-5 pt-5 pb-4 pr-12">
             <DialogTitle>{title}</DialogTitle>

@@ -156,7 +156,7 @@ export function AgentConfigForm({ config, members, canEdit }: AgentConfigFormPro
               </p>
             ) : null}
             {canEdit ? (
-              <Button type="button" variant="outline" size="sm" onClick={() => hours.append({ day: 'monday', opens: '08:00', closes: '17:00' })}>
+              <Button type="button" variant="outline" size="sm" className="justify-self-end" onClick={() => hours.append({ day: 'monday', opens: '08:00', closes: '17:00' })}>
                 <Plus className="size-4" aria-hidden="true" />
                 Add opening period
               </Button>
@@ -260,12 +260,7 @@ export function AgentConfigForm({ config, members, canEdit }: AgentConfigFormPro
           </FormSection>
         </fieldset>
 
-        <div className={cn('flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-4', SETTINGS_ROW_ACTIONS)}>
-          {canEdit ? (
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? 'Saving…' : 'Save AI agent settings'}
-            </Button>
-          ) : null}
+        <div className={cn('flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border pt-4', SETTINGS_ROW_ACTIONS)}>
           {config.configured && config.updatedAt && savedBy ? (
             <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
               <span>Last saved</span>
@@ -282,6 +277,11 @@ export function AgentConfigForm({ config, members, canEdit }: AgentConfigFormPro
               )}
             </p>
           )}
+          {canEdit ? (
+            <Button type="submit" className="ml-auto" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? 'Saving…' : 'Save AI agent settings'}
+            </Button>
+          ) : null}
         </div>
       </form>
     </Form>

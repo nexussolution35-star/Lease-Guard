@@ -36,7 +36,7 @@ export function PageHeader({ title, description, actions, breadcrumbs, status, c
             {description ? <p className="max-w-2xl text-pretty text-muted-foreground">{description}</p> : null}
           </div>
         ) : null}
-        {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2 sm:ml-auto">{actions}</div> : null}
+        {actions ? <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 self-end sm:ml-auto sm:self-auto">{actions}</div> : null}
       </div>
     </header>
   )

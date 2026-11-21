@@ -180,14 +180,14 @@ function PendingMessage({ pending, canDecide, isNext }: { pending: PendingApprov
         {/* Requested, and waiting on a property manager's sign-off until someone approves or rejects it. */}
         <SignOff at={approval.requestedAt} />
         {canDecide ? (
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant={isNext ? 'default' : 'outline'} onClick={() => setDialog('approve')}>
-              <Check aria-hidden="true" />
-              Approve
-            </Button>
+          <div className="flex flex-wrap justify-end gap-2 self-end">
             <Button type="button" size="sm" variant="outline" onClick={() => setDialog('reject')}>
               <X aria-hidden="true" />
               Reject
+            </Button>
+            <Button type="button" size="sm" variant={isNext ? 'default' : 'outline'} onClick={() => setDialog('approve')}>
+              <Check aria-hidden="true" />
+              Approve
             </Button>
           </div>
         ) : null}

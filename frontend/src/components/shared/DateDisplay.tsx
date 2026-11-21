@@ -41,8 +41,9 @@ function formatValue(value: string, style: DateDisplayStyle, today: ISODate | un
 export function DateDisplay({ value, style = 'short', today, className }: DateDisplayProps) {
   if (!value) {
     return (
-      <span className={cn('text-muted-foreground', className)} aria-label="No date">
-        —
+      <span className={cn('text-muted-foreground', className)}>
+        <span aria-hidden="true">—</span>
+        <span className="sr-only">No date</span>
       </span>
     )
   }

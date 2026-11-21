@@ -192,10 +192,12 @@ function TextList({ kind, canEdit }: { kind: KnowledgeTextKind; canEdit: boolean
   return (
     <div className="space-y-4">
       {canEdit ? (
-        <Button type="button" size="sm" variant="outline" onClick={() => setAdding(true)}>
-          <Plus className="size-4" aria-hidden="true" />
-          {kind === 'faq' ? 'Add FAQ' : 'Add knowledge entry'}
-        </Button>
+        <div className="flex justify-end">
+          <Button type="button" size="sm" variant="outline" onClick={() => setAdding(true)}>
+            <Plus className="size-4" aria-hidden="true" />
+            {kind === 'faq' ? 'Add FAQ' : 'Add knowledge entry'}
+          </Button>
+        </div>
       ) : null}
       {query.isPending ? <LoadingState label={`Loading ${meta.noun}s…`} rows={2} /> : null}
       {query.isError ? <ErrorState title={`The ${meta.noun}s could not be loaded`} error={query.error} onRetry={() => void query.refetch()} /> : null}
@@ -216,7 +218,7 @@ function TextList({ kind, canEdit }: { kind: KnowledgeTextKind; canEdit: boolean
                   <p className="max-w-prose text-sm whitespace-pre-line text-foreground">{item.body}</p>
                 </div>
                 {canEdit ? (
-                  <div className="flex shrink-0 flex-wrap gap-1">
+                  <div className="flex shrink-0 flex-wrap justify-end gap-1 self-end sm:self-start">
                     <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(item)} aria-label={`Edit ${item.title}`} title="Edit">
                       <Pencil className="size-4" aria-hidden="true" />
                     </Button>
@@ -332,10 +334,12 @@ function DocumentList({ canEdit }: { canEdit: boolean }) {
   return (
     <div className="space-y-4">
       {canEdit ? (
-        <Button type="button" size="sm" variant="outline" onClick={() => setUploading(true)}>
-          <Upload className="size-4" aria-hidden="true" />
-          Upload document
-        </Button>
+        <div className="flex justify-end">
+          <Button type="button" size="sm" variant="outline" onClick={() => setUploading(true)}>
+            <Upload className="size-4" aria-hidden="true" />
+            Upload document
+          </Button>
+        </div>
       ) : null}
       {query.isPending ? <LoadingState label="Loading documents…" rows={2} /> : null}
       {query.isError ? <ErrorState title="The documents could not be loaded" error={query.error} onRetry={() => void query.refetch()} /> : null}
@@ -354,7 +358,7 @@ function DocumentList({ canEdit }: { canEdit: boolean }) {
                   </p>
                   {document.description ? <p className="text-sm text-muted-foreground">{document.description}</p> : null}
                 </div>
-                <div className="flex shrink-0 flex-wrap gap-1">
+                <div className="flex shrink-0 flex-wrap justify-end gap-1 self-end sm:self-start">
                   <Button type="button" size="sm" variant="ghost" onClick={() => void open(document.id)} aria-label={`Open ${document.title}`} title="Open">
                     <ExternalLink className="size-4" aria-hidden="true" />
                   </Button>

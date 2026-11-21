@@ -9,7 +9,7 @@ export interface EmptyStateProps {
   title: string
   description?: string
   action?: ReactNode
-  /** Left-aligned by default; pass `items-center text-center` inside a table frame. */
+  /** Left-aligned by default; pass `items-center text-center` inside a table frame. The action always ends on the right. */
   className?: string
 }
 
@@ -20,7 +20,7 @@ export function EmptyState({ title, description, action, className }: EmptyState
         <p className="text-sm font-medium text-foreground">{title}</p>
         {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
       </div>
-      {action ? <div className="flex flex-wrap gap-2">{action}</div> : null}
+      {action ? <div className="flex flex-wrap justify-end gap-2 self-stretch">{action}</div> : null}
     </div>
   )
 }

@@ -31,10 +31,15 @@ export function RootLayout() {
 export function NotFoundScreen() {
   return (
     <section>
-      <PageHeader title="Page not found" description="The page you were looking for does not exist." />
-      <Button asChild variant="outline" size="sm">
-        <AppLink to="/">Go to dashboard</AppLink>
-      </Button>
+      <PageHeader
+        title="Page not found"
+        description="The page you were looking for does not exist."
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <AppLink to="/">Go to dashboard</AppLink>
+          </Button>
+        }
+      />
     </section>
   )
 }

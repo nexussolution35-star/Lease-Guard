@@ -57,10 +57,11 @@ export function SetPasswordForm({ submitLabel = 'Set password', onPasswordSet }:
           label="New password"
           type="password"
           autoComplete="new-password"
+          revealable
           description={`At least ${MIN_PASSWORD_LENGTH} characters.`}
           required
         />
-        <TextField control={form.control} name="confirmPassword" label="Confirm new password" type="password" autoComplete="new-password" required />
+        <TextField control={form.control} name="confirmPassword" label="Confirm new password" type="password" autoComplete="new-password" revealable required />
         <FormActions submitLabel={submitLabel} isSubmitting={form.formState.isSubmitting} className="sm:justify-stretch [&>div]:w-full [&_button]:w-full" />
       </form>
     </Form>

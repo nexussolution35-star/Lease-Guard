@@ -29,7 +29,7 @@ export function parseNoticeDays(text: string): number[] | string {
 
 /** Notice days as the form shows them: longest notice first, comma-separated. */
 export function formatNoticeDays(days: readonly number[]): string {
-  return [...days].sort((a, b) => b - a).join(', ')
+  return days.toSorted((a, b) => b - a).join(', ')
 }
 
 /** Kept as typed text in the form (see `parseNoticeDays`); `monitoringSettingsChangesFrom` reads the days. */

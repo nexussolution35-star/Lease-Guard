@@ -88,7 +88,7 @@ export function WorkspaceGate({ children }: WorkspaceGateProps) {
       return (
         <GateFrame>
           <ErrorState title="Your account could not be loaded" error={query.error} onRetry={() => void query.refetch()} />
-          <Button type="button" variant="ghost" size="sm" className="self-start" onClick={handleSignOut}>
+          <Button type="button" variant="ghost" size="sm" className="self-end" onClick={handleSignOut}>
             <LogOut aria-hidden="true" />
             Sign out
           </Button>

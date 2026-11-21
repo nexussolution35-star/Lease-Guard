@@ -15,7 +15,8 @@ export function SidebarFooter({ collapsed = false, onToggleCollapsed, className 
   if (!onToggleCollapsed) return null
   const label = collapsed ? 'Expand sidebar' : 'Collapse sidebar'
   return (
-    <div className={cn('flex border-t border-border p-2', collapsed ? 'justify-center' : 'justify-end', className)}>
+    // The button stays at the right edge and rides it as the width slides; 12px on the rail centres it.
+    <div className={cn('flex justify-end border-t border-border p-2 transition-[padding] duration-200 ease-out motion-reduce:transition-none', collapsed && 'pr-3', className)}>
       <Tooltip>
         <TooltipTrigger asChild>
           <Button

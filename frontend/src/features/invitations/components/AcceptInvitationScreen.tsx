@@ -159,7 +159,7 @@ function InvitationDecision({ invitationId, linkExpired }: InvitationDecisionPro
           'or it was sent to a different email address. If it was sent to another address, sign out and open the link again.'
         }
       >
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           <Button type="button" variant="outline" onClick={handleSignOut}>
             <LogOut aria-hidden="true" />
             Sign out

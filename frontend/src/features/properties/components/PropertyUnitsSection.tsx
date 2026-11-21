@@ -72,10 +72,6 @@ export function PropertyUnitsSection({ control, getValues, setValue }: PropertyU
         </ol>
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <Button type="button" variant="outline" size="sm" disabled={full} onClick={() => units.append(newPropertyUnitDefaults(chosenType))}>
-          <Plus aria-hidden="true" />
-          Add unit
-        </Button>
         <p className="text-sm text-muted-foreground tabular-nums" aria-live="polite">
           {count === 0 ? (
             <>
@@ -91,6 +87,10 @@ export function PropertyUnitsSection({ control, getValues, setValue }: PropertyU
             </>
           )}
         </p>
+        <Button type="button" variant="outline" size="sm" disabled={full} onClick={() => units.append(newPropertyUnitDefaults(chosenType))} className="ml-auto">
+          <Plus aria-hidden="true" />
+          Add unit
+        </Button>
       </div>
     </FormSection>
   )

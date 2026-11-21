@@ -1,5 +1,5 @@
 import { Bell } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 
 import { EmptyState } from '@/components/shared'
 import { Button } from '@/components/ui/button'
@@ -31,6 +31,7 @@ export function NotificationPopover({
   children,
   className,
 }: NotificationPopoverProps) {
+  const headingId = useId()
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
@@ -47,9 +48,9 @@ export function NotificationPopover({
           ) : null}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[min(24rem,calc(100vw-2rem))] p-0">
+      <PopoverContent align="end" aria-labelledby={headingId} className="w-[min(24rem,calc(100vw-2rem))] p-0">
         <div className="flex items-center justify-between gap-2 border-b border-border py-1.5 pr-1.5 pl-3">
-          <h2 className="flex items-baseline gap-2 text-sm font-medium">
+          <h2 id={headingId} className="flex items-baseline gap-2 text-sm font-medium">
             Notifications
             {unread > 0 ? <span className="text-xs font-normal text-muted-foreground tabular-nums">{unread} unread</span> : null}
           </h2>
@@ -80,8 +81,9 @@ export function NotificationList({ notifications, onMarkRead, onNavigate }: Noti
       />
     )
   }
+  // Fits the room left below the bell (less the 3rem header row) and does not scroll the page at its ends.
   return (
-    <div className="max-h-[60vh] overflow-y-auto">
+    <div className="max-h-[min(60dvh,calc(var(--radix-popover-content-available-height,100dvh)-3rem))] overflow-y-auto overscroll-contain">
       <ul className="divide-y divide-border">
         {notifications.map((n) => (
           <li key={n.id}>

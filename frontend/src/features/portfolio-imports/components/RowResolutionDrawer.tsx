@@ -201,9 +201,11 @@ function ValuesForm({
         </div>
       </section>
 
-      <Button type="submit" disabled={pending || (!corrections && !linkChanged)}>
-        {pending ? 'Checking…' : 'Save and check again'}
-      </Button>
+      <div className="flex justify-end">
+        <Button type="submit" disabled={pending || (!corrections && !linkChanged)}>
+          {pending ? 'Checking…' : 'Save and check again'}
+        </Button>
+      </div>
     </form>
   )
 }
@@ -259,7 +261,7 @@ function TenantDecision({
             {resolution.linkedTenant ? `Confirmed as ${resolution.linkedTenant.label}` : 'Suggestions rejected'}
             <SignOff by={memberName(resolution.changedByUserId) ?? 'a former member'} at={resolution.changedAt} className="text-xs" />
           </span>
-          <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => onDecide({ tenantMatch: null }, 'Decision withdrawn')}>
+          <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => onDecide({ tenantMatch: null }, 'Decision withdrawn')} className="ml-auto">
             Withdraw
           </Button>
         </div>
@@ -289,14 +291,16 @@ function TenantDecision({
               </li>
             ))}
           </ul>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={pending}
-            onClick={() => onDecide({ tenantMatch: { decision: 'rejected' } }, 'Suggestions rejected')}
-          >
-            None of these: add a new tenant
-          </Button>
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pending}
+              onClick={() => onDecide({ tenantMatch: { decision: 'rejected' } }, 'Suggestions rejected')}
+            >
+              None of these: add a new tenant
+            </Button>
+          </div>
         </>
       ) : null}
     </section>

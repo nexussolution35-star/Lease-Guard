@@ -54,7 +54,7 @@ export function NotificationItem({ notification, onMarkRead, onNavigate, classNa
   )
 
   const itemClass = cn(
-    'flex w-full gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-muted/50 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset',
+    'flex w-full gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-muted/50 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-hidden focus-visible:ring-inset',
     className,
   )
 

@@ -235,7 +235,7 @@ function RangePicker({ current, onRangeChange }: { current: { from?: ISODate | u
           <form onSubmit={(event) => void submit(event)} noValidate aria-label="Custom date range" className="flex w-full flex-wrap items-end gap-2 sm:w-auto">
             <DateField control={form.control} name="from" label="Start date" required clearable={false} max={today} className="min-w-0 flex-1 sm:w-40 sm:flex-none" />
             <DateField control={form.control} name="to" label="End date" required clearable={false} max={today} className="min-w-0 flex-1 sm:w-40 sm:flex-none" />
-            <Button type="submit" variant="outline">
+            <Button type="submit" variant="outline" className="ml-auto">
               Show figures
             </Button>
           </form>

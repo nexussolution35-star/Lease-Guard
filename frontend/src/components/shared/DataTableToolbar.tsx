@@ -10,7 +10,7 @@ export interface DataTableToolbarProps {
   filters?: ReactNode
   /** `SortControl`. */
   sort?: ReactNode
-  /** Primary actions, aligned right on wide screens. */
+  /** Primary actions, aligned right at every width. */
   actions?: ReactNode
   /** `FilterChips`, shown on their own row. */
   chips?: ReactNode
@@ -33,7 +33,7 @@ export function DataTableToolbar({ search, filters, sort, actions, chips, classN
           {filters ? <div className="flex flex-wrap items-center gap-2">{filters}</div> : null}
           {sort ? <div className="flex items-center gap-2">{sort}</div> : null}
         </div>
-        {actions ? <div className="flex flex-wrap items-center gap-2 lg:justify-end">{actions}</div> : null}
+        {actions ? <div className="flex flex-wrap items-center justify-end gap-2">{actions}</div> : null}
       </div>
       {chips}
     </div>

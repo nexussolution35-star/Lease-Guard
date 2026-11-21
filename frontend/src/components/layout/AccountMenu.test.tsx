@@ -206,9 +206,10 @@ describe('WorkspaceSwitcher', () => {
   it('lists the user’s memberships with their role and marks the active one', async () => {
     renderWithProfile(<WorkspaceSwitcher />)
     await userEvent.click(screen.getByRole('button', { name: 'Workspace: Test Properties. Switch workspace' }))
-    const items = await screen.findAllByRole('menuitem')
+    const items = await screen.findAllByRole('menuitemradio')
     expect(items.map((item) => item.textContent)).toEqual(['APAcacia Property GroupRead only', 'TPTest PropertiesProperty manager'])
-    expect(screen.getByLabelText('Active workspace')).toBeInTheDocument()
+    expect(screen.getByRole('menuitemradio', { name: /Test Properties/, checked: true })).toBeInTheDocument()
+    expect(screen.getByRole('menuitemradio', { name: /Acacia Property Group/, checked: false })).toBeInTheDocument()
     expect(screen.queryByText(/reset demo data/i)).not.toBeInTheDocument()
   })
 })

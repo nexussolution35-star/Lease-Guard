@@ -27,7 +27,7 @@ export function ErrorState({ title = 'Something went wrong', error, onRetry, cla
         {message ? <p className="break-words text-foreground">{message}</p> : null}
       </div>
       {onRetry ? (
-        <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+        <Button type="button" variant="outline" size="sm" onClick={onRetry} className="ml-auto">
           <RotateCw aria-hidden="true" />
           Try again
         </Button>

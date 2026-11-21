@@ -20,7 +20,7 @@ export function SectionHeader({ title, description, actions, as: Heading = 'h2',
         </Heading>
         {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
       </div>
-      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2 sm:min-h-6">{actions}</div> : null}
+      {actions ? <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:min-h-6">{actions}</div> : null}
     </header>
   )
 }

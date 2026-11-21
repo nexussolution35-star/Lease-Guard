@@ -152,13 +152,18 @@
   * { border-color: var(--border); }
   /* Keep focused and anchored elements clear of the sticky top bar. */
   html { scroll-padding-top: 4rem; }
+  /*
+   * Reduced motion is handled per component (no global 0.01ms override): overlays keep their fade and drop
+   * slides and zooms (`motion-safe:` in components/ui), the sidebar width and page padding carry
+   * `motion-reduce:transition-none`, and colour feedback stays. Spinners slow down rather than stop, so
+   * work in progress still reads as busy; the skeleton pulse stops.
+   */
   @media (prefers-reduced-motion: reduce) {
-    *, ::before, ::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-      scroll-behavior: auto !important;
+    :root {
+      --animate-spin: spin 2.5s linear infinite;
+      --animate-pulse: none;
     }
+    *, ::before, ::after { scroll-behavior: auto !important; }
   }
   body {
     background-color: var(--background);
@@ -206,4 +211,102 @@
     color: var(--foreground);
     color-scheme: dark;
   }
+}
+
+/*
+ * Scroll hints. Scrollbars are hidden (owner rule), so a region that scrolls sideways needs another cue.
+ * Tables get an edge shadow drawn by the scroller's own ::before / ::after (sticky, no extra markup), shown
+ * by a scroll-state query where supported and by a scroll-driven fade elsewhere. The hairline uses
+ * --muted-foreground so the cue keeps 3:1 against the page. Tab strips and chip rows use `scroll-fade-x`.
+ */
+@property --fade-start {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --fade-end {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@layer components {
+  [data-slot="table-container"] {
+    /* A single-cell grid stack: the shadows sit over the table's edges without taking space. */
+    display: grid;
+    grid-template-columns: minmax(min-content, 1fr);
+    container-type: inline-size;
+    container-type: inline-size scroll-state;
+  }
+  [data-slot="table-container"] > table { grid-area: 1 / 1; }
+  [data-slot="table-container"]::before,
+  [data-slot="table-container"]::after {
+    content: "";
+    grid-area: 1 / 1;
+    position: sticky;
+    z-index: 1;
+    inline-size: 0.75rem;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  [data-slot="table-container"]::before {
+    justify-self: start;
+    inset-inline-start: 0;
+    background: linear-gradient(to right, var(--muted-foreground) 0 1px, color-mix(in oklch, var(--foreground) 12%, transparent) 1px, transparent);
+  }
+  [data-slot="table-container"]::after {
+    justify-self: end;
+    inset-inline-end: 0;
+    background: linear-gradient(to left, var(--muted-foreground) 0 1px, color-mix(in oklch, var(--foreground) 12%, transparent) 1px, transparent);
+  }
+  @container scroll-state(scrollable: inline-start) {
+    [data-slot="table-container"]::before { opacity: 1; }
+  }
+  @container scroll-state(scrollable: inline-end) {
+    [data-slot="table-container"]::after { opacity: 1; }
+  }
+  /* Only where scroll-driven animations exist: elsewhere a zero-length animation would fill both hints on for good. */
+  @supports (animation-timeline: scroll()) and (not (container-type: scroll-state)) {
+    [data-slot="table-container"]::before,
+    [data-slot="table-container"]::after {
+      animation: scroll-hint-show linear both;
+      animation-duration: auto;
+      animation-timeline: scroll(inline);
+    }
+    [data-slot="table-container"]::before { animation-range: 0 2rem; }
+    [data-slot="table-container"]::after {
+      animation-direction: reverse;
+      animation-range: calc(100% - 2rem) 100%;
+    }
+  }
+}
+
+@keyframes scroll-hint-show {
+  to { opacity: 1; }
+}
+
+/* A horizontal scroller (tabs, chips) whose content fades out at an edge only while more lies beyond it. */
+@utility scroll-fade-x {
+  overflow-x: auto;
+  --fade-size: 2rem;
+  scroll-padding-inline: var(--fade-size);
+  /* Without scroll-driven animations the zero-length animations would leave the start edge faded for good. */
+  @supports (animation-timeline: scroll()) {
+    mask:
+      linear-gradient(black, black) no-clip subtract,
+      linear-gradient(to right, black, transparent) 0 0 / var(--fade-start) 100% no-repeat no-clip,
+      linear-gradient(to right, transparent, black) 100% 0 / var(--fade-end) 100% no-repeat no-clip;
+    animation: scroll-fade-start linear both, scroll-fade-end linear both;
+    animation-duration: auto;
+    animation-timeline: scroll(self inline);
+    animation-range: 0 var(--fade-size), calc(100% - var(--fade-size)) 100%;
+  }
+}
+
+@keyframes scroll-fade-start {
+  to { --fade-start: var(--fade-size); }
+}
+@keyframes scroll-fade-end {
+  from { --fade-end: var(--fade-size); }
 }

@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react'
-import type { KeyboardEvent, MouseEvent, ReactNode } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import type { KeyboardEvent, MouseEvent, ReactNode, RefObject } from 'react'
 
 import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -19,8 +20,17 @@ export interface DataTableColumn<T> {
   cell: (row: T) => ReactNode
   sortable?: boolean
   align?: 'left' | 'right' | 'center'
-  /** Hide the column below this breakpoint. */
+  /**
+   * Hide the column while the table itself is narrower than this size (a container query on the table's
+   * scroll container, so the sidebar and drawers are taken into account): `sm` 32rem, `md` 38rem, `lg` 44rem (an `lg`
+   * column still shows at a 1024px viewport beside the full sidebar, as it did with viewport breakpoints).
+   */
   hideBelow?: 'sm' | 'md' | 'lg'
+  /**
+   * The column that names the record (tenant, property, lease). Its cells render as `<th scope="row">`, so
+   * screen readers announce it with every other cell in the row. Looks the same as a normal cell.
+   */
+  rowHeader?: boolean
   className?: string
 }
 
@@ -41,6 +51,12 @@ export interface DataTableProps<T> {
   /** Rendered when there are no rows. Defaults to `DataTableEmptyState`. */
   emptyState?: ReactNode
   onRowClick?: (row: T) => void
+  /**
+   * With `onRowClick`: a cell already holds a link to the same record. The row then stays clickable for the
+   * mouse but is not its own tab stop; the link is the single keyboard target and the row is highlighted
+   * while it has focus.
+   */
+  rowLinkInCell?: boolean
   sort?: DataTableSort
   onSortChange?: (sort: DataTableSort) => void
   toolbar?: ReactNode
@@ -48,13 +64,18 @@ export interface DataTableProps<T> {
   selectable?: boolean
   selectedIds?: string[]
   onSelectionChange?: (ids: string[]) => void
+  /** With `selectable`: rows that may be selected (default all). Other rows show no checkbox and select-all skips them. */
+  isRowSelectable?: (row: T) => boolean
+  /** With `selectable`: the accessible name of a row's checkbox (default `Select row n`). */
+  rowSelectionLabel?: (row: T) => string
   className?: string
 }
 
+// Container variants: the table's scroll container in components/ui/table.tsx is an inline-size container.
 const HIDE_CLASSES: Readonly<Record<'sm' | 'md' | 'lg', string>> = {
-  sm: 'hidden sm:table-cell',
-  md: 'hidden md:table-cell',
-  lg: 'hidden lg:table-cell',
+  sm: 'hidden @min-[32rem]:table-cell',
+  md: 'hidden @min-[38rem]:table-cell',
+  lg: 'hidden @min-[44rem]:table-cell',
 }
 
 const ALIGN_CLASSES: Readonly<Record<'left' | 'right' | 'center', string>> = {
@@ -72,10 +93,30 @@ function isFromInteractiveChild(event: MouseEvent<HTMLElement> | KeyboardEvent<H
   return interactive !== null && event.currentTarget.contains(interactive)
 }
 
-function ariaSort(column: DataTableColumn<unknown>, sort?: DataTableSort): 'ascending' | 'descending' | 'none' | undefined {
-  if (!column.sortable) return undefined
-  if (sort?.field !== column.id) return 'none'
+/** Only the sorted column's header carries `aria-sort`; the others carry none (not `none`). */
+function ariaSort(column: DataTableColumn<unknown>, sort?: DataTableSort): 'ascending' | 'descending' | undefined {
+  if (!column.sortable || sort?.field !== column.id) return undefined
   return sort.direction === 'asc' ? 'ascending' : 'descending'
+}
+
+/**
+ * Whether the element scrolls sideways. A table that overflows becomes a named, focusable region so the
+ * keyboard can scroll it; one that fits gets no extra tab stop.
+ */
+function useHorizontalOverflow<E extends HTMLElement>(): [RefObject<E | null>, boolean] {
+  const ref = useRef<E | null>(null)
+  const [overflowing, setOverflowing] = useState(false)
+  useEffect(() => {
+    const element = ref.current
+    if (!element || typeof ResizeObserver === 'undefined') return
+    const measure = () => setOverflowing(element.scrollWidth > element.clientWidth + 1)
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    if (element.firstElementChild) observer.observe(element.firstElementChild)
+    measure()
+    return () => observer.disconnect()
+  })
+  return [ref, overflowing]
 }
 
 export function DataTable<T>({
@@ -88,6 +129,7 @@ export function DataTable<T>({
   onRetry,
   emptyState,
   onRowClick,
+  rowLinkInCell = false,
   sort,
   onSortChange,
   toolbar,
@@ -95,14 +137,21 @@ export function DataTable<T>({
   selectable = false,
   selectedIds = [],
   onSelectionChange,
+  isRowSelectable,
+  rowSelectionLabel,
   className,
 }: DataTableProps<T>) {
   const selected = new Set(selectedIds)
-  const rowIds = rows.map(getRowId)
+  const allRowIds = rows.map(getRowId)
+  const canSelect = rows.map((row) => isRowSelectable?.(row) ?? true)
+  const rowIds = allRowIds.filter((_, index) => canSelect[index])
   const selectedOnPage = rowIds.filter((id) => selected.has(id)).length
   const allSelected = rowIds.length > 0 && selectedOnPage === rowIds.length
   const someSelected = selectedOnPage > 0 && !allSelected
   const columnCount = columns.length + (selectable ? 1 : 0)
+  const captionId = useId()
+  const [scrollRef, overflowing] = useHorizontalOverflow<HTMLDivElement>()
+  const sortedColumn = sort ? columns.find((column) => column.id === sort.field && column.sortable) : undefined
 
   function toggleAll(checked: boolean) {
     if (!onSelectionChange) return
@@ -138,17 +187,27 @@ export function DataTable<T>({
     body = <div className="border-y border-border">{emptyState ?? <DataTableEmptyState />}</div>
   } else {
     body = (
-      <Table>
-        <TableCaption className="sr-only">{caption}</TableCaption>
+      <Table
+        containerProps={{
+          ref: scrollRef,
+          ...(overflowing
+            ? { role: 'region', 'aria-labelledby': captionId, tabIndex: 0 }
+            : {}),
+          className: 'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
+        }}
+      >
+        <TableCaption id={captionId} className="sr-only">{caption}</TableCaption>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             {selectable ? (
               <TableHead className="w-10">
-                <Checkbox
-                  checked={allSelected ? true : someSelected ? 'indeterminate' : false}
-                  onCheckedChange={(checked) => toggleAll(checked === true)}
-                  aria-label="Select all rows on this page"
-                />
+                {rowIds.length > 0 ? (
+                  <Checkbox
+                    checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+                    onCheckedChange={(checked) => toggleAll(checked === true)}
+                    aria-label="Select all rows on this page"
+                  />
+                ) : null}
               </TableHead>
             ) : null}
             {columns.map((column) => {
@@ -171,7 +230,7 @@ export function DataTable<T>({
                       type="button"
                       onClick={() => handleSort(column)}
                       className={cn(
-                        '-mx-2 inline-flex items-center gap-1 rounded-sm px-2 py-1 font-medium transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none', isSorted && 'text-foreground',
+                        '-mx-2 inline-flex items-center gap-1 rounded-sm px-2 py-1 font-medium transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-hidden', isSorted && 'text-foreground',
                         align === 'right' && 'flex-row-reverse',
                       )}
                     >
@@ -191,14 +250,15 @@ export function DataTable<T>({
         </TableHeader>
         <TableBody>
           {rows.map((row, index) => {
-            const id = rowIds[index]
+            const id = allRowIds[index]!
             const isSelected = selected.has(id)
             const clickable = Boolean(onRowClick)
+            const rowFocusable = clickable && !rowLinkInCell
             return (
               <TableRow
                 key={id}
                 data-state={isSelected ? 'selected' : undefined}
-                tabIndex={clickable ? 0 : undefined}
+                tabIndex={rowFocusable ? 0 : undefined}
                 onClick={
                   clickable
                     ? (event) => {
@@ -208,7 +268,7 @@ export function DataTable<T>({
                     : undefined
                 }
                 onKeyDown={
-                  clickable
+                  rowFocusable
                     ? (event) => {
                         if (event.key !== 'Enter' || event.target !== event.currentTarget) return
                         event.preventDefault()
@@ -219,29 +279,41 @@ export function DataTable<T>({
                 className={cn(
                   clickable &&
                     'cursor-pointer focus-visible:bg-muted/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring data-[state=selected]:bg-accent/60',
+                  clickable && rowLinkInCell && 'has-[a:focus-visible]:bg-muted/50',
                 )}
               >
                 {selectable ? (
                   <TableCell className="w-10">
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={(checked) => toggleRow(id, checked === true)}
-                      aria-label={`Select row ${index + 1}`}
-                    />
+                    {canSelect[index] ? (
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={(checked) => toggleRow(id, checked === true)}
+                        aria-label={rowSelectionLabel?.(row) ?? `Select row ${index + 1}`}
+                      />
+                    ) : null}
                   </TableCell>
                 ) : null}
-                {columns.map((column) => (
-                  <TableCell
-                    key={column.id}
-                    className={cn(
-                      ALIGN_CLASSES[column.align ?? 'left'],
-                      column.hideBelow && HIDE_CLASSES[column.hideBelow],
-                      column.className,
-                    )}
-                  >
-                    {column.cell(row)}
-                  </TableCell>
-                ))}
+                {columns.map((column) => {
+                  const cellClassName = cn(
+                    ALIGN_CLASSES[column.align ?? 'left'],
+                    column.hideBelow && HIDE_CLASSES[column.hideBelow],
+                    column.className,
+                  )
+                  return column.rowHeader ? (
+                    <th
+                      key={column.id}
+                      scope="row"
+                      data-slot="table-cell"
+                      className={cn('px-3 py-2.5 text-left align-middle font-normal whitespace-nowrap', cellClassName)}
+                    >
+                      {column.cell(row)}
+                    </th>
+                  ) : (
+                    <TableCell key={column.id} className={cellClassName}>
+                      {column.cell(row)}
+                    </TableCell>
+                  )
+                })}
               </TableRow>
             )
           })}
@@ -255,6 +327,10 @@ export function DataTable<T>({
       {toolbar}
       {/* A ruled section of the logbook: header rule, hairline rows, no frame. */}
       <div className="min-w-0 text-foreground">
+        {/* aria-sort changes are not reliably announced, so one polite live region says what the sort is (no role="status", which loading states use). */}
+        <p aria-live="polite" aria-atomic="true" className="sr-only">
+          {sortedColumn && sort ? `Sorted by ${sortedColumn.header}, ${sort.direction === 'asc' ? 'ascending' : 'descending'}` : ''}
+        </p>
         {body}
         {pagination && !error ? (
           <DataTablePagination {...pagination} className={cn('border-t border-border px-3 pt-3', pagination.className)} />

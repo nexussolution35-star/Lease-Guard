@@ -226,7 +226,7 @@ export function NumberActions({ number }: { number: WhatsAppPhoneNumber }) {
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="ml-auto flex flex-wrap justify-end gap-2">
       {canRegister ? (
         <Button type="button" size="sm" variant="outline" onClick={() => setRegistering(true)}>
           <KeyRound aria-hidden="true" />
