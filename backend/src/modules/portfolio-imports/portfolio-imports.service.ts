@@ -19,7 +19,7 @@ import {
   type PortfolioImportMimeType,
 } from '@leaseguard/domain'
 
-import { httpErrorFromDatabase, unwrapDatabase } from '../../common/http/database-errors'
+import { httpErrorFromDatabase, unwrapDatabase, type DatabaseErrorLike } from '../../common/http/database-errors'
 import { emptyPageWithTotal, isPageOutOfRange, rangeFor, toPage, type Page } from '../../common/http/pagination'
 import type { Json } from '../../infrastructure/database/database.types'
 import type { DbClient } from '../../infrastructure/database/rls-client.factory'
@@ -151,8 +151,9 @@ export class PortfolioImportsService {
     const importId = randomUUID()
     const storagePath = storageObjectPath(companyId, importId, sheet.fileName)
     await this.storage.upload(db, PORTFOLIO_IMPORTS_BUCKET, storagePath, sheet.bytes, PORTFOLIO_IMPORT_MIME_TYPES.csv)
-    const row = unwrapDatabase(
-      await db.rpc('create_portfolio_import', {
+    // The snapshot is stored first so the batch never points at a missing file; if the batch is then refused, the
+    // snapshot is removed again so no file is left without a batch. A failed clean-up must not hide the refusal.
+    const row = await this.recordSheetImport(db, storagePath, () => db.rpc('create_portfolio_import', {
         p_id: importId,
         p_company_id: companyId,
         p_scope: body.scope,
@@ -170,9 +171,21 @@ export class PortfolioImportsService {
         p_google_spreadsheet_id: source.spreadsheetId,
         ...(source.gid !== undefined ? { p_google_sheet_gid: source.gid } : {}),
       }),
-      'Create portfolio import from Google Sheet',
     )
     return toPortfolioImport(row)
+  }
+
+  private async recordSheetImport<R extends { data: unknown; error: DatabaseErrorLike | null }>(
+    db: DbClient,
+    storagePath: string,
+    create: () => PromiseLike<R>,
+  ): Promise<NonNullable<R['data']>> {
+    try {
+      return unwrapDatabase(await create(), 'Create portfolio import from Google Sheet')
+    } catch (error) {
+      await this.storage.removeObject(db, PORTFOLIO_IMPORTS_BUCKET, storagePath).catch(() => undefined)
+      throw error
+    }
   }
 
   /** The import history of the active company, newest first, so a batch left with rows to fix can be resumed. */

@@ -49,7 +49,7 @@ const created = (q: RecordedQuery) =>
       : { data: null, error: null }
 
 function fakeStorage() {
-  return { upload: vi.fn(async () => undefined) } as unknown as StorageService & Record<string, ReturnType<typeof vi.fn>>
+  return { upload: vi.fn(async () => undefined), removeObject: vi.fn(async () => undefined) } as unknown as StorageService & Record<string, ReturnType<typeof vi.fn>>
 }
 
 function reader(answer: FetchedGoogleSheet | GoogleSheetError = { bytes: CSV, fileName: 'Rent roll - Units.csv' }) {
@@ -129,5 +129,16 @@ describe('PortfolioImportsService.createFromGoogleSheet', () => {
     await expect(run(reader({ bytes: Buffer.from('Code\n', 'utf8'), fileName: 'x.csv' }))).rejects.toThrow('The file has column headings but no rows below them.')
     expect(storage.upload).not.toHaveBeenCalled()
     expect(db.queries).toEqual([])
+  })
+  it('removes the stored snapshot when the batch is refused, and still reports the refusal', async () => {
+    const db = fakeDb((q) => (q.table === 'rpc:create_portfolio_import' ? { data: null, error: { code: '42501', message: 'new row violates row-level security policy' } } : created(q)))
+    const storage = fakeStorage()
+    storage.removeObject.mockRejectedValueOnce(new Error('storage is down'))
+    const service = new PortfolioImportsService(storage, reader())
+
+    await expect(service.createFromGoogleSheet(db.client, COMPANY, { scope: 'properties', url: LINK })).rejects.toThrow()
+    const args = rpcArgs(db.queries.find((q) => q.table === 'rpc:create_portfolio_import')!) as Record<string, unknown>
+    expect(storage.upload).toHaveBeenCalledOnce()
+    expect(storage.removeObject).toHaveBeenCalledWith(expect.anything(), PORTFOLIO_IMPORTS_BUCKET, args.p_storage_path)
   })
 })
