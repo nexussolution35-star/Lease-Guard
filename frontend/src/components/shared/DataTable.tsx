@@ -59,7 +59,7 @@ const HIDE_CLASSES: Readonly<Record<'sm' | 'md' | 'lg', string>> = {
 
 const ALIGN_CLASSES: Readonly<Record<'left' | 'right' | 'center', string>> = {
   left: 'text-left',
-  right: 'text-right',
+  right: 'text-right tabular-nums',
   center: 'text-center',
 }
 
@@ -129,9 +129,13 @@ export function DataTable<T>({
   if (isLoading) {
     body = <DataTableLoading columns={Math.min(columnCount, 6)} />
   } else if (error) {
-    body = <ErrorState title="Could not load records" error={error} onRetry={onRetry} className="m-4" />
+    body = (
+      <div className="border-y border-border">
+        <ErrorState title="Could not load records" error={error} onRetry={onRetry} className="rounded-none border-0 px-3" />
+      </div>
+    )
   } else if (rows.length === 0) {
-    body = emptyState ?? <DataTableEmptyState />
+    body = <div className="border-y border-border">{emptyState ?? <DataTableEmptyState />}</div>
   } else {
     body = (
       <Table>
@@ -167,7 +171,7 @@ export function DataTable<T>({
                       type="button"
                       onClick={() => handleSort(column)}
                       className={cn(
-                        '-mx-2 inline-flex items-center gap-1 rounded-sm px-2 py-1 font-medium hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+                        '-mx-2 inline-flex items-center gap-1 rounded-sm px-2 py-1 font-medium transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none', isSorted && 'text-foreground',
                         align === 'right' && 'flex-row-reverse',
                       )}
                     >
@@ -214,7 +218,7 @@ export function DataTable<T>({
                 }
                 className={cn(
                   clickable &&
-                    'cursor-pointer focus-visible:bg-muted/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
+                    'cursor-pointer focus-visible:bg-muted/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring data-[state=selected]:bg-accent/60',
                 )}
               >
                 {selectable ? (
@@ -249,8 +253,13 @@ export function DataTable<T>({
   return (
     <div className={cn('flex min-w-0 flex-col gap-4', className)}>
       {toolbar}
-      <div className="min-w-0 overflow-hidden rounded-xl border border-border bg-card text-card-foreground">{body}</div>
-      {pagination && !error ? <DataTablePagination {...pagination} /> : null}
+      {/* A ruled section of the logbook: header rule, hairline rows, no frame. */}
+      <div className="min-w-0 text-foreground">
+        {body}
+        {pagination && !error ? (
+          <DataTablePagination {...pagination} className={cn('border-t border-border px-3 pt-3', pagination.className)} />
+        ) : null}
+      </div>
     </div>
   )
 }

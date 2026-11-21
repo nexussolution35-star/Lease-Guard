@@ -1,4 +1,4 @@
-import { Loader2, MapPin } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import type { FieldPath, FieldValues } from 'react-hook-form'
 
@@ -189,8 +189,6 @@ export function AddressAutocompleteField<TFieldValues extends FieldValues, TName
                   </FormControl>
                   {lookup.state === 'loading' ? (
                     <Loader2 className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground" aria-hidden="true" />
-                  ) : source ? (
-                    <MapPin className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                   ) : null}
                 </div>
               </PopoverAnchor>
@@ -226,13 +224,10 @@ export function AddressAutocompleteField<TFieldValues extends FieldValues, TName
                       onMouseDown={(event) => event.preventDefault()}
                       onMouseEnter={() => setActive(index)}
                       onClick={() => void choose(item)}
-                      className="flex cursor-pointer items-start gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors aria-selected:bg-accent aria-selected:text-accent-foreground"
+                      className="cursor-pointer rounded-sm px-2 py-1.5 text-sm transition-colors aria-selected:bg-accent aria-selected:text-accent-foreground"
                     >
-                      <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                      <span className="min-w-0">
-                        <span className="block truncate text-foreground">{item.primary}</span>
-                        {item.secondary ? <span className="block truncate text-xs text-muted-foreground">{item.secondary}</span> : null}
-                      </span>
+                      <span className="block truncate text-foreground">{item.primary}</span>
+                      {item.secondary ? <span className="block truncate text-xs text-muted-foreground">{item.secondary}</span> : null}
                     </li>
                   ))}
                 </ul>

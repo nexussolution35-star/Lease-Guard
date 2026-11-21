@@ -89,6 +89,7 @@ function CurrencyInput({
       type="text"
       inputMode="decimal"
       autoComplete="off"
+      className="tabular-nums"
       value={display}
       placeholder={placeholder}
       disabled={disabled}

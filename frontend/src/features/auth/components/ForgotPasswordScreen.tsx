@@ -1,4 +1,4 @@
-import { AlertCircle, KeyRound, MailCheck } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 
@@ -45,7 +45,6 @@ export function ForgotPasswordScreen() {
   if (sentTo !== null) {
     return (
       <AuthPageFrame
-        icon={MailCheck}
         title="Check your email"
         description={`If an account exists for ${sentTo}, we have emailed it a link to choose a new password. The link works once and expires after ${EMAIL_LINK_LIFETIME}.`}
         footer={backToSignIn}
@@ -66,7 +65,6 @@ export function ForgotPasswordScreen() {
 
   return (
     <AuthPageFrame
-      icon={KeyRound}
       title="Reset your password"
       description="Enter the email address you sign in with. We will email you a link to choose a new password."
       footer={backToSignIn}

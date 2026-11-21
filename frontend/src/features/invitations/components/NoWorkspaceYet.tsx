@@ -1,4 +1,4 @@
-import { Building2, LogOut } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 
 import { EmptyState, ErrorState, LoadingState } from '@/components/shared'
 import { Button } from '@/components/ui/button'
@@ -27,7 +27,7 @@ export function NoWorkspaceYet({ email, onSignOut }: NoWorkspaceYetProps) {
   return (
     <div className="flex flex-col gap-4">
       <EmptyState
-        icon={Building2}
+        className="py-0"
         title="No workspace yet"
         description={query.isPending ? `${who} is not a member of any company workspace yet.` : description}
         action={
@@ -43,7 +43,7 @@ export function NoWorkspaceYet({ email, onSignOut }: NoWorkspaceYetProps) {
       ) : null}
       {hasInvitations ? (
         <section aria-labelledby="no-workspace-invitations-title" className="flex flex-col gap-3">
-          <h2 id="no-workspace-invitations-title" className="font-semibold tracking-tight">
+          <h2 id="no-workspace-invitations-title" className="text-sm font-medium text-foreground">
             Your invitations
           </h2>
           <ReceivedInvitations invitations={invitations} />

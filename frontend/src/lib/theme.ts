@@ -22,12 +22,23 @@ function readStored(): ThemePreference {
 let current: ThemePreference = typeof window === 'undefined' ? 'system' : readStored()
 const listeners = new Set<() => void>()
 
-/** Write the preference onto `<html data-theme>`; `system` removes the attribute. */
+/** The page background per theme, for the browser chrome. Keep equal to `--background` in `styles/globals.css`. */
+const THEME_COLOR_LIGHT = '#f9fafb'
+const THEME_COLOR_DARK = '#0b1016'
+
+/**
+ * Write the preference onto `<html data-theme>`; `system` removes the attribute. The two media-keyed
+ * `theme-color` metas of `index.html` follow: a chosen theme sets both, `system` restores each one's own colour.
+ */
 export function applyTheme(theme: ThemePreference): void {
   if (typeof document === 'undefined') return
   const root = document.documentElement
   if (theme === 'system') root.removeAttribute('data-theme')
   else root.setAttribute('data-theme', theme)
+  for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
+    const own = meta.media.includes('dark') ? THEME_COLOR_DARK : THEME_COLOR_LIGHT
+    meta.content = theme === 'system' ? own : theme === 'dark' ? THEME_COLOR_DARK : THEME_COLOR_LIGHT
+  }
 }
 
 export function getThemePreference(): ThemePreference {

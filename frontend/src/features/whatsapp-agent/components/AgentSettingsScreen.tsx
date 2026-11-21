@@ -1,13 +1,11 @@
-import { useId } from 'react'
-import { ArrowLeft, Info, ShieldCheck } from 'lucide-react'
-
+import { SETTINGS_SECTIONS } from '@/components/forms'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { AppLink, ErrorState, LoadingState, NoActiveWorkspace } from '@/components/shared'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ErrorState, LoadingState, NoActiveWorkspace, SectionHeader } from '@/components/shared'
 import { useIsCompanyAdmin } from '@/features/account/useActiveRole'
 import { useMemberList } from '@/features/users/api/queries'
 import { isAwaitingWorkspace } from '@/lib/data/queries'
 import { MAX_LIST_PAGE_SIZE } from '@/lib/data/listParams'
+import { cn } from '@/lib/utils'
 
 import { useAgentConfig } from '../api/queries'
 import { AgentConfigForm } from './AgentConfigForm'
@@ -23,24 +21,15 @@ const SAFEGUARDS: readonly string[] = [
 ]
 
 function Safeguards() {
-  const titleId = useId()
   return (
-    <Card role="region" aria-labelledby={titleId} className="border-primary/30 bg-primary/5">
-      <CardHeader>
-        <CardTitle id={titleId} className="flex items-center gap-2 text-base">
-          <ShieldCheck className="size-4 text-primary" aria-hidden="true" />
-          Safeguards that always apply
-        </CardTitle>
-        <CardDescription>LeaseGuard enforces these for every company. Your settings cannot turn them off.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ul className="list-disc space-y-1 pl-5 text-sm text-foreground">
-          {SAFEGUARDS.map((safeguard) => (
-            <li key={safeguard}>{safeguard}</li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
+    <section aria-label="Safeguards that always apply" className="space-y-3">
+      <SectionHeader title="Safeguards that always apply" description="LeaseGuard enforces these for every company. Your settings cannot turn them off." />
+      <ul className="list-disc space-y-1 pl-5 text-sm text-foreground">
+        {SAFEGUARDS.map((safeguard) => (
+          <li key={safeguard}>{safeguard}</li>
+        ))}
+      </ul>
+    </section>
   )
 }
 
@@ -60,47 +49,25 @@ function AgentSettings({ canEdit }: { canEdit: boolean }) {
  */
 export function AgentSettingsScreen() {
   const isAdmin = useIsCompanyAdmin()
-  const settingsId = useId()
-  const knowledgeId = useId()
   return (
-    <section className="space-y-6">
-      <AppLink to="/settings/integrations/whatsapp" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        WhatsApp
-      </AppLink>
-      <PageHeader
-        title="AI agent"
-        description="How this company’s WhatsApp agent answers contacts, and the approved information it may use."
-        className="pb-0"
-      />
+    <section>
+      <PageHeader title="AI agent" description="How this company’s WhatsApp agent answers contacts, and the approved information it may use." />
       {isAdmin ? null : (
-        <p className="flex gap-2 rounded-md border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-          <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        <p className="mb-6 text-sm text-muted-foreground">
           You can view the AI agent settings and knowledge base. Only company admins can change or approve them.
         </p>
       )}
-      <Safeguards />
-      <Card role="region" aria-labelledby={settingsId}>
-        <CardHeader>
-          <CardTitle id={settingsId} className="text-base">
-            Agent settings
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className={cn('max-w-3xl', SETTINGS_SECTIONS)}>
+        <Safeguards />
+        <section aria-label="Agent settings" className="space-y-4">
+          <SectionHeader title="Agent settings" />
           <AgentSettings canEdit={isAdmin} />
-        </CardContent>
-      </Card>
-      <Card role="region" aria-labelledby={knowledgeId}>
-        <CardHeader>
-          <CardTitle id={knowledgeId} className="text-base">
-            Knowledge base
-          </CardTitle>
-          <CardDescription>Everything starts as a draft. The agent only uses items a company admin has approved.</CardDescription>
-        </CardHeader>
-        <CardContent>
+        </section>
+        <section aria-label="Knowledge base" className="space-y-4">
+          <SectionHeader title="Knowledge base" description="Everything starts as a draft. The agent only uses items a company admin has approved." />
           <KnowledgeBase canEdit={isAdmin} />
-        </CardContent>
-      </Card>
+        </section>
+      </div>
     </section>
   )
 }

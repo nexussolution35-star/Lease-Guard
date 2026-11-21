@@ -1,5 +1,5 @@
 import { canReplyToContact, customerServiceWindow } from '@leaseguard/domain'
-import { AlertCircle, Clock, Info, Send } from 'lucide-react'
+import { AlertCircle, Clock, Send } from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
 import { useIsCompanyWriter } from '@/features/account/useActiveRole'
 import { describeApiError } from '@/lib/data/apiErrors'
+import { cn } from '@/lib/utils'
 
 import { useReplyToContact } from '../api/queries'
 import type { WhatsAppConversation } from '../api/source'
@@ -56,34 +57,20 @@ export function ReplyBox({ conversation }: { conversation: WhatsAppConversation 
   })
 
   return (
-    <section aria-labelledby={headingId} className="space-y-3 border-t border-border pt-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 id={headingId} className="text-sm font-medium text-foreground">
-          Reply
-        </h3>
-        <p className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Clock aria-hidden="true" className="size-3.5" />
-          {serviceWindow.open && serviceWindow.closesAt ? (
-            <span>
-              Reply window: {formatRemaining(serviceWindow.remainingMs)} left (closes <DateDisplay value={serviceWindow.closesAt} style="datetime" />)
-            </span>
-          ) : (
-            <span>Reply window closed</span>
-          )}
-        </p>
+    <section aria-labelledby={headingId} className="space-y-3 border-t border-border px-4 py-3">
+      <h3 id={headingId} className="sr-only">
+        Reply
+      </h3>
+      {/* Always mounted, so the reasons are announced when the reply window closes while the page is open. */}
+      <div role="status" className="empty:mb-0">
+        {!eligibility.eligible ? (
+          <ul className="list-disc space-y-1 pl-4 text-sm text-foreground">
+            {eligibility.reasons.map((reason) => (
+              <li key={reason}>{reason}.</li>
+            ))}
+          </ul>
+        ) : null}
       </div>
-      {!eligibility.eligible ? (
-        <Alert>
-          <Info aria-hidden="true" />
-          <AlertDescription>
-            <ul className="list-disc space-y-1 pl-4">
-              {eligibility.reasons.map((reason) => (
-                <li key={reason}>{reason}.</li>
-              ))}
-            </ul>
-          </AlertDescription>
-        </Alert>
-      ) : null}
       {canWrite ? null : <p className="text-sm text-muted-foreground">Only company admins and property managers can reply.</p>}
       {rootError ? (
         <Alert variant="destructive">
@@ -102,7 +89,17 @@ export function ReplyBox({ conversation }: { conversation: WhatsAppConversation 
             rows={3}
             disabled={!canWrite || !eligibility.eligible}
           />
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className={cn('flex items-center gap-1.5 text-xs', serviceWindow.open ? 'text-foreground' : 'text-muted-foreground')}>
+              <Clock aria-hidden="true" className="size-3.5 shrink-0" />
+              {serviceWindow.open && serviceWindow.closesAt ? (
+                <span>
+                  Reply window: {formatRemaining(serviceWindow.remainingMs)} left (closes <DateDisplay value={serviceWindow.closesAt} style="datetime" />)
+                </span>
+              ) : (
+                <span>Reply window closed</span>
+              )}
+            </p>
             <Button type="submit" size="sm" disabled={!canWrite || !eligibility.eligible || form.formState.isSubmitting}>
               <Send aria-hidden="true" />
               Send reply

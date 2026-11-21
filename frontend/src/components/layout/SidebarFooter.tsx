@@ -1,6 +1,7 @@
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
 export interface SidebarFooterProps {
@@ -11,22 +12,26 @@ export interface SidebarFooterProps {
 }
 
 export function SidebarFooter({ collapsed = false, onToggleCollapsed, className }: SidebarFooterProps) {
+  if (!onToggleCollapsed) return null
+  const label = collapsed ? 'Expand sidebar' : 'Collapse sidebar'
   return (
-    <div className={cn('flex flex-col gap-2', className)}>
-      {onToggleCollapsed ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size={collapsed ? 'icon-sm' : 'sm'}
-          onClick={onToggleCollapsed}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          aria-expanded={!collapsed}
-          className={cn('text-muted-foreground', collapsed ? 'mx-auto' : 'justify-start')}
-        >
-          {collapsed ? <PanelLeftOpen aria-hidden="true" /> : <PanelLeftClose aria-hidden="true" />}
-          {collapsed ? null : 'Collapse'}
-        </Button>
-      ) : null}
+    <div className={cn('flex border-t border-border p-2', collapsed ? 'justify-center' : 'justify-end', className)}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={onToggleCollapsed}
+            aria-label={label}
+            aria-expanded={!collapsed}
+            className="text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+          >
+            {collapsed ? <PanelLeftOpen aria-hidden="true" /> : <PanelLeftClose aria-hidden="true" />}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right" sideOffset={8}>{label}</TooltipContent>
+      </Tooltip>
     </div>
   )
 }

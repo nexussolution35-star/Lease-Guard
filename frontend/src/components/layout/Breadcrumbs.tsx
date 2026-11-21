@@ -110,7 +110,7 @@ export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
                     </AppLink>
                   </BreadcrumbLink>
                 ) : (
-                  <BreadcrumbPage className="truncate">{crumb.label}</BreadcrumbPage>
+                  <BreadcrumbPage className="truncate font-medium">{crumb.label}</BreadcrumbPage>
                 )}
               </BreadcrumbItem>
               {isLast ? null : <BreadcrumbSeparator className="hidden sm:inline-flex" />}

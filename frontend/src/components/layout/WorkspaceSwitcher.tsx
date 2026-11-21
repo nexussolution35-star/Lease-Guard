@@ -23,18 +23,22 @@ export function WorkspaceSwitcher({ collapsed = false, className }: WorkspaceSwi
 
   const initials = activeMembership?.company.initials ?? '—'
   const name = activeMembership ? workspaceName(activeMembership) : 'No workspace'
+  const caption = activeMembership ? labelFor(activeMembership.role) : undefined
 
   return (
     <DropdownMenu>
-      <WorkspaceSwitcherTrigger initials={initials} name={name} collapsed={collapsed} className={className} />
-      <DropdownMenuContent align="start" side={collapsed ? 'right' : 'bottom'} className="w-72">
-        <DropdownMenuLabel className="text-xs text-muted-foreground">Your workspaces</DropdownMenuLabel>
+      <WorkspaceSwitcherTrigger initials={initials} name={name} caption={caption} collapsed={collapsed} className={className} />
+      <DropdownMenuContent align="start" side={collapsed ? 'right' : 'bottom'}
+        // Expanded, the menu lines up with the switcher; from the icon rail it opens beside it.
+        className={collapsed ? 'w-64' : 'w-(--radix-dropdown-menu-trigger-width) min-w-56'}
+      >
+        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Your workspaces</DropdownMenuLabel>
         {sortedMemberships(memberships).map((membership) => {
           const isActive = membership.companyId === activeMembership?.companyId
           return (
             <DropdownMenuItem key={membership.companyId} className="gap-2.5" onSelect={() => switchWorkspace(membership)}>
-              <Avatar className="size-7 rounded-md">
-                <AvatarFallback className="rounded-md text-xs font-semibold">{membership.company.initials}</AvatarFallback>
+              <Avatar className="size-6 rounded-sm">
+                <AvatarFallback className="rounded-sm text-xs font-semibold">{membership.company.initials}</AvatarFallback>
               </Avatar>
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium">{workspaceName(membership)}</span>
@@ -43,7 +47,7 @@ export function WorkspaceSwitcher({ collapsed = false, className }: WorkspaceSwi
                   {membership.company.status === 'active' ? null : ` · ${labelFor(membership.company.status)}`}
                 </span>
               </span>
-              {isActive ? <Check className="size-4 text-primary" aria-label="Active workspace" /> : null}
+              {isActive ? <Check className="size-4 text-foreground" aria-label="Active workspace" /> : null}
             </DropdownMenuItem>
           )
         })}

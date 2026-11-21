@@ -13,14 +13,14 @@ export interface SectionHeaderProps {
 
 export function SectionHeader({ title, description, actions, as: Heading = 'h2', className }: SectionHeaderProps) {
   return (
-    <header className={cn('flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between', className)}>
+    <header className={cn('flex flex-col gap-3 sm:flex-row sm:justify-between', description ? 'sm:items-start' : 'sm:items-center', className)}>
       <div className="min-w-0 space-y-1">
-        <Heading className={cn('font-semibold tracking-tight text-foreground', Heading === 'h2' ? 'text-lg' : 'text-base')}>
+        <Heading className={cn('font-medium text-balance text-foreground', Heading === 'h2' ? 'text-base' : 'text-sm')}>
           {title}
         </Heading>
         {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
       </div>
-      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2 sm:min-h-6">{actions}</div> : null}
     </header>
   )
 }

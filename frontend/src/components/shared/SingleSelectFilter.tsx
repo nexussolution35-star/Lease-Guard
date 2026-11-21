@@ -25,7 +25,7 @@ export function SingleSelectFilter<T extends string>({ label, allLabel, value, o
         value={value ?? ALL}
         onValueChange={(next) => onChange(next === ALL ? undefined : options.find((o) => o.value === next)?.value)}
       >
-        <SelectTrigger size="sm" aria-labelledby={labelId} className="h-9 min-w-36">
+        <SelectTrigger aria-labelledby={labelId} className="min-w-36">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

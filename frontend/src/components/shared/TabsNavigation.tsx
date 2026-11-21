@@ -31,14 +31,14 @@ export function TabsNavigation({ tabs, value, defaultValue, onValueChange, class
       onValueChange={onValueChange}
       className={cn('gap-4', className)}
     >
-      <div className="-mx-1 overflow-x-auto border-b border-border px-1 pb-2">
+      <div className="-mx-1 overflow-x-auto border-b border-border px-1">
         <TabsList variant="line" className="w-max justify-start">
           {tabs.map(({ value: tabValue, label, count, icon: Icon }) => (
             <TabsTrigger key={tabValue} value={tabValue} className="flex-none px-3">
               {Icon ? <Icon aria-hidden="true" /> : null}
               {label}
               {count !== undefined ? (
-                <span className="rounded-full bg-muted px-1.5 text-xs font-medium tabular-nums text-muted-foreground">
+                <span className="text-xs font-normal tabular-nums text-muted-foreground">
                   <span className="sr-only">(</span>
                   {count}
                   <span className="sr-only">)</span>
@@ -49,7 +49,7 @@ export function TabsNavigation({ tabs, value, defaultValue, onValueChange, class
         </TabsList>
       </div>
       {tabs.map((tab) => (
-        <TabsContent key={tab.value} value={tab.value} className="focus-visible:outline-none">
+        <TabsContent key={tab.value} value={tab.value}>
           {tab.content}
         </TabsContent>
       ))}

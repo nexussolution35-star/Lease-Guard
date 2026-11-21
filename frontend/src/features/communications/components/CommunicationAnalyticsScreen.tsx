@@ -9,7 +9,7 @@ import {
   type CommunicationAnalyticsRange,
   type ISODate,
 } from '@leaseguard/domain'
-import { AlertCircle, Bot, CheckCheck, Eye, Hand, Inbox, Moon, Send, Sparkles, XCircle, type LucideIcon } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 import { useId, useMemo, useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -19,9 +19,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { ErrorState, MetricCard, MetricGrid, NoActiveWorkspace } from '@/components/shared'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form } from '@/components/ui/form'
-import type { Tone } from '@/lib/labels'
 import { describeApiError } from '@/lib/data/apiErrors'
 import { isAwaitingWorkspace } from '@/lib/data/queries'
 
@@ -83,7 +81,7 @@ export function CommunicationAnalyticsScreen({ from, to, onRangeChange }: Commun
   const quiet = shown !== undefined && isQuiet(shown)
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-10">
       {header}
       <RangePicker key={`${shown?.from ?? from ?? ''}:${shown?.to ?? to ?? ''}`} current={problem ? { from, to } : (shown ?? { from, to })} onRangeChange={onRangeChange} />
 
@@ -113,21 +111,26 @@ export function CommunicationAnalyticsScreen({ from, to, onRangeChange }: Commun
             ) : null}
             {quiet ? <p className="text-sm text-foreground">No WhatsApp activity in this period.</p> : null}
           </div>
+          {/* Every strip sits on the same five-column rhythm, so cells line up from one section to the next; each has one lead figure. */}
           <FigureSection
             title="Messages"
             description="WhatsApp messages on the day they were recorded, by their latest status. Sent counts every message handed to WhatsApp; drafts, messages awaiting approval and rejected messages are not sent. Test messages never count."
+            gridClassName="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"
           >
-            <Figure label="Received" icon={Inbox} value={shown?.inbound} isLoading={isLoading} />
-            <Figure label="Sent" icon={Send} value={shown?.outbound} isLoading={isLoading} />
-            <Figure label="Delivered" icon={CheckCheck} tone="success" value={shown?.delivered} share={shown && shareOf(shown.delivered, shown.outbound)} isLoading={isLoading} />
-            <Figure label="Read" icon={Eye} tone="info" value={shown?.read} share={shown && shareOf(shown.read, shown.outbound)} isLoading={isLoading} />
-            <Figure label="Failed" icon={XCircle} tone="danger" value={shown?.failed} share={shown && shareOf(shown.failed, shown.outbound)} isLoading={isLoading} />
+            <Figure label="Received" value={shown?.inbound} isLoading={isLoading} />
+            <Figure label="Sent" value={shown?.outbound} isLoading={isLoading} />
+            <Figure lead label="Delivered" value={shown?.delivered} share={shown && shareOf(shown.delivered, shown.outbound)} isLoading={isLoading} />
+            <Figure label="Read" value={shown?.read} share={shown && shareOf(shown.read, shown.outbound)} isLoading={isLoading} />
+            <Figure label="Failed" danger value={shown?.failed} share={shown && shareOf(shown.failed, shown.outbound)} isLoading={isLoading} />
           </FigureSection>
-          <FigureSection title="Handovers" description="Conversations handed to a person, by the AI agent or by a member taking over.">
+          <FigureSection
+            title="Handovers"
+            description="Conversations handed to a person, by the AI agent or by a member taking over."
+            gridClassName="grid-cols-1 sm:w-1/3 lg:w-1/5"
+          >
             <Figure
+              lead
               label="Handovers opened"
-              icon={Hand}
-              tone="warning"
               value={shown?.handovers}
               description={shown ? `${shown.agentHandovers} by the AI agent` : undefined}
               isLoading={isLoading}
@@ -136,10 +139,11 @@ export function CommunicationAnalyticsScreen({ from, to, onRangeChange }: Commun
           <FigureSection
             title="AI agent"
             description="What the AI agent did with incoming messages. It answers contacts only; tenants are never answered automatically, and suggested replies are for staff only and never sent."
+            gridClassName="sm:grid-cols-3 lg:w-3/5"
           >
-            <Figure label="Answers sent" icon={Bot} value={shown?.agentReplies} isLoading={isLoading} />
-            <Figure label="Out-of-hours messages" icon={Moon} value={shown?.outOfHoursMessages} isLoading={isLoading} />
-            <Figure label="Suggested replies" icon={Sparkles} value={shown?.suggestedReplies} isLoading={isLoading} />
+            <Figure lead label="Answers sent" value={shown?.agentReplies} isLoading={isLoading} />
+            <Figure label="Out-of-hours messages" value={shown?.outOfHoursMessages} isLoading={isLoading} />
+            <Figure label="Suggested replies" value={shown?.suggestedReplies} isLoading={isLoading} />
           </FigureSection>
         </>
       ) : null}
@@ -153,41 +157,45 @@ function isQuiet(figures: CommunicationAnalytics): boolean {
   )
 }
 
-function FigureSection({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+function FigureSection({ title, description, gridClassName, children }: { title: string; description: string; gridClassName: string; children: ReactNode }) {
   const titleId = useId()
   return (
     <section aria-labelledby={titleId} className="space-y-3">
       <div className="space-y-1">
-        <h2 id={titleId} className="text-base font-semibold text-foreground">
+        <h2 id={titleId} className="text-base font-medium text-balance text-foreground">
           {title}
         </h2>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <p className="max-w-3xl text-sm text-pretty text-muted-foreground">{description}</p>
       </div>
-      <MetricGrid columns={3}>{children}</MetricGrid>
+      <MetricGrid columns={2} className={gridClassName}>
+        {children}
+      </MetricGrid>
     </section>
   )
 }
 
 interface FigureProps {
   label: string
-  icon: LucideIcon
   value: number | undefined
-  tone?: Tone
+  /** Coloured when it is not zero: only failures are. */
+  danger?: boolean
   /** Percentage of the messages sent. */
   share?: number | undefined
   description?: string | undefined
   isLoading: boolean
+  /** The strip's figure that matters, set larger. One per strip. */
+  lead?: boolean
 }
 
-function Figure({ label, icon, value, tone = 'neutral', share, description, isLoading }: FigureProps) {
+function Figure({ label, value, danger = false, share, description, isLoading, lead = false }: FigureProps) {
   const text = description ?? (share !== undefined ? `${share}% of sent` : undefined)
   return (
     <MetricCard
       label={label}
-      icon={icon}
-      tone={tone}
+      tone={danger ? 'danger' : 'neutral'}
       value={value === undefined ? '–' : formatCount(value)}
       isLoading={isLoading}
+      lead={lead}
       {...(text ? { description: text } : {})}
     />
   )
@@ -206,19 +214,16 @@ function RangePicker({ current, onRangeChange }: { current: { from?: ISODate | u
   const isCurrent = (days: number) => current.to === today && current.from === addDaysISO(today, -(days - 1))
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Date range</CardTitle>
-        <CardDescription>South African calendar days; both dates are included. At most 366 days.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
         <div className="flex flex-wrap gap-2" role="group" aria-label="Quick ranges">
           {QUICK_RANGES.map((range) => (
             <Button
               key={range.days}
               type="button"
+              variant="outline"
               size="sm"
-              variant={isCurrent(range.days) ? 'default' : 'outline'}
+              className="aria-pressed:bg-accent aria-pressed:text-accent-foreground"
               aria-pressed={isCurrent(range.days)}
               onClick={() => onRangeChange({ from: addDaysISO(today, -(range.days - 1)), to: today })}
             >
@@ -227,15 +232,16 @@ function RangePicker({ current, onRangeChange }: { current: { from?: ISODate | u
           ))}
         </div>
         <Form {...form}>
-          <form onSubmit={(event) => void submit(event)} noValidate aria-label="Custom date range" className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-            <DateField control={form.control} name="from" label="Start date" required clearable={false} max={today} />
-            <DateField control={form.control} name="to" label="End date" required clearable={false} max={today} />
-            <Button type="submit" className="sm:mb-0.5">
+          <form onSubmit={(event) => void submit(event)} noValidate aria-label="Custom date range" className="flex w-full flex-wrap items-end gap-2 sm:w-auto">
+            <DateField control={form.control} name="from" label="Start date" required clearable={false} max={today} className="min-w-0 flex-1 sm:w-40 sm:flex-none" />
+            <DateField control={form.control} name="to" label="End date" required clearable={false} max={today} className="min-w-0 flex-1 sm:w-40 sm:flex-none" />
+            <Button type="submit" variant="outline">
               Show figures
             </Button>
           </form>
         </Form>
-      </CardContent>
-    </Card>
+      </div>
+      <p className="text-xs text-muted-foreground">South African calendar days; both dates are included. At most 366 days.</p>
+    </div>
   )
 }

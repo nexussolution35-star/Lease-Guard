@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, CircleDashed, CircleMinus, Loader2, RefreshCw, Unplug, KeyRound, TriangleAlert, XCircle } from 'lucide-react'
+import { AlertCircle, Loader2, RefreshCw, Unplug, KeyRound } from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -6,12 +6,11 @@ import { z } from 'zod'
 import type { WhatsAppVerificationStep, WhatsAppVerificationStepStatus } from '@leaseguard/api-client'
 
 import { TextField, zodResolver } from '@/components/forms'
-import { ConfirmationDialog, DateDisplay, FormDialog } from '@/components/shared'
+import { ConfirmationDialog, DateDisplay, FormDialog, StatusDot } from '@/components/shared'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
-import { TONE_CLASSES } from '@/lib/labels'
-import { cn } from '@/lib/utils'
+import type { Tone } from '@/lib/labels'
 
 import { isNumberVerificationRunning, useDisconnectWhatsAppNumber, useRegisterWhatsAppNumber, useVerifyWhatsAppNumber } from '../api/queries'
 import type { WhatsAppPhoneNumber, WhatsAppVerificationStepResult } from '../api/source'
@@ -26,36 +25,38 @@ const STEP_LABELS: Readonly<Record<WhatsAppVerificationStep, string>> = {
 }
 const STEP_ORDER = Object.keys(STEP_LABELS) as WhatsAppVerificationStep[]
 
-const STATUS_VIEW: Readonly<
-  Record<WhatsAppVerificationStepStatus, { label: string; tone: keyof typeof TONE_CLASSES; icon: typeof CheckCircle2 }>
-> = {
-  passed: { label: 'Passed', tone: 'success', icon: CheckCircle2 },
-  not_required: { label: 'Not required', tone: 'neutral', icon: CircleMinus },
-  failed: { label: 'Failed', tone: 'danger', icon: XCircle },
-  action_needed: { label: 'Action needed', tone: 'warning', icon: TriangleAlert },
-  pending: { label: 'Not checked yet', tone: 'neutral', icon: CircleDashed },
+const STATUS_VIEW: Readonly<Record<WhatsAppVerificationStepStatus, { label: string; tone: Tone }>> = {
+  passed: { label: 'Passed', tone: 'success' },
+  not_required: { label: 'Not required', tone: 'neutral' },
+  failed: { label: 'Failed', tone: 'danger' },
+  action_needed: { label: 'Action needed', tone: 'warning' },
+  pending: { label: 'Not checked yet', tone: 'neutral' },
 }
 
 function StepItem({ step, result }: { step: WhatsAppVerificationStep; result: WhatsAppVerificationStepResult | undefined }) {
-  const view = STATUS_VIEW[result?.status ?? 'pending']
-  const Icon = view.icon
+  const status = result?.status ?? 'pending'
+  const view = STATUS_VIEW[status]
+  const failing = status === 'failed' || status === 'action_needed'
   return (
-    <li className="flex gap-3 py-2">
-      <Icon className={cn('mt-0.5 size-4 shrink-0', view.tone === 'success' && 'text-success', view.tone === 'danger' && 'text-destructive')} aria-hidden="true" />
-      <div className="min-w-0 flex-1 space-y-0.5">
-        <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground">
-          {STEP_LABELS[step]}
-          <span className={cn('rounded-md border px-1.5 py-0.5 text-xs font-normal', TONE_CLASSES[view.tone])}>{view.label}</span>
-        </p>
-        {result?.message ? <p className="text-sm text-muted-foreground">{result.message}</p> : null}
-        {result?.recovery && (result.status === 'failed' || result.status === 'action_needed') ? (
-          <p className="text-sm text-foreground">
-            <span className="font-medium">How to fix: </span>
-            {result.recovery}
-          </p>
-        ) : null}
-        {result?.metaErrorCode ? <p className="text-xs text-muted-foreground">Meta error code {result.metaErrorCode}</p> : null}
+    <li className="grid gap-x-3 gap-y-0.5 py-1.5 sm:grid-cols-[minmax(0,1fr)_9.5rem]">
+      <p className="text-sm text-foreground">{STEP_LABELS[step]}</p>
+      <div>
+        <StatusDot tone={view.tone} className={failing ? 'font-medium' : undefined}>
+          {view.label}
+        </StatusDot>
       </div>
+      {result?.message || (result?.recovery && failing) || result?.metaErrorCode ? (
+        <div className="min-w-0 space-y-0.5 sm:col-start-1">
+          {result.message ? <p className="max-w-prose text-sm text-muted-foreground">{result.message}</p> : null}
+          {result.recovery && failing ? (
+            <p className="max-w-prose text-sm text-foreground">
+              <span className="font-medium">How to fix: </span>
+              {result.recovery}
+            </p>
+          ) : null}
+          {result.metaErrorCode ? <p className="text-xs text-muted-foreground tabular-nums">Meta error code {result.metaErrorCode}</p> : null}
+        </div>
+      ) : null}
     </li>
   )
 }
@@ -109,7 +110,7 @@ export function VerificationSteps({ number }: { number: WhatsAppPhoneNumber }) {
   const failed = number.verificationSteps.find((s) => s.status === 'failed')
   return (
     <section aria-labelledby={titleId} className="space-y-1">
-      <h4 id={titleId} className="flex items-center gap-2 text-sm font-semibold text-foreground">
+      <h4 id={titleId} className="flex items-center gap-2 text-sm font-medium text-foreground">
         Verification with Meta
         {running ? <Loader2 className="size-4 animate-spin text-muted-foreground" aria-label="Verification in progress" /> : null}
       </h4>
@@ -127,7 +128,7 @@ export function VerificationSteps({ number }: { number: WhatsAppPhoneNumber }) {
       ) : number.connectionStatus === 'connected' ? (
         <p className="text-sm text-muted-foreground">Every check passed, so the number is connected.</p>
       ) : null}
-      <ol className="divide-y divide-border" aria-label="Verification steps">
+      <ol aria-label="Verification steps" className="divide-y divide-border/60">
         {STEP_ORDER.map((step) => (
           <StepItem key={step} step={step} result={byStep.get(step)} />
         ))}
@@ -227,16 +228,16 @@ export function NumberActions({ number }: { number: WhatsAppPhoneNumber }) {
   return (
     <div className="flex flex-wrap gap-2">
       {canRegister ? (
-        <Button type="button" size="sm" onClick={() => setRegistering(true)}>
+        <Button type="button" size="sm" variant="outline" onClick={() => setRegistering(true)}>
           <KeyRound aria-hidden="true" />
           Register number
         </Button>
       ) : null}
-      <Button type="button" size="sm" variant="outline" onClick={() => void verifyAgain()} disabled={verify.isPending}>
+      <Button type="button" size="sm" variant="ghost" onClick={() => void verifyAgain()} disabled={verify.isPending}>
         {verify.isPending ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
         Verify again
       </Button>
-      <Button type="button" size="sm" variant="outline" onClick={() => setConfirming(true)}>
+      <Button type="button" size="sm" variant="ghost" onClick={() => setConfirming(true)}>
         <Unplug aria-hidden="true" />
         Disconnect
       </Button>

@@ -3,7 +3,7 @@ import { LogOut } from 'lucide-react'
 import { useEffect, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
-import { ErrorState, LoadingState } from '@/components/shared'
+import { BrandMark, ErrorState } from '@/components/shared'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/features/auth/authContext'
 import { NoWorkspaceYet } from '@/features/invitations/components/NoWorkspaceYet'
@@ -15,8 +15,24 @@ import { readRememberedWorkspace, rememberWorkspace } from '../rememberedWorkspa
 import { resolveWorkspace } from '../workspace'
 import { NoWorkspaceAccess } from './NoWorkspaceAccess'
 
+/** The interstitial before the shell: the brand, as on the signed-out pages, then the state. */
 function GateFrame({ children }: { children: ReactNode }) {
-  return <div className="mx-auto flex min-h-svh w-full max-w-md flex-col justify-center gap-4 p-6">{children}</div>
+  return (
+    <main className="mx-auto flex min-h-svh w-full max-w-md flex-col gap-6 bg-background px-4 pt-[20vh] pb-10 text-foreground">
+      <p>
+        <BrandMark />
+      </p>
+      {children}
+    </main>
+  )
+}
+
+function GateStatus({ children }: { children: string }) {
+  return (
+    <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
+      {children}
+    </p>
+  )
 }
 
 export interface WorkspaceGateProps {
@@ -62,7 +78,7 @@ export function WorkspaceGate({ children }: WorkspaceGateProps) {
   if (unauthorized) {
     return (
       <GateFrame>
-        <LoadingState label="Your session has ended. Signing you out…" rows={2} />
+        <GateStatus>Your session has ended. Signing you out…</GateStatus>
       </GateFrame>
     )
   }
@@ -72,7 +88,7 @@ export function WorkspaceGate({ children }: WorkspaceGateProps) {
       return (
         <GateFrame>
           <ErrorState title="Your account could not be loaded" error={query.error} onRetry={() => void query.refetch()} />
-          <Button type="button" variant="ghost" size="sm" className="self-center" onClick={handleSignOut}>
+          <Button type="button" variant="ghost" size="sm" className="self-start" onClick={handleSignOut}>
             <LogOut aria-hidden="true" />
             Sign out
           </Button>
@@ -81,7 +97,7 @@ export function WorkspaceGate({ children }: WorkspaceGateProps) {
     }
     return (
       <GateFrame>
-        <LoadingState label="Loading your workspaces…" rows={2} />
+        <GateStatus>Loading your workspaces…</GateStatus>
       </GateFrame>
     )
   }
@@ -105,7 +121,7 @@ export function WorkspaceGate({ children }: WorkspaceGateProps) {
   if (target !== activeCompanyId) {
     return (
       <GateFrame>
-        <LoadingState label="Opening your workspace…" rows={2} />
+        <GateStatus>Opening your workspace…</GateStatus>
       </GateFrame>
     )
   }

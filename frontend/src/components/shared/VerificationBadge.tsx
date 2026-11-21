@@ -1,10 +1,10 @@
-import { ShieldAlert, ShieldCheck } from 'lucide-react'
-
-import { Badge } from '@/components/ui/badge'
 import { formatSADateTime } from '@leaseguard/domain'
+import { initialsOf } from '@/components/layout/initials'
 import { TONE_CLASSES } from '@/lib/labels'
 import { cn } from '@/lib/utils'
 import type { ISODateTime } from '@leaseguard/domain'
+
+import { STATUS_TEXT_CLASSES } from './tone'
 
 export interface VerificationBadgeProps {
   verified: boolean
@@ -27,29 +27,42 @@ function describe(verifiedAt?: ISODateTime, verifiedBy?: string): string | undef
   return parts.length > 0 ? `Verified ${parts.join(' ')}` : undefined
 }
 
+/**
+ * A lease term's verification in the logbook's sign-off marks: verified by a known person, their initials in a
+ * ring; verified with no name on record, a filled success dot; not yet verified, the open dashed ring that every
+ * record still waiting on a person's sign-off carries (see `SignOff`).
+ */
 export function VerificationBadge({ verified, verifiedAt, verifiedBy, className }: VerificationBadgeProps) {
   if (!verified) {
     return (
-      <Badge
-        variant="outline"
-        data-tone="warning"
-        title="Not verified. Not used as financial evidence until verified."
-        className={cn(TONE_CLASSES.warning, className)}
-      >
-        <ShieldAlert aria-hidden="true" />
-        Unverified
-      </Badge>
+      <span className={cn(STATUS_TEXT_CLASSES, className)}>
+        <span aria-hidden="true" className="size-5 shrink-0 rounded-full border-[1.5px] border-dashed border-warning" />
+        <span
+          data-tone="warning"
+          title="Not verified. Not used as financial evidence until verified."
+          className={TONE_CLASSES.warning}
+        >
+          Unverified
+        </span>
+      </span>
     )
   }
+  const by = verifiedBy?.trim()
   return (
-    <Badge
-      variant="outline"
-      data-tone="success"
-      title={describe(verifiedAt, verifiedBy)}
-      className={cn(TONE_CLASSES.success, className)}
-    >
-      <ShieldCheck aria-hidden="true" />
-      Verified
-    </Badge>
+    <span className={cn(STATUS_TEXT_CLASSES, className)}>
+      {by ? (
+        <span
+          aria-hidden="true"
+          className="inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-background text-[10px] font-medium text-foreground"
+        >
+          {initialsOf(by)}
+        </span>
+      ) : (
+        <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-success" />
+      )}
+      <span data-tone="success" title={describe(verifiedAt, verifiedBy)} className={TONE_CLASSES.success}>
+        Verified
+      </span>
+    </span>
   )
 }

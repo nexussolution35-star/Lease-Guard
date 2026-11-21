@@ -139,8 +139,9 @@ describe('WhatsAppIntegrationScreen', () => {
 
     const account = await screen.findByRole('region', { name: 'Nexus Leasing' })
     expect(within(account).getByText('Meta account id 102938475610')).toBeInTheDocument()
-    // Each number has its row and a row with its verification steps.
-    const rows = within(account).getAllByRole('row').slice(1).filter((_, i) => i % 2 === 0)
+    // Each number is an item of the account's list (its verification steps are a list inside it).
+    const numbers = within(account).getByRole('list', { name: 'Numbers' })
+    const rows = within(numbers).getAllByRole('listitem').filter((item) => item.parentElement === numbers)
     expect(rows).toHaveLength(2)
     expect(within(rows[0]!).getByText('+27 11 555 0100')).toBeInTheDocument()
     expect(within(rows[0]!).getByText('Nexus Leasing (Pty) Ltd')).toBeInTheDocument()

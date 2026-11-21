@@ -1,15 +1,15 @@
 import {
-  ArrowLeftRight,
+  Activity,
   BarChart3,
   Building2,
+  CalendarClock,
   DoorOpen,
   FileSpreadsheet,
   FileText,
   LayoutDashboard,
   MessageCircle,
-  MessagesSquare,
+  Send,
   Settings,
-  ShieldAlert,
   Users,
   type LucideIcon,
 } from 'lucide-react'
@@ -26,7 +26,8 @@ export interface NavItem {
 
 export interface NavSection {
   id: string
-  label: string
+  /** Omitted for a group that needs no caption. */
+  label?: string
   items: readonly NavItem[]
 }
 
@@ -34,7 +35,6 @@ export interface NavSection {
 export const NAV_SECTIONS: readonly NavSection[] = [
   {
     id: 'overview',
-    label: 'Overview',
     items: [{ id: 'dashboard', label: 'Dashboard', to: '/', icon: LayoutDashboard }],
   },
   {
@@ -52,27 +52,18 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     label: 'Operations',
     items: [
       { id: 'statements', label: 'Statements', to: '/statements', icon: FileSpreadsheet },
-      { id: 'monitoring', label: 'Monitoring', to: '/monitoring', icon: ShieldAlert },
-      { id: 'arrangements', label: 'Arrangements', to: '/arrangements', icon: ArrowLeftRight },
-    ],
-  },
-  {
-    id: 'communication',
-    label: 'Communication',
-    items: [
-      { id: 'communications', label: 'Communications', to: '/communications', icon: MessagesSquare },
+      { id: 'monitoring', label: 'Monitoring', to: '/monitoring', icon: Activity },
+      { id: 'arrangements', label: 'Arrangements', to: '/arrangements', icon: CalendarClock },
+      { id: 'communications', label: 'Communications', to: '/communications', icon: Send },
       { id: 'whatsapp', label: 'WhatsApp', to: '/whatsapp', icon: MessageCircle },
     ],
   },
   {
-    id: 'insights',
-    label: 'Insights',
-    items: [{ id: 'reports', label: 'Reports', to: '/reports', icon: BarChart3 }],
-  },
-  {
     id: 'admin',
-    label: 'Admin',
-    items: [{ id: 'settings', label: 'Settings', to: '/settings', icon: Settings }],
+    items: [
+      { id: 'reports', label: 'Reports', to: '/reports', icon: BarChart3 },
+      { id: 'settings', label: 'Settings', to: '/settings', icon: Settings },
+    ],
   },
 ]
 
@@ -148,6 +139,7 @@ export type BreadcrumbResolvers = Readonly<Record<string, (segment: string) => s
 
 const STATIC_SEGMENT_LABELS: Readonly<Record<string, string>> = {
   upload: 'Upload',
+  import: 'Import from file',
   approvals: 'Approvals',
   analytics: 'Analytics',
   conversations: 'Conversations',

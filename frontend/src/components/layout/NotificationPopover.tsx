@@ -1,4 +1,4 @@
-import { Bell, BellOff, CheckCheck } from 'lucide-react'
+import { Bell } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { EmptyState } from '@/components/shared'
@@ -21,7 +21,7 @@ export interface NotificationPopoverProps {
   className?: string | undefined
 }
 
-/** The bell button with its unread badge and the notifications panel. */
+/** The bell button with its unread dot and the notifications panel. */
 export function NotificationPopover({
   open,
   onOpenChange,
@@ -37,29 +37,23 @@ export function NotificationPopover({
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size="icon-sm"
           aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
           className={cn('relative', className)}
         >
           <Bell aria-hidden="true" />
           {unread > 0 ? (
-            <span
-              className="absolute top-1 right-1 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] leading-4 font-semibold text-white tabular-nums"
-              aria-hidden="true"
-            >
-              {unread > 9 ? '9+' : unread}
-            </span>
+            <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-primary" aria-hidden="true" />
           ) : null}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[min(24rem,calc(100vw-2rem))] p-0">
-        <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
-          <h2 className="text-sm font-semibold">
+        <div className="flex items-center justify-between gap-2 border-b border-border py-1.5 pr-1.5 pl-3">
+          <h2 className="flex items-baseline gap-2 text-sm font-medium">
             Notifications
-            {unread > 0 ? <span className="ml-1.5 text-muted-foreground">({unread} unread)</span> : null}
+            {unread > 0 ? <span className="text-xs font-normal text-muted-foreground tabular-nums">{unread} unread</span> : null}
           </h2>
           <Button type="button" variant="ghost" size="sm" disabled={unread === 0 || markAllBusy} onClick={onMarkAllRead}>
-            <CheckCheck aria-hidden="true" />
             Mark all read
           </Button>
         </div>
@@ -80,16 +74,15 @@ export function NotificationList({ notifications, onMarkRead, onNavigate }: Noti
   if (notifications.length === 0) {
     return (
       <EmptyState
-        icon={BellOff}
-        title="You're all caught up"
+        title="You’re all caught up"
         description="Notifications for this workspace will appear here."
-        className="m-3 border-none"
+        className="items-center px-3 text-center"
       />
     )
   }
   return (
     <div className="max-h-[60vh] overflow-y-auto">
-      <ul className="flex flex-col gap-0.5 p-1.5">
+      <ul className="divide-y divide-border">
         {notifications.map((n) => (
           <li key={n.id}>
             <NotificationItem notification={n} onMarkRead={onMarkRead} onNavigate={onNavigate} />

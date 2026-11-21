@@ -1,8 +1,7 @@
 import { Outlet, useRouterState, type ErrorComponentProps } from '@tanstack/react-router'
-import { MapPinOff } from 'lucide-react'
 
-import { AppLayout } from '@/components/layout'
-import { AppLink, EmptyState, ErrorState, LoadingState } from '@/components/shared'
+import { AppLayout, PageHeader } from '@/components/layout'
+import { AppLink, ErrorState, LoadingState } from '@/components/shared'
 import { Button } from '@/components/ui/button'
 import { WorkspaceGate } from '@/features/account/components/WorkspaceGate'
 import { PendingInvitationsBanner } from '@/features/invitations/components/PendingInvitationsBanner'
@@ -31,16 +30,12 @@ export function RootLayout() {
 /** Shown inside the shell for unknown URLs. */
 export function NotFoundScreen() {
   return (
-    <EmptyState
-      icon={MapPinOff}
-      title="Page not found"
-      description="The page you were looking for does not exist."
-      action={
-        <Button asChild variant="outline" size="sm">
-          <AppLink to="/">Go to dashboard</AppLink>
-        </Button>
-      }
-    />
+    <section>
+      <PageHeader title="Page not found" description="The page you were looking for does not exist." />
+      <Button asChild variant="outline" size="sm">
+        <AppLink to="/">Go to dashboard</AppLink>
+      </Button>
+    </section>
   )
 }
 

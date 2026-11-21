@@ -23,11 +23,13 @@ export function SidebarNavigationItem({ item, active, collapsed = false, onNavig
       aria-label={collapsed ? item.label : undefined}
       data-active={active ? 'true' : undefined}
       className={cn(
-        'group relative flex h-9 items-center gap-3 rounded-md px-2.5 text-sm font-medium text-muted-foreground transition-colors',
-        'hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
-        // Active page: raised row, heavier label and a green bar, so it never relies on colour alone.
+        // 40px rows in the mobile drawer (touch), 32px in the desktop sidebar.
+        'flex h-8 items-center gap-2.5 rounded-md px-2 text-sm text-foreground/85 transition-colors max-md:h-10',
+        'hover:bg-accent/50 hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+        '[&>svg]:text-muted-foreground',
+        // Active: one surface step up, with a hairline highlight on its top edge.
         active &&
-          'bg-card font-semibold text-foreground shadow-xs before:absolute before:inset-y-1.5 before:left-0 before:w-0.75 before:rounded-full before:bg-primary hover:bg-card [&>svg]:text-primary',
+          'bg-accent font-medium text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.08)] hover:bg-accent [&>svg]:text-foreground',
         collapsed && 'justify-center px-0',
         className,
       )}
@@ -42,7 +44,7 @@ export function SidebarNavigationItem({ item, active, collapsed = false, onNavig
   return (
     <Tooltip>
       <TooltipTrigger asChild>{link}</TooltipTrigger>
-      <TooltipContent side="right">{item.label}</TooltipContent>
+      <TooltipContent side="right" sideOffset={8}>{item.label}</TooltipContent>
     </Tooltip>
   )
 }

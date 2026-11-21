@@ -65,6 +65,8 @@ export function SearchInput({
       <Input
         id={id}
         type="search"
+        name="search"
+        spellCheck={false}
         value={text}
         placeholder={placeholder}
         autoComplete="off"

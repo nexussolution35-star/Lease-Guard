@@ -180,14 +180,14 @@ export function toneFor(value: string | null | undefined): Tone {
   return TONES[value] ?? 'neutral'
 }
 
-/** Tailwind classes for a tone, using semantic tokens only. */
+/** Text colour for a status label. The hue is carried by a dot or icon beside it, never a tinted pill. */
 export const TONE_CLASSES: Readonly<Record<Tone, string>> = {
-  neutral: 'bg-muted text-muted-foreground border-border',
-  info: 'bg-info/10 text-info border-info/30',
-  success: 'bg-success/10 text-success border-success/30',
-  warning: 'bg-warning/15 text-foreground border-warning/40',
-  danger: 'bg-destructive/10 text-destructive border-destructive/30',
-  primary: 'bg-primary/10 text-primary border-primary/30',
+  neutral: 'text-muted-foreground',
+  info: 'text-foreground',
+  success: 'text-foreground',
+  warning: 'text-foreground',
+  danger: 'text-foreground',
+  primary: 'text-foreground',
 }
 
 /** Build `{ value, label }` options for selects from an enum tuple. */

@@ -7,7 +7,7 @@ import type { Tone } from '@/lib/labels'
 import { cn } from '@/lib/utils'
 
 import { AppLink } from './AppLink'
-import { TONE_SOFT_CLASSES, TONE_TEXT_CLASSES } from './tone'
+import { TONE_SOLID_CLASSES, TONE_TEXT_CLASSES } from './tone'
 
 export interface MetricTrend {
   direction: 'up' | 'down' | 'flat'
@@ -26,6 +26,8 @@ export interface MetricCardProps {
   /** Makes the card a button (ignored when `href` is set). */
   onClick?: () => void
   isLoading?: boolean
+  /** The figure that matters on this screen: set larger, so hierarchy comes from scale. One per strip. */
+  lead?: boolean
   className?: string
 }
 
@@ -35,10 +37,10 @@ const TREND_ICONS: Readonly<Record<MetricTrend['direction'], LucideIcon>> = {
   flat: Minus,
 }
 
-const CARD_CLASSES =
-  'flex h-full flex-col gap-3 rounded-xl border border-border bg-card p-4 text-left text-card-foreground shadow-xs'
+/** A flat cell of the `MetricGrid` stat strip; the grid draws the frame and the hairlines. */
+const CARD_CLASSES = 'flex h-full min-w-0 flex-col gap-2 bg-card px-5 py-4 text-left text-card-foreground'
 const INTERACTIVE_CLASSES =
-  'transition-colors hover:bg-accent/50 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none'
+  'transition-colors hover:bg-muted/50 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset'
 
 export function MetricCard({
   label,
@@ -50,27 +52,29 @@ export function MetricCard({
   href,
   onClick,
   isLoading = false,
+  lead = false,
   className,
 }: MetricCardProps) {
   const TrendIcon = trend ? TREND_ICONS[trend.direction] : null
+  // Only a non-zero danger figure is coloured (warning on white is too faint to read); other tones show as a dot.
+  const alarming = tone === 'danger' && value !== 0 && value !== '0'
 
   const body = (
     <>
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-medium text-muted-foreground">{label}</p>
-        {Icon ? (
-          <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-md', TONE_SOFT_CLASSES[tone])}>
-            <Icon className="size-4" aria-hidden="true" />
-          </span>
-        ) : null}
+      <div className="flex items-center justify-between gap-3">
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          {tone === 'neutral' ? null : <span aria-hidden="true" className={cn('size-1.5 shrink-0 rounded-full', TONE_SOLID_CLASSES[tone])} />}
+          {label}
+        </p>
+        {Icon ? <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /> : null}
       </div>
       {isLoading ? (
-        <div role="status" aria-busy="true">
-          <span className="sr-only">Loading {label}</span>
-          <Skeleton className="h-9 w-24" />
+        <div role="status" aria-live="polite" aria-busy="true">
+          <span className="sr-only">Loading {label}…</span>
+          <Skeleton className={lead ? 'h-[2.625rem] w-20' : 'h-6 w-16'} />
         </div>
       ) : (
-        <div className={cn('text-3xl font-semibold tracking-tight tabular-nums', tone !== 'neutral' && TONE_TEXT_CLASSES[tone])}>
+        <div className={cn(lead ? 'text-[2.625rem] leading-none font-semibold tracking-[-0.02em] tabular-nums' : 'text-2xl leading-none font-medium tabular-nums', alarming ? TONE_TEXT_CLASSES[tone] : 'text-foreground')}>
           {value}
         </div>
       )}
@@ -90,17 +94,21 @@ export function MetricCard({
 
   if (href) {
     return (
-      <AppLink to={href} className={cn(CARD_CLASSES, INTERACTIVE_CLASSES, className)}>
+      <AppLink to={href} data-lead={lead || undefined} className={cn(CARD_CLASSES, INTERACTIVE_CLASSES, className)}>
         {body}
       </AppLink>
     )
   }
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className={cn(CARD_CLASSES, INTERACTIVE_CLASSES, 'w-full', className)}>
+      <button type="button" onClick={onClick} data-lead={lead || undefined} className={cn(CARD_CLASSES, INTERACTIVE_CLASSES, 'w-full', className)}>
         {body}
       </button>
     )
   }
-  return <div className={cn(CARD_CLASSES, className)}>{body}</div>
+  return (
+    <div data-lead={lead || undefined} className={cn(CARD_CLASSES, className)}>
+      {body}
+    </div>
+  )
 }

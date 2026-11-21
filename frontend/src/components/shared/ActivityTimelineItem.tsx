@@ -1,4 +1,3 @@
-import { Circle } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 import type { Tone } from '@/lib/labels'
@@ -6,7 +5,8 @@ import { cn } from '@/lib/utils'
 import type { ISODateTime } from '@leaseguard/domain'
 
 import { DateDisplay } from './DateDisplay'
-import { TONE_SOFT_CLASSES } from './tone'
+import { SignOff } from './SignOff'
+import { TONE_SOLID_CLASSES } from './tone'
 
 export interface ActivityTimelineEntry {
   id: string
@@ -14,7 +14,9 @@ export interface ActivityTimelineEntry {
   description?: string
   at: ISODateTime
   actor?: string
+  /** `danger` and `warning` colour the rail dot; every other tone is neutral. */
   tone?: Tone
+  /** Accepted for compatibility; the timeline shows a dot, not an icon. */
   icon?: LucideIcon
 }
 
@@ -24,33 +26,30 @@ export interface ActivityTimelineItemProps {
 }
 
 export function ActivityTimelineItem({ entry, className }: ActivityTimelineItemProps) {
-  const Icon = entry.icon ?? Circle
   const tone = entry.tone ?? 'neutral'
   return (
-    <li className={cn('relative flex gap-3 pb-6 last:pb-0', className)}>
+    <li className={cn('relative flex gap-3 pb-5 last:pb-0', className)}>
       <span
         aria-hidden="true"
-        className="absolute top-8 bottom-0 left-4 w-px -translate-x-1/2 bg-border group-last/timeline-item:hidden"
+        className="absolute top-4 bottom-0 left-1 w-px -translate-x-1/2 bg-border group-last/timeline-item:hidden"
       />
       <span
+        aria-hidden="true"
         className={cn(
-          'relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full ring-4 ring-background',
-          TONE_SOFT_CLASSES[tone],
+          'mt-1.5 size-2 shrink-0 rounded-full',
+          tone === 'danger' || tone === 'warning' ? TONE_SOLID_CLASSES[tone] : 'bg-muted-foreground/40',
         )}
-      >
-        <Icon className={cn(entry.icon ? 'size-4' : 'size-2.5 fill-current')} aria-hidden="true" />
-      </span>
-      <div className="min-w-0 flex-1 pt-1">
+      />
+      <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-foreground">{entry.title}</p>
-        {entry.description ? <p className="mt-0.5 text-sm break-words text-muted-foreground">{entry.description}</p> : null}
-        <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
-          <DateDisplay value={entry.at} style="datetime" />
+        {entry.description ? <p className="mt-0.5 text-sm break-words text-foreground">{entry.description}</p> : null}
+        {/* An audit entry names who made the change: that is a sign-off, so it carries the logbook mark. */}
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
           {entry.actor ? (
-            <>
-              <span aria-hidden="true">·</span>
-              <span>{entry.actor}</span>
-            </>
+            <SignOff by={entry.actor} className="text-xs" />
           ) : null}
+          {entry.actor ? <span aria-hidden="true">·</span> : null}
+          <DateDisplay value={entry.at} style="datetime" />
         </p>
       </div>
     </li>

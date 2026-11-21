@@ -1,7 +1,7 @@
-import { Inbox, SearchX } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 import { EmptyState } from './EmptyState'
 
@@ -36,11 +36,10 @@ export function DataTableEmptyState({
 
   return (
     <EmptyState
-      icon={isFiltered ? SearchX : Inbox}
       title={resolvedTitle}
       description={resolvedDescription}
       action={resolvedAction}
-      className={className ?? 'border-0'}
+      className={cn('px-3 py-10', className)}
     />
   )
 }

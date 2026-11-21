@@ -10,11 +10,26 @@ export interface MetricGridProps {
 }
 
 const COLUMN_CLASSES: Readonly<Record<2 | 3 | 4, string>> = {
-  2: 'sm:grid-cols-2',
-  3: 'sm:grid-cols-2 lg:grid-cols-3',
-  4: 'sm:grid-cols-2 xl:grid-cols-4',
+  2: '',
+  3: 'lg:grid-cols-3 lg:has-[>[data-lead]:first-child]:grid-cols-[1.4fr_repeat(2,minmax(0,1fr))]',
+  4: 'xl:grid-cols-4 xl:has-[>[data-lead]:first-child]:grid-cols-[1.4fr_repeat(3,minmax(0,1fr))]',
 }
 
+/**
+ * One stat strip: a single frame whose cells are divided by hairlines. Each cell's 1px outline falls
+ * in the 1px gap, and the frame clips the outer ones, so an unfilled last row stays plain card. When the first
+ * cell is the `lead` figure it is given a wider column at the widest breakpoint.
+ */
 export function MetricGrid({ children, columns = 4, className }: MetricGridProps) {
-  return <div className={cn('grid grid-cols-1 gap-4', COLUMN_CLASSES[columns], className)}>{children}</div>
+  return (
+    <div
+      className={cn(
+        'grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-card *:outline *:outline-border',
+        COLUMN_CLASSES[columns],
+        className,
+      )}
+    >
+      {children}
+    </div>
+  )
 }

@@ -15,8 +15,15 @@ export interface InformationItemProps {
 export function InformationItem({ label, value, hint, className }: InformationItemProps) {
   const isEmpty = value === null || value === undefined || value === ''
   return (
-    <div className={cn('min-w-0 space-y-1', className)}>
-      <dt className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+    <div
+      data-slot="information-item"
+      className={cn(
+        'grid min-w-0 gap-1',
+        'group-data-[layout=inline]/information:grid-cols-[8rem_minmax(0,1fr)] group-data-[layout=inline]/information:items-baseline group-data-[layout=inline]/information:gap-x-4',
+        className,
+      )}
+    >
+      <dt className="flex items-center gap-1 text-xs text-muted-foreground group-data-[layout=inline]/information:text-sm">
         {label}
         {hint ? <TooltipInfo content={hint} label={`About ${label}`} /> : null}
       </dt>

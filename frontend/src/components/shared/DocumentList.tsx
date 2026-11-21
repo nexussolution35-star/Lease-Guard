@@ -1,4 +1,3 @@
-import { FileX } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { cn } from '@/lib/utils'
@@ -24,17 +23,18 @@ export interface DocumentListProps {
 }
 
 export function DocumentList({ documents, onOpen, onRemove, emptyLabel = 'No documents', className }: DocumentListProps) {
-  if (documents.length === 0) return <EmptyState icon={FileX} title={emptyLabel} className={className} />
+  if (documents.length === 0) return <EmptyState title={emptyLabel} className={className} />
   return (
-    <ul className={cn('space-y-3', className)}>
+    <ul className={cn('divide-y divide-border rounded-lg border border-border bg-card', className)}>
       {documents.map((doc) => (
-        <li key={doc.id} className="space-y-1.5">
+        <li key={doc.id} className="space-y-1 px-3 py-2.5">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <p className="text-sm font-medium text-foreground">{doc.title}</p>
             {doc.meta ? <div className="text-xs text-muted-foreground">{doc.meta}</div> : null}
           </div>
           <FileAttachment
             file={doc.file}
+            className="border-0 bg-transparent p-0"
             onOpen={onOpen ? () => onOpen(doc.id) : undefined}
             onRemove={onRemove ? () => onRemove(doc.id) : undefined}
           />

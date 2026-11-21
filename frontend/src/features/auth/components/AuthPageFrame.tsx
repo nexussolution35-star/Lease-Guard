@@ -1,45 +1,44 @@
-import { ShieldCheck, type LucideIcon } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { BrandMark } from '@/components/shared'
 
 export interface AuthPageFrameProps {
   /** The page's level-1 heading. */
   title: string
   description?: ReactNode
+  /** Accepted for compatibility; the frame shows no per-page icon. */
   icon?: LucideIcon
   children?: ReactNode
-  /** Secondary links under the card body, e.g. "Back to sign in". */
+  /** Secondary links under the form, e.g. "Back to sign in". */
   footer?: ReactNode
 }
 
-/** Full-page card for the screens outside the application shell (sign-in, password and invitation pages). */
-export function AuthPageFrame({ title, description, icon: Icon, children, footer }: AuthPageFrameProps) {
+/**
+ * The frame for the screens outside the application shell (sign-in, password and invitation pages).
+ * On wide screens the ink-blue rail carries the brand beside a white work area, as in the signed-in
+ * shell; on a phone the form stands alone under the mark. Sections are ruled with hairlines, not boxed.
+ */
+export function AuthPageFrame({ title, description, children, footer }: AuthPageFrameProps) {
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted/50 px-4 py-10 text-foreground">
-      <p className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-        <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-          <ShieldCheck className="size-4.5" aria-hidden="true" />
-        </span>
-        LeaseGuard
-      </p>
-      <Card className="w-full max-w-md">
-        <CardHeader className="gap-3">
-          {Icon ? (
-            <span className="flex size-9 items-center justify-center rounded-md bg-primary/10 text-primary">
-              <Icon className="size-5" aria-hidden="true" />
-            </span>
-          ) : null}
-          <div className="space-y-1">
-            <CardTitle>
-              <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-            </CardTitle>
-            {description ? <CardDescription>{description}</CardDescription> : null}
-          </div>
-        </CardHeader>
-        {children ? <CardContent className="flex flex-col gap-4">{children}</CardContent> : null}
-        {footer ? <CardFooter className="flex flex-wrap gap-x-4 gap-y-2 text-sm">{footer}</CardFooter> : null}
-      </Card>
-    </main>
+    <div className="grid min-h-svh bg-background text-foreground lg:grid-cols-[minmax(20rem,26rem)_1fr]">
+      <aside className="rail hidden flex-col justify-between px-8 py-8 lg:flex">
+        <BrandMark />
+        <p className="max-w-[18rem] text-sm text-pretty text-muted-foreground">Lease monitoring and tenant communication</p>
+      </aside>
+      <main className="flex flex-col px-4 py-8 sm:px-8 lg:justify-center lg:px-16 lg:pt-12 lg:pb-32">
+        <div className="flex w-full max-w-sm flex-col gap-6 sm:mx-auto lg:mx-0">
+          <p className="mb-4 lg:hidden">
+            <BrandMark />
+          </p>
+          <header className="flex flex-col gap-2">
+            <h1 className="text-xl font-medium text-balance">{title}</h1>
+            {description ? <p className="text-sm text-pretty text-muted-foreground">{description}</p> : null}
+          </header>
+          {children ? <div className="flex flex-col gap-4">{children}</div> : null}
+          {footer ? <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t pt-4 text-sm">{footer}</div> : null}
+        </div>
+      </main>
+    </div>
   )
 }

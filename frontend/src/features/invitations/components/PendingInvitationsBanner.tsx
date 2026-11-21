@@ -1,5 +1,3 @@
-import { MailPlus } from 'lucide-react'
-
 import { useMyInvitations } from '../api/queries'
 import { ReceivedInvitations } from './ReceivedInvitations'
 
@@ -13,15 +11,14 @@ export function PendingInvitationsBanner() {
   if (invitations.length === 0) return null
   const count = invitations.length
   return (
-    <section aria-labelledby="pending-invitations-title" className="mb-6 flex flex-col gap-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
-      <div className="flex items-start gap-3">
-        <MailPlus className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
-        <div className="space-y-0.5">
-          <h2 id="pending-invitations-title" className="font-semibold tracking-tight">
-            {count === 1 ? 'You have a pending invitation' : `You have ${count} pending invitations`}
-          </h2>
-          <p className="text-sm text-muted-foreground">Accept an invitation to add that company to your workspaces.</p>
-        </div>
+    <section aria-labelledby="pending-invitations-title" className="mb-6 flex flex-col gap-3 rounded-md border border-border px-4 py-3">
+      <div className="space-y-0.5">
+        <h2 id="pending-invitations-title" className="flex items-center gap-2 text-sm font-medium text-balance text-foreground">
+          {/* Waiting on this user: the amber status dot. */}
+          <span className="size-1.5 shrink-0 rounded-full bg-warning" aria-hidden="true" />
+          {count === 1 ? 'You have a pending invitation' : `You have ${count} pending invitations`}
+        </h2>
+        <p className="text-sm text-muted-foreground">Accept an invitation to add that company to your workspaces.</p>
       </div>
       <ReceivedInvitations invitations={invitations} />
     </section>

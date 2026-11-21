@@ -1,4 +1,3 @@
-import { Info } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -40,10 +39,7 @@ export function CompanySettingsView({ title, description, readOnlyNotice, childr
     body = (
       <>
         {isAdmin ? null : (
-          <p className="flex gap-2 rounded-md border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-            <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-            {readOnlyNotice}
-          </p>
+          <p className="text-sm text-foreground">{readOnlyNotice}</p>
         )}
         {children(query.data, isAdmin)}
       </>
@@ -51,9 +47,9 @@ export function CompanySettingsView({ title, description, readOnlyNotice, childr
   }
 
   return (
-    <section className="space-y-6">
-      <PageHeader title={title} description={description} className="pb-0" />
-      {body}
+    <section>
+      <PageHeader title={title} description={description} />
+      <div className="max-w-3xl space-y-6">{body}</div>
     </section>
   )
 }

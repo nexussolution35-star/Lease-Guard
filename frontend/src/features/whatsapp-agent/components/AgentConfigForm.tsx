@@ -4,18 +4,19 @@ import { AlertCircle, AlertTriangle, Plus, Trash2 } from 'lucide-react'
 import { autoReplyWarnings, AGENT_LANGUAGES, AGENT_PERMITTED_ACTIONS, WEEKDAYS, type WhatsAppAgentConfig } from '@leaseguard/domain'
 import { toast } from 'sonner'
 
-import { FormSection, FormValidationSummary, MultiSelectField, TextAreaField, TextField, zodResolver } from '@/components/forms'
-import { DateDisplay } from '@/components/shared'
+import { FormSection, FormValidationSummary, MultiSelectField, SETTINGS_ROW_ACTIONS, TextAreaField, TextField, zodResolver } from '@/components/forms'
+import { DateDisplay, SignOff } from '@/components/shared'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Form } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
+import { Input, inputClassName } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { assignableMembers } from '@/features/whatsapp-conversations/handover'
 import type { CompanyMember } from '@/features/users/api/source'
 import { describeApiError } from '@/lib/data/apiErrors'
+import { cn } from '@/lib/utils'
 
 import { useSaveAgentConfig } from '../api/queries'
 import {
@@ -55,6 +56,9 @@ export function AgentConfigForm({ config, members, canEdit }: AgentConfigFormPro
   const [autoReplyEnabled, permittedActions, operatingHours] = useWatch({ control: form.control, name: ['autoReplyEnabled', 'permittedActions', 'operatingHours'] })
   const warnings = autoReplyWarnings({ autoReplyEnabled, permittedActions, operatingHours })
 
+  // Who saved the settings last, when the team list (already loaded for the handover contacts) names them.
+  const savedBy = config.updatedByUserId ? members.find((member) => member.id === config.updatedByUserId)?.fullName : undefined
+
   const contactOptions = assignableMembers(members, config.companyId).map((member) => ({ value: member.id, label: member.fullName }))
   // A saved contact who is no longer an active admin or manager still shows, so the admin can remove them.
   for (const contact of config.handoverContacts) {
@@ -80,7 +84,7 @@ export function AgentConfigForm({ config, members, canEdit }: AgentConfigFormPro
   return (
     <Form {...form}>
       <form onSubmit={(event) => void submit(event)} noValidate aria-label="AI agent settings" className="space-y-6">
-        <fieldset disabled={!canEdit || form.formState.isSubmitting} className="space-y-6">
+        <fieldset disabled={!canEdit || form.formState.isSubmitting} className="min-w-0 space-y-6">
           <FormValidationSummary errors={fieldErrors as FieldErrors<FieldValues>} fieldLabels={FIELD_LABELS} />
           {rootError ? (
             <Alert variant="destructive">
@@ -89,8 +93,8 @@ export function AgentConfigForm({ config, members, canEdit }: AgentConfigFormPro
             </Alert>
           ) : null}
 
-          <FormSection columns={1} title="Identity" description="How the agent introduces itself and what it knows about your business.">
-            <div className="grid gap-4 md:grid-cols-2">
+          <FormSection layout="row" columns={1} title="Identity" description="How the agent introduces itself and what it knows about your business.">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
               <TextField control={form.control} name="agentName" label="Agent name" required maxLength={80} placeholder="e.g. Atlas assistant" />
               <TextField control={form.control} name="tone" label="Tone and personality" maxLength={500} placeholder="e.g. Warm, brief and professional" />
             </div>
@@ -107,6 +111,7 @@ export function AgentConfigForm({ config, members, canEdit }: AgentConfigFormPro
           </FormSection>
 
           <FormSection
+            layout="row"
             columns={1}
             title="Operating hours"
             description={`South African time (${config.timezone}). Outside these hours contacts get the out-of-hours message, once per conversation window.`}
@@ -119,7 +124,7 @@ export function AgentConfigForm({ config, members, canEdit }: AgentConfigFormPro
                     <Label htmlFor={`hours-day-${index}`}>Day</Label>
                     <select
                       id={`hours-day-${index}`}
-                      className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                      className={cn(inputClassName, 'w-40')}
                       {...form.register(`operatingHours.${index}.day`)}
                     >
                       {WEEKDAYS.map((day) => (
@@ -166,7 +171,7 @@ export function AgentConfigForm({ config, members, canEdit }: AgentConfigFormPro
             />
           </FormSection>
 
-          <FormSection columns={1} title="Instructions" description="What the agent must and must not say, and when it hands over to a person.">
+          <FormSection layout="row" columns={1} title="Instructions" description="What the agent must and must not say, and when it hands over to a person.">
             <TextAreaField control={form.control} name="policies" label="Policies" rows={3} maxLength={8000} />
             <TextAreaField control={form.control} name="supportInstructions" label="Support instructions" rows={3} maxLength={8000} />
             <TextAreaField
@@ -187,7 +192,7 @@ export function AgentConfigForm({ config, members, canEdit }: AgentConfigFormPro
             />
           </FormSection>
 
-          <FormSection columns={1} title="What the agent may do" description="Only the actions you tick. The agent uses approved knowledge of this company only.">
+          <FormSection layout="row" columns={1} title="What the agent may do" description="Only the actions you tick. The agent uses approved knowledge of this company only.">
             <Controller
               control={form.control}
               name="permittedActions"
@@ -226,7 +231,7 @@ export function AgentConfigForm({ config, members, canEdit }: AgentConfigFormPro
               control={form.control}
               name="autoReplyEnabled"
               render={({ field }) => (
-                <div className="flex items-start gap-3 rounded-md border border-border p-4">
+                <div className="flex items-start gap-3">
                   <Switch id={autoReplyId} checked={field.value} onCheckedChange={field.onChange} disabled={!canEdit} aria-describedby={`${autoReplyId}-description`} />
                   <div className="grid gap-1">
                     <Label htmlFor={autoReplyId}>Reply to contacts automatically</Label>
@@ -255,21 +260,28 @@ export function AgentConfigForm({ config, members, canEdit }: AgentConfigFormPro
           </FormSection>
         </fieldset>
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
-            {config.configured && config.updatedAt ? (
-              <>
-                Last saved <DateDisplay value={config.updatedAt} style="datetime" />.
-              </>
-            ) : (
-              'Not set up yet: the agent does not answer anyone until it is configured and auto-reply is on.'
-            )}
-          </p>
+        <div className={cn('flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-4', SETTINGS_ROW_ACTIONS)}>
           {canEdit ? (
             <Button type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? 'Saving…' : 'Save AI agent settings'}
             </Button>
           ) : null}
+          {config.configured && config.updatedAt && savedBy ? (
+            <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+              <span>Last saved</span>
+              <SignOff by={savedBy} at={config.updatedAt} />
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {config.configured && config.updatedAt ? (
+                <>
+                  Last saved <DateDisplay value={config.updatedAt} style="datetime" />.
+                </>
+              ) : (
+                'Not set up yet: the agent does not answer anyone until it is configured and auto-reply is on.'
+              )}
+            </p>
+          )}
         </div>
       </form>
     </Form>

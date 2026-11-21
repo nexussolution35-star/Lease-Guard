@@ -16,14 +16,15 @@ const SETTINGS_LINKS = [
 export const Route = createFileRoute('/settings')({
   component: function SettingsLayout() {
     return (
-      <div className="flex flex-col gap-6 lg:flex-row">
-        <nav aria-label="Settings" className="lg:w-48 lg:shrink-0">
-          <ul className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible">
+      <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+        {/* A hairline under the strip on phones and beside the list from lg: a ruled margin, not a boxed panel. */}
+        <nav aria-label="Settings" className="-mx-4 border-b border-border px-4 md:mx-0 md:px-0 lg:w-48 lg:shrink-0 lg:border-r lg:border-b-0 lg:pr-4">
+          <ul className="flex gap-1 overflow-x-auto pb-2 lg:flex-col lg:gap-px lg:overflow-visible lg:pb-0">
             {SETTINGS_LINKS.map((link) => (
               <li key={link.to}>
                 <AppLink
                   to={link.to}
-                  className="block rounded-md px-3 py-1.5 text-sm whitespace-nowrap text-muted-foreground hover:bg-accent hover:text-accent-foreground aria-[current=page]:bg-primary/10 aria-[current=page]:font-medium aria-[current=page]:text-primary"
+                  className="flex h-8 items-center rounded-md px-2 text-sm whitespace-nowrap text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset motion-reduce:transition-none aria-[current=page]:bg-accent aria-[current=page]:font-medium aria-[current=page]:text-foreground"
                 >
                   {link.label}
                 </AppLink>

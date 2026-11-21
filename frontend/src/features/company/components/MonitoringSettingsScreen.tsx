@@ -1,14 +1,11 @@
-import { ShieldCheck } from 'lucide-react'
-import { useId } from 'react'
-
 import { InformationGrid, InformationItem } from '@/components/shared'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { labelFor } from '@/lib/labels'
 
 import type { CompanyProfile } from '../api/source'
 import { formatNoticeDays } from '../monitoringSettingsSchema'
 import { CompanySettingsView } from './CompanySettingsView'
 import { MonitoringSettingsForm } from './MonitoringSettingsForm'
+import { SettingsRow } from './SettingsRow'
 
 const days = (count: number) => `${count} ${count === 1 ? 'day' : 'days'}`
 const noticeList = (list: readonly number[]) => `${formatNoticeDays(list)} days before`
@@ -35,7 +32,6 @@ function MonitoringSettingsDetails({ settings }: { settings: CompanyProfile['set
  * approval is not a setting: they always do.
  */
 export function MonitoringSettingsScreen() {
-  const timingId = useId()
   return (
     <CompanySettingsView
       title="Notifications"
@@ -44,20 +40,20 @@ export function MonitoringSettingsScreen() {
     >
       {(company, isAdmin) => (
         <>
-          <Card role="region" aria-labelledby={timingId}>
-            <CardHeader>
-              <CardTitle id={timingId} className="text-base">
-                Notice periods and reminder timing
-              </CardTitle>
-              <CardDescription>All times are South African time ({company.settings.timezone}).</CardDescription>
-            </CardHeader>
-            <CardContent>{isAdmin ? <MonitoringSettingsForm settings={company.settings} /> : <MonitoringSettingsDetails settings={company.settings} />}</CardContent>
-          </Card>
-          <p className="flex gap-2 rounded-md border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-            <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-            Every tenant message needs a property manager's approval before it is sent. This cannot be switched off, and tenants only ever receive
-            statements and payment reminders.
-          </p>
+          <p className="text-sm text-muted-foreground">All times are South African time ({company.settings.timezone}).</p>
+          {isAdmin ? (
+            <MonitoringSettingsForm settings={company.settings} />
+          ) : (
+            <SettingsRow title="Notice periods and reminder timing">
+              <MonitoringSettingsDetails settings={company.settings} />
+            </SettingsRow>
+          )}
+          <SettingsRow title="Tenant message approval" className="border-t border-border pt-6">
+            <p className="text-sm text-foreground">
+              Every tenant message needs a property manager's approval before it is sent. This cannot be switched off, and tenants only ever receive
+              statements and payment reminders.
+            </p>
+          </SettingsRow>
         </>
       )}
     </CompanySettingsView>

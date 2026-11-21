@@ -1,6 +1,6 @@
-import { Badge } from '@/components/ui/badge'
-import { labelFor, toneFor, TONE_CLASSES } from '@/lib/labels'
-import { cn } from '@/lib/utils'
+import { labelFor, toneFor } from '@/lib/labels'
+
+import { StatusDot } from './StatusDot'
 
 export interface StatusBadgeProps {
   /** Enum value, e.g. `under_review`. */
@@ -11,14 +11,9 @@ export interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, label, className }: StatusBadgeProps) {
-  const tone = toneFor(status)
   return (
-    <Badge
-      variant="outline"
-      data-tone={tone}
-      className={cn(TONE_CLASSES[tone], className)}
-    >
+    <StatusDot tone={toneFor(status)} awaitingApproval={status === 'pending_approval'} {...(className ? { className } : {})}>
       {label ?? labelFor(status)}
-    </Badge>
+    </StatusDot>
   )
 }

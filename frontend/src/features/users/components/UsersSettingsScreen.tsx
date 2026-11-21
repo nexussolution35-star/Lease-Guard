@@ -1,10 +1,9 @@
-import { Info, MailPlus } from 'lucide-react'
-import { useId, useState } from 'react'
+import { MailPlus } from 'lucide-react'
+import { useState } from 'react'
 
 import { PageHeader } from '@/components/layout/PageHeader'
-import { NoActiveWorkspace } from '@/components/shared'
+import { NoActiveWorkspace, SectionHeader } from '@/components/shared'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useIsCompanyAdmin } from '@/features/account/useActiveRole'
 import { useActiveCompanyId } from '@/lib/data/useActiveCompanyId'
 
@@ -20,15 +19,11 @@ import { MembersSection } from './MembersSection'
 export function UsersSettingsScreen() {
   const isAdmin = useIsCompanyAdmin()
   const companyId = useActiveCompanyId()
-  const membersId = useId()
-  const invitationsId = useId()
   const [inviting, setInviting] = useState(false)
 
   const header = (
     <PageHeader
       title="Users"
-      description="People with access to this workspace and their roles."
-      className="pb-0"
       actions={
         isAdmin && companyId !== null ? (
           <Button type="button" onClick={() => setInviting(true)}>
@@ -42,7 +37,7 @@ export function UsersSettingsScreen() {
 
   if (companyId === null) {
     return (
-      <section className="space-y-6">
+      <section>
         {header}
         <NoActiveWorkspace />
       </section>
@@ -50,45 +45,33 @@ export function UsersSettingsScreen() {
   }
 
   return (
-    <section className="space-y-6">
+    <section>
       {header}
-      {isAdmin ? null : (
-        <p className="flex gap-2 rounded-md border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-          <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          You can see who has access to this workspace. Only company admins can invite people, change roles or remove members.
-        </p>
-      )}
-      <Card role="region" aria-labelledby={membersId}>
-        <CardHeader>
-          <CardTitle id={membersId} className="text-base">
-            Members
-          </CardTitle>
-          <CardDescription>
-            {isAdmin
-              ? 'Nobody can change their own role or remove themselves, and the workspace always keeps at least one active company admin.'
-              : 'Everyone who can sign in to this workspace.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="flex flex-col gap-8">
+        {isAdmin ? null : (
+          <p className="text-sm text-foreground">
+            You can see who has access to this workspace. Only company admins can invite people, change roles or remove members.
+          </p>
+        )}
+        <section aria-label="Members" className="space-y-4">
+          <SectionHeader
+            title="Members"
+            {...(isAdmin
+              ? { description: 'Nobody can change their own role or remove themselves, and the workspace always keeps at least one active company admin.' }
+              : {})}
+          />
           <MembersSection isAdmin={isAdmin} />
-        </CardContent>
-      </Card>
-      {isAdmin ? (
-        <Card role="region" aria-labelledby={invitationsId}>
-          <CardHeader>
-            <CardTitle id={invitationsId} className="text-base">
-              Invitations
-            </CardTitle>
-            <CardDescription>
-              Invitations are emailed shortly after you create or resend them. Someone who already has a LeaseGuard account sees the invitation
-              when they sign in. Nobody joins until they accept.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        </section>
+        {isAdmin ? (
+          <section aria-label="Invitations" className="space-y-4">
+            <SectionHeader
+              title="Invitations"
+              description="Invitations are emailed shortly after you create or resend them. Someone who already has a LeaseGuard account sees the invitation when they sign in. Nobody joins until they accept."
+            />
             <InvitationsSection onInvite={() => setInviting(true)} />
-          </CardContent>
-        </Card>
-      ) : null}
+          </section>
+        ) : null}
+      </div>
       {isAdmin ? <InviteUserDialog open={inviting} onOpenChange={setInviting} /> : null}
     </section>
   )

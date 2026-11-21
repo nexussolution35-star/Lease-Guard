@@ -96,7 +96,11 @@ describe('CompanySettingsScreen', () => {
   it('does not call the API when nothing changed', async () => {
     await renderScreen()
     const form = await screen.findByRole('form', { name: 'Company details' })
-    await userEvent.click(within(form).getByRole('button', { name: 'Save changes' }))
+    const save = within(form).getByRole('button', { name: 'Save changes' })
+    expect(save).toBeDisabled()
+    const tradingName = within(form).getByLabelText('Trading name')
+    await userEvent.type(tradingName, ' ')
+    await userEvent.click(save)
     expect(await screen.findByText(/Nothing to save/)).toBeInTheDocument()
     expect(fakeSource.update).not.toHaveBeenCalled()
   })

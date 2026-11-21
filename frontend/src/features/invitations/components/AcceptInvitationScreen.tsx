@@ -1,5 +1,5 @@
 import { useNavigate } from '@tanstack/react-router'
-import { Building2, KeyRound, LinkIcon, LogIn, LogOut, MailQuestion } from 'lucide-react'
+import { LogIn, LogOut } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -53,7 +53,6 @@ export function AcceptInvitationScreen({ invitationId, callback, passwordSetup }
     if (callback?.error) {
       return (
         <AuthPageFrame
-          icon={LinkIcon}
           title="This invitation link has expired or was already used"
           description={`Invitation links work once and expire after ${EMAIL_LINK_LIFETIME}. If you already chose a password, sign in to see your invitation. Otherwise ask your company administrator to send the invitation again.`}
           footer={
@@ -68,7 +67,6 @@ export function AcceptInvitationScreen({ invitationId, callback, passwordSetup }
     }
     return (
       <AuthPageFrame
-        icon={Building2}
         title="Sign in to view your invitation"
         description="Sign in with the email address the invitation was sent to."
       >
@@ -80,7 +78,6 @@ export function AcceptInvitationScreen({ invitationId, callback, passwordSetup }
   if (needsPassword) {
     return (
       <AuthPageFrame
-        icon={KeyRound}
         title="Set your password"
         description={`Welcome to LeaseGuard. Choose a password for ${user?.email ?? 'your account'}; you will use it to sign in.`}
       >
@@ -124,14 +121,14 @@ function InvitationDecision({ invitationId, linkExpired }: InvitationDecisionPro
 
   if (query.isPending) {
     return (
-      <AuthPageFrame icon={Building2} title="Your invitation" footer={signedInAs}>
+      <AuthPageFrame title="Your invitation" footer={signedInAs}>
         <LoadingState label="Loading your invitation…" rows={2} />
       </AuthPageFrame>
     )
   }
   if (query.isError) {
     return (
-      <AuthPageFrame icon={Building2} title="Your invitation" footer={signedInAs}>
+      <AuthPageFrame title="Your invitation" footer={signedInAs}>
         <ErrorState title="Your invitation could not be loaded" error={query.error} onRetry={() => void query.refetch()} />
       </AuthPageFrame>
     )
@@ -143,7 +140,6 @@ function InvitationDecision({ invitationId, linkExpired }: InvitationDecisionPro
   if (target) {
     return (
       <AuthPageFrame
-        icon={Building2}
         title={`Join ${target.companyName}`}
         description={`${target.invitedByName ?? 'The LeaseGuard team'} invited you to join ${target.companyName} as ${labelFor(target.role).toLowerCase()}.`}
         footer={signedInAs}
@@ -157,7 +153,6 @@ function InvitationDecision({ invitationId, linkExpired }: InvitationDecisionPro
   if (invitationId) {
     return (
       <AuthPageFrame
-        icon={MailQuestion}
         title="This invitation is not available"
         description={
           `You are signed in as ${email}. The invitation may have been accepted, declined or revoked${linkExpired ? ', the link may have expired' : ''}, ` +
@@ -175,7 +170,7 @@ function InvitationDecision({ invitationId, linkExpired }: InvitationDecisionPro
         </div>
         {others ? (
           <section aria-labelledby="other-invitations-title" className="flex flex-col gap-3">
-            <h2 id="other-invitations-title" className="text-sm font-semibold">
+            <h2 id="other-invitations-title" className="text-sm font-medium">
               Your other invitations
             </h2>
             {others}
@@ -187,7 +182,6 @@ function InvitationDecision({ invitationId, linkExpired }: InvitationDecisionPro
 
   return (
     <AuthPageFrame
-      icon={Building2}
       title="Your invitations"
       description={invitations.length > 0 ? 'Accept an invitation to join that company.' : 'You have no pending invitations.'}
       footer={signedInAs}

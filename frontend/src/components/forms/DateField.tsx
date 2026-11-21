@@ -2,6 +2,7 @@ import { useId, useState } from 'react'
 import type { FieldPath, FieldValues } from 'react-hook-form'
 import { CalendarIcon, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { inputClassName } from '@/components/ui/input'
 import { Calendar } from '@/components/ui/calendar'
 import {
   FormControl,
@@ -30,6 +31,11 @@ export interface DateFieldProps<
   max?: ISODate
   /** Show a clear button when a value is set (default true). */
   clearable?: boolean
+  /**
+   * Month and year dropdowns in the calendar, for dates years away (lease terms, guarantees). The years run from `min`
+   * (or 1990) to `max` (or 2100). Default false.
+   */
+  yearDropdown?: boolean
 }
 
 interface DatePickerProps extends SlotA11yProps {
@@ -44,6 +50,7 @@ interface DatePickerProps extends SlotA11yProps {
   min?: ISODate
   max?: ISODate
   clearable: boolean
+  yearDropdown: boolean
   disabled: boolean
   required: boolean
 }
@@ -60,6 +67,7 @@ function DatePicker({
   min,
   max,
   clearable,
+  yearDropdown,
   disabled,
   required,
   ...slotProps
@@ -70,13 +78,14 @@ function DatePicker({
   const selected = iso ? parseISODate(iso) : undefined
   const minDate = min && isValidISODate(min) ? parseISODate(min) : undefined
   const maxDate = max && isValidISODate(max) ? parseISODate(max) : undefined
+  const showClear = clearable && iso !== undefined && !disabled
   const disabledMatchers = [
     ...(minDate ? [{ before: minDate }] : []),
     ...(maxDate ? [{ after: maxDate }] : []),
   ]
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="relative">
       <Popover
         open={open}
         onOpenChange={(next) => {
@@ -85,24 +94,30 @@ function DatePicker({
         }}
       >
         <PopoverTrigger asChild>
-          <Button
+          <button
             {...slotProps}
             ref={inputRef}
             name={name}
             type="button"
-            variant="outline"
             disabled={disabled}
             aria-labelledby={`${labelId} ${valueId}`}
             aria-required={required || undefined}
             aria-haspopup="dialog"
             className={cn(
-              'w-full justify-start gap-2 font-normal',
+              inputClassName,
+              'flex items-center justify-between gap-2 text-left',
               !iso && 'text-muted-foreground',
+              showClear && 'pr-9',
             )}
           >
-            <CalendarIcon className="size-4" aria-hidden="true" />
-            <span id={valueId}>{iso ? formatSADate(iso, 'short') : placeholder}</span>
-          </Button>
+            <span id={valueId} className="truncate">
+              {iso ? formatSADate(iso, 'short') : placeholder}
+            </span>
+            {/* The clear button below takes the icon's place, so the field never changes width. */}
+            {showClear ? null : (
+              <CalendarIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            )}
+          </button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
           <Calendar
@@ -115,17 +130,19 @@ function DatePicker({
               onBlur()
             }}
             disabled={disabledMatchers}
-            startMonth={minDate}
-            endMonth={maxDate}
+            {...(yearDropdown
+              ? { captionLayout: 'dropdown' as const, startMonth: minDate ?? new Date(1990, 0), endMonth: maxDate ?? new Date(2100, 11) }
+              : { startMonth: minDate, endMonth: maxDate })}
             autoFocus
           />
         </PopoverContent>
       </Popover>
-      {clearable && iso && !disabled ? (
+      {showClear ? (
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size="icon-xs"
+          className="absolute top-1/2 right-1.5 -translate-y-1/2 text-muted-foreground"
           aria-label={`Clear ${label}`}
           onClick={() => {
             onChange(undefined)
@@ -156,6 +173,7 @@ export function DateField<
   min,
   max,
   clearable = true,
+  yearDropdown = false,
 }: DateFieldProps<TFieldValues, TName>) {
   const controlId = id ?? fieldIdFor(name)
   const labelId = `${controlId}-label`
@@ -182,6 +200,7 @@ export function DateField<
               min={min}
               max={max}
               clearable={clearable}
+              yearDropdown={yearDropdown}
               disabled={disabled}
               required={required}
             />

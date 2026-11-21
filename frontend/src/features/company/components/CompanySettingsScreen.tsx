@@ -1,11 +1,9 @@
-import { useId } from 'react'
-
 import { InformationGrid, InformationItem, StatusBadge } from '@/components/shared'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 import type { CompanyProfile } from '../api/source'
 import { CompanyProfileForm } from './CompanyProfileForm'
 import { CompanySettingsView } from './CompanySettingsView'
+import { SettingsRow } from './SettingsRow'
 
 function addressLines(address: CompanyProfile['address']): string[] {
   return [address.line1, address.line2, address.suburb, address.city, `${address.province} ${address.postalCode}`.trim(), address.country].filter(
@@ -15,7 +13,7 @@ function addressLines(address: CompanyProfile['address']): string[] {
 
 function CompanyDetails({ company }: { company: CompanyProfile }) {
   return (
-    <InformationGrid>
+    <InformationGrid className="gap-x-4">
       <InformationItem label="Registered name" value={company.name} />
       <InformationItem label="Trading name" value={company.tradingName} />
       <InformationItem label="Company registration number" value={company.registrationNumber} />
@@ -50,8 +48,6 @@ function CompanyDetails({ company }: { company: CompanyProfile }) {
  * Status, workspace initials, timezone and country are set by Nexus Solution and only shown.
  */
 export function CompanySettingsScreen() {
-  const detailsId = useId()
-  const managedId = useId()
   return (
     <CompanySettingsView
       title="Company"
@@ -60,34 +56,26 @@ export function CompanySettingsScreen() {
     >
       {(company, isAdmin) => (
         <>
-          <Card role="region" aria-labelledby={detailsId}>
-            <CardHeader>
-              <CardTitle id={detailsId} className="text-base">
-                Company details
-              </CardTitle>
-              <CardDescription>
-                {isAdmin ? 'Changes are recorded in the audit log.' : 'As recorded by your company admins.'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>{isAdmin ? <CompanyProfileForm company={company} /> : <CompanyDetails company={company} />}</CardContent>
-          </Card>
-          <Card role="region" aria-labelledby={managedId}>
-            <CardHeader>
-              <CardTitle id={managedId} className="text-base">
-                Managed by Nexus Solution
-              </CardTitle>
-              <CardDescription>These are set when the workspace is created. Contact Nexus Solution to change them.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <InformationGrid columns={3}>
-                <InformationItem label="Workspace status" value={<StatusBadge status={company.status} />} />
-                <InformationItem label="Workspace initials" value={company.initials} />
-                <InformationItem label="Timezone" value={company.settings.timezone} />
-                <InformationItem label="Country" value={company.address.country} />
-                <InformationItem label="Currency" value="South African rand (ZAR)" />
-              </InformationGrid>
-            </CardContent>
-          </Card>
+          {isAdmin ? (
+            <CompanyProfileForm company={company} />
+          ) : (
+            <SettingsRow title="Company details" description="As recorded by your company admins.">
+              <CompanyDetails company={company} />
+            </SettingsRow>
+          )}
+          <SettingsRow
+            title="Managed by Nexus Solution"
+            description="These are set when the workspace is created. Contact Nexus Solution to change them."
+            className="border-t border-border pt-6"
+          >
+            <InformationGrid className="gap-x-4">
+              <InformationItem label="Workspace status" value={<StatusBadge status={company.status} />} />
+              <InformationItem label="Workspace initials" value={company.initials} />
+              <InformationItem label="Timezone" value={company.settings.timezone} />
+              <InformationItem label="Country" value={company.address.country} />
+              <InformationItem label="Currency" value="South African rand (ZAR)" />
+            </InformationGrid>
+          </SettingsRow>
         </>
       )}
     </CompanySettingsView>

@@ -78,6 +78,7 @@ function NumberInput({
       type="text"
       inputMode={allowDecimal ? 'decimal' : 'numeric'}
       autoComplete="off"
+      className="tabular-nums"
       value={display}
       placeholder={placeholder}
       disabled={disabled}

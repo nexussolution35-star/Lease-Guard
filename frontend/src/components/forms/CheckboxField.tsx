@@ -8,7 +8,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { cn } from '@/lib/utils'
 import { fieldIdFor } from './fieldId'
 import { RequiredIndicator } from './RequiredIndicator'
 import type { BaseFieldProps } from './types'
@@ -38,27 +37,28 @@ export function CheckboxField<
       control={control}
       name={name}
       render={({ field }) => (
-        <FormItem className={cn('flex flex-row items-start gap-3', className)}>
-          <FormControl id={controlId}>
-            <Checkbox
-              ref={field.ref}
-              name={field.name}
-              checked={field.value === true}
-              onCheckedChange={(checked) => field.onChange(checked === true)}
-              onBlur={field.onBlur}
-              disabled={disabled}
-              aria-required={required || undefined}
-              className="mt-0.5"
-            />
-          </FormControl>
-          <div className="grid gap-1">
-            <FormLabel htmlFor={controlId} className="font-normal">
+        <FormItem className={className}>
+          {/* The label wraps the box and its text: one hit target with no dead gap between them. */}
+          <FormLabel htmlFor={controlId} className="items-start gap-3 font-normal">
+            <FormControl id={controlId}>
+              <Checkbox
+                ref={field.ref}
+                name={field.name}
+                checked={field.value === true}
+                onCheckedChange={(checked) => field.onChange(checked === true)}
+                onBlur={field.onBlur}
+                disabled={disabled}
+                aria-required={required || undefined}
+                className="mt-0.5"
+              />
+            </FormControl>
+            <span>
               {label}
-              {required ? <RequiredIndicator /> : null}
-            </FormLabel>
-            {description ? <FormDescription>{description}</FormDescription> : null}
-            <FormMessage role="alert" />
-          </div>
+              {required ? <RequiredIndicator className="ml-0.5" /> : null}
+            </span>
+          </FormLabel>
+          {description ? <FormDescription className="pl-7">{description}</FormDescription> : null}
+          <FormMessage role="alert" className="pl-7" />
         </FormItem>
       )}
     />

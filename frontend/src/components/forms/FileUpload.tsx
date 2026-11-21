@@ -1,7 +1,8 @@
 import { useId, useRef, useState } from 'react'
 import type { DragEvent } from 'react'
-import { FileWarning, Upload } from 'lucide-react'
+import { FileWarning } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { formatBytes, validateFiles } from './fileValidation'
 import type { RejectedFile } from './fileValidation'
@@ -75,10 +76,10 @@ export function FileUpload({
     .join(', ')
 
   return (
-    <div data-slot="file-upload" className={cn('grid gap-2', className)}>
-      <p id={labelId} className="text-sm leading-none font-medium">
+    <div data-slot="file-upload" className={cn('grid gap-1.5', className)}>
+      <Label id={labelId} htmlFor={inputId}>
         {label}
-      </p>
+      </Label>
       <div
         data-dragging={isDragging || undefined}
         data-disabled={disabled || undefined}
@@ -87,13 +88,12 @@ export function FileUpload({
         onDragLeave={() => setIsDragging(false)}
         onDrop={onDrop}
         className={cn(
-          'flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-border bg-muted/30 px-4 py-8 text-center transition-colors',
+          'flex flex-col items-center justify-center gap-3 rounded-md border border-dashed border-input px-4 py-6 text-center transition-colors',
           'data-[dragging]:border-primary data-[dragging]:bg-primary/5',
           'data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50',
           (error || rejected.length > 0) && 'border-destructive/60',
         )}
       >
-        <Upload className="size-8 text-muted-foreground" aria-hidden="true" />
         <div className="space-y-1">
           <p className="text-sm text-foreground">
             Drag and drop {multiple ? 'files' : 'a file'} here, or
@@ -118,7 +118,6 @@ export function FileUpload({
           accept={accept}
           multiple={multiple}
           disabled={disabled}
-          aria-label={label}
           tabIndex={-1}
           className="sr-only"
           onChange={(event) => {
@@ -134,7 +133,7 @@ export function FileUpload({
         </p>
       ) : null}
       {error || rejected.length > 0 ? (
-        <div id={errorId} role="alert" className="space-y-1 text-sm text-destructive">
+        <div id={errorId} role="alert" className="space-y-1 text-xs text-destructive">
           {error ? <p>{error}</p> : null}
           {rejected.length > 0 ? (
             <ul className="space-y-1">

@@ -40,12 +40,12 @@ export function FilterDropdown<T extends string>({ label, options, selected, onC
           type="button"
           variant="outline"
           size="sm"
-          className={cn('h-9', selected.length > 0 && 'border-primary/40', className)}
+          className={cn('h-9', selected.length > 0 && 'border-primary/50', className)}
           aria-label={selected.length > 0 ? `${label}, ${selected.length} selected` : label}
         >
           {label}
           {selected.length > 0 ? (
-            <span className="rounded-full bg-primary px-1.5 text-xs font-medium tabular-nums text-primary-foreground">
+            <span className="text-xs font-medium tabular-nums text-primary">
               {selected.length}
             </span>
           ) : null}
@@ -53,25 +53,30 @@ export function FilterDropdown<T extends string>({ label, options, selected, onC
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64 p-0">
-        <fieldset className="max-h-72 space-y-0.5 overflow-y-auto p-2">
+        <fieldset className="max-h-72 space-y-0.5 overflow-y-auto overscroll-contain p-2">
           <legend className="sr-only">{label}</legend>
           {options.length === 0 ? <p className="px-2 py-3 text-sm text-muted-foreground">No options</p> : null}
           {options.map((option) => {
             const id = `${baseId}-${option.value}`
             return (
-              <div key={option.value} className="flex items-center gap-2 rounded-sm px-2 py-1.5 hover:bg-accent">
+              <Label
+                key={option.value}
+                htmlFor={id}
+                className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 font-normal hover:bg-accent"
+              >
                 <Checkbox
                   id={id}
+                  aria-labelledby={`${id}-label`}
                   checked={selectedSet.has(option.value)}
                   onCheckedChange={(checked) => toggle(option.value, checked === true)}
                 />
-                <Label htmlFor={id} className="flex-1 cursor-pointer font-normal">
+                <span id={`${id}-label`} className="min-w-0 flex-1">
                   {option.label}
-                </Label>
+                </span>
                 {option.count !== undefined ? (
                   <span className="text-xs tabular-nums text-muted-foreground">{option.count}</span>
                 ) : null}
-              </div>
+              </Label>
             )
           })}
         </fieldset>

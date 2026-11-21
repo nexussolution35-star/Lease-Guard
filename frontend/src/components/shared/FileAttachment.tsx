@@ -42,20 +42,12 @@ export function FileAttachment({ file, onOpen, onRemove, compact = false, classN
   return (
     <div
       className={cn(
-        'flex min-w-0 items-center gap-3 rounded-lg border border-border bg-card text-card-foreground',
-        compact ? 'px-2 py-1.5' : 'p-3',
+        'flex min-w-0 items-center gap-2.5 rounded-md border border-border bg-card text-card-foreground',
+        compact ? 'px-2 py-1.5' : 'px-3 py-2',
         className,
       )}
     >
-      <span
-        className={cn(
-          'flex shrink-0 items-center justify-center rounded-md bg-destructive/10 text-destructive',
-          compact ? 'size-7' : 'size-9',
-          file.mimeType !== 'application/pdf' && 'bg-info/10 text-info',
-        )}
-      >
-        <Icon className="size-4" aria-hidden="true" />
-      </span>
+      <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium" title={file.fileName}>
           {file.fileName}
@@ -66,7 +58,7 @@ export function FileAttachment({ file, onOpen, onRemove, compact = false, classN
           </p>
         ) : null}
       </div>
-      {compact ? <span className="shrink-0 text-xs text-muted-foreground">{formatBytes(file.sizeBytes)}</span> : null}
+      {compact ? <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{formatBytes(file.sizeBytes)}</span> : null}
       {onOpen ? (
         <Button type="button" variant="ghost" size="icon-sm" onClick={onOpen} aria-label={`Open ${file.fileName}`}>
           <ExternalLink aria-hidden="true" />

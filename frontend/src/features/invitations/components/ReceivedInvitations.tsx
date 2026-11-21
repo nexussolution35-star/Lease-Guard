@@ -57,9 +57,9 @@ export function ReceivedInvitations({ invitations, onDeclined }: ReceivedInvitat
 
   return (
     <>
-      <ul className="flex flex-col gap-3">
+      <ul className="divide-y divide-border">
         {invitations.map((invitation) => (
-          <li key={invitation.id}>
+          <li key={invitation.id} className="py-3 first:pt-0 last:pb-0">
             <ReceivedInvitationCard
               invitation={invitation}
               pending={answering?.id === invitation.id ? answering.action : null}

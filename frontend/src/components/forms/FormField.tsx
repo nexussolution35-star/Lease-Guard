@@ -56,8 +56,8 @@ export function FormField({
     : children
 
   return (
-    <div data-slot="form-field" className={cn('grid gap-2', className)}>
-      <Label htmlFor={controlId} data-error={!!error} className="data-[error=true]:text-destructive">
+    <div data-slot="form-field" className={cn('grid content-start gap-1.5', className)}>
+      <Label htmlFor={controlId} data-error={!!error}>
         {label}
         {required ? <RequiredIndicator /> : null}
       </Label>
@@ -68,7 +68,7 @@ export function FormField({
         </p>
       ) : null}
       {error ? (
-        <p id={errorId} role="alert" className="text-sm text-destructive">
+        <p id={errorId} role="alert" className="text-xs text-destructive">
           {error}
         </p>
       ) : null}

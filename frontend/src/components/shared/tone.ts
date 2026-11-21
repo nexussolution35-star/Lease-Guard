@@ -1,5 +1,9 @@
 import type { Tone } from '@/lib/labels'
 
+/** Layout of a status, priority or verification label: plain text led by a dot or icon, no pill. */
+export const STATUS_TEXT_CLASSES =
+  'inline-flex h-5 shrink-0 items-center gap-1.5 align-top text-sm whitespace-nowrap [&>svg]:size-3.5 [&>svg]:shrink-0'
+
 /** Solid fill per tone (dots, progress bars). Semantic tokens only. */
 export const TONE_SOLID_CLASSES: Readonly<Record<Tone, string>> = {
   neutral: 'bg-muted-foreground',
@@ -18,14 +22,4 @@ export const TONE_TEXT_CLASSES: Readonly<Record<Tone, string>> = {
   warning: 'text-warning',
   danger: 'text-destructive',
   primary: 'text-primary',
-}
-
-/** Soft icon container per tone. */
-export const TONE_SOFT_CLASSES: Readonly<Record<Tone, string>> = {
-  neutral: 'bg-muted text-muted-foreground',
-  info: 'bg-info/10 text-info',
-  success: 'bg-success/10 text-success',
-  warning: 'bg-warning/15 text-warning',
-  danger: 'bg-destructive/10 text-destructive',
-  primary: 'bg-primary/10 text-primary',
 }

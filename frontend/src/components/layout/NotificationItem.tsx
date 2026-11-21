@@ -15,9 +15,9 @@ export interface NotificationItemProps {
 }
 
 const SEVERITY: Readonly<Record<NotificationSeverity, { icon: LucideIcon; className: string; label: string }>> = {
-  info: { icon: Info, className: 'bg-info/10 text-info', label: 'Information' },
-  warning: { icon: TriangleAlert, className: 'bg-warning/15 text-foreground', label: 'Warning' },
-  critical: { icon: OctagonAlert, className: 'bg-destructive/10 text-destructive', label: 'Critical' },
+  info: { icon: Info, className: 'text-muted-foreground', label: 'Information' },
+  warning: { icon: TriangleAlert, className: 'text-foreground', label: 'Warning' },
+  critical: { icon: OctagonAlert, className: 'text-destructive', label: 'Critical' },
 }
 
 export function NotificationItem({ notification, onMarkRead, onNavigate, className }: NotificationItemProps) {
@@ -32,28 +32,29 @@ export function NotificationItem({ notification, onMarkRead, onNavigate, classNa
 
   const body = (
     <>
-      <span className={cn('mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full', severity.className)}>
-        <Icon className="size-3.5" aria-hidden="true" />
-        <span className="sr-only">{severity.label}</span>
-      </span>
+      <Icon className={cn('mt-0.5 size-4 shrink-0', severity.className)} aria-hidden="true" />
+      <span className="sr-only">{severity.label}</span>
       <span className="min-w-0 flex-1 space-y-0.5">
         <span className="flex items-start gap-2">
-          <span className={cn('flex-1 text-sm', notification.read ? 'text-muted-foreground' : 'font-medium text-foreground')}>
+          <span className={cn('min-w-0 flex-1 text-sm break-words text-foreground', !notification.read && 'font-medium')}>
             {notification.title}
           </span>
+          <DateDisplay
+            value={notification.createdAt}
+            style="relative"
+            className="mt-0.5 shrink-0 text-xs text-muted-foreground tabular-nums"
+          />
           {notification.read ? null : (
-            <span className="mt-1.5 size-2 shrink-0 rounded-full bg-primary" aria-label="Unread" role="img" />
+            <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" aria-label="Unread" role="img" />
           )}
         </span>
         <span className="line-clamp-2 block text-xs text-muted-foreground">{notification.body}</span>
-        <DateDisplay value={notification.createdAt} style="relative" className="block text-xs text-muted-foreground" />
       </span>
     </>
   )
 
   const itemClass = cn(
-    'flex w-full gap-3 rounded-md p-2.5 text-left transition-colors hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
-    !notification.read && 'bg-primary/5',
+    'flex w-full gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-muted/50 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset',
     className,
   )
 

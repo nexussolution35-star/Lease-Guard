@@ -23,9 +23,9 @@ const fakeProperties = vi.hoisted(() => ({
   archive: vi.fn<PropertySource['archive']>(),
   restore: vi.fn<PropertySource['restore']>(),
 }))
-const lists = vi.hoisted(() => ({ units: vi.fn(), leases: vi.fn(), events: vi.fn(), members: vi.fn() }))
+const lists = vi.hoisted(() => ({ units: vi.fn(), createUnit: vi.fn(), leases: vi.fn(), events: vi.fn(), members: vi.fn() }))
 vi.mock('../api/selectSource', () => ({ getPropertySource: () => fakeProperties }))
-vi.mock('@/features/units/api/selectSource', () => ({ getUnitSource: () => ({ list: lists.units, get: vi.fn() }) }))
+vi.mock('@/features/units/api/selectSource', () => ({ getUnitSource: () => ({ list: lists.units, get: vi.fn(), create: lists.createUnit }) }))
 vi.mock('@/features/leases/api/selectSource', () => ({ getLeaseSource: () => ({ list: lists.leases, get: vi.fn() }) }))
 vi.mock('@/features/monitoring/api/selectSource', () => ({ getMonitoringEventSource: () => ({ list: lists.events, get: vi.fn() }) }))
 vi.mock('@/features/users/api/apiSource', () => ({ createApiUserSource: () => ({ listMembers: lists.members }) }))
@@ -111,6 +111,29 @@ describe('PropertyDetailScreen', () => {
     expect(within(events).getByRole('link', { name: 'Rental escalation not applied' })).toHaveAttribute('href', `/monitoring/${event.id}`)
   })
 
+  it('marks open events as awaiting review and draws the lease terms with who verified them', async () => {
+    const lease = {
+      ...sampleRecord('leases'),
+      id: 'l0000000-0000-4000-8000-000000000001',
+      reference: 'MSQ-L001',
+      propertyId: PROPERTY.id,
+      commencementDate: '2024-03-01',
+      expiryDate: '2029-02-28',
+      verified: true,
+      verifiedByUserId: MANAGER,
+      verifiedAt: '2024-02-20T09:00:00Z',
+    }
+    lists.leases.mockImplementation(async (_company: string, params: { status?: string }) => (params.status === 'active' ? page([lease], 1) : page([])))
+    await renderScreen()
+    const events = await screen.findByRole('table', { name: 'Open monitoring events at Maponya Square' })
+    // Shown in the Sign-off column, and again under the title for phones (CSS hides one of the two).
+    expect(within(events).getAllByText('Awaiting review').length).toBeGreaterThan(0)
+    const terms = await screen.findByRole('region', { name: 'Lease terms' })
+    expect(await within(terms).findByRole('link', { name: 'MSQ-L001' })).toHaveAttribute('href', `/leases/${lease.id}`)
+    expect(await within(terms).findByText('Naledi van der Merwe')).toBeInTheDocument()
+    expect(lists.leases).toHaveBeenCalledWith(NEXUS_ID, expect.objectContaining({ propertyId: PROPERTY.id, status: 'expiring' }))
+  })
+
   it('archives a property after confirmation', async () => {
     fakeProperties.archive.mockResolvedValue({ ...PROPERTY, status: 'archived' })
     await renderScreen()
@@ -146,6 +169,42 @@ describe('PropertyDetailScreen', () => {
     await renderScreen()
     await screen.findByRole('table', { name: 'Units in Maponya Square' })
     for (const name of ['Edit', 'Archive', 'Restore']) expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
+  })
+
+  it('offers importing units from a file to writers of a property that is not archived', async () => {
+    const writer = await renderScreen()
+    const link = await screen.findByRole('link', { name: 'Import from file' })
+    expect(link.getAttribute('href')).toBe(`/properties/import?propertyId=${PROPERTY.id}`)
+    writer.unmount()
+
+    viewer.writer = false
+    const reader = await renderScreen()
+    await screen.findByRole('table', { name: 'Units in Maponya Square' })
+    expect(screen.queryByRole('link', { name: 'Import from file' })).not.toBeInTheDocument()
+    reader.unmount()
+
+    viewer.writer = true
+    await renderScreen({ ...PROPERTY, status: 'archived' })
+    await screen.findByRole('table', { name: 'Units in Maponya Square' })
+    expect(screen.queryByRole('link', { name: 'Import from file' })).not.toBeInTheDocument()
+  })
+
+  it('adds a unit to this property, preselected, and opens it', { timeout: 20_000 }, async () => {
+    lists.createUnit.mockResolvedValue(unit('u3', 'S03'))
+    const { router } = await renderScreen()
+    await userEvent.click(await screen.findByRole('button', { name: 'Add unit' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Add unit' })
+    const propertyField = within(dialog).getByRole('combobox', { name: /^Property/ })
+    expect(propertyField).toBeDisabled()
+    expect(propertyField).toHaveTextContent('Maponya Square')
+    await userEvent.type(within(dialog).getByLabelText(/^Unit number/), 'S03')
+    await userEvent.click(within(dialog).getByRole('combobox', { name: /^Unit type/ }))
+    await userEvent.click(await screen.findByRole('option', { name: 'Line shop' }))
+    await userEvent.type(within(dialog).getByLabelText(/^Floor area/), '64')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add unit' }))
+    expect(await screen.findByText('Unit S03 added')).toBeInTheDocument()
+    expect(lists.createUnit).toHaveBeenCalledWith(NEXUS_ID, { propertyId: PROPERTY.id, unitNumber: 'S03', type: 'line_shop', floorAreaSqm: 64, occupancyStatus: 'vacant' })
+    await vi.waitFor(() => expect(router.state.location.pathname).toBe('/units/u3'))
   })
 
   it('edits the property and sends only what changed', async () => {

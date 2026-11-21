@@ -6,13 +6,10 @@ describe('NAV_SECTIONS', () => {
   it('has unique ids and routes', () => {
     expect(new Set(NAV_ITEMS.map((i) => i.id)).size).toBe(NAV_ITEMS.length)
     expect(new Set(NAV_ITEMS.map((i) => i.to)).size).toBe(NAV_ITEMS.length)
-    expect(NAV_SECTIONS.map((s) => s.label)).toEqual([
-      'Overview',
-      'Portfolio',
-      'Operations',
-      'Communication',
-      'Insights',
-      'Admin',
+    expect(NAV_SECTIONS.map((s) => s.label)).toEqual([undefined, 'Portfolio', 'Operations', undefined])
+    expect(NAV_ITEMS.map((i) => i.id)).toEqual([
+      'dashboard', 'properties', 'units', 'tenants', 'leases', 'statements', 'monitoring',
+      'arrangements', 'communications', 'whatsapp', 'reports', 'settings',
     ])
   })
 })

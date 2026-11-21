@@ -4,10 +4,11 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 
-import { AddressAutocompleteField, FormActions, FormSection, SelectField, TextField, zodResolver } from '@/components/forms'
+import { AddressAutocompleteField, FormActions, FormSection, SelectField, SETTINGS_ROW_ACTIONS, TextField, zodResolver } from '@/components/forms'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Form } from '@/components/ui/form'
 import { describeApiError } from '@/lib/data/apiErrors'
+import { cn } from '@/lib/utils'
 
 import { useUpdateCompany } from '../api/queries'
 import type { CompanyProfile } from '../api/source'
@@ -58,20 +59,20 @@ export function CompanyProfileForm({ company }: CompanyProfileFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={(event) => void submit(event)} noValidate className="space-y-8" aria-label="Company details">
+      <form onSubmit={(event) => void submit(event)} noValidate className="space-y-6" aria-label="Company details">
         {rootError ? (
           <Alert variant="destructive">
             <AlertCircle aria-hidden="true" />
             <AlertDescription>{rootError}</AlertDescription>
           </Alert>
         ) : null}
-        <FormSection title="Company" description="The registered name appears in the workspace switcher and on owner summaries.">
+        <FormSection layout="row" title="Company" description="The registered name appears in the workspace switcher and on owner summaries.">
           <TextField control={form.control} name="name" label="Registered name" autoComplete="organization" maxLength={200} required />
           <TextField control={form.control} name="tradingName" label="Trading name" maxLength={200} />
           <TextField control={form.control} name="registrationNumber" label="Company registration number" placeholder="2019/123456/07" maxLength={50} />
           <TextField control={form.control} name="vatNumber" label="VAT number" inputMode="numeric" maxLength={30} />
         </FormSection>
-        <FormSection title="Address">
+        <FormSection layout="row" title="Address">
           <AddressAutocompleteField
             control={form.control}
             name="line1"
@@ -91,13 +92,16 @@ export function CompanyProfileForm({ company }: CompanyProfileFormProps) {
           <TextField control={form.control} name="suburb" label="Suburb" maxLength={100} required />
           <TextField control={form.control} name="city" label="City or town" autoComplete="address-level2" maxLength={100} required />
           <SelectField control={form.control} name="province" label="Province" options={PROVINCE_OPTIONS} required />
-          <TextField control={form.control} name="postalCode" label="Postal code" autoComplete="postal-code" inputMode="numeric" maxLength={4} required />
+          <TextField control={form.control} name="postalCode" label="Postal code" autoComplete="postal-code" inputMode="numeric" maxLength={4} required className="sm:max-w-32" />
         </FormSection>
-        <FormSection title="Contact" description="Where Nexus Solution and LeaseGuard notices reach the company.">
+        <FormSection layout="row" title="Contact" description="Where Nexus Solution and LeaseGuard notices reach the company.">
           <TextField control={form.control} name="contactEmail" label="Contact email" type="email" autoComplete="email" maxLength={320} required />
           <TextField control={form.control} name="contactPhone" label="Contact phone" autoComplete="tel" inputMode="tel" maxLength={30} required />
         </FormSection>
-        <FormActions submitLabel="Save changes" isSubmitting={form.formState.isSubmitting} />
+        <div className={cn('flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-4', SETTINGS_ROW_ACTIONS)}>
+          <FormActions submitLabel="Save changes" align="start" isSubmitting={form.formState.isSubmitting} submitDisabled={!form.formState.isDirty} />
+          <p className="text-xs text-muted-foreground">Changes are recorded in the audit log.</p>
+        </div>
       </form>
     </Form>
   )

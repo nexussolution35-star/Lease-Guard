@@ -23,14 +23,14 @@ export function FilterChips({ chips, onClearAll, className }: FilterChipsProps) 
         {chips.map((chip) => (
           <li
             key={chip.id}
-            className="inline-flex items-center gap-1 rounded-full border border-border bg-muted py-0.5 pr-1 pl-2.5 text-xs font-medium text-foreground"
+            className="inline-flex h-6 items-center gap-0.5 rounded-sm border border-border pr-0.5 pl-2 text-xs font-medium text-foreground"
           >
             {chip.label}
             <button
               type="button"
               onClick={chip.onRemove}
               aria-label={`Remove filter: ${chip.label}`}
-              className="flex size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+              className="flex size-5 items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
             >
               <X className="size-3" aria-hidden="true" />
             </button>

@@ -4,6 +4,7 @@ import { useId } from 'react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { formatCount } from '@leaseguard/domain'
 
 export interface DataTablePaginationProps {
   /** 1-based. */
@@ -44,15 +45,18 @@ export function DataTablePagination({
           'No results'
         ) : (
           <>
-            Showing <span className="font-medium tabular-nums text-foreground">{start}–{end}</span> of{' '}
-            <span className="font-medium tabular-nums text-foreground">{total}</span>
+            Showing{' '}
+            <span className="font-medium tabular-nums text-foreground">
+              {formatCount(start)}–{formatCount(end)}
+            </span>{' '}
+            of <span className="font-medium tabular-nums text-foreground">{formatCount(total)}</span>
           </>
         )}
       </p>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="flex items-center justify-between gap-x-4 gap-y-2 sm:justify-start">
         {onPageSizeChange ? (
           <div className="flex items-center gap-2">
-            <span id={sizeLabelId} className="text-muted-foreground">
+            <span id={sizeLabelId} className="text-muted-foreground max-sm:sr-only">
               Rows per page
             </span>
             <Select value={String(size)} onValueChange={(v) => onPageSizeChange(Number(v))}>
@@ -71,11 +75,11 @@ export function DataTablePagination({
         ) : null}
         <div className="flex items-center gap-2">
           <span className="tabular-nums text-muted-foreground">
-            Page {current} of {pageCount}
+            Page {formatCount(current)} of {formatCount(pageCount)}
           </span>
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="icon-sm"
             onClick={() => onPageChange(current - 1)}
             disabled={current <= 1}
@@ -85,7 +89,7 @@ export function DataTablePagination({
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="icon-sm"
             onClick={() => onPageChange(current + 1)}
             disabled={current >= pageCount}

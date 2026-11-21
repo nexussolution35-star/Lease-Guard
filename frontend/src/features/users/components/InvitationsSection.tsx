@@ -1,15 +1,14 @@
 import { isApiError } from '@leaseguard/api-client'
-import { MailPlus, RotateCw, XCircle } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-import { ConfirmationDialog, DataTable, DateDisplay, EmptyState, ErrorState, LoadingState, StatusBadge, type DataTableColumn } from '@/components/shared'
+import { ConfirmationDialog, DataTable, DateDisplay, EmptyState, ErrorState, LoadingState, SignOff, StatusBadge, type DataTableColumn } from '@/components/shared'
 import { Button } from '@/components/ui/button'
 import { describeApiError } from '@/lib/data/apiErrors'
-import { DEFAULT_LIST_PAGE_SIZE, lastPageWhenPastEnd } from '@/lib/data/listParams'
+import { DEFAULT_LIST_PAGE_SIZE, lastPageWhenPastEnd, MAX_LIST_PAGE_SIZE } from '@/lib/data/listParams'
 import { labelFor } from '@/lib/labels'
 
-import { useCompanyInvitationList, useResendInvitation, useRevokeInvitation } from '../api/queries'
+import { useCompanyInvitationList, useMemberList, useResendInvitation, useRevokeInvitation } from '../api/queries'
 import type { CompanyInvitation } from '../api/source'
 import { canResendInvitation, canRevokeInvitation } from '../inviteSchema'
 import { invitationActionError } from '../memberErrors'
@@ -25,6 +24,10 @@ export function InvitationsSection({ onInvite }: { onInvite: () => void }) {
   const resend = useResendInvitation()
   const revoke = useRevokeInvitation()
   const [revoking, setRevoking] = useState<CompanyInvitation | null>(null)
+  // Names for "Invited by" (the same list the audit log reads); someone who has since left is not in it.
+  const members = useMemberList({ page: 1, pageSize: MAX_LIST_PAGE_SIZE, sort: 'fullName', direction: 'asc' })
+  const memberNames = new Map((members.data?.items ?? []).map((member) => [member.id.toLowerCase(), member.fullName]))
+  const inviterName = (invitation: CompanyInvitation) => (invitation.invitedByUserId ? memberNames.get(invitation.invitedByUserId.toLowerCase()) : undefined)
 
   const settled = query.isPlaceholderData ? undefined : query.data
   const lastPage = settled ? lastPageWhenPastEnd(page, settled) : null
@@ -60,7 +63,7 @@ export function InvitationsSection({ onInvite }: { onInvite: () => void }) {
       header: 'Email',
       cell: (invitation) => (
         <span className="flex flex-col">
-          <span className="break-all font-medium text-foreground">{invitation.email}</span>
+          <span className="font-medium text-foreground">{invitation.email}</span>
           {invitation.fullName ? <span className="text-xs text-muted-foreground">{invitation.fullName}</span> : null}
         </span>
       ),
@@ -79,9 +82,24 @@ export function InvitationsSection({ onInvite }: { onInvite: () => void }) {
       ),
     },
     {
+      id: 'invitedBy',
+      header: 'Invited by',
+      hideBelow: 'lg',
+      cell: (invitation) => {
+        const name = inviterName(invitation)
+        // Signed by the admin who issued it; without a known name only the date is shown, never a guessed person.
+        return name ? (
+          <SignOff by={name} at={invitation.createdAt} />
+        ) : (
+          <DateDisplay value={invitation.createdAt} className="text-muted-foreground tabular-nums" />
+        )
+      },
+    },
+    {
       id: 'sentAt',
       header: 'Last sent',
       hideBelow: 'md',
+      className: 'tabular-nums',
       cell: (invitation) => (invitation.sentAt ? <DateDisplay value={invitation.sentAt} style="datetime" /> : <span className="text-muted-foreground">Not yet</span>),
     },
     {
@@ -89,27 +107,25 @@ export function InvitationsSection({ onInvite }: { onInvite: () => void }) {
       header: 'Actions',
       align: 'right',
       cell: (invitation) => (
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex justify-end gap-1">
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
             disabled={!canResendInvitation(invitation.status) || (resend.isPending && resend.variables === invitation.id)}
             aria-label={`Resend invitation to ${invitation.email}`}
             onClick={() => void resendInvitation(invitation)}
           >
-            <RotateCw aria-hidden="true" />
             Resend
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
             disabled={!canRevokeInvitation(invitation.status)}
             aria-label={`Revoke invitation to ${invitation.email}`}
             onClick={() => setRevoking(invitation)}
           >
-            <XCircle aria-hidden="true" />
             Revoke
           </Button>
         </div>
@@ -126,12 +142,11 @@ export function InvitationsSection({ onInvite }: { onInvite: () => void }) {
         <ErrorState title="Could not load the invitations" error={describeApiError(query.error, 'Try again in a moment.')} onRetry={() => void query.refetch()} />
       ) : query.data.total === 0 ? (
         <EmptyState
-          icon={MailPlus}
           title="No invitations yet"
           description="Invite colleagues to give them access to this workspace."
+          className="py-0"
           action={
             <Button type="button" variant="outline" size="sm" onClick={onInvite}>
-              <MailPlus aria-hidden="true" />
               Invite a colleague
             </Button>
           }

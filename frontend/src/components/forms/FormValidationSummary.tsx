@@ -45,12 +45,12 @@ export function FormValidationSummary({
       aria-labelledby={titleId}
       data-slot="form-validation-summary"
       className={cn(
-        'rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive',
+        'rounded-lg border border-destructive/40 p-4 text-sm text-foreground',
         className,
       )}
     >
       <p id={titleId} className="flex items-center gap-2 font-medium">
-        <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+        <AlertCircle className="size-4 shrink-0 text-destructive" aria-hidden="true" />
         {title}
       </p>
       <ul className="mt-2 list-disc space-y-1 pl-6">
@@ -64,7 +64,7 @@ export function FormValidationSummary({
                 <a
                   href={`#${fieldIdFor(path)}`}
                   onClick={(event) => focusField(event, path)}
-                  className="underline underline-offset-2 hover:no-underline"
+                  className="rounded-sm underline underline-offset-2 outline-none hover:decoration-2 focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 >
                   {fieldLabel}: {message}
                 </a>

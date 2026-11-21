@@ -31,7 +31,7 @@ export function DetailDrawer({
         side={side}
         className={cn(
           'gap-0',
-          side === 'right' ? 'w-full sm:max-w-lg' : 'max-h-[85vh] rounded-t-xl',
+          side === 'right' ? 'w-full sm:max-w-lg' : 'max-h-[85vh] rounded-t-lg',
           className,
         )}
       >
@@ -39,7 +39,7 @@ export function DetailDrawer({
           <SheetTitle>{title}</SheetTitle>
           {description ? <SheetDescription>{description}</SheetDescription> : <SheetDescription className="sr-only">{title}</SheetDescription>}
         </SheetHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5">{children}</div>
         {footer ? (
           <SheetFooter className="border-t border-border sm:flex-row sm:justify-end">{footer}</SheetFooter>
         ) : null}

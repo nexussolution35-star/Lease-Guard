@@ -51,7 +51,7 @@ export function RadioGroupField<
           <p
             id={labelId}
             data-error={!!fieldState.error}
-            className="flex items-center gap-2 text-sm leading-none font-medium select-none data-[error=true]:text-destructive"
+            className="flex items-center gap-2 text-sm leading-5 font-medium select-none"
           >
             {label}
             {required ? <RequiredIndicator /> : null}
@@ -75,25 +75,25 @@ export function RadioGroupField<
                 const itemId = `${controlId}-${option.value}`
                 const descriptionId = option.description ? `${itemId}-description` : undefined
                 return (
-                  <div key={option.value} className="flex items-start gap-3">
+                  // The label wraps the radio, its text and its description: the whole row is one hit target.
+                  <Label key={option.value} htmlFor={itemId} className="items-start gap-3 font-normal">
                     <RadioGroupItem
                       id={itemId}
                       value={option.value}
                       disabled={option.disabled}
+                      aria-labelledby={`${itemId}-label`}
                       aria-describedby={descriptionId}
                       className="mt-0.5"
                     />
-                    <div className="grid gap-1">
-                      <Label htmlFor={itemId} className="font-normal">
-                        {option.label}
-                      </Label>
+                    <span className="grid gap-1">
+                      <span id={`${itemId}-label`}>{option.label}</span>
                       {option.description ? (
-                        <p id={descriptionId} className="text-sm text-muted-foreground">
+                        <span id={descriptionId} className="text-xs text-muted-foreground">
                           {option.description}
-                        </p>
+                        </span>
                       ) : null}
-                    </div>
-                  </div>
+                    </span>
+                  </Label>
                 )
               })}
             </RadioGroup>

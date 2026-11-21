@@ -62,12 +62,12 @@ export function FormDialog({
     <Dialog open={open} onOpenChange={(next) => (isPending ? undefined : onOpenChange(next))}>
       <DialogContent className={cn('flex max-h-[90vh] flex-col gap-0 p-0', SIZE_CLASSES[size])}>
         <form onSubmit={handleSubmit} noValidate className="flex min-h-0 flex-1 flex-col">
-          <DialogHeader className="p-6 pb-4">
+          <DialogHeader className="px-5 pt-5 pb-4 pr-12">
             <DialogTitle>{title}</DialogTitle>
             {description ? <DialogDescription>{description}</DialogDescription> : null}
           </DialogHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-4">{children}</div>
-          <DialogFooter className="border-t border-border p-4 sm:px-6">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 pb-5">{children}</div>
+          <DialogFooter className="border-t border-border px-5 py-3">
             <DialogClose asChild>
               <Button type="button" variant="outline" disabled={isPending}>
                 {cancelLabel}

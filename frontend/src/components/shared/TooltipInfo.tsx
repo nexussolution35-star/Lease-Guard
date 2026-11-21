@@ -20,7 +20,7 @@ export function TooltipInfo({ content, label = 'More information', className }: 
             type="button"
             aria-label={label}
             className={cn(
-              'inline-flex size-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+              'inline-flex size-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
               className,
             )}
           >

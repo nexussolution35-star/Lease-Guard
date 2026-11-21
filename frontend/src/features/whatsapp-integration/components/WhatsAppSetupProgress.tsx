@@ -1,13 +1,11 @@
-import { useId, useState } from 'react'
-import { CheckCircle2, CircleAlert, CircleDashed, Clock, Lock, Power, Send } from 'lucide-react'
+import { useState } from 'react'
+import { Power, Send } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { AppLink, ConfirmationDialog, DateDisplay, ErrorState, LoadingState, ProgressIndicator } from '@/components/shared'
-import { Badge } from '@/components/ui/badge'
+import { AppLink, ConfirmationDialog, DateDisplay, ErrorState, LoadingState, ProgressIndicator, SectionHeader, SignOff, StatusDot } from '@/components/shared'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { isAwaitingWorkspace } from '@/lib/data/queries'
-import { TONE_CLASSES, type Tone } from '@/lib/labels'
+import type { Tone } from '@/lib/labels'
 import { cn } from '@/lib/utils'
 
 import { useSetWhatsAppActivation, useWhatsAppSetup } from '../api/queries'
@@ -23,7 +21,6 @@ const STATE_LABELS: Record<State, string> = {
   blocked: 'Blocked',
 }
 const STATE_TONES: Record<State, Tone> = { done: 'success', action_needed: 'warning', waiting_on_meta: 'info', blocked: 'neutral' }
-const STATE_ICONS = { done: CheckCircle2, action_needed: CircleAlert, waiting_on_meta: Clock, blocked: Lock } as const
 
 /** Where a step is done, when it is not on this page. */
 const STEP_LINKS: Partial<Record<WhatsAppSetupStepStatus['step'], { to: string; label: string }>> = {
@@ -41,41 +38,57 @@ const TEST_STATUS_LABELS: Record<WhatsAppTestMessage['status'], string> = {
   failed: 'Failed',
 }
 
-function StateBadge({ state }: { state: State }) {
-  return (
-    <Badge variant="outline" className={cn('shrink-0', TONE_CLASSES[STATE_TONES[state]])}>
-      {STATE_LABELS[state]}
-    </Badge>
-  )
+/** A step's status mark. "Action needed" waits on a company admin, so it carries the open sign-off ring. */
+function StepStatus({ state }: { state: State }) {
+  if (state === 'action_needed') return <SignOff pendingLabel={STATE_LABELS[state]} />
+  return <StatusDot tone={STATE_TONES[state]}>{STATE_LABELS[state]}</StatusDot>
 }
 
-function StepItem({ step, index, isAdmin, onSendTest }: { step: WhatsAppSetupStepStatus; index: number; isAdmin: boolean; onSendTest: () => void }) {
-  const Icon = STATE_ICONS[step.state]
+function StepItem({
+  step,
+  index,
+  isAdmin,
+  onSendTest,
+  latestTestMessage,
+}: {
+  step: WhatsAppSetupStepStatus
+  index: number
+  isAdmin: boolean
+  onSendTest: () => void
+  latestTestMessage: WhatsAppTestMessage | undefined
+}) {
   const link = STEP_LINKS[step.step]
+  // A step still to do reads as foreground; done and blocked steps stay quiet.
+  const open = step.state === 'action_needed' || step.state === 'waiting_on_meta'
   return (
-    <li className="flex gap-3 px-4 py-3">
-      <Icon className={cn('mt-0.5 size-5 shrink-0', step.state === 'done' ? 'text-success' : 'text-muted-foreground')} aria-hidden="true" />
-      <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-medium text-foreground">
+    <li className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-3 gap-y-2 py-3 sm:grid-cols-[1.5rem_minmax(0,1fr)_9.5rem]">
+      <span aria-hidden="true" className="pt-px text-sm text-muted-foreground tabular-nums">
+        {index + 1}
+      </span>
+      <div className="min-w-0 space-y-1">
+        <p className="flex flex-wrap items-baseline gap-x-2 text-sm text-balance">
+          <span className={cn('font-medium', open ? 'text-foreground' : 'text-foreground/80')}>
             <span className="sr-only">Step {index + 1}: </span>
             {step.title}
-          </p>
+          </span>
           {step.required ? null : <span className="text-xs text-muted-foreground">Recommended</span>}
-          <StateBadge state={step.state} />
-        </div>
-        <p className="text-sm text-muted-foreground">{step.guidance}</p>
+        </p>
+        <p className="max-w-prose text-sm text-muted-foreground">{step.guidance}</p>
         {step.state !== 'done' && link ? (
-          <AppLink to={link.to} className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+          <AppLink to={link.to} className="inline-block text-sm font-medium text-primary underline-offset-4 hover:underline">
             {link.label}
           </AppLink>
         ) : null}
+        {step.step === 'test_message' && latestTestMessage ? <LatestTestMessage message={latestTestMessage} /> : null}
         {isAdmin && step.step === 'test_message' && step.state !== 'blocked' ? (
-          <Button type="button" size="sm" variant={step.state === 'done' ? 'outline' : 'default'} onClick={onSendTest}>
+          <Button type="button" size="sm" variant="outline" className="mt-1" onClick={onSendTest}>
             <Send aria-hidden="true" />
             {step.state === 'done' ? 'Send another test message' : 'Send test message'}
           </Button>
         ) : null}
+      </div>
+      <div className="col-start-2 sm:col-start-3 sm:row-start-1 sm:justify-self-start">
+        <StepStatus state={step.state} />
       </div>
     </li>
   )
@@ -83,7 +96,7 @@ function StepItem({ step, index, isAdmin, onSendTest }: { step: WhatsAppSetupSte
 
 function LatestTestMessage({ message }: { message: WhatsAppTestMessage }) {
   return (
-    <div className="rounded-md border border-border px-4 py-3 text-sm">
+    <div className="text-sm">
       <p className="font-medium text-foreground">
         Latest test message: {TEST_STATUS_LABELS[message.status]}
       </p>
@@ -110,10 +123,13 @@ function Activation({ setup, isAdmin }: { setup: WhatsAppSetup; isAdmin: boolean
   }
   if (setup.activation.active) {
     return (
-      <div className="flex flex-col gap-3 rounded-md border border-success/40 bg-success/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-foreground">
-          WhatsApp is active{setup.activation.activatedAt ? <> since <DateDisplay value={setup.activation.activatedAt} /></> : null}.
-          {setup.readyForActivation ? null : ' A required step is no longer verified: check the steps above.'}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="flex gap-2 text-sm text-foreground">
+          <span aria-hidden="true" className="mt-[7px] size-1.5 shrink-0 rounded-full bg-success" />
+          <span>
+            WhatsApp is active{setup.activation.activatedAt ? <> since <DateDisplay value={setup.activation.activatedAt} /></> : null}.
+            {setup.readyForActivation ? null : ' A required step is no longer verified: check the steps above.'}
+          </span>
         </p>
         {isAdmin ? (
           <>
@@ -136,7 +152,7 @@ function Activation({ setup, isAdmin }: { setup: WhatsAppSetup; isAdmin: boolean
     )
   }
   return (
-    <div className="flex flex-col gap-3 rounded-md border border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm text-muted-foreground">
         {setup.readyForActivation
           ? 'Every required step is verified. WhatsApp can be activated.'
@@ -157,43 +173,43 @@ function Activation({ setup, isAdmin }: { setup: WhatsAppSetup; isAdmin: boolean
  * test message (company admins) and the activation, which the API refuses until every required step is verified.
  */
 export function WhatsAppSetupProgress({ isAdmin }: { isAdmin: boolean }) {
-  const titleId = useId()
   const query = useWhatsAppSetup()
   const [testing, setTesting] = useState(false)
   if (isAwaitingWorkspace(query)) return null
   return (
-    <Card role="region" aria-labelledby={titleId}>
-      <CardHeader>
-        <CardTitle id={titleId} className="flex items-center gap-2 text-base">
-          <CircleDashed className="size-4" aria-hidden="true" />
-          WhatsApp setup
-        </CardTitle>
-        <CardDescription>
-          Each step is marked done only when LeaseGuard has verified it with Meta or in its own records. Recommended steps are not needed to
-          activate WhatsApp.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {query.isPending ? <LoadingState label="Loading the WhatsApp setup…" rows={3} /> : null}
-        {query.isError ? <ErrorState title="The WhatsApp setup could not be loaded" error={query.error} onRetry={() => void query.refetch()} /> : null}
-        {query.data ? (
-          <>
-            <ProgressIndicator
-              value={(query.data.completedSteps / query.data.totalSteps) * 100}
-              label={`${query.data.completedSteps} of ${query.data.totalSteps} steps done`}
-              tone={query.data.readyForActivation ? 'success' : 'primary'}
-            />
-            <ol className="divide-y divide-border rounded-md border border-border">
-              {query.data.steps.map((step, index) => (
-                <StepItem key={step.step} step={step} index={index} isAdmin={isAdmin} onSendTest={() => setTesting(true)} />
-              ))}
-            </ol>
-            {isAdmin && query.data.latestTestMessage ? <LatestTestMessage message={query.data.latestTestMessage} /> : null}
+    <section aria-label="WhatsApp setup" className="space-y-4">
+      <SectionHeader
+        title="WhatsApp setup"
+        description="Each step is marked done only when LeaseGuard has verified it with Meta or in its own records. Recommended steps are not needed to activate WhatsApp."
+      />
+      {query.isPending ? <LoadingState label="Loading the WhatsApp setup…" rows={3} /> : null}
+      {query.isError ? <ErrorState title="The WhatsApp setup could not be loaded" error={query.error} onRetry={() => void query.refetch()} /> : null}
+      {query.data ? (
+        <>
+          <ProgressIndicator
+            value={(query.data.completedSteps / query.data.totalSteps) * 100}
+            label={`${query.data.completedSteps} of ${query.data.totalSteps} steps done`}
+            showValue={false}
+            tone={query.data.readyForActivation ? 'success' : 'neutral'}
+          />
+          <ol className="divide-y divide-border border-y border-border">
+            {query.data.steps.map((step, index) => (
+              <StepItem
+                key={step.step}
+                step={step}
+                index={index}
+                isAdmin={isAdmin}
+                onSendTest={() => setTesting(true)}
+                latestTestMessage={isAdmin ? query.data.latestTestMessage : undefined}
+              />
+            ))}
+          </ol>
+          <div className="pt-1">
             <Activation setup={query.data} isAdmin={isAdmin} />
-          </>
-        ) : null}
-      </CardContent>
+          </div>
+        </>
+      ) : null}
       {isAdmin ? <TestMessageDialog open={testing} onOpenChange={setTesting} /> : null}
-    </Card>
+    </section>
   )
 }

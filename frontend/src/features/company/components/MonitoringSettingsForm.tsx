@@ -4,11 +4,12 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 
-import { FormActions, FormSection, NumberField, SelectField, TextField, zodResolver } from '@/components/forms'
+import { FormActions, FormSection, NumberField, SelectField, SETTINGS_ROW_ACTIONS, TextField, zodResolver } from '@/components/forms'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Form } from '@/components/ui/form'
 import { describeApiError } from '@/lib/data/apiErrors'
 import { enumOptions } from '@/lib/labels'
+import { cn } from '@/lib/utils'
 
 import { useUpdateCompany } from '../api/queries'
 import type { CompanyProfile } from '../api/source'
@@ -59,7 +60,7 @@ export function MonitoringSettingsForm({ settings }: MonitoringSettingsFormProps
 
   return (
     <Form {...form}>
-      <form onSubmit={(event) => void submit(event)} noValidate className="space-y-8" aria-label="Notice periods and reminder timing">
+      <form onSubmit={(event) => void submit(event)} noValidate className="space-y-6" aria-label="Notice periods and reminder timing">
         {rootError ? (
           <Alert variant="destructive">
             <AlertCircle aria-hidden="true" />
@@ -67,6 +68,7 @@ export function MonitoringSettingsForm({ settings }: MonitoringSettingsFormProps
           </Alert>
         ) : null}
         <FormSection
+          layout="row"
           title="Notice periods"
           description="When LeaseGuard raises a monitoring event for the property manager. Tenants are never notified about lease expiry, renewal options or guarantees."
           columns={1}
@@ -76,6 +78,7 @@ export function MonitoringSettingsForm({ settings }: MonitoringSettingsFormProps
           <TextField control={form.control} name="guaranteeExpiryNoticeDays" label="Bank guarantee expiry notices" description={NOTICE_HINT} inputMode="numeric" required />
         </FormSection>
         <FormSection
+          layout="row"
           title="Payment reminders"
           description="Days after the statement date at which each reminder is prepared for approval. An active payment arrangement pauses these reminders."
         >
@@ -94,10 +97,12 @@ export function MonitoringSettingsForm({ settings }: MonitoringSettingsFormProps
             required
           />
         </FormSection>
-        <FormSection title="Owner summary" description="The weekly portfolio summary sent to property owners on WhatsApp.">
+        <FormSection layout="row" title="Owner summary" description="The weekly portfolio summary sent to property owners on WhatsApp.">
           <SelectField control={form.control} name="ownerSummaryWeekday" label="Day of the week" options={WEEKDAY_OPTIONS} required />
         </FormSection>
-        <FormActions submitLabel="Save changes" isSubmitting={form.formState.isSubmitting} />
+        <div className={cn('border-t border-border pt-4', SETTINGS_ROW_ACTIONS)}>
+          <FormActions submitLabel="Save changes" align="start" isSubmitting={form.formState.isSubmitting} submitDisabled={!form.formState.isDirty} />
+        </div>
       </form>
     </Form>
   )

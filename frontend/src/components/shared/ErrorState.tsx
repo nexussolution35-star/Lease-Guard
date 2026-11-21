@@ -7,6 +7,7 @@ export interface ErrorStateProps {
   title?: string
   error: Error | string
   onRetry?: () => void
+  /** Pass `border-0` when it sits inside another frame (a table, a card). */
   className?: string
 }
 
@@ -16,14 +17,14 @@ export function ErrorState({ title = 'Something went wrong', error, onRetry, cla
     <div
       role="alert"
       className={cn(
-        'flex flex-col items-center justify-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-6 py-8 text-center',
+        'flex flex-wrap items-start gap-x-3 gap-y-2 rounded-lg border border-border px-4 py-3 text-sm',
         className,
       )}
     >
-      <AlertCircle className="size-6 text-destructive" aria-hidden="true" />
-      <div className="max-w-md space-y-1">
+      <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden="true" />
+      <div className="min-w-0 flex-1 space-y-0.5">
         <p className="font-medium text-foreground">{title}</p>
-        {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
+        {message ? <p className="break-words text-foreground">{message}</p> : null}
       </div>
       {onRetry ? (
         <Button type="button" variant="outline" size="sm" onClick={onRetry}>

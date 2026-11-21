@@ -1,5 +1,5 @@
 import { isApiError } from '@leaseguard/api-client'
-import { AlertCircle, Check, Info, MailCheck, Paperclip, X } from 'lucide-react'
+import { AlertCircle, Check, Paperclip, X } from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -7,11 +7,9 @@ import { z } from 'zod'
 
 import { TextAreaField, zodResolver } from '@/components/forms'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { AppLink, DataTablePagination, DateDisplay, EmptyState, ErrorState, FormDialog, LoadingState, NoActiveWorkspace } from '@/components/shared'
+import { AppLink, DataTablePagination, EmptyState, ErrorState, FormDialog, LoadingState, NoActiveWorkspace, SignOff } from '@/components/shared'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form } from '@/components/ui/form'
 import { useIsCompanyWriter } from '@/features/account/useActiveRole'
 import { useTenantQuery } from '@/features/tenants/api/queries'
@@ -71,35 +69,44 @@ export function ApprovalsQueue({ page, pageSize, onPageChange }: ApprovalsQueueP
   return (
     <section className="space-y-4">
       {header}
-      <Alert>
-        <Info aria-hidden="true" />
-        <AlertDescription>
-          {canDecide
-            ? 'Approved messages are sent on WhatsApp from this workspace’s connected number. Before approving, LeaseGuard checks everything delivery checks; if the message cannot be sent, it shows what to fix.'
-            : 'Only company admins and property managers can approve or reject messages. You can see what is waiting.'}
-        </AlertDescription>
-      </Alert>
+      <p className="max-w-2xl text-sm text-pretty text-muted-foreground">
+        {canDecide
+          ? 'Approved messages are sent on WhatsApp from this workspace’s connected number. Before you approve, LeaseGuard runs the same checks as delivery; if the message cannot be sent, it shows what to fix.'
+          : 'Only company admins and property managers can approve or reject messages. You can see what is waiting.'}
+      </p>
       {query.isPending || isPastEnd ? (
         <LoadingState label="Loading messages awaiting approval…" rows={3} />
       ) : query.isError ? (
         <ErrorState title="Could not load messages awaiting approval" error={query.error} onRetry={() => void query.refetch()} />
       ) : query.data.total === 0 ? (
-        <EmptyState icon={MailCheck} title="Nothing awaiting approval" description="Tenant messages that need a decision appear here." />
+        <EmptyState title="Nothing awaiting approval" description="Tenant messages that need a decision appear here." className="py-0" />
       ) : (
         <>
-          <p className="text-sm text-muted-foreground">
-            {query.data.total === 1 ? '1 message awaiting approval' : `${query.data.total} messages awaiting approval`}
-          </p>
-          <ol className="space-y-4" aria-label="Messages awaiting approval">
-            {query.data.items.map((pending) => (
-              <li key={pending.approval.id}>
-                <PendingMessage pending={pending} canDecide={canDecide} />
-              </li>
-            ))}
-          </ol>
-          {query.data.total > pageSize ? (
-            <DataTablePagination page={page} pageSize={pageSize} total={query.data.total} onPageChange={onPageChange} />
-          ) : null}
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 pt-2">
+            <SignOff
+              pendingLabel={query.data.total === 1 ? '1 message awaiting approval' : `${query.data.total} messages awaiting approval`}
+              className="tabular-nums"
+            />
+            <p className="text-xs text-muted-foreground">Oldest request first</p>
+          </div>
+          <div className="border-y border-border">
+            <ol className="divide-y divide-border" aria-label="Messages awaiting approval">
+              {query.data.items.map((pending, index) => (
+                <li key={pending.approval.id}>
+                  <PendingMessage pending={pending} canDecide={canDecide} isNext={page === 1 && index === 0} />
+                </li>
+              ))}
+            </ol>
+            {query.data.total > pageSize ? (
+              <DataTablePagination
+                page={page}
+                pageSize={pageSize}
+                total={query.data.total}
+                onPageChange={onPageChange}
+                className="border-t border-border py-2"
+              />
+            ) : null}
+          </div>
         </>
       )}
     </section>
@@ -119,42 +126,43 @@ function Recipient({ pending }: { pending: PendingApproval }) {
   )
 }
 
-function PendingMessage({ pending, canDecide }: { pending: PendingApproval; canDecide: boolean }) {
+/**
+ * One message waiting on a decision. `isNext` marks the oldest request in the queue: its Approve is the view's
+ * one primary button, the rest are outlined.
+ */
+function PendingMessage({ pending, canDecide, isNext }: { pending: PendingApproval; canDecide: boolean; isNext: boolean }) {
   const headingId = useId()
   const { communication, approval } = pending
   const [dialog, setDialog] = useState<'approve' | 'reject' | null>(null)
   const [blockers, setBlockers] = useState<readonly string[]>([])
 
   return (
-    <Card role="article" aria-labelledby={headingId}>
-      <CardHeader>
-        <CardTitle id={headingId} className="flex flex-wrap items-center gap-2">
+    <article aria-labelledby={headingId} className="grid gap-x-8 gap-y-4 py-5 lg:grid-cols-[16rem_minmax(0,1fr)_auto]">
+      <div className="space-y-3">
+        <h2 id={headingId} className="flex flex-wrap items-baseline gap-x-2 text-sm font-medium text-balance text-foreground">
           {labelFor(communication.messageType)}
-          <Badge variant="outline">{labelFor(communication.recipientType)}</Badge>
-        </CardTitle>
-        <CardDescription className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span>
-            To <Recipient pending={pending} />
-          </span>
-          {communication.counterpartyNumber ? <span>· {communication.counterpartyNumber}</span> : null}
-          <span>· from {communication.companyNumber}</span>
-          <span>
-            · requested <DateDisplay value={approval.requestedAt} style="datetime" />
-          </span>
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="whitespace-pre-wrap break-words rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground">
-          {communication.body}
-        </p>
+          <span className="text-xs font-normal text-muted-foreground">{labelFor(communication.recipientType)}</span>
+        </h2>
+        <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
+          <dt className="text-muted-foreground">To</dt>
+          <dd className="min-w-0 break-words text-foreground">
+            <Recipient pending={pending} />
+            {communication.counterpartyNumber ? <span className="block tabular-nums">{communication.counterpartyNumber}</span> : null}
+          </dd>
+          <dt className="text-muted-foreground">From</dt>
+          <dd className="tabular-nums text-foreground">{communication.companyNumber}</dd>
+        </dl>
+      </div>
+      <div className="min-w-0 space-y-3">
+        <p className="max-w-prose border-l-2 border-border pl-3 text-sm break-words whitespace-pre-wrap text-foreground">{communication.body}</p>
         {communication.attachment ? (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Paperclip aria-hidden="true" className="size-4" />
-            {communication.attachment.fileName}
+          <p className="flex items-center gap-2 text-sm text-foreground">
+            <Paperclip aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 break-words">{communication.attachment.fileName}</span>
           </p>
         ) : null}
         {blockers.length > 0 ? (
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="rounded-none border-0 bg-transparent p-0">
             <AlertCircle aria-hidden="true" />
             <AlertTitle>This message cannot be sent yet</AlertTitle>
             <AlertDescription>
@@ -167,9 +175,13 @@ function PendingMessage({ pending, canDecide }: { pending: PendingApproval; canD
             </AlertDescription>
           </Alert>
         ) : null}
+      </div>
+      <div className="flex flex-col items-start gap-3">
+        {/* Requested, and waiting on a property manager's sign-off until someone approves or rejects it. */}
+        <SignOff at={approval.requestedAt} />
         {canDecide ? (
           <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" onClick={() => setDialog('approve')}>
+            <Button type="button" size="sm" variant={isNext ? 'default' : 'outline'} onClick={() => setDialog('approve')}>
               <Check aria-hidden="true" />
               Approve
             </Button>
@@ -179,7 +191,7 @@ function PendingMessage({ pending, canDecide }: { pending: PendingApproval; canD
             </Button>
           </div>
         ) : null}
-      </CardContent>
+      </div>
       {canDecide ? (
         <>
           <ApproveDialog
@@ -195,7 +207,7 @@ function PendingMessage({ pending, canDecide }: { pending: PendingApproval; canD
           <RejectDialog open={dialog === 'reject'} onOpenChange={(open) => setDialog(open ? 'reject' : null)} communicationId={communication.id} />
         </>
       ) : null}
-    </Card>
+    </article>
   )
 }
 

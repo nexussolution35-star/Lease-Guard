@@ -15,19 +15,28 @@ export interface PageHeaderProps {
   className?: string
 }
 
+/**
+ * The page's heading row. The page name is shown in the top bar, so the level-1 heading is kept for
+ * screen readers only; the row shows status, description and actions, and is left out when it has none.
+ */
 export function PageHeader({ title, description, actions, breadcrumbs, status, className }: PageHeaderProps) {
+  const heading = <h1 className="sr-only">{title}</h1>
+  const trail = breadcrumbs && breadcrumbs.length > 0 ? breadcrumbs : null
+  if (!trail && !description && !actions && !status) return heading
+
   return (
-    <header className={cn('flex flex-col gap-3 pb-6', className)}>
-      {breadcrumbs && breadcrumbs.length > 0 ? <Breadcrumbs items={breadcrumbs} /> : null}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-balance text-foreground">{title}</h1>
+    <header className={cn('mb-6 flex flex-col gap-3', className)}>
+      {heading}
+      {trail ? <Breadcrumbs items={trail} /> : null}
+      {/* One row: status and description on the left, the view's actions on the right. */}
+      <div className="flex flex-col gap-3 sm:min-h-9 sm:flex-row sm:items-center sm:justify-between">
+        {status || description ? (
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
             {status}
+            {description ? <p className="max-w-2xl text-pretty text-muted-foreground">{description}</p> : null}
           </div>
-          {description ? <p className="max-w-3xl text-sm text-pretty text-muted-foreground">{description}</p> : null}
-        </div>
-        {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+        ) : null}
+        {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2 sm:ml-auto">{actions}</div> : null}
       </div>
     </header>
   )

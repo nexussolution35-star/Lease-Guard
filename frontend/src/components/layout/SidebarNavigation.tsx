@@ -16,18 +16,22 @@ export function SidebarNavigation({ collapsed = false, onNavigate, className }: 
   const pathname = useRouterState({ select: (s) => s.location.pathname })
 
   return (
-    <nav aria-label="Main" className={cn('flex flex-col gap-4', className)}>
-      {NAV_SECTIONS.map((section) => (
-        <div key={section.id} role="group" aria-labelledby={`nav-section-${section.id}`}>
-          <h2
-            id={`nav-section-${section.id}`}
-            className={cn(
-              'mb-1 px-2.5 text-xs font-medium tracking-wide text-muted-foreground uppercase',
-              collapsed && 'sr-only',
-            )}
-          >
-            {section.label}
-          </h2>
+    <nav aria-label="Main" className={cn('flex flex-col gap-6', className)}>
+      {NAV_SECTIONS.map((section, index) => (
+        <div
+          key={section.id}
+          {...(section.label ? { role: 'group', 'aria-labelledby': `nav-section-${section.id}` } : {})}
+          // The rail has no captions, so a hairline separates its groups.
+          className={cn(collapsed && index > 0 && 'border-t border-border pt-6')}
+        >
+          {section.label ? (
+            <p
+              id={`nav-section-${section.id}`}
+              className={cn('px-2 pb-2 text-xs leading-4 text-muted-foreground', collapsed && 'sr-only')}
+            >
+              {section.label}
+            </p>
+          ) : null}
           <ul className="flex flex-col gap-0.5">
             {section.items.map((item) => (
               <li key={item.id}>

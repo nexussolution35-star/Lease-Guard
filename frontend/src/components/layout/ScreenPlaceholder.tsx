@@ -1,7 +1,4 @@
-import { Construction } from 'lucide-react'
 import type { ReactNode } from 'react'
-
-import { EmptyState } from '@/components/shared'
 
 import { PageHeader } from './PageHeader'
 
@@ -12,16 +9,18 @@ export interface ScreenPlaceholderProps {
   className?: string
 }
 
-/** Temporary screen body used until the feature screen is assembled. */
+/**
+ * A screen that is not available yet. The page name stays in the top bar; the body is one quiet,
+ * entry: that the screen is not available yet, and what it will hold (the description).
+ */
 export function ScreenPlaceholder({ title, description, status, className }: ScreenPlaceholderProps) {
   return (
     <section className={className}>
-      <PageHeader title={title} {...(description ? { description } : {})} {...(status ? { status } : {})} />
-      <EmptyState
-        icon={Construction}
-        title="Screen coming in the next stage"
-        description="This screen is assembled in the next stage. Navigation, workspace scoping and data services are already in place."
-      />
+      <PageHeader title={title} {...(status ? { status } : {})} />
+      <div className="max-w-prose pt-2">
+        <p className="text-sm font-medium text-foreground">Not available yet.</p>
+        {description ? <p className="mt-1 text-sm text-pretty text-muted-foreground">{description}</p> : null}
+      </div>
     </section>
   )
 }

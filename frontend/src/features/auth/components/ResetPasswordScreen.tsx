@@ -1,5 +1,4 @@
 import { useNavigate } from '@tanstack/react-router'
-import { KeyRound, LinkIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { AppLink } from '@/components/shared'
@@ -37,7 +36,6 @@ export function ResetPasswordScreen({ callback, passwordSetup }: ResetPasswordSc
     // menu, since "Forgot password" is only for signed-out users.
     return (
       <AuthPageFrame
-        icon={LinkIcon}
         title="This password link is invalid or has expired"
         description={
           signedIn
@@ -68,7 +66,6 @@ export function ResetPasswordScreen({ callback, passwordSetup }: ResetPasswordSc
   if (passwordSetup === null) {
     return (
       <AuthPageFrame
-        icon={KeyRound}
         title="This password link was already used"
         description={`You are signed in${user?.email ? ` as ${user.email}` : ''}. To change your password, open the account menu and choose Change password.`}
       >
@@ -81,7 +78,6 @@ export function ResetPasswordScreen({ callback, passwordSetup }: ResetPasswordSc
 
   return (
     <AuthPageFrame
-      icon={KeyRound}
       title="Set a new password"
       description={user?.email ? `Choose a new password for ${user.email}.` : 'Choose a new password for your account.'}
     >

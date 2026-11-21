@@ -82,7 +82,7 @@ function FormItem({ className, ...props }: React.ComponentProps<"div">) {
         data-slot="form-item"
         // content-start: in a multi-column form row stretched by a taller neighbour (one with a description or an
         // error), the label and control keep their natural height, so controls line up across the row.
-        className={cn("grid content-start gap-2", className)}
+        className={cn("grid content-start gap-1.5", className)}
         {...props}
       />
     </FormItemContext.Provider>
@@ -99,7 +99,7 @@ function FormLabel({
     <Label
       data-slot="form-label"
       data-error={!!error}
-      className={cn("data-[error=true]:text-destructive", className)}
+      className={className}
       htmlFor={formItemId}
       {...props}
     />
@@ -149,7 +149,7 @@ function FormMessage({ className, ...props }: React.ComponentProps<"p">) {
     <p
       data-slot="form-message"
       id={formMessageId}
-      className={cn("text-sm text-destructive", className)}
+      className={cn("text-xs text-destructive", className)}
       {...props}
     >
       {body}

@@ -60,6 +60,7 @@ export function TextField<
               placeholder={placeholder}
               autoComplete={autoComplete}
               inputMode={inputMode}
+              spellCheck={type === 'email' || type === 'url' || type === 'password' ? false : undefined}
               maxLength={maxLength}
               disabled={disabled}
               aria-required={required || undefined}

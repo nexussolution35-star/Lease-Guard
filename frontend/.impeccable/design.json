@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-20T00:00:00Z",
+  "title": "Design System: LeaseGuard",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "LeaseGuard Blue", "canonical": "oklch(0.42 0.14 255)", "tonalRamp": ["oklch(0.15 0.05 255)", "oklch(0.26 0.09 255)", "oklch(0.36 0.12 255)", "oklch(0.42 0.14 255)", "oklch(0.55 0.13 255)", "oklch(0.68 0.1 255)", "oklch(0.82 0.06 255)", "oklch(0.95 0.02 255)"] },
+      "ring": { "role": "primary", "displayName": "Focus Blue", "canonical": "oklch(0.55 0.15 255)" },
+      "rail": { "role": "secondary", "displayName": "Logbook Ink", "canonical": "oklch(0.3 0.085 255)", "tonalRamp": ["oklch(0.15 0.04 255)", "oklch(0.21 0.04 255)", "oklch(0.3 0.085 255)", "oklch(0.39 0.1 255)", "oklch(0.55 0.08 255)", "oklch(0.7 0.06 255)", "oklch(0.86 0.07 255)", "oklch(0.97 0.008 255)"] },
+      "rail-raised": { "role": "secondary", "displayName": "Raised Ink", "canonical": "oklch(0.39 0.1 255)" },
+      "rail-foreground": { "role": "secondary", "displayName": "Rail Paper", "canonical": "oklch(0.97 0.008 255)" },
+      "rail-muted-foreground": { "role": "secondary", "displayName": "Rail Pencil", "canonical": "oklch(0.8 0.035 255)" },
+      "rail-primary": { "role": "secondary", "displayName": "Rail Blue", "canonical": "oklch(0.86 0.07 255)" },
+      "rail-ring": { "role": "secondary", "displayName": "Rail Focus", "canonical": "oklch(0.82 0.09 255)" },
+      "rail-border": { "role": "secondary", "displayName": "Rail Rule", "canonical": "oklch(1 0 0 / 0.12)" },
+      "destructive": { "role": "tertiary", "displayName": "Ledger Red", "canonical": "oklch(0.55 0.2 25)", "tonalRamp": ["oklch(0.15 0.05 25)", "oklch(0.27 0.1 25)", "oklch(0.4 0.15 25)", "oklch(0.55 0.2 25)", "oklch(0.65 0.17 25)", "oklch(0.75 0.12 25)", "oklch(0.86 0.07 25)", "oklch(0.95 0.02 25)"] },
+      "success": { "role": "tertiary", "displayName": "Settled Green", "canonical": "oklch(0.6 0.15 150)" },
+      "warning": { "role": "tertiary", "displayName": "Notice Amber", "canonical": "oklch(0.75 0.16 75)" },
+      "info": { "role": "tertiary", "displayName": "Note Blue", "canonical": "oklch(0.6 0.12 240)" },
+      "background": { "role": "neutral", "displayName": "Office White", "canonical": "oklch(1 0 0)" },
+      "foreground": { "role": "neutral", "displayName": "Ink Text", "canonical": "oklch(0.2 0.02 255)", "tonalRamp": ["oklch(0.15 0.015 255)", "oklch(0.2 0.02 255)", "oklch(0.35 0.02 255)", "oklch(0.5 0.02 255)", "oklch(0.65 0.015 255)", "oklch(0.8 0.01 250)", "oklch(0.9 0.006 250)", "oklch(0.955 0.005 250)"] },
+      "muted": { "role": "neutral", "displayName": "Ledger Tint", "canonical": "oklch(0.955 0.005 250)" },
+      "muted-foreground": { "role": "neutral", "displayName": "Pencil Grey", "canonical": "oklch(0.5 0.02 255)" },
+      "border": { "role": "neutral", "displayName": "Hairline", "canonical": "oklch(0.9 0.006 250)" },
+      "secondary": { "role": "neutral", "displayName": "Quiet Fill", "canonical": "oklch(0.94 0.01 250)" },
+      "accent": { "role": "neutral", "displayName": "Blue Wash", "canonical": "oklch(0.93 0.03 255)" }
+    },
+    "typographyMeta": {
+      "lead-figure": { "displayName": "Lead figure", "purpose": "The one figure that matters on a screen; first cell of a stat strip, one per strip." },
+      "figure": { "displayName": "Figure", "purpose": "Other stat-strip cells." },
+      "title": { "displayName": "Title", "purpose": "Section headings (h2); the largest text in the page body." },
+      "body": { "displayName": "Body", "purpose": "Tables, details, navigation, buttons." },
+      "label": { "displayName": "Label", "purpose": "Table heads, metric labels, captions, axis years, in Pencil Grey." },
+      "helper": { "displayName": "Helper", "purpose": "Italic field and settings descriptions, always italic Pencil Grey." },
+      "wordmark": { "displayName": "Wordmark", "purpose": "The LeaseGuard name beside the brand mark." }
+    },
+    "shadows": [
+      { "name": "overlay", "value": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)", "purpose": "Tailwind shadow-md: dropdown menus, popovers, select lists." },
+      { "name": "modal", "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)", "purpose": "Tailwind shadow-lg: dialogs, alert dialogs, sheets, submenus." },
+      { "name": "raised-ink", "value": "inset 0 1px 0 oklch(1 0 0 / 0.08)", "purpose": "Active navigation row in the rail only." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "The one easing curve for every transition." },
+      { "name": "duration-default", "value": "160ms", "purpose": "Default transition duration." },
+      { "name": "duration-button", "value": "150ms", "purpose": "Button colour and press transitions; press scales to 0.98." },
+      { "name": "reduced-motion", "value": "0.01ms", "purpose": "All animation and transition durations collapse under prefers-reduced-motion." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" },
+      { "name": "max-content", "value": "1536px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single filled action of a view.",
+      "html": "<button class=\"ds-btn-primary\">Edit property</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 8px 16px; border: 0; border-radius: 6px; background: var(--primary, oklch(0.42 0.14 255)); color: var(--primary-foreground, oklch(0.99 0 0)); font: 500 0.875rem/1.43 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; cursor: pointer; outline: none; transition: background-color 150ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 150ms cubic-bezier(0.22, 1, 0.36, 1), scale 150ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-btn-primary:hover { background: color-mix(in oklch, var(--primary, oklch(0.42 0.14 255)) 90%, transparent); } .ds-btn-primary:focus-visible { box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring, oklch(0.55 0.15 255)) 50%, transparent); } .ds-btn-primary:active { scale: 0.98; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary actions beside the primary one.",
+      "html": "<button class=\"ds-btn-outline\">Archive</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 8px 16px; border: 1px solid var(--border, oklch(0.9 0.006 250)); border-radius: 6px; background: var(--background, #fff); color: var(--foreground, oklch(0.2 0.02 255)); font: 500 0.875rem/1.43 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; cursor: pointer; outline: none; transition: background-color 150ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 150ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-btn-outline:hover { background: var(--accent, oklch(0.93 0.03 255)); } .ds-btn-outline:focus-visible { border-color: var(--ring, oklch(0.55 0.15 255)); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring, oklch(0.55 0.15 255)) 50%, transparent); } .ds-btn-outline:active { scale: 0.98; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Hairline field with italic helper text below.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Gross lettable area</span><input class=\"ds-input\" placeholder=\"m²\"><span class=\"ds-field-help\">As stated in the lease schedule.</span></label>",
+      "css": ".ds-field { display: grid; gap: 6px; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; } .ds-field-label { font-size: 0.875rem; font-weight: 500; color: var(--foreground, oklch(0.2 0.02 255)); } .ds-input { height: 36px; padding: 4px 12px; border: 1px solid var(--border, oklch(0.9 0.006 250)); border-radius: 6px; background: transparent; color: var(--foreground, oklch(0.2 0.02 255)); font: 400 0.875rem/1.43 inherit; outline: none; transition: border-color 160ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 160ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-input::placeholder { color: var(--muted-foreground, oklch(0.5 0.02 255)); } .ds-input:hover { border-color: color-mix(in oklch, var(--foreground, oklch(0.2 0.02 255)) 25%, transparent); } .ds-input:focus-visible { border-color: var(--ring, oklch(0.55 0.15 255)); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring, oklch(0.55 0.15 255)) 50%, transparent); } .ds-field-help { font-size: 0.75rem; font-style: italic; color: var(--muted-foreground, oklch(0.5 0.02 255)); }"
+    },
+    {
+      "name": "Rail Navigation",
+      "kind": "nav",
+      "refersTo": "rail-nav-item",
+      "description": "Ink-blue sidebar rows; active row is raised ink with an inset top highlight.",
+      "html": "<nav class=\"ds-rail\"><a class=\"ds-rail-item\" href=\"#\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"9\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"5\"/><rect x=\"14\" y=\"12\" width=\"7\" height=\"9\"/><rect x=\"3\" y=\"16\" width=\"7\" height=\"5\"/></svg>Dashboard</a><a class=\"ds-rail-item\" aria-current=\"page\" href=\"#\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z\"/><path d=\"M6 12H4a2 2 0 0 0-2 2v8h4\"/><path d=\"M18 9h2a2 2 0 0 1 2 2v11h-4\"/></svg>Properties</a></nav>",
+      "css": ".ds-rail { display: grid; gap: 2px; width: 240px; padding: 12px 8px; background: oklch(0.3 0.085 255); font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; } .ds-rail-item { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 6px; color: oklch(0.97 0.008 255 / 0.85); font-size: 0.875rem; text-decoration: none; outline: none; transition: background-color 160ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-rail-item svg { color: oklch(0.8 0.035 255); flex-shrink: 0; } .ds-rail-item:hover { background: oklch(0.39 0.1 255 / 0.5); color: oklch(0.97 0.008 255); } .ds-rail-item:focus-visible { box-shadow: 0 0 0 3px oklch(0.82 0.09 255 / 0.5); } .ds-rail-item[aria-current=page] { background: oklch(0.39 0.1 255); color: oklch(0.97 0.008 255); font-weight: 500; box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.08); } .ds-rail-item[aria-current=page] svg { color: oklch(0.97 0.008 255); }"
+    },
+    {
+      "name": "Status Mark",
+      "kind": "chip",
+      "refersTo": "status-dot",
+      "description": "Status as a tone dot and foreground text; the open amber ring means awaiting approval.",
+      "html": "<span class=\"ds-status\"><span class=\"ds-dot ds-dot-success\"></span>Active</span> <span class=\"ds-status\"><span class=\"ds-dot ds-dot-danger\"></span>Overdue</span> <span class=\"ds-status\"><span class=\"ds-ring\"></span>Awaiting approval</span>",
+      "css": ".ds-status { display: inline-flex; align-items: center; gap: 6px; height: 20px; margin-right: 16px; font: 400 0.875rem 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; color: var(--foreground, oklch(0.2 0.02 255)); white-space: nowrap; } .ds-dot { width: 6px; height: 6px; border-radius: 9999px; flex-shrink: 0; } .ds-dot-success { background: var(--success, oklch(0.6 0.15 150)); } .ds-dot-danger { background: var(--destructive, oklch(0.55 0.2 25)); } .ds-ring { width: 8px; height: 8px; box-sizing: border-box; border-radius: 9999px; border: 1.5px solid var(--warning, oklch(0.75 0.16 75)); flex-shrink: 0; }"
+    },
+    {
+      "name": "Stat Strip",
+      "kind": "card",
+      "refersTo": "metric-cell-lead",
+      "description": "One hairline frame of figures; the lead figure sets hierarchy by scale.",
+      "html": "<div class=\"ds-strip\"><a class=\"ds-cell\" href=\"#\"><span class=\"ds-cell-label\"><span class=\"ds-dot-warn\"></span>Open monitoring events</span><span class=\"ds-lead\">7</span><span class=\"ds-cell-note\">Needs attention</span></a><div class=\"ds-cell\"><span class=\"ds-cell-label\">Units</span><span class=\"ds-fig\">24</span></div><div class=\"ds-cell\"><span class=\"ds-cell-label\">Occupied units</span><span class=\"ds-fig\">21</span></div></div>",
+      "css": ".ds-strip { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 1px; overflow: hidden; border: 1px solid var(--border, oklch(0.9 0.006 250)); border-radius: 10px; background: var(--border, oklch(0.9 0.006 250)); font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; } .ds-cell { display: flex; flex-direction: column; gap: 8px; padding: 16px 20px; background: var(--background, #fff); color: var(--foreground, oklch(0.2 0.02 255)); text-decoration: none; outline: none; transition: background-color 160ms cubic-bezier(0.22, 1, 0.36, 1); } a.ds-cell:hover { background: var(--muted, oklch(0.955 0.005 250)); } a.ds-cell:focus-visible { box-shadow: inset 0 0 0 3px color-mix(in oklch, var(--ring, oklch(0.55 0.15 255)) 50%, transparent); } .ds-cell-label { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--muted-foreground, oklch(0.5 0.02 255)); } .ds-dot-warn { width: 6px; height: 6px; border-radius: 9999px; background: var(--warning, oklch(0.75 0.16 75)); } .ds-lead { font-size: 2.625rem; line-height: 1; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; } .ds-fig { font-size: 1.5rem; line-height: 1; font-weight: 500; font-variant-numeric: tabular-nums; } .ds-cell-note { font-size: 0.75rem; color: var(--muted-foreground, oklch(0.5 0.02 255)); }"
+    },
+    {
+      "name": "Sign-off Mark",
+      "kind": "custom",
+      "refersTo": "sign-off-disc",
+      "description": "Signature: initials disc, name and date when signed; dashed amber ring when pending.",
+      "html": "<div class=\"ds-signoffs\"><span class=\"ds-signoff\"><span class=\"ds-disc\">TM</span><span>Thandi Mokoena<span class=\"ds-muted\"> · 14 Nov 2026</span></span></span><span class=\"ds-signoff\"><span class=\"ds-pending\"></span><span class=\"ds-muted\">Sign-off pending</span></span></div>",
+      "css": ".ds-signoffs { display: grid; gap: 10px; } .ds-signoff { display: inline-flex; align-items: center; gap: 8px; font: 400 0.875rem 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; color: var(--foreground, oklch(0.2 0.02 255)); font-variant-numeric: tabular-nums; } .ds-disc { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; box-sizing: border-box; border-radius: 9999px; border: 1px solid var(--border, oklch(0.9 0.006 250)); background: var(--background, #fff); font-size: 10px; font-weight: 500; } .ds-pending { width: 20px; height: 20px; box-sizing: border-box; border-radius: 9999px; border: 1.5px dashed var(--warning, oklch(0.75 0.16 75)); } .ds-muted { color: var(--muted-foreground, oklch(0.5 0.02 255)); }"
+    },
+    {
+      "name": "Lease-term Bars",
+      "kind": "custom",
+      "refersTo": "lease-term-bars",
+      "description": "Signature: lease terms to exact scale with the renewal-notice tick and today's hairline.",
+      "html": "<figure class=\"ds-terms\"><div class=\"ds-term\"><span class=\"ds-ref\">L-0142</span><span class=\"ds-track\"><span class=\"ds-axis\"></span><span class=\"ds-bar\" style=\"left:5%;width:60%\"></span><span class=\"ds-notice\" style=\"left:52%\"></span><span class=\"ds-today\" style=\"left:38%\"></span></span><span class=\"ds-dates\">01 Mar 2024 – 28 Feb 2029</span></div><figcaption class=\"ds-cap\"><span><span class=\"ds-key-notice\"></span>Last day for renewal notice</span><span>Drawn to scale</span></figcaption></figure>",
+      "css": ".ds-terms { margin: 0; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; display: grid; gap: 12px; } .ds-term { display: grid; grid-template-columns: 6rem minmax(0, 1fr) 13rem; align-items: center; column-gap: 16px; } .ds-ref { font-size: 0.875rem; font-weight: 500; font-variant-numeric: tabular-nums; } .ds-track { position: relative; height: 20px; } .ds-axis { position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--border, oklch(0.9 0.006 250)); } .ds-bar { position: absolute; top: 50%; height: 6px; transform: translateY(-50%); border-radius: 9999px; background: color-mix(in oklch, var(--muted-foreground, oklch(0.5 0.02 255)) 45%, transparent); } .ds-notice { position: absolute; top: 2px; height: 16px; width: 2px; border-radius: 9999px; background: var(--warning, oklch(0.75 0.16 75)); } .ds-today { position: absolute; top: -2px; height: 24px; width: 1px; background: color-mix(in oklch, var(--foreground, oklch(0.2 0.02 255)) 60%, transparent); } .ds-dates { text-align: right; font-size: 0.875rem; color: var(--muted-foreground, oklch(0.5 0.02 255)); font-variant-numeric: tabular-nums; } .ds-cap { display: flex; gap: 20px; font-size: 0.75rem; color: var(--muted-foreground, oklch(0.5 0.02 255)); } .ds-cap > span { display: inline-flex; align-items: center; gap: 6px; } .ds-key-notice { width: 2px; height: 12px; border-radius: 9999px; background: var(--warning, oklch(0.75 0.16 75)); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Centre Office Logbook",
+    "overview": "LeaseGuard is the signed logbook kept at a centre management office: every lease term, monitoring event, message approval and change shows who signed it off and when, and what still waits on a person. The system is deliberately limited to type, palette, density and one signature move. A deep ink-blue rail (the LeaseGuard blue, darkened) owns the shell; the work area is plain white; the original blue appears only on actions and selection; state colours live only inside status marks.\n\nDensity is office density: a property manager at a desk in daylight, all day, reading figures they must trust. Sections are ruled with hairlines rather than boxed, figures are tabular, and hierarchy comes from scale contrast (one large lead figure per strip) rather than from colour or weight piling. Motion is quiet: one easing curve, short durations, no decorative animation.\n\nThe system refuses the category default of a grey sidebar over rows of identical stat cards.",
+    "keyCharacteristics": [
+      "Ink-blue rail shell, white work area, LeaseGuard blue reserved for actions and selection.",
+      "IBM Plex Sans throughout, tabular figures in every table, date and amount.",
+      "Hairline-ruled sections and stat strips; no card per record.",
+      "The sign-off mark (initials disc and date, or an open dashed ring when pending) as the recurring signature.",
+      "Status as a dot plus text, never a pill.",
+      "The page name lives in the top bar; the body never repeats it as a visible title.",
+      "Lease terms drawn to exact scale, with the renewal-notice deadline marked."
+    ],
+    "rules": [
+      { "name": "The Binding Blue Rule", "body": "`--primary` is the original LeaseGuard blue and is not to be retuned, re-hued or replaced. The owner has reverted palette changes twice.", "section": "colors" },
+      { "name": "The Quarantine Rule", "body": "State colours appear only inside status marks (dots, rings, ticks). Text stays foreground; only a non-zero danger figure takes colour, because amber on white is too faint to read as text.", "section": "colors" },
+      { "name": "The One Ground Rule", "body": "Ink belongs to the rail. The work area is white; never put ink-blue panels in page content.", "section": "colors" },
+      { "name": "The Ledger Figures Rule", "body": "Every table is `tabular-nums` by default; any amount, date or count outside a table carries `tabular-nums` explicitly.", "section": "typography" },
+      { "name": "The Scale Not Weight Rule", "body": "Hierarchy comes from the lead figure's size against quiet 0.875rem body. No headings above 1rem in the page body, and no visible page title (it lives in the top bar; the `h1` is screen-reader only).", "section": "typography" },
+      { "name": "The Italic Helper Rule", "body": "Helper text under fields and settings is always 0.75rem italic in Pencil Grey. This is deliberate and consistent; do not mix in upright helper text.", "section": "typography" },
+      { "name": "The One Action Rule", "body": "Each view has exactly one primary (filled blue) button; every other action is outline or ghost.", "section": "layout" },
+      { "name": "The Hidden Scrollbar Rule", "body": "Scrollbars are always hidden (`scrollbar-width: none` and `*::-webkit-scrollbar { display: none }`); content still scrolls by wheel, touch and keyboard.", "section": "layout" },
+      { "name": "The Flat Page Rule", "body": "No shadows on page content. If something must read as separate, rule it with a hairline.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use `--primary` (the original LeaseGuard blue) for actions and selection only, and keep its value unchanged.",
+      "Do keep ink-blue (`--rail`) to the sidebar; nest rail content inside the `.rail` scope so tokens remap automatically.",
+      "Do show status as a 6px dot plus text, and anything awaiting a person with the sign-off mark or the open approval ring.",
+      "Do give each view exactly one primary button; everything else is outline or ghost.",
+      "Do rule sections and lists with 1px hairlines and group a strip of figures in one 10px frame.",
+      "Do lead a stat strip with one lead figure (2.625rem semibold) when one number matters most.",
+      "Do set all figures tabular and format dates `dd MMM yyyy` (en-ZA) and amounts in ZAR.",
+      "Do write helper text in 0.75rem italic Pencil Grey, consistently.",
+      "Do keep scrollbars hidden everywhere (`scrollbar-width: none` and `*::-webkit-scrollbar { display: none }`).",
+      "Do use the shared `cubic-bezier(0.22, 1, 0.36, 1)` curve at about 160ms, and honour reduced motion.",
+      "Do show only figures that come from the API; show a dash or an empty state when there is no data."
+    ],
+    "donts": [
+      "Don't put a visible page title in the page body; the page name lives in the top bar.",
+      "Don't use pill badges for status.",
+      "Don't colour text with state hues, except a non-zero danger figure.",
+      "Don't box each record or each figure in its own card, and don't build rows of identical stat cards.",
+      "Don't add shadows to page content; shadows are for menus, popovers, dialogs and sheets.",
+      "Don't make anything rounder than its container (10px maximum on frames).",
+      "Don't invent figures, sample data, testimonials or sequential entry numbers; entry numbers and a per-property log are not built because the data does not support them yet.",
+      "Don't show visible scrollbars."
+    ]
+  }
+}

@@ -17,7 +17,7 @@ export function FieldMessage({ override, className }: FieldMessageProps) {
       data-slot="form-message"
       id={formMessageId}
       role="alert"
-      className={cn('text-sm text-destructive', className)}
+      className={cn('text-xs text-destructive', className)}
     >
       {body}
     </p>

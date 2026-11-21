@@ -1,5 +1,3 @@
-import { SearchX } from 'lucide-react'
-
 import { AppLink, EmptyState } from '@/components/shared'
 import { Button } from '@/components/ui/button'
 
@@ -25,7 +23,6 @@ export function RecordNotFound({ entityLabel, backTo, backLabel, title, descript
     <section className={className}>
       <PageHeader title={`${entityLabel} not found`} />
       <EmptyState
-        icon={SearchX}
         title={title ?? `${entityLabel} not found in this workspace`}
         description={description ?? DEFAULT_DESCRIPTION}
         action={

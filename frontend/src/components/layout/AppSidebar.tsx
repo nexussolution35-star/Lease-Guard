@@ -18,18 +18,17 @@ export function AppSidebar({ collapsed = false, onToggleCollapsed, className }: 
       aria-label="Sidebar"
       data-collapsed={collapsed ? 'true' : 'false'}
       className={cn(
-        'sticky top-0 h-svh shrink-0 flex-col border-r border-border bg-muted/50 transition-[width] duration-200',
-        collapsed ? 'w-16' : 'w-64',
+        'rail sticky top-0 h-svh shrink-0 flex-col',
+        collapsed ? 'w-14' : 'w-60',
         className,
       )}
     >
-      <SidebarHeader collapsed={collapsed} className="border-b border-border p-3" />
+      <SidebarHeader collapsed={collapsed} />
       <ScrollArea className="min-h-0 flex-1">
-        <SidebarNavigation collapsed={collapsed} className="p-3" />
+        <SidebarNavigation collapsed={collapsed} className="px-2 py-3" />
       </ScrollArea>
       <SidebarFooter
         collapsed={collapsed}
-        className="border-t border-border p-3"
         {...(onToggleCollapsed ? { onToggleCollapsed } : {})}
       />
     </aside>

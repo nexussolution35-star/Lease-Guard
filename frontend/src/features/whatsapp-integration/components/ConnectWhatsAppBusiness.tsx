@@ -1,9 +1,9 @@
-import { useId, useState } from 'react'
-import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, MessageCircle } from 'lucide-react'
+import { useState } from 'react'
+import { AlertTriangle, CheckCircle2, ExternalLink, Loader2 } from 'lucide-react'
 
+import { SectionHeader } from '@/components/shared'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 import { useCompleteWhatsAppSignup, usePrepareWhatsAppSignup, type PreparedWhatsAppSignup } from '../api/queries'
@@ -22,8 +22,8 @@ function ResultAlert({ result }: { result: WhatsAppOnboardingResult }) {
   const success = result.status === 'exchanged'
   const Icon = success ? CheckCircle2 : AlertTriangle
   return (
-    <Alert role="status" className={success ? 'border-success/40 bg-success/10' : 'border-warning/40 bg-warning/10'}>
-      <Icon aria-hidden="true" />
+    <Alert role="status">
+      <Icon aria-hidden="true" className={success ? 'text-success' : 'text-warning'} />
       <AlertTitle>{RESULT_TITLES[result.status]}</AlertTitle>
       <AlertDescription>
         <p>{result.message}</p>
@@ -44,7 +44,6 @@ function ResultAlert({ result }: { result: WhatsAppOnboardingResult }) {
  * popup blockers allow it. The popup's result goes to the API at once (the code lives about 30 seconds).
  */
 export function ConnectWhatsAppBusiness({ capabilities }: { capabilities: WhatsAppCapabilities | undefined }) {
-  const titleId = useId()
   const [step, setStep] = useState<Step>({ kind: 'idle' })
   const prepare = usePrepareWhatsAppSignup()
   const complete = useCompleteWhatsAppSignup()
@@ -76,46 +75,39 @@ export function ConnectWhatsAppBusiness({ capabilities }: { capabilities: WhatsA
   const busy = prepare.isPending || step.kind === 'in_popup' || complete.isPending
 
   return (
-    <Card role="region" aria-labelledby={titleId}>
-      <CardHeader>
-        <CardTitle id={titleId} className="text-base">
-          Connect WhatsApp Business
-        </CardTitle>
-        <CardDescription>
-          Link this workspace’s own WhatsApp Business number through Meta. The business keeps ownership of its account and pays Meta
-          directly; LeaseGuard never handles payments.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {configured ? null : (
-          <p className="flex gap-2 text-sm text-muted-foreground">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
-            <span>
-              Requires Meta configuration: Embedded Signup is not set up for this LeaseGuard installation yet (see Meta setup above), so
-              numbers cannot be connected.
-            </span>
-          </p>
-        )}
-        <Button type="button" onClick={startSignup} disabled={!configured || busy}>
-          {busy ? <Loader2 className="animate-spin" aria-hidden="true" /> : <MessageCircle aria-hidden="true" />}
-          {step.kind === 'in_popup' ? 'Waiting for Meta…' : complete.isPending ? 'Connecting…' : 'Connect WhatsApp Business'}
-        </Button>
-        {prepare.isError ? (
-          <Alert variant="destructive">
-            <AlertTriangle aria-hidden="true" />
-            <AlertTitle>The signup could not be started</AlertTitle>
-            <AlertDescription>{prepare.error.message}</AlertDescription>
-          </Alert>
-        ) : null}
-        {complete.isError ? (
-          <Alert variant="destructive">
-            <AlertTriangle aria-hidden="true" />
-            <AlertTitle>The signup could not be completed</AlertTitle>
-            <AlertDescription>{complete.error.message}</AlertDescription>
-          </Alert>
-        ) : null}
-        {step.kind === 'done' ? <ResultAlert result={step.result} /> : null}
-      </CardContent>
+    <section aria-label="Connect WhatsApp Business" className="space-y-4">
+      <SectionHeader
+        title="Connect WhatsApp Business"
+        description="Link this workspace’s own WhatsApp Business number through Meta. The business keeps ownership of its account and pays Meta directly; LeaseGuard never handles payments."
+      />
+      {configured ? null : (
+        <p className="flex max-w-prose gap-2 text-sm text-muted-foreground">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
+          <span>
+            Requires Meta configuration: Embedded Signup is not set up for this LeaseGuard installation yet (see Meta setup above), so
+            numbers cannot be connected.
+          </span>
+        </p>
+      )}
+      <Button type="button" variant="outline" onClick={startSignup} disabled={!configured || busy}>
+        {busy ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
+        {step.kind === 'in_popup' ? 'Waiting for Meta…' : complete.isPending ? 'Connecting…' : 'Connect WhatsApp Business'}
+      </Button>
+      {prepare.isError ? (
+        <Alert variant="destructive">
+          <AlertTriangle aria-hidden="true" />
+          <AlertTitle>The signup could not be started</AlertTitle>
+          <AlertDescription>{prepare.error.message}</AlertDescription>
+        </Alert>
+      ) : null}
+      {complete.isError ? (
+        <Alert variant="destructive">
+          <AlertTriangle aria-hidden="true" />
+          <AlertTitle>The signup could not be completed</AlertTitle>
+          <AlertDescription>{complete.error.message}</AlertDescription>
+        </Alert>
+      ) : null}
+      {step.kind === 'done' ? <ResultAlert result={step.result} /> : null}
 
       <Dialog open={step.kind === 'ready'} onOpenChange={(open) => (open ? null : setStep({ kind: 'idle' }))}>
         <DialogContent>
@@ -137,6 +129,6 @@ export function ConnectWhatsAppBusiness({ capabilities }: { capabilities: WhatsA
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+    </section>
   )
 }

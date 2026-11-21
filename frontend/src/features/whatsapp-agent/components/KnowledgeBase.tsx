@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { AlertCircle, BookOpen, ExternalLink, FileText, HelpCircle, Pencil, Plus, Trash2, Upload } from 'lucide-react'
+import { AlertCircle, ExternalLink, Pencil, Plus, Trash2, Upload } from 'lucide-react'
 import { KNOWLEDGE_DOCUMENT_MAX_BYTES, KNOWLEDGE_DOCUMENT_MIME_TYPES, type EntityId, type KnowledgeDocumentMimeType, type KnowledgeReview } from '@leaseguard/domain'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
 import { FileUpload, formatBytes, TextAreaField, TextField, zodResolver } from '@/components/forms'
-import { ConfirmationDialog, DateDisplay, EmptyState, ErrorState, FormDialog, LoadingState, StatusBadge } from '@/components/shared'
+import { ConfirmationDialog, DateDisplay, EmptyState, ErrorState, FormDialog, LoadingState, SignOff, StatusBadge } from '@/components/shared'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
@@ -34,17 +34,20 @@ const TEXT_KINDS: Readonly<
 
 const ACCEPT = KNOWLEDGE_DOCUMENT_MIME_TYPES.join(',')
 
-/** Draft or approved, and who approved it. */
+/** Draft or approved, and who signed the approval off. */
 function ReviewStatus({ item }: { item: KnowledgeReview }) {
+  const approved = item.status === 'approved'
   return (
-    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-      <StatusBadge status={item.status} label={item.status === 'approved' ? 'Approved' : 'Draft'} />
-      {item.status === 'approved' && item.approvedAt ? (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+      <StatusBadge status={item.status} label={approved ? 'Approved' : 'Draft'} />
+      {approved && item.approvedAt && item.approvedByName ? (
+        <SignOff by={item.approvedByName} at={item.approvedAt} className="text-xs" />
+      ) : approved && item.approvedAt ? (
         <span>
-          Approved{item.approvedByName ? ` by ${item.approvedByName}` : ''} on <DateDisplay value={item.approvedAt} />
+          Approved on <DateDisplay value={item.approvedAt} className="tabular-nums" />
         </span>
-      ) : (
-        <span>Not available to the agent until approved</span>
+      ) : approved ? null : (
+        <SignOff pendingLabel="Not available to the agent until approved" className="text-xs" />
       )}
     </div>
   )
@@ -68,7 +71,7 @@ function ReviewActions({ kind, id, status, label }: { kind: KnowledgeKind; id: E
   return (
     <>
       {status === 'draft' ? (
-        <Button type="button" size="sm" onClick={() => void act('approve')} disabled={review.isPending} aria-label={`Approve ${label}`}>
+        <Button type="button" size="sm" variant="outline" onClick={() => void act('approve')} disabled={review.isPending} aria-label={`Approve ${label}`}>
           Approve
         </Button>
       ) : (
@@ -76,7 +79,7 @@ function ReviewActions({ kind, id, status, label }: { kind: KnowledgeKind; id: E
           Return to draft
         </Button>
       )}
-      <Button type="button" size="sm" variant="ghost" onClick={() => setConfirmDelete(true)} aria-label={`Delete ${label}`}>
+      <Button type="button" size="sm" variant="ghost" onClick={() => setConfirmDelete(true)} aria-label={`Delete ${label}`} title="Delete">
         <Trash2 className="size-4" aria-hidden="true" />
       </Button>
       <ConfirmationDialog
@@ -189,7 +192,7 @@ function TextList({ kind, canEdit }: { kind: KnowledgeTextKind; canEdit: boolean
   return (
     <div className="space-y-4">
       {canEdit ? (
-        <Button type="button" size="sm" onClick={() => setAdding(true)}>
+        <Button type="button" size="sm" variant="outline" onClick={() => setAdding(true)}>
           <Plus className="size-4" aria-hidden="true" />
           {kind === 'faq' ? 'Add FAQ' : 'Add knowledge entry'}
         </Button>
@@ -198,23 +201,23 @@ function TextList({ kind, canEdit }: { kind: KnowledgeTextKind; canEdit: boolean
       {query.isError ? <ErrorState title={`The ${meta.noun}s could not be loaded`} error={query.error} onRetry={() => void query.refetch()} /> : null}
       {items && items.length === 0 ? (
         <EmptyState
-          icon={kind === 'faq' ? HelpCircle : BookOpen}
+          className="py-0"
           title={meta.empty}
           description={kind === 'faq' ? 'Add the questions contacts ask most, with the answers you want the agent to give.' : 'Add facts about your business the agent may share.'}
         />
       ) : null}
       {items && items.length > 0 ? (
-        <ul className="divide-y divide-border rounded-md border border-border" aria-label={kind === 'faq' ? 'FAQs' : 'Knowledge entries'}>
+        <ul className="divide-y divide-border border-y border-border" aria-label={kind === 'faq' ? 'FAQs' : 'Knowledge entries'}>
           {items.map((item) => (
-            <li key={item.id} className="space-y-2 px-4 py-3">
+            <li key={item.id} className="space-y-2 py-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 space-y-1">
-                  <p className="font-medium text-foreground">{item.title}</p>
-                  <p className="text-sm whitespace-pre-line text-muted-foreground">{item.body}</p>
+                  <p className="text-sm font-medium text-balance text-foreground">{item.title}</p>
+                  <p className="max-w-prose text-sm whitespace-pre-line text-foreground">{item.body}</p>
                 </div>
                 {canEdit ? (
                   <div className="flex shrink-0 flex-wrap gap-1">
-                    <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(item)} aria-label={`Edit ${item.title}`}>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(item)} aria-label={`Edit ${item.title}`} title="Edit">
                       <Pencil className="size-4" aria-hidden="true" />
                     </Button>
                     <ReviewActions kind={kind} id={item.id} status={item.status} label={item.title} />
@@ -329,7 +332,7 @@ function DocumentList({ canEdit }: { canEdit: boolean }) {
   return (
     <div className="space-y-4">
       {canEdit ? (
-        <Button type="button" size="sm" onClick={() => setUploading(true)}>
+        <Button type="button" size="sm" variant="outline" onClick={() => setUploading(true)}>
           <Upload className="size-4" aria-hidden="true" />
           Upload document
         </Button>
@@ -337,22 +340,22 @@ function DocumentList({ canEdit }: { canEdit: boolean }) {
       {query.isPending ? <LoadingState label="Loading documents…" rows={2} /> : null}
       {query.isError ? <ErrorState title="The documents could not be loaded" error={query.error} onRetry={() => void query.refetch()} /> : null}
       {query.data && query.data.length === 0 ? (
-        <EmptyState icon={FileText} title="No documents yet" description="Upload brochures or rules the agent may point contacts to once approved." />
+        <EmptyState className="py-0" title="No documents yet" description="Upload brochures or rules the agent may point contacts to once approved." />
       ) : null}
       {query.data && query.data.length > 0 ? (
-        <ul className="divide-y divide-border rounded-md border border-border" aria-label="Documents">
+        <ul className="divide-y divide-border border-y border-border" aria-label="Documents">
           {query.data.map((document) => (
-            <li key={document.id} className="space-y-2 px-4 py-3">
+            <li key={document.id} className="space-y-2 py-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 space-y-1">
-                  <p className="font-medium text-foreground">{document.title}</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm font-medium text-balance text-foreground">{document.title}</p>
+                  <p className="text-sm text-muted-foreground tabular-nums">
                     {document.fileName} · {formatBytes(document.sizeBytes)}
                   </p>
                   {document.description ? <p className="text-sm text-muted-foreground">{document.description}</p> : null}
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-1">
-                  <Button type="button" size="sm" variant="ghost" onClick={() => void open(document.id)} aria-label={`Open ${document.title}`}>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => void open(document.id)} aria-label={`Open ${document.title}`} title="Open">
                     <ExternalLink className="size-4" aria-hidden="true" />
                   </Button>
                   {canEdit ? <ReviewActions kind="document" id={document.id} status={document.status} label={document.title} /> : null}

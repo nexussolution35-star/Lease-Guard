@@ -223,7 +223,7 @@ describe('WhatsAppSetupSummary (dashboard)', () => {
   it('shows company admins the progress and the next step, with a link to the setup', async () => {
     await render(<WhatsAppSetupSummary />)
     const region = await screen.findByRole('region', { name: 'WhatsApp setup' })
-    expect(await within(region).findByText('Next: test message successful.')).toBeInTheDocument()
+    expect(await within(region).findByText('Next step: Guidance for test_message')).toBeInTheDocument()
     expect(within(region).getByRole('link', { name: 'Open the WhatsApp setup' })).toHaveAttribute('href', '/settings/integrations/whatsapp')
   })
 

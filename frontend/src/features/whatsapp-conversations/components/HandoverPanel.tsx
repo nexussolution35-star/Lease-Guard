@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 
 import { SelectField, TextAreaField, zodResolver } from '@/components/forms'
-import { FormDialog } from '@/components/shared'
+import { FormDialog, SignOff } from '@/components/shared'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
@@ -44,43 +44,50 @@ export function HandoverPanel({ conversation }: { conversation: WhatsAppConversa
   }
 
   return (
-    <section aria-labelledby={headingId} className="space-y-2 rounded-md border border-border p-3">
-      <h3 id={headingId} className="text-sm font-medium text-foreground">
+    <section aria-labelledby={headingId} className="space-y-2 border-b border-border px-4 py-3">
+      <h3 id={headingId} className="sr-only">
         Handover
       </h3>
-      {handover ? (
-        <div className="space-y-1 text-sm">
-          <p className="font-medium text-foreground">{handoverStatusText(handover, currentUserId)}</p>
-          <p className="text-muted-foreground">Reason: {handover.reason}</p>
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">No one has taken this conversation over.</p>
-      )}
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        {handover ? (
+          <div className="min-w-0 space-y-1 text-sm">
+            <p className="font-medium text-foreground">{handoverStatusText(handover, currentUserId)}</p>
+            <p className="max-w-prose text-muted-foreground">Reason: {handover.reason}</p>
+            {handover.status === 'accepted' && handover.assignedUserName ? (
+              <SignOff by={handover.assignedUserName} at={handover.acceptedAt} />
+            ) : handover.status === 'accepted' ? null : (
+              <SignOff pendingLabel={handover.assignedUserId ? 'Not accepted yet' : 'Not taken over yet'} at={handover.createdAt} />
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No one has taken this conversation over.</p>
+        )}
+        {canWrite ? (
+          <div className="flex flex-wrap gap-2">
+            {takenByMe || takenByOther ? null : (
+              <Button type="button" size="sm" variant="outline" onClick={() => void takeOver()} disabled={accept.isPending}>
+                <Hand aria-hidden="true" />
+                {handover?.assignedUserId === currentUserId && currentUserId !== null ? 'Accept' : 'Take over'}
+              </Button>
+            )}
+            <Button type="button" size="sm" variant="outline" onClick={() => setDialog('assign')}>
+              <UserPlus aria-hidden="true" />
+              Assign
+            </Button>
+            {handover ? (
+              <Button type="button" size="sm" variant="outline" onClick={() => setDialog('resolve')}>
+                <CheckCircle2 aria-hidden="true" />
+                Resolve
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
       {error ? (
         <Alert variant="destructive">
           <AlertCircle aria-hidden="true" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
-      ) : null}
-      {canWrite ? (
-        <div className="flex flex-wrap gap-2">
-          {takenByMe || takenByOther ? null : (
-            <Button type="button" size="sm" onClick={() => void takeOver()} disabled={accept.isPending}>
-              <Hand aria-hidden="true" />
-              {handover?.assignedUserId === currentUserId && currentUserId !== null ? 'Accept' : 'Take over'}
-            </Button>
-          )}
-          <Button type="button" size="sm" variant="outline" onClick={() => setDialog('assign')}>
-            <UserPlus aria-hidden="true" />
-            Assign
-          </Button>
-          {handover ? (
-            <Button type="button" size="sm" variant="outline" onClick={() => setDialog('resolve')}>
-              <CheckCircle2 aria-hidden="true" />
-              Resolve
-            </Button>
-          ) : null}
-        </div>
       ) : null}
       {canWrite ? (
         <>

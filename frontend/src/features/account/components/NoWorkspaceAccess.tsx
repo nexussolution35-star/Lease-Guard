@@ -1,4 +1,4 @@
-import { LogOut, ShieldOff } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 
 import { EmptyState } from '@/components/shared'
 import { Button } from '@/components/ui/button'
@@ -19,7 +19,7 @@ export function NoWorkspaceAccess({ email, reason, onSignOut }: NoWorkspaceAcces
       : `${who} is not an active member of any company workspace. Ask your company administrator for access, or sign in with another account.`
   return (
     <EmptyState
-      icon={ShieldOff}
+      className="py-0"
       title="No workspace access"
       description={description}
       action={

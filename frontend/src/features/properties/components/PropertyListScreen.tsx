@@ -1,5 +1,5 @@
 import { useNavigate } from '@tanstack/react-router'
-import { Plus } from 'lucide-react'
+import { FileUp, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { PROPERTY_STATUSES, PROPERTY_TYPES, type Property, type PropertyStatus, type PropertyType } from '@leaseguard/domain'
 
@@ -38,7 +38,7 @@ const COLUMNS: DataTableColumn<Property>[] = [
       </AppLink>
     ),
   },
-  { id: 'code', header: 'Code', sortable: true, hideBelow: 'sm', cell: (property) => <span className="font-mono text-xs">{property.code}</span> },
+  { id: 'code', header: 'Code', sortable: true, hideBelow: 'sm', cell: (property) => <span className="tabular-nums">{property.code}</span> },
   { id: 'type', header: 'Type', hideBelow: 'md', cell: (property) => labelFor(property.type) },
   {
     id: 'location',
@@ -95,13 +95,25 @@ export function PropertyListScreen({ params, onParamsChange }: PropertyListScree
   }, [lastPage, params, onParamsChange])
 
   const addButton = isWriter ? (
-    <Button type="button" onClick={() => setAdding(true)}>
-      <Plus aria-hidden="true" />
-      Add property
-    </Button>
+    <>
+      <Button asChild variant="outline">
+        <AppLink to="/properties/import">
+          <FileUp aria-hidden="true" />
+          Import from file
+        </AppLink>
+      </Button>
+      <Button type="button" onClick={() => setAdding(true)}>
+        <Plus aria-hidden="true" />
+        Add property
+      </Button>
+    </>
   ) : null
   const header = (
-    <PageHeader title="Properties" description="Every property in this workspace. Open one to see its units, active leases and the monitoring events that need attention." actions={addButton} />
+    <PageHeader
+      title="Properties"
+      description="Every property in this workspace. Open one to see its units, active leases and the monitoring events that need attention."
+      actions={addButton}
+    />
   )
 
   if (isAwaitingWorkspace(query)) {

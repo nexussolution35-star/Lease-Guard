@@ -1,9 +1,7 @@
-import { Pencil, UserMinus, Users } from 'lucide-react'
 import { useId, useState } from 'react'
 import { toast } from 'sonner'
 
-import { ConfirmationDialog, DataTable, DateDisplay, EmptyState, ErrorState, LoadingState, StatusBadge, type DataTableColumn } from '@/components/shared'
-import { Badge } from '@/components/ui/badge'
+import { ConfirmationDialog, DataTable, DateDisplay, EmptyState, ErrorState, LoadingState, StatusBadge, TooltipInfo, type DataTableColumn } from '@/components/shared'
 import { Button } from '@/components/ui/button'
 import { useCurrentUserId } from '@/features/account/useActiveRole'
 import { describeApiError } from '@/lib/data/apiErrors'
@@ -41,22 +39,22 @@ function MemberActions({
   const actions = role ? memberActions({ id: member.id, role, status: member.status }, { currentUserId, isAdmin, activeAdminCount }) : { canChangeRole: false, canRemove: false }
   const describedBy = actions.reason ? reasonId : undefined
   return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex flex-wrap justify-end gap-2">
-        <Button type="button" variant="outline" size="sm" disabled={!actions.canChangeRole} aria-label={`Change role for ${member.fullName}`} aria-describedby={describedBy} onClick={onChangeRole}>
-          <Pencil aria-hidden="true" />
-          Change role
-        </Button>
-        <Button type="button" variant="outline" size="sm" disabled={!actions.canRemove} aria-label={`Remove ${member.fullName}`} aria-describedby={describedBy} onClick={onRemove}>
-          <UserMinus aria-hidden="true" />
-          Remove
-        </Button>
-      </div>
+    <div className="-mr-2 flex items-center justify-end gap-1">
+      {/* The reason sits in a tooltip so every row is one line high; the hidden copy is what the buttons are described by. */}
       {actions.reason ? (
-        <p id={reasonId} className="max-w-xs text-right text-xs text-muted-foreground">
-          {actions.reason}
-        </p>
+        <>
+          <TooltipInfo content={actions.reason} label={`Why ${member.fullName} cannot be changed or removed`} />
+          <span id={reasonId} className="sr-only">
+            {actions.reason}
+          </span>
+        </>
       ) : null}
+      <Button type="button" variant="ghost" size="sm" disabled={!actions.canChangeRole} aria-label={`Change role for ${member.fullName}`} aria-describedby={describedBy} onClick={onChangeRole}>
+        Change role
+      </Button>
+      <Button type="button" variant="ghost" size="sm" disabled={!actions.canRemove} aria-label={`Remove ${member.fullName}`} aria-describedby={describedBy} onClick={onRemove}>
+        Remove
+      </Button>
     </div>
   )
 }
@@ -98,16 +96,21 @@ export function MembersSection({ isAdmin }: { isAdmin: boolean }) {
       id: 'fullName',
       header: 'Name',
       cell: (member) => (
-        <span className="flex flex-wrap items-center gap-2 font-medium text-foreground">
-          {member.fullName}
-          {sameId(member.id, currentUserId) ? <Badge variant="secondary">You</Badge> : null}
+        // Capped below `sm` so a long address does not push Role out of view.
+        <span className="flex max-w-44 flex-col sm:max-w-none">
+          <span className="flex items-center gap-2 font-medium text-foreground">
+            {member.fullName}
+            {sameId(member.id, currentUserId) ? <span className="text-xs font-normal text-muted-foreground">You</span> : null}
+          </span>
+          <span className="truncate text-xs text-muted-foreground" title={member.email}>
+            {member.email}
+          </span>
         </span>
       ),
     },
-    { id: 'email', header: 'Email', cell: (member) => <span className="break-all">{member.email}</span> },
     { id: 'role', header: 'Role', cell: (member) => labelFor(membershipOf(member)?.role ?? '') },
     { id: 'status', header: 'Status', cell: (member) => <StatusBadge status={member.status} /> },
-    { id: 'joinedAt', header: 'Joined', hideBelow: 'md', cell: (member) => <DateDisplay value={membershipOf(member)?.joinedAt} /> },
+    { id: 'joinedAt', header: 'Joined', hideBelow: 'md', className: 'tabular-nums', cell: (member) => <DateDisplay value={membershipOf(member)?.joinedAt} /> },
   ]
   if (isAdmin) {
     columns.push({
@@ -135,7 +138,7 @@ export function MembersSection({ isAdmin }: { isAdmin: boolean }) {
       ) : query.isError ? (
         <ErrorState title="Could not load the members" error={describeApiError(query.error, 'Try again in a moment.')} onRetry={() => void query.refetch()} />
       ) : query.data.total === 0 ? (
-        <EmptyState icon={Users} title="No members" />
+        <EmptyState title="No members" />
       ) : (
         <DataTable
           caption="Members of this workspace"

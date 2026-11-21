@@ -34,6 +34,41 @@ _Avoid_: Customer, lead
 **Lease**:
 The agreement between a company's landlord client and a tenant for a unit, whose terms must be verified before they drive monitoring.
 
+**Lease terms**:
+The parts of a lease that drive financial monitoring: its tenant, property and unit, dates, rentals and due day, escalation, renewal option, deposit and bank guarantee. Changing any term of a verified lease returns it to pending verification; its reference and notes are not terms.
+
+**Lease document**:
+A PDF kept on a lease as a record (signed lease, addendum, renewal agreement, bank guarantee, deposit receipt, FICA documents or other), with who uploaded it and when; once recorded it is neither replaced nor deleted.
+_Avoid_: Attachment, file
+
+**Portfolio import**:
+A batch made from one CSV or XLSX file a company exported from its own system (or a copy of a Google Sheet read from its link), to add properties with their units, or units of one property, optionally with each unit's tenant from the file's tenant columns; its rows are kept with the original file and nothing is written to properties, units or tenants until the import is approved.
+_Avoid_: Bulk upload, data load, migration
+
+**Column mapping**:
+Which column of a portfolio import's file each LeaseGuard field is read from; suggested from the headings only, changed by a person, and reused for the company's next file with the same headings.
+_Avoid_: Field mapping, schema mapping
+
+**Row result**:
+What checking a portfolio import row against LeaseGuard found: new, matches existing, suggested match (its tenant may be an existing tenant and waits for the manager), conflict (the record exists with other values), invalid, duplicate within the file, or skipped by the manager.
+_Avoid_: Row status, match score
+
+**Suggested tenant match**:
+A tenant in LeaseGuard whose name is like a portfolio import row's tenant but who shares no registration number or account reference with it. Only a suggestion: the manager confirms which tenant it is or rejects it (a new tenant is then created); tenants are never matched or merged on similar names alone.
+_Avoid_: Fuzzy match, probable match, auto-match
+
+**Account reference**:
+A tenant's code in the company's own property-management or accounting system (tenant, debtor or customer code), unique per company; with the registration number, the identifier a portfolio import matches tenants by.
+_Avoid_: Tenant ID, customer number
+
+**Row fix**:
+What a manager changes on a portfolio import row before approval: a corrected value (read instead of the file's cell), a skip (the row is left out), a link to an existing property or unit (nothing new is created for it), or a decision on a suggested tenant match. Kept on the import, never on the live records, and signed off with who made it and when.
+_Avoid_: Override, row edit, exception resolution
+
+**Import approval**:
+A company admin's or property manager's sign-off on a portfolio import that creates its new properties, units and tenants in LeaseGuard, all together or not at all, through the same write path as the property, unit and tenant forms. Rows still blocked (invalid, conflict, duplicate, suggested match) stay out until they are fixed and the import is approved again; records that already exist are never created twice, and approving never enables or sends tenant messaging.
+_Avoid_: Commit, publish, go live, activation
+
 **Statement**:
 A tenant's account statement imported from the property-management system, used for monitoring only.
 _Avoid_: Invoice, bill

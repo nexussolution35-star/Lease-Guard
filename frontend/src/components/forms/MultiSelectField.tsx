@@ -2,7 +2,6 @@ import { useId, useState } from 'react'
 import type { FieldPath, FieldValues } from 'react-hook-form'
 import { Check, ChevronsUpDown, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import {
   Command,
   CommandEmpty,
@@ -19,6 +18,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { inputClassName } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { fieldIdFor } from './fieldId'
@@ -95,24 +95,26 @@ function MultiSelectControl<T extends string>({
         }}
       >
         <PopoverTrigger asChild>
-          <Button
+          <button
             {...slotProps}
             ref={inputRef}
             type="button"
-            variant="outline"
             role="combobox"
             aria-expanded={open}
             aria-labelledby={`${labelId} ${summaryId}`}
             aria-required={required || undefined}
             disabled={disabled}
             className={cn(
-              'w-full justify-between font-normal',
+              inputClassName,
+              'flex items-center justify-between gap-2 text-left',
               selectedOptions.length === 0 && 'text-muted-foreground',
             )}
           >
-            <span id={summaryId}>{summary}</span>
-            <ChevronsUpDown className="size-4 opacity-50" aria-hidden="true" />
-          </Button>
+            <span id={summaryId} className="truncate">
+              {summary}
+            </span>
+            <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          </button>
         </PopoverTrigger>
         <PopoverContent className="w-(--radix-popover-trigger-width) min-w-56 p-0" align="start">
           <Command>
@@ -160,7 +162,7 @@ function MultiSelectControl<T extends string>({
                     type="button"
                     onClick={() => toggle(option.value)}
                     aria-label={`Remove ${option.label}`}
-                    className="rounded-full p-0.5 outline-none hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    className="rounded-sm p-0.5 outline-none hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   >
                     <X className="size-3" aria-hidden="true" />
                   </button>

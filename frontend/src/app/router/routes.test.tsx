@@ -198,7 +198,7 @@ describe('settings (module 1)', () => {
     for (const path of ['/settings/company', '/settings/notifications', '/settings/roles', '/settings/audit', '/settings/users']) {
       const view = await renderApp(path)
       await screen.findByRole('heading', { level: 1 })
-      expect(screen.queryByText('Screen coming in the next stage')).not.toBeInTheDocument()
+      expect(screen.queryByText('Not available yet.')).not.toBeInTheDocument()
       view.unmount()
     }
   })

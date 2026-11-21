@@ -37,7 +37,8 @@ function ScrollBar({
       data-slot="scroll-area-scrollbar"
       orientation={orientation}
       className={cn(
-        "flex touch-none p-px transition-colors select-none",
+        // Scrollbars are always hidden (owner rule): the area still scrolls by wheel, touch and keyboard.
+        "hidden",
         orientation === "vertical" &&
           "h-full w-2.5 border-l border-l-transparent",
         orientation === "horizontal" &&

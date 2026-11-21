@@ -61,7 +61,7 @@ export function AccountMenu({ className }: AccountMenuProps) {
           )}
         >
           <Avatar className="size-8">
-            <AvatarFallback className="text-xs font-semibold">{initialsOf(name)}</AvatarFallback>
+            <AvatarFallback className="border border-border bg-background text-xs font-semibold text-foreground">{initialsOf(name)}</AvatarFallback>
           </Avatar>
           <span className="hidden max-w-40 min-w-0 lg:block">
             <span className="block truncate text-sm font-medium">{name}</span>

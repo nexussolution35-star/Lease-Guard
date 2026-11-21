@@ -199,16 +199,18 @@ describe('PropertyListScreen', () => {
     expect(fakeSource.list).not.toHaveBeenCalled()
   })
 
-  it('offers "Add property" to company admins and property managers only', async () => {
+  it('offers "Add property" and "Import from file" to company admins and property managers only', async () => {
     fakeSource.list.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 25 })
     const reader = await renderScreen()
     expect(await screen.findByText('No properties yet')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Add property' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Import from file' })).not.toBeInTheDocument()
     reader.unmount()
 
     viewer.writer = true
     await renderScreen()
     expect(await screen.findByText('Add the first property of this workspace.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Import from file' })).toHaveAttribute('href', '/properties/import')
     await userEvent.click(screen.getByRole('button', { name: 'Add property' }))
     expect(await screen.findByRole('dialog', { name: 'Add property' })).toBeInTheDocument()
   })

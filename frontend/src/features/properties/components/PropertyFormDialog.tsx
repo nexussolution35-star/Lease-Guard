@@ -134,7 +134,7 @@ export function PropertyFormDialog({ open, onOpenChange, property, onSaved }: Pr
             <AlertDescription>{rootError}</AlertDescription>
           </Alert>
         ) : null}
-        <div className="space-y-6">
+        <div className="space-y-6 pt-2">
           <FormSection title="Name, type and size">
             <TextField control={form.control} name="name" label="Name" maxLength={200} required className="sm:col-span-2" />
             <TextField
