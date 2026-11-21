@@ -5,7 +5,6 @@ import {
   depositCoverage,
   escalationRatePercent,
   escalationSchedule,
-  formatSADate,
   formatZAR,
   guaranteeCoverage,
   guaranteeExpiryStatus,
@@ -61,6 +60,7 @@ import { useLeaseDocuments, useLeaseQuery, useVerifyLease } from '../api/queries
 import { LeaseFormDialog } from './LeaseFormDialog'
 import { LeaseDocuments } from './LeaseDocuments'
 import { LeaseTermBars } from './LeaseTermBars'
+import { useDateFormatter } from '@/lib/dateFormat'
 
 export interface LeaseDetailScreenProps {
   lease: Lease
@@ -84,8 +84,8 @@ const RENEWAL_DEADLINE_TEXT: Readonly<Record<RenewalDeadlineStatus, { label: str
 const interval = (escalation: LeaseEscalation) => (escalation.frequency === 'biennial' ? 'every two years' : 'every year')
 
 /** The escalation clause in words. The rate comes from `escalationRatePercent`, never worked out here. */
-function describeEscalation(escalation: LeaseEscalation): string {
-  const from = `from ${formatSADate(escalation.firstEscalationDate)}`
+function describeEscalation(escalation: LeaseEscalation, formatDate: (iso: string) => string): string {
+  const from = `from ${formatDate(escalation.firstEscalationDate)}`
   switch (escalation.type) {
     case 'percentage':
       return `${MONTHS.format(escalationRatePercent(escalation))}% ${interval(escalation)} ${from}`
@@ -165,6 +165,7 @@ function CoverageItems({ coverage, heldLabel }: { coverage: Coverage; heldLabel:
  * rail. Every calculation comes from `@leaseguard/domain`; verification is recorded by the API and the database.
  */
 export function LeaseDetailScreen({ lease }: LeaseDetailScreenProps) {
+  const { date: formatDate } = useDateFormatter()
   const isWriter = useIsCompanyWriter()
   const [confirming, setConfirming] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -305,8 +306,8 @@ export function LeaseDetailScreen({ lease }: LeaseDetailScreenProps) {
           />
           <MetricCard
             label={expiryDays < 0 ? 'Expired' : 'Days to expiry'}
-            value={<span className="tabular-nums">{expiryDays < 0 ? formatSADate(lease.expiryDate) : expiryDays}</span>}
-            {...(expiryDays < 0 ? {} : { description: formatSADate(lease.expiryDate) })}
+            value={<span className="tabular-nums">{expiryDays < 0 ? formatDate(lease.expiryDate) : expiryDays}</span>}
+            {...(expiryDays < 0 ? {} : { description: formatDate(lease.expiryDate) })}
           />
           <MetricCard
             label="Open monitoring events"
@@ -389,7 +390,7 @@ export function LeaseDetailScreen({ lease }: LeaseDetailScreenProps) {
                       <StatusDot tone={deadlineText.tone}>
                         {deadlineText.label}
                         {lease.renewalOption.exercised && lease.renewalOption.exercisedOn ? (
-                          <span className="text-muted-foreground tabular-nums"> · {formatSADate(lease.renewalOption.exercisedOn)}</span>
+                          <span className="text-muted-foreground tabular-nums"> · {formatDate(lease.renewalOption.exercisedOn)}</span>
                         ) : null}
                       </StatusDot>
                     }
@@ -401,7 +402,7 @@ export function LeaseDetailScreen({ lease }: LeaseDetailScreenProps) {
           </section>
 
           <section aria-label="Escalation schedule" className="space-y-3">
-            <SectionHeader title="Escalation schedule" description={describeEscalation(lease.escalation)} />
+            <SectionHeader title="Escalation schedule" description={describeEscalation(lease.escalation, formatDate)} />
             <DataTable caption={`Escalation schedule of ${lease.reference}`} columns={SCHEDULE_COLUMNS} rows={schedule} getRowId={(row) => String(row.step)} />
           </section>
 

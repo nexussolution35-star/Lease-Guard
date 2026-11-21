@@ -69,11 +69,12 @@ export class MonitoringController {
     description:
       'Moves follow the event workflow (new → under review → action required → in progress → resolved; ' +
       'any open status → dismissed). Dismissing requires a note (the reason). Who resolved or dismissed the ' +
-      'event, and when, is recorded by the database from the caller, and every status change is audited.',
+      'event, and when, is recorded by the database from the caller, and every status change is audited with its note. ' +
+      'The database applies the workflow (update_monitoring_event_status); signed-in users cannot update events directly.',
   })
   @ApiOkResponse({ type: MonitoringEventListItemDto })
   @ApiNotFoundResponse({ type: ApiErrorDto })
-  @ApiConflictResponse({ type: ApiErrorDto, description: 'The workflow does not allow this move, or the event changed meanwhile' })
+  @ApiConflictResponse({ type: ApiErrorDto, description: 'The workflow does not allow this move from the event\'s current status' })
   @ApiUnprocessableEntityResponse({ type: ApiErrorDto, description: 'The change breaks a data integrity rule' })
   updateStatus(
     @UserDb() db: DbClient,

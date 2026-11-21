@@ -5,8 +5,13 @@ import {
   compareISODate,
   daysBetween,
   endOfMonthISO,
+  DATE_DISPLAY_FORMATS,
+  DEFAULT_DATE_DISPLAY_FORMAT,
+  formatDisplayDate,
+  formatDisplayDateTime,
   formatSADate,
   formatSADateTime,
+  isDateDisplayFormat,
   isValidISODate,
   isWithinISO,
   isoToday,
@@ -33,6 +38,30 @@ describe('formatSADateTime', () => {
   it('uses the wall clock as written', () => {
     expect(formatSADateTime('2026-11-06T08:30:00+02:00')).toBe('06 Nov 2026, 08:30')
     expect(formatSADateTime('2026-11-06T17:05:00+02:00', 'numeric')).toBe('06/11/2026, 17:05')
+  })
+})
+
+describe('formatDisplayDate', () => {
+  it('formats a date in each of the six display formats', () => {
+    const shown = DATE_DISPLAY_FORMATS.map((displayFormat) => formatDisplayDate('2026-11-06', displayFormat))
+    expect(shown).toEqual(['06 Nov 2026', '6 November 2026', '06/11/2026', '2026/11/06', 'Nov 6, 2026', '2026-11-06'])
+  })
+
+  it('defaults to the South African short format, the same as formatSADate', () => {
+    expect(DEFAULT_DATE_DISPLAY_FORMAT).toBe('dd-mmm-yyyy')
+    expect(formatDisplayDate('2026-11-21')).toBe(formatSADate('2026-11-21'))
+  })
+
+  it('formats a timestamp with its wall clock as written', () => {
+    expect(formatDisplayDateTime('2026-11-06T08:30:00+02:00', 'yyyy-mm-dd')).toBe('2026-11-06, 08:30')
+    expect(formatDisplayDateTime('2026-11-06T08:30:00+02:00')).toBe('06 Nov 2026, 08:30')
+    expect(() => formatDisplayDateTime('2026-11-06')).toThrow()
+  })
+
+  it('recognises only the six formats', () => {
+    expect(isDateDisplayFormat('mmm-d-yyyy')).toBe(true)
+    expect(isDateDisplayFormat('toString')).toBe(false)
+    expect(isDateDisplayFormat(null)).toBe(false)
   })
 })
 

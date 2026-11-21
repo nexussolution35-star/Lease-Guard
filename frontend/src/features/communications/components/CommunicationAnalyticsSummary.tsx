@@ -1,4 +1,4 @@
-import { formatCount, formatSADate, shareOf, type CommunicationAnalytics } from '@leaseguard/domain'
+import { formatCount, shareOf, type CommunicationAnalytics } from '@leaseguard/domain'
 
 import { AppLink, ErrorState, SectionHeader } from '@/components/shared'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -7,6 +7,7 @@ import { isAwaitingWorkspace } from '@/lib/data/queries'
 import { cn } from '@/lib/utils'
 
 import { useCommunicationAnalytics } from '../api/queries'
+import { useDateFormatter } from '@/lib/dateFormat'
 
 const DEFAULT_RANGE = {}
 
@@ -29,6 +30,7 @@ function cellsOf(figures: CommunicationAnalytics, delivered: number | undefined)
 
 /** The dashboard's summary of the workspace's WhatsApp activity over the last 30 days, for every member. */
 export function CommunicationAnalyticsSummary() {
+  const { date: formatDate } = useDateFormatter()
   const query = useCommunicationAnalytics(DEFAULT_RANGE)
   if (isAwaitingWorkspace(query)) return null
   const figures = query.data
@@ -38,7 +40,7 @@ export function CommunicationAnalyticsSummary() {
     <section aria-label="WhatsApp activity" className="space-y-3">
       <SectionHeader
         title="WhatsApp activity"
-        description={figures ? `${formatSADate(figures.from)} to ${formatSADate(figures.to)}` : 'The last 30 days'}
+        description={figures ? `${formatDate(figures.from)} to ${formatDate(figures.to)}` : 'The last 30 days'}
         actions={
           <AppLink to="/communications/analytics" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
             Open communication analytics

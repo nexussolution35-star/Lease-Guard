@@ -1,5 +1,5 @@
-import { formatSADateTime } from '@leaseguard/domain'
 import { initialsOf } from '@/components/layout/initials'
+import { useDateFormatter, type DateFormatter } from '@/lib/dateFormat'
 import { TONE_CLASSES } from '@/lib/labels'
 import { cn } from '@/lib/utils'
 import type { ISODateTime } from '@leaseguard/domain'
@@ -14,11 +14,11 @@ export interface VerificationBadgeProps {
   className?: string
 }
 
-function describe(verifiedAt?: ISODateTime, verifiedBy?: string): string | undefined {
+function describe(formatDateTime: DateFormatter['dateTime'], verifiedAt?: ISODateTime, verifiedBy?: string): string | undefined {
   const parts: string[] = []
   if (verifiedAt) {
     try {
-      parts.push(formatSADateTime(verifiedAt))
+      parts.push(formatDateTime(verifiedAt))
     } catch {
       parts.push(verifiedAt)
     }
@@ -33,6 +33,7 @@ function describe(verifiedAt?: ISODateTime, verifiedBy?: string): string | undef
  * record still waiting on a person's sign-off carries (see `SignOff`).
  */
 export function VerificationBadge({ verified, verifiedAt, verifiedBy, className }: VerificationBadgeProps) {
+  const { dateTime: formatDateTime } = useDateFormatter()
   if (!verified) {
     return (
       <span className={cn(STATUS_TEXT_CLASSES, className)}>
@@ -60,7 +61,7 @@ export function VerificationBadge({ verified, verifiedAt, verifiedBy, className 
       ) : (
         <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-success" />
       )}
-      <span data-tone="success" title={describe(verifiedAt, verifiedBy)} className={TONE_CLASSES.success}>
+      <span data-tone="success" title={describe(formatDateTime, verifiedAt, verifiedBy)} className={TONE_CLASSES.success}>
         Verified
       </span>
     </span>

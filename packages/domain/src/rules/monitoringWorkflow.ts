@@ -13,7 +13,11 @@ export const OPEN_EVENT_STATUSES: readonly MonitoringEventStatus[] = ['new', 'un
 /** Final statuses: an event in one of these never moves again and is never raised again. */
 export const TERMINAL_EVENT_STATUSES: readonly MonitoringEventStatus[] = ['resolved', 'dismissed']
 
-/** Forward workflow; `dismissed` is also reachable from any non-terminal status. */
+/**
+ * Forward workflow; `dismissed` is also reachable from any non-terminal status. The database enforces the same moves
+ * (`private.monitoring_event_transition_allowed`, migration 20261122010000_monitoring_event_status_workflow.sql): change
+ * both together; `tests/integration/monitoring.test.ts` compares them.
+ */
 export const EVENT_TRANSITIONS: Readonly<Record<MonitoringEventStatus, readonly MonitoringEventStatus[]>> = {
   new: ['under_review', 'dismissed'],
   under_review: ['action_required', 'dismissed'],

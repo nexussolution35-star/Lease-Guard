@@ -46,6 +46,34 @@
   }
 }
 
+/*
+ * Motion follows Settings → Preferences: `<html data-motion="reduce">` reduces it whatever the device says,
+ * `data-motion="full"` keeps it even when the device asks for less, and no attribute follows
+ * `prefers-reduced-motion`. Redefining the built-in variants makes every `motion-reduce:` and `motion-safe:`
+ * class in the app follow the choice without per-component code.
+ */
+@custom-variant motion-reduce {
+  &:where([data-motion="reduce"], [data-motion="reduce"] *) {
+    @slot;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &:where(:root:not([data-motion="full"]), :root:not([data-motion="full"]) *) {
+      @slot;
+    }
+  }
+}
+
+@custom-variant motion-safe {
+  &:where([data-motion="full"], [data-motion="full"] *) {
+    @slot;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    &:where(:root:not([data-motion="reduce"]), :root:not([data-motion="reduce"]) *) {
+      @slot;
+    }
+  }
+}
+
 /* Semantic design tokens. Components must reference these, never raw palette values. */
 :root {
   --background: oklch(1 0 0);
@@ -156,14 +184,20 @@
    * Reduced motion is handled per component (no global 0.01ms override): overlays keep their fade and drop
    * slides and zooms (`motion-safe:` in components/ui), the sidebar width and page padding carry
    * `motion-reduce:transition-none`, and colour feedback stays. Spinners slow down rather than stop, so
-   * work in progress still reads as busy; the skeleton pulse stops.
+   * work in progress still reads as busy; the skeleton pulse stops. Reduced means the Preferences choice
+   * (`data-motion`) or, with no choice, the device setting.
    */
+  :root[data-motion="reduce"] {
+    --animate-spin: spin 2.5s linear infinite;
+    --animate-pulse: none;
+  }
+  :root[data-motion="reduce"], :root[data-motion="reduce"] * { scroll-behavior: auto !important; }
   @media (prefers-reduced-motion: reduce) {
-    :root {
+    :root:not([data-motion="full"]) {
       --animate-spin: spin 2.5s linear infinite;
       --animate-pulse: none;
     }
-    *, ::before, ::after { scroll-behavior: auto !important; }
+    :root:not([data-motion="full"]), :root:not([data-motion="full"]) * { scroll-behavior: auto !important; }
   }
   body {
     background-color: var(--background);

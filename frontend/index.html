@@ -6,10 +6,12 @@
     <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
-    <!-- Apply a stored Light/Dark choice before first paint; initTheme() in main.tsx re-applies it and syncs theme-color. -->
+    <!-- Apply stored Light/Dark and motion choices before first paint; initTheme() and initMotion() in main.tsx re-apply them. -->
     <script>
       (function () {
         try {
+          var motion = localStorage.getItem('leaseguard.motion')
+          if (motion === 'reduce' || motion === 'full') document.documentElement.dataset.motion = motion
           var theme = localStorage.getItem('leaseguard.theme')
           if (theme !== 'light' && theme !== 'dark') return
           document.documentElement.dataset.theme = theme

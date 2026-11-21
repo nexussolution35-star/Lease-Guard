@@ -1,5 +1,4 @@
 import {
-  formatSADate,
   leaseChoiceProblem,
   leaseInForceOn,
   statementDateForMatching,
@@ -25,6 +24,7 @@ import { MAX_LIST_PAGE_SIZE } from '@/lib/data/listParams'
 import { labelFor } from '@/lib/labels'
 
 import { useSetStatementMatch } from '../../api/queries'
+import { useDateFormatter } from '@/lib/dateFormat'
 
 /** The lease option that lets the API choose the lease in force on the statement date. */
 const IN_FORCE = 'in-force'
@@ -133,6 +133,7 @@ function CurrentMatch({ statement }: { statement: Statement }) {
 }
 
 function MatchForm({ statement, extraction, defaults }: { statement: Statement; extraction: StatementExtraction | null; defaults: MatchValues }) {
+  const { date: formatDate } = useDateFormatter()
   const setMatch = useSetStatementMatch(statement.id)
   const form = useForm<MatchValues>({ resolver: zodResolver(matchSchema), defaultValues: defaults })
   const [unitId, tenantId, leaseId] = useWatch({ control: form.control, name: ['unitId', 'tenantId', 'leaseId'] })
@@ -149,7 +150,7 @@ function MatchForm({ statement, extraction, defaults }: { statement: Statement; 
     { value: IN_FORCE, label: 'The lease in force on the statement date' },
     ...candidates.map((lease) => ({
       value: lease.id,
-      label: `${lease.reference} · ${formatSADate(lease.commencementDate)} – ${formatSADate(lease.expiryDate)} · ${labelFor(lease.status)}`,
+      label: `${lease.reference} · ${formatDate(lease.commencementDate)} – ${formatDate(lease.expiryDate)} · ${labelFor(lease.status)}`,
     })),
   ]
 
@@ -159,7 +160,7 @@ function MatchForm({ statement, extraction, defaults }: { statement: Statement; 
     unitId === '' || tenantId === '' || leases.isPending
       ? undefined
       : choice.kind === 'found' && date !== undefined
-        ? `In force on ${formatSADate(date)}: ${choice.lease.reference}.`
+        ? `In force on ${formatDate(date)}: ${choice.lease.reference}.`
         : (leaseChoiceProblem(choice) ?? undefined)
   const noteForLease = leaseId === IN_FORCE ? inForceNote : undefined
 

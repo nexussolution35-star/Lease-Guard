@@ -1,12 +1,14 @@
-import { daysBetween, formatSADate, formatSADateTime, isoToday } from '@leaseguard/domain'
+import { daysBetween, isoToday } from '@leaseguard/domain'
+import { useDateFormatter, type DateFormatter } from '@/lib/dateFormat'
 import { cn } from '@/lib/utils'
 import type { ISODate, ISODateTime } from '@leaseguard/domain'
 
-export type DateDisplayStyle = 'short' | 'long' | 'numeric' | 'datetime' | 'relative'
+/** `date` and `datetime` follow the display format chosen in Settings → Preferences. */
+export type DateDisplayStyle = 'date' | 'datetime' | 'relative'
 
 export interface DateDisplayProps {
   value: ISODate | ISODateTime | null | undefined
-  /** Default `short` → `06 Nov 2026`. */
+  /** Default `date` → `06 Nov 2026` in the default format. */
   style?: DateDisplayStyle
   /** Reference date for `relative`. Defaults to the current local date. */
   today?: ISODate
@@ -20,25 +22,26 @@ function relativeLabel(days: number): string {
   return days > 0 ? `in ${days} days` : `${Math.abs(days)} days ago`
 }
 
-function formatValue(value: string, style: DateDisplayStyle, today: ISODate | undefined): { text: string; title?: string } {
+function formatValue(value: string, style: DateDisplayStyle, today: ISODate | undefined, formatter: DateFormatter): { text: string; title?: string } {
   const datePart = value.slice(0, 10)
   const hasTime = value.length > 10 && value.includes('T')
   switch (style) {
     case 'datetime':
-      return { text: hasTime ? formatSADateTime(value) : formatSADate(datePart) }
+      return { text: hasTime ? formatter.dateTime(value) : formatter.date(datePart) }
     case 'relative': {
       const reference = today ?? isoToday(new Date())
       return {
         text: relativeLabel(daysBetween(reference, datePart)),
-        title: hasTime ? formatSADateTime(value) : formatSADate(datePart),
+        title: hasTime ? formatter.dateTime(value) : formatter.date(datePart),
       }
     }
     default:
-      return { text: formatSADate(datePart, style) }
+      return { text: formatter.date(datePart) }
   }
 }
 
-export function DateDisplay({ value, style = 'short', today, className }: DateDisplayProps) {
+export function DateDisplay({ value, style = 'date', today, className }: DateDisplayProps) {
+  const formatter = useDateFormatter()
   if (!value) {
     return (
       <span className={cn('text-muted-foreground', className)}>
@@ -50,7 +53,7 @@ export function DateDisplay({ value, style = 'short', today, className }: DateDi
 
   let formatted: { text: string; title?: string }
   try {
-    formatted = formatValue(value, style, today)
+    formatted = formatValue(value, style, today, formatter)
   } catch {
     formatted = { text: value }
   }

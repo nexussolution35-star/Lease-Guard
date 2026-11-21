@@ -7425,6 +7425,16 @@
             }
           },
           {
+            "name": "arrangementId",
+            "required": false,
+            "in": "query",
+            "description": "Events about one payment arrangement",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
             "name": "assignee",
             "required": false,
             "in": "query",
@@ -7598,7 +7608,7 @@
     },
     "/api/v1/monitoring/events/{eventId}/status": {
       "patch": {
-        "description": "Moves follow the event workflow (new → under review → action required → in progress → resolved; any open status → dismissed). Dismissing requires a note (the reason). Who resolved or dismissed the event, and when, is recorded by the database from the caller, and every status change is audited.",
+        "description": "Moves follow the event workflow (new → under review → action required → in progress → resolved; any open status → dismissed). Dismissing requires a note (the reason). Who resolved or dismissed the event, and when, is recorded by the database from the caller, and every status change is audited with its note. The database applies the workflow (update_monitoring_event_status); signed-in users cannot update events directly.",
         "operationId": "updateMonitoringEventStatus",
         "parameters": [
           {
@@ -7672,7 +7682,7 @@
             }
           },
           "409": {
-            "description": "The workflow does not allow this move, or the event changed meanwhile",
+            "description": "The workflow does not allow this move from the event's current status",
             "content": {
               "application/json": {
                 "schema": {

@@ -1,6 +1,5 @@
-import { ConflictException, Injectable } from '@nestjs/common'
+import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common'
 import {
-  canTransition,
   dueWindowRange,
   OPEN_EVENT_STATUSES,
   TERMINAL_EVENT_STATUSES,
@@ -9,10 +8,9 @@ import {
   type MonitoringEventListItem,
 } from '@leaseguard/domain'
 
-import { httpErrorFromDatabase, unwrapDatabase } from '../../common/http/database-errors'
+import { httpErrorFromDatabase, unwrapDatabase, type DatabaseErrorOverrides } from '../../common/http/database-errors'
 import { emptyPageWithTotal, isPageOutOfRange, rangeFor, searchFilter, toPage, type Page } from '../../common/http/pagination'
 import { saToday } from '../../common/sa-today'
-import type { TablesUpdate } from '../../infrastructure/database/database.types'
 import type { DbClient } from '../../infrastructure/database/rls-client.factory'
 import { toMonitoringEvent, type MonitoringEventRow } from './monitoring.mapper'
 import {
@@ -22,6 +20,13 @@ import {
 } from './monitoring.schemas'
 
 const SEARCH_COLUMNS = ['title', 'description', 'lease_reference'] as const
+
+/** What `update_monitoring_event_status` refuses with: a move the workflow does not allow, a bad note, another company's event. */
+const STATUS_ERRORS: DatabaseErrorOverrides = {
+  P0001: (error) => new ConflictException(error.message),
+  '22023': (error) => new UnprocessableEntityException(error.message),
+  P0002: (error) => new NotFoundException(error.message),
+}
 
 /**
  * A list row also names its property and, when set, its unit, tenant and assignee (to-one embeds over the composite
@@ -50,8 +55,9 @@ export function toMonitoringEventListItem({ property, unit, tenant, assignee, ..
 
 /**
  * Monitoring events of one company. Queries run through the caller's RLS-bound client and filter by
- * company explicitly. Who changed a status, and when, is stamped and audited by database triggers
- * (private.stamp_event_status / audit_event_status), so the actor cannot be forged by the client.
+ * company explicitly. A status change goes through the database function `update_monitoring_event_status`
+ * (signed-in users cannot update the table); who changed it, and when, is stamped and audited by database
+ * triggers (private.stamp_event_status / audit_event_status), so the actor cannot be forged by the client.
  */
 @Injectable()
 export class MonitoringService {
@@ -73,6 +79,7 @@ export class MonitoringService {
       if (query.unitId) request = request.eq('unit_id', query.unitId)
       if (query.tenantId) request = request.eq('tenant_id', query.tenantId)
       if (query.leaseId) request = request.eq('lease_id', query.leaseId)
+      if (query.arrangementId) request = request.eq('arrangement_id', query.arrangementId)
       if (query.assignee === UNASSIGNED_FILTER) request = request.is('assigned_to_user_id', null)
       else if (query.assignee) request = request.eq('assigned_to_user_id', query.assignee)
       if (due?.from) request = request.gte('due_date', due.from)
@@ -106,8 +113,10 @@ export class MonitoringService {
   }
 
   /**
-   * Moves an event to another status. Dismissing records the note as the reason; any other status
-   * records it as resolution notes. Triggers stamp resolved/dismissed by and at from the caller.
+   * Moves an event to another status through `public.update_monitoring_event_status`, the only write path for a
+   * signed-in caller. The database locks the event and allows exactly the domain workflow (`EVENT_TRANSITIONS`, 409
+   * otherwise); dismissing records the note as the reason (required), any other status as resolution notes. Triggers
+   * stamp resolved/dismissed by and at from the caller and audit the change with the note.
    */
   async updateStatus(
     db: DbClient,
@@ -115,27 +124,16 @@ export class MonitoringService {
     eventId: EntityId,
     body: UpdateMonitoringEventStatusBody,
   ): Promise<MonitoringEventListItem> {
-    // The workflow rule (domain canTransition) decides which moves are allowed.
-    const current = await this.get(db, companyId, eventId)
-    if (!canTransition(current.status, body.status)) {
-      throw new ConflictException(`An event cannot move from "${current.status}" to "${body.status}"`)
-    }
-
-    const patch: TablesUpdate<'monitoring_events'> = { status: body.status }
-    if (body.status === 'dismissed') patch.dismissal_reason = body.note ?? null
-    else if (body.note !== undefined) patch.resolution_notes = body.note
-
-    // Only update from the status that was checked, so two concurrent changes cannot both apply.
-    const { data, error } = await db
-      .from('monitoring_events')
-      .update(patch)
-      .eq('company_id', companyId)
-      .eq('id', eventId)
-      .eq('status', current.status)
-      .select(MONITORING_EVENT_LIST_SELECT)
-      .maybeSingle()
-    if (error) throw httpErrorFromDatabase(error, 'Update monitoring event status')
-    if (!data) throw new ConflictException('The event was changed by someone else; reload it and try again')
-    return toMonitoringEventListItem(data)
+    unwrapDatabase(
+      await db.rpc('update_monitoring_event_status', {
+        p_company_id: companyId,
+        p_event_id: eventId,
+        p_status: body.status,
+        ...(body.note === undefined ? {} : { p_note: body.note }),
+      }),
+      'Update monitoring event status',
+      STATUS_ERRORS,
+    )
+    return this.get(db, companyId, eventId)
   }
 }

@@ -179,6 +179,14 @@ composite keys, archived property, who holds the unit), who and when are stamped
 and unassign is audited. An assignment never enables tenant messaging or monitoring: nothing it writes reaches
 `communications` or `monitoring_events`, and monitoring still reads verified leases only.
 
+Monitoring event status changes have one write path for a signed-in caller: `update_monitoring_event_status`
+(`SECURITY DEFINER`, `search_path = ''`, `can_write` checked first, 42501 otherwise;
+`20261122010000_monitoring_event_status_workflow.sql`). Signed-in callers hold no UPDATE on `monitoring_events` (no
+column grant and no update policy), so a property manager cannot move an event backwards, reopen a resolved or
+dismissed event, wipe a dismissal reason or rewrite its description or calculation through the Data API. The function
+allows only the domain workflow (`EVENT_TRANSITIONS`), requires a reason to dismiss, and every change is stamped and
+audited with its note by the existing triggers. Background jobs write events with the service role, unaffected.
+
 Message templates (ticket SG-01) have one write path: `set_message_type_template` (`SECURITY DEFINER`, `search_path = ''`, company admins only, 42501 otherwise). Signed-in callers hold only SELECT on `message_templates` and `message_type_templates`, so a property manager can no longer write a template directly. The rules hold for every role in the database: a tenant message type takes only an approved Utility template, a template body never carries banking details (LeaseGuard never collects payments) and a tenant template never mentions escalation, lease expiry, renewal, dispute, guarantee or deposit (`private.guard_message_template`, 23514); every change of mapping is audited. The API never calls Meta to sync: it queues `whatsapp-template-sync` and only the worker reads the business token. Choosing a template sends nothing; tenant messages still need a property manager's approval and the outbound gate still refuses a template Meta has not approved.
 
 A Google Sheets import (ticket I-06) is the API's only outbound fetch on a person's behalf, and it is not a

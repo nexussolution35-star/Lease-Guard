@@ -50,9 +50,15 @@ export function LeaseVerificationPanel({ lease, onVerified, className }: LeaseVe
 - Business rules (money maths, escalation, expiry, renewal deadlines, guarantee coverage, arrears
   ageing, reminder suppression, duplicate detection, communication eligibility, status transitions)
   live in `@leaseguard/domain`. Components call them and render the result.
-- Format through `CurrencyDisplay` / `DateDisplay`, or `formatZAR` / `formatSADate` from
-  `@leaseguard/domain` when a string is required. Never call `toLocaleString` for money or dates
-  directly.
+- Format through `CurrencyDisplay` / `DateDisplay`, or `formatZAR` from `@leaseguard/domain` and
+  `useDateFormatter()` from `@/lib/dateFormat` when a string is required (captions, toasts, select labels,
+  screen-reader text). Every displayed date goes through that one formatter, in the format chosen in
+  Settings → Preferences; never call `formatSADate`, `toLocaleString` or date-fns `format` for a displayed
+  date in a component. `formatSADate` (en-ZA) stays for what the backend and domain write: tenant messages,
+  audit summaries and validation messages.
+- Motion follows Settings → Preferences through the `motion-reduce:` / `motion-safe:` variants, redefined in
+  `styles/globals.css` to honour `<html data-motion="reduce|full">` before `prefers-reduced-motion`. Use those
+  variants; motion started from script asks `isMotionReduced()` from `@/lib/motion`, never `matchMedia`.
 - Labels and enum display names come from `@/lib/labels`. Add new labels there, not inline.
 
 ## States

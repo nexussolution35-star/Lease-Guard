@@ -1,9 +1,9 @@
-import { formatSADate } from '@leaseguard/domain'
 import type { ISODate } from '@leaseguard/domain'
 
 import { cn } from '@/lib/utils'
 
 import { leaseTermScale, type TermLease } from '../leaseTermScale'
+import { useDateFormatter } from '@/lib/dateFormat'
 
 export interface LeaseTermBarsProps {
   leases: readonly TermLease[]
@@ -16,6 +16,7 @@ export interface LeaseTermBarsProps {
  * renewal notice, and a hairline marks today. The figures beside each bar carry the same facts as text.
  */
 export function LeaseTermBars({ leases, today, className }: LeaseTermBarsProps) {
+  const { date: formatDate } = useDateFormatter()
   const scale = leaseTermScale(leases, today)
   if (!scale) return null
   const hasNotice = scale.bars.some((bar) => bar.notice)
@@ -33,8 +34,8 @@ export function LeaseTermBars({ leases, today, className }: LeaseTermBarsProps) 
               {scale.today === null ? null : <span className="absolute -top-0.5 h-6 w-px bg-foreground/60" style={{ left: `${scale.today}%` }} />}
             </span>
             <span className="col-start-2 text-xs text-muted-foreground tabular-nums sm:col-start-3 sm:text-right sm:text-sm">
-              {formatSADate(lease.commencementDate)} – {formatSADate(lease.expiryDate)}
-              {notice ? <span className="sr-only">. Renewal notice by {formatSADate(notice.date)}</span> : null}
+              {formatDate(lease.commencementDate)} – {formatDate(lease.expiryDate)}
+              {notice ? <span className="sr-only">. Renewal notice by {formatDate(notice.date)}</span> : null}
             </span>
           </li>
         ))}
@@ -63,7 +64,7 @@ export function LeaseTermBars({ leases, today, className }: LeaseTermBarsProps) 
         {scale.today === null ? null : (
           <span className="inline-flex items-center gap-1.5">
             <span aria-hidden="true" className="h-3 w-px bg-foreground/60" />
-            Today, {formatSADate(today)}
+            Today, {formatDate(today)}
           </span>
         )}
         <span>Drawn to scale, {scale.start.slice(0, 4)} to {scale.end.slice(0, 4)}</span>

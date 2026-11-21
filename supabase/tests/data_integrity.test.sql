@@ -196,8 +196,12 @@ select throws_ok(
   '23514', null, 'a message attachment path cannot contain a dot-dot segment');
 
 -- ------------------------------------------------------------------ lifecycle columns
+-- Signed-in users never reopen a resolved event (20261122010000_monitoring_event_status_workflow.sql), so the rule is
+-- checked as the owner, as a background job would write.
+reset role;
 update public.monitoring_events set status = 'resolved' where lease_reference = 'MSQ-L001' and status = 'new';
 update public.monitoring_events set status = 'action_required' where lease_reference = 'MSQ-L001' and status = 'resolved';
+set local role authenticated;
 select is(
   (select count(*) from public.monitoring_events
    where lease_reference = 'MSQ-L001' and status = 'action_required' and resolved_at is null and resolved_by_user_id is null),

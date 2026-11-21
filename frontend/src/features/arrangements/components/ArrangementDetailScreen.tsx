@@ -2,7 +2,6 @@ import {
   arrangementActions,
   arrangementProgress,
   compareISODate,
-  formatSADate,
   isInstallmentOutcome,
   isoToday,
   nextInstallment,
@@ -50,6 +49,7 @@ import { useCancelArrangement, useUpdateArrangement } from '../api/queries'
 import { ArrangementFormDialog } from './ArrangementFormDialog'
 import { CloseArrangementDialog } from './CloseArrangementDialog'
 import { InstallmentOutcomeDialog } from './InstallmentOutcomeDialog'
+import { useDateFormatter } from '@/lib/dateFormat'
 
 export interface ArrangementDetailScreenProps {
   arrangement: PaymentArrangementListItem
@@ -68,6 +68,7 @@ const FREQUENCY_TEXT = { weekly: 'Every week', fortnightly: 'Every two weeks', m
  * `arrangementActions` allows. LeaseGuard records the agreement only: there is no payment action anywhere.
  */
 export function ArrangementDetailScreen({ arrangement }: ArrangementDetailScreenProps) {
+  const { date: formatDate } = useDateFormatter()
   const isWriter = useIsCompanyWriter()
   const [editing, setEditing] = useState(false)
   const [closing, setClosing] = useState(false)
@@ -84,7 +85,7 @@ export function ArrangementDetailScreen({ arrangement }: ArrangementDetailScreen
     page: 1,
     pageSize: MAX_LIST_PAGE_SIZE,
     type: 'arrangement_attention',
-    leaseId: arrangement.leaseId,
+    arrangementId: arrangement.id,
     sort: 'identifiedOn',
     direction: 'desc',
   })
@@ -116,7 +117,7 @@ export function ArrangementDetailScreen({ arrangement }: ArrangementDetailScreen
   const next = actions.edit ? nextInstallment(arrangement, today) : undefined
   const pastDue = new Set(arrangement.status === 'active' ? overdueInstallments(arrangement, today).map((i) => i.id) : [])
   const remindersPaused = shouldSuppressArrearsReminder(arrangement.tenantId, [arrangement], today)
-  const flagged = (events.data?.items ?? []).filter((event) => event.arrangementId === arrangement.id)
+  const flagged = events.data?.items ?? []
 
   async function confirmActivate() {
     try {
@@ -255,7 +256,7 @@ export function ArrangementDetailScreen({ arrangement }: ArrangementDetailScreen
         <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
         <span>
           LeaseGuard records this agreement and its schedule; it never takes, processes or verifies a payment. Instalments are
-          confirmed from verified statements or by a property manager.{' '}
+          confirmed by a property manager; a verified statement only flags an instalment for the manager to confirm.{' '}
           {remindersPaused
             ? 'While it is active, normal arrears reminders to the tenant are paused.'
             : arrangement.status === 'proposed'
@@ -276,7 +277,7 @@ export function ArrangementDetailScreen({ arrangement }: ArrangementDetailScreen
           <MetricCard label="Still to pay" value={<CurrencyDisplay amount={progress.remaining} />} />
           <MetricCard
             label="Next instalment"
-            value={next ? <span className="tabular-nums">{formatSADate(next.dueDate)}</span> : '—'}
+            value={next ? <span className="tabular-nums">{formatDate(next.dueDate)}</span> : '—'}
             {...(next ? { description: `Instalment ${next.sequence}` } : {})}
           />
         </MetricGrid>

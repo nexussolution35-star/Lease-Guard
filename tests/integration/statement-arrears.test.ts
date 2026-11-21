@@ -149,6 +149,24 @@ describe('GET /api/v1/statements/arrears', () => {
     expect(summary.tenantsUnderArrangement).toBeGreaterThanOrEqual(1)
   })
 
+  it("gives the dashboard the summary's own totals without loading the statements (latest per unit, tenant under arrangement still owing)", async () => {
+    // The superseded statement, the statement in review, the tenant's second lease and the arrangement above are all in place.
+    const [summary, dashboard] = await Promise.all([
+      unwrap(apiAs('manager', 'a').GET('/api/v1/statements/arrears')),
+      unwrap(apiAs('manager', 'a').GET('/api/v1/dashboard/summary')),
+    ])
+    expect(summary.entries.filter((e) => e.tenantId === lease.tenantId).every((e) => e.underArrangement)).toBe(true)
+    expect(dashboard.totalOutstanding).toBe(summary.totalOutstanding)
+    expect(dashboard.tenantsInArrears).toBe(summary.tenantsInArrears)
+    expect(dashboard.pendingStatementReviews).toBe(summary.pendingReview)
+    expect(dashboard.asOf).toBe(summary.asOf)
+    const b = await Promise.all([
+      unwrap(apiAs('manager', 'b').GET('/api/v1/statements/arrears')),
+      unwrap(apiAs('manager', 'b').GET('/api/v1/dashboard/summary')),
+    ])
+    expect([b[1].totalOutstanding, b[1].tenantsInArrears]).toEqual([b[0].totalOutstanding, b[0].tenantsInArrears])
+  })
+
   it("never shows another company's balances", async () => {
     const summary = await unwrap(apiAs('manager', 'b').GET('/api/v1/statements/arrears'))
     expect(summary.entries.some((e) => statementIds.includes(e.statementId))).toBe(false)

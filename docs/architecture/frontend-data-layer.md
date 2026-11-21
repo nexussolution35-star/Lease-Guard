@@ -10,11 +10,15 @@ The database is the only source of truth. The web app signs in with Supabase Aut
 reads every record from the LeaseGuard API through `@leaseguard/api-client`. There is no demo or offline
 mode, no seed and no business data in the frontend; the browser keeps only the TanStack Query cache in
 memory and, per user, the last workspace opened (`localStorage`, a convenience only). Settings →
-Preferences keeps two more viewer conveniences in this browser only, never business data: the theme
-(`leaseguard.theme`, `lib/theme.ts`, shared with the account menu) and whether the sidebar starts retracted
+Preferences keeps four more viewer conveniences in this browser only, never business data: the theme
+(`leaseguard.theme`, `lib/theme.ts`, shared with the account menu), whether the sidebar starts retracted
 (`leaseguard.sidebarCollapsed`, `components/layout/useSidebarCollapsed.ts`, shared with the sidebar's own
-toggle). Both are small external stores read through `lib/browserStorage.ts`, which never throws: with storage
-blocked the choice still applies for the session and the page says it is not being saved.
+toggle), the date display format (`leaseguard.dateFormat`, `lib/dateFormat.ts`: six formats, default
+`21 Nov 2026`) and motion (`leaseguard.motion`, `lib/motion.ts`: system, reduce or full, written to
+`<html data-motion>`). All are small external stores read through `lib/browserStorage.ts`, which never throws:
+with storage blocked the choice still applies for the session and the page says it is not being saved. The
+date format changes display only: stored values and API payloads stay ISO, and tenant messages, audit text and
+domain validation messages keep the en-ZA default.
 
 `services/api/config.ts` validates `VITE_API_URL`, `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (all
 required) once at startup. Unit tests use fixed, unreachable values (`test.env` in
@@ -90,7 +94,7 @@ download link), `useVerifyLease`, `useCreateLease`, `useUpdateLease` |
 | monitoring | `useMonitoringEventList` (items are `MonitoringEventListItem`: property, unit, tenant and assignee names; filters `status` or `open`, `priority`, `type`, `propertyId`, `unitId`, `tenantId`, `leaseId`, `assignee` (a user id or `unassigned`) and `due` (a `MONITORING_DUE_WINDOWS` value, applied by the API on the South African date)), `useMonitoringEventQuery` (the same `MonitoringEventListItem`, names included), `useUpdateMonitoringEventStatus` (M7-02: `PATCH /monitoring/events/{id}/status` with `{ status, note? }`; stores the returned event and refreshes every monitoring record and the audit log, which holds the event's history). `/monitoring` keeps its list state in the URL (`features/monitoring/listSearch.ts`; `status=open` or `closed` becomes the API's `open` flag) |
 | arrangements | `useArrangementList`, `useArrangementQuery`, `useCreateArrangement`, `useUpdateArrangement`, `useCloseArrangement`, `useCancelArrangement`, `useRecordInstallmentOutcome` (each write caches the returned arrangement and refreshes the arrangement lists and the statements arrears summary; every arrangement carries its tenant, property, unit and lease names, `PaymentArrangementListItem`) |
 | communications | `useCommunicationList`, `useCommunicationQuery` |
-| dashboard | `useDashboardSummary` (`GET /dashboard/summary`: every PRD §7.1 figure in one request, key `['dashboard', companyId, 'summary']`; not invalidated by other writes, it is read afresh once stale, after 30 s) |
+| dashboard | `useDashboardSummary` (`GET /dashboard/summary`: every PRD §7.1 figure in one request, the balances from one database query, key `['dashboard', companyId, 'summary']`; not invalidated by other writes, it is read afresh once stale, after 30 s) |
 | message-templates | `useMessageTemplateSettings` (`GET /message-templates`; `polling` reads it again every 3 s after a sync), `useChooseMessageTemplate` (`PUT /message-templates/{messageType}`; a refusal is an `ApiError` 422 with every reason), `useSyncMessageTemplates` (`POST /message-templates/sync`; refreshes the settings and the synced WhatsApp templates) |
 | notifications | `useNotificationList`, `useUnreadNotificationCount`, `useMarkNotificationRead`, `useMarkAllNotificationsRead` |
 | account | `useCurrentUserProfile` (`GET /me`), `useUpdateProfile` (`PATCH /me`) |
@@ -155,5 +159,6 @@ in-place change. Links expire after 3 minutes (`EMAIL_LINK_LIFETIME`, matching `
 - Record ids are UUIDs.
 - Money is rands as a number rounded to 2 decimals in the domain model; on the extraction wire it is a
   `ZarDecimal` string.
-- Dates are ISO strings; format them with `formatSADate` / `formatZAR` or the `DateDisplay` /
-  `CurrencyDisplay` components.
+- Dates are ISO strings; display them with the `DateDisplay` component or `useDateFormatter()`
+  (`lib/dateFormat.ts`, the one formatter, in the Preferences format); money with `formatZAR` or
+  `CurrencyDisplay`.

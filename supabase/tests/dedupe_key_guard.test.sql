@@ -56,7 +56,8 @@ select throws_ok(
   '42501', null, 'a writer cannot clear a dedupe key (which would let the finding be raised again)');
 
 select lives_ok(
-  $$update public.monitoring_events set status = 'under_review' where dedupe_key = 'test:guard:worker'$$,
+  $$select public.update_monitoring_event_status(company_id, id, 'under_review') from public.monitoring_events
+    where dedupe_key = 'test:guard:worker'$$,
   'a writer can still move a keyed event through its workflow');
 
 reset role;

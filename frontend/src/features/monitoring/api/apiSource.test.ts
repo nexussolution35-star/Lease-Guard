@@ -26,7 +26,7 @@ function sourceWith(fetch: FakeFetch) {
 describe('createApiMonitoringEventSource', () => {
   it('lists with the explicit company and every set parameter, exactly as the endpoint accepts them', async () => {
     const fetch = fakeFetch(200, { items: [event], total: 1, page: 2, pageSize: 10 })
-    const page = await sourceWith(fetch).list(TEST_COMPANY_ID, { page: 2, pageSize: 10, search: ' needle ', sort: 'priority', direction: 'desc', status: 'action_required', open: true, priority: 'high', type: 'arrears', propertyId: TEST_FILTER_ID, unitId: TEST_FILTER_ID, tenantId: TEST_FILTER_ID, leaseId: TEST_FILTER_ID, assignee: 'unassigned', due: 'overdue' })
+    const page = await sourceWith(fetch).list(TEST_COMPANY_ID, { page: 2, pageSize: 10, search: ' needle ', sort: 'priority', direction: 'desc', status: 'action_required', open: true, priority: 'high', type: 'arrears', propertyId: TEST_FILTER_ID, unitId: TEST_FILTER_ID, tenantId: TEST_FILTER_ID, leaseId: TEST_FILTER_ID, arrangementId: TEST_FILTER_ID, assignee: 'unassigned', due: 'overdue' })
 
     expect(page).toEqual({ items: [event], total: 1, page: 2, pageSize: 10 })
     expect(urlOf(fetch)).toEqual({
@@ -45,6 +45,7 @@ describe('createApiMonitoringEventSource', () => {
         unitId: TEST_FILTER_ID,
         tenantId: TEST_FILTER_ID,
         leaseId: TEST_FILTER_ID,
+        arrangementId: TEST_FILTER_ID,
         assignee: 'unassigned',
         due: 'overdue',
       },

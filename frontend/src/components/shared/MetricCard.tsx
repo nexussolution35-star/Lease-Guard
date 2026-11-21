@@ -38,7 +38,9 @@ const TREND_ICONS: Readonly<Record<MetricTrend['direction'], LucideIcon>> = {
 }
 
 /** A flat cell of the `MetricGrid` stat strip; the grid draws the frame and the hairlines. */
-const CARD_CLASSES = 'flex h-full min-w-0 flex-col gap-2 bg-card px-5 py-4 text-left text-card-foreground'
+// Each cell is its own size container, so its figure scales with the cell's width (cqi), never the viewport: a long
+// amount in a narrow strip shrinks to fit instead of running under the next cell. The caps keep today's sizes.
+const CARD_CLASSES = 'flex h-full min-w-0 flex-col gap-2 bg-card px-5 py-4 text-left text-card-foreground [container-type:inline-size]'
 const INTERACTIVE_CLASSES =
   'transition-colors hover:bg-muted/50 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-hidden focus-visible:ring-inset'
 
@@ -74,7 +76,7 @@ export function MetricCard({
           <Skeleton className={lead ? 'h-[2.625rem] w-20' : 'h-6 w-16'} />
         </div>
       ) : (
-        <div className={cn(lead ? 'text-[2.625rem] leading-none font-semibold tracking-[-0.02em] tabular-nums' : 'text-2xl leading-none font-medium tabular-nums', alarming ? TONE_TEXT_CLASSES[tone] : 'text-foreground')}>
+        <div className={cn('whitespace-nowrap', lead ? 'text-[clamp(1rem,14cqi,2.625rem)] leading-none font-semibold tracking-[-0.02em] tabular-nums' : 'text-[clamp(0.9375rem,12cqi,1.5rem)] leading-none font-medium tabular-nums', alarming ? TONE_TEXT_CLASSES[tone] : 'text-foreground')}>
           {value}
         </div>
       )}

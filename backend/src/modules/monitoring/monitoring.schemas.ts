@@ -26,6 +26,8 @@ export const monitoringEventListQuerySchema = listQuerySchema(MONITORING_EVENT_S
   unitId: z.uuid().optional(),
   tenantId: z.uuid().optional(),
   leaseId: z.uuid().optional(),
+  /** Events about one payment arrangement (e.g. its `arrangement_attention` findings). */
+  arrangementId: z.uuid().optional(),
   /** One member's user id, or `unassigned` for events nobody is assigned to. */
   assignee: z.union([z.literal(UNASSIGNED_FILTER), z.uuid()]).optional(),
   /** Due-date window, judged on the South African date (domain `dueWindowRange`). */

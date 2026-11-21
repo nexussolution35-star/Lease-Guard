@@ -1,5 +1,4 @@
 import {
-  formatSADate,
   formatZAR,
   INSTALLMENT_OUTCOMES,
   installmentOutcomeProblem,
@@ -22,6 +21,7 @@ import { Form } from '@/components/ui/form'
 import { describeApiError } from '@/lib/data/apiErrors'
 
 import { useRecordInstallmentOutcome } from '../api/queries'
+import { useDateFormatter } from '@/lib/dateFormat'
 
 export interface InstallmentOutcomeDialogProps {
   open: boolean
@@ -54,6 +54,7 @@ type OutcomeValues = z.output<typeof outcomeSchema>
  * the domain's `installmentOutcomeProblem` (an instalment not yet due cannot be missed); the database checks it again.
  */
 export function InstallmentOutcomeDialog({ open, onOpenChange, arrangement, installment }: InstallmentOutcomeDialogProps) {
+  const { date: formatDate } = useDateFormatter()
   const record = useRecordInstallmentOutcome()
   const form = useForm<OutcomeInput, unknown, OutcomeValues>({
     resolver: zodResolver(outcomeSchema),
@@ -103,7 +104,7 @@ export function InstallmentOutcomeDialog({ open, onOpenChange, arrangement, inst
       onOpenChange={onOpenChange}
       size="sm"
       title={`Instalment ${installment.sequence}`}
-      description={`${formatZAR(installment.amount)} due ${formatSADate(installment.dueDate)}. LeaseGuard records what you confirm; it does not see or verify payments.`}
+      description={`${formatZAR(installment.amount)} due ${formatDate(installment.dueDate)}. LeaseGuard records what you confirm; it does not see or verify payments.`}
       submitLabel="Record outcome"
       onSubmit={() => submit()}
       isPending={form.formState.isSubmitting}

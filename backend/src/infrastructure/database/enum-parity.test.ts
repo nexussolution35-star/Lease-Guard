@@ -73,6 +73,7 @@ const DOMAIN_ONLY: Readonly<Record<string, string>> = {
   FIELD_RESOLUTIONS: 'derived from statement_extraction_fields (corrected_value, confirmed_at, value, flagged) by fieldResolution; never stored',
   INVITATION_STATUSES: 'company_invitations.status is text with a check constraint (20261109101900), not an enum',
   ONBOARDING_STEPS: 'computed by the onboarding endpoint; never stored',
+  DATE_DISPLAY_FORMATS: "a viewer's date display preference, kept in the browser (frontend/src/lib/dateFormat.ts); never stored",
   OWNER_MESSAGE_TYPES: 'subset of message_type (communication eligibility rule)',
   TEMPLATED_MESSAGE_TYPES:
     'subset of message_type sent with a template (message_type_templates_type_check, 20261121234500)',

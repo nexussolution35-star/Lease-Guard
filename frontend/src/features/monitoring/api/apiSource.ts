@@ -30,6 +30,7 @@ export function createApiMonitoringEventSource(api: ApiClient): MonitoringEventS
               unitId: params.unitId,
               tenantId: params.tenantId,
               leaseId: params.leaseId,
+              arrangementId: params.arrangementId,
               assignee: params.assignee,
               due: params.due,
             }),

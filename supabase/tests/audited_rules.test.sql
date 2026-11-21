@@ -71,11 +71,10 @@ select throws_ok(
 
 -- ------------------------------------------------------------------ monitoring event dismissal
 select throws_ok(
-  $$update public.monitoring_events set status = 'dismissed' where id = (select open_event from tests.ids)$$,
-  '23514', null, 'an event cannot be dismissed without a reason'
+  $$select public.update_monitoring_event_status(nexus, open_event, 'dismissed') from tests.ids$$,
+  '22023', null, 'an event cannot be dismissed without a reason'
 );
-update public.monitoring_events set status = 'dismissed', dismissal_reason = 'Handled offline with the tenant'
-where id = (select open_event from tests.ids);
+select public.update_monitoring_event_status(nexus, open_event, 'dismissed', 'Handled offline with the tenant') from tests.ids;
 select is((select dismissed_by_user_id from public.monitoring_events where id = (select open_event from tests.ids)),
   (select naledi from tests.ids), 'dismissal records the signed-in user');
 select is((select count(*) from tests.audit((select open_event from tests.ids), 'dismiss')

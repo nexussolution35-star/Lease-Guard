@@ -1218,7 +1218,7 @@ export interface paths {
         head?: never;
         /**
          * Move a monitoring event to another status
-         * @description Moves follow the event workflow (new → under review → action required → in progress → resolved; any open status → dismissed). Dismissing requires a note (the reason). Who resolved or dismissed the event, and when, is recorded by the database from the caller, and every status change is audited.
+         * @description Moves follow the event workflow (new → under review → action required → in progress → resolved; any open status → dismissed). Dismissing requires a note (the reason). Who resolved or dismissed the event, and when, is recorded by the database from the caller, and every status change is audited with its note. The database applies the workflow (update_monitoring_event_status); signed-in users cannot update events directly.
          */
         patch: operations["updateMonitoringEventStatus"];
         trace?: never;
@@ -11303,6 +11303,8 @@ export interface operations {
                 unitId?: string;
                 tenantId?: string;
                 leaseId?: string;
+                /** @description Events about one payment arrangement */
+                arrangementId?: string;
                 /** @description One member's user id (uuid), or `unassigned` for events nobody is assigned to */
                 assignee?: string;
                 /** @description overdue: due before today; next_n_days: due from today to n days from today, inclusive (South African date) */
@@ -11483,7 +11485,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorDto"];
                 };
             };
-            /** @description The workflow does not allow this move, or the event changed meanwhile */
+            /** @description The workflow does not allow this move from the event's current status */
             409: {
                 headers: {
                     [name: string]: unknown;

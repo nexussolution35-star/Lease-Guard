@@ -28,6 +28,8 @@ export interface MonitoringEventListParams extends ListParams<MonitoringEventSor
   unitId?: EntityId
   tenantId?: EntityId
   leaseId?: EntityId
+  /** Events about one payment arrangement. */
+  arrangementId?: EntityId
   /** One member's user id, or `unassigned` for events nobody is assigned to. */
   assignee?: EntityId | typeof UNASSIGNED_FILTER
   /** Due-date window on the South African date (domain `dueWindowRange`, applied by the API). */
@@ -44,8 +46,8 @@ export interface MonitoringEventSource {
   /** The event with the names of its property and, when set, its unit, tenant and assignee. */
   get(companyId: EntityId, id: EntityId): Promise<MonitoringEventListItem | null>
   /**
-   * Moves the event to another status (writers; the API applies the domain workflow and answers 409 when the move is
-   * not allowed or the event changed meanwhile). The note is the dismissal reason, or the resolution notes otherwise.
+   * Moves the event to another status (writers; the database applies the domain workflow and the API answers 409 when
+   * the move is not allowed from the event's current status). The note is the dismissal reason, or the resolution notes otherwise.
    */
   updateStatus(companyId: EntityId, id: EntityId, change: MonitoringEventStatusChange): Promise<MonitoringEventListItem>
 }

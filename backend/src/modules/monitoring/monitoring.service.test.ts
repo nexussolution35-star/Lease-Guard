@@ -1,7 +1,7 @@
-import { ConflictException, NotFoundException } from '@nestjs/common'
+import { NotFoundException } from '@nestjs/common'
 import { describe, expect, it } from 'vitest'
 
-import { callsTo, fakeDb } from '../../common/testing/fake-db.test-helpers'
+import { callsTo, fakeDb, rpcArgs } from '../../common/testing/fake-db.test-helpers'
 import { toMonitoringEvent, type MonitoringEventRow } from './monitoring.mapper'
 import { monitoringEventListQuerySchema, updateMonitoringEventStatusBodySchema } from './monitoring.schemas'
 import { MonitoringService } from './monitoring.service'
@@ -134,6 +134,18 @@ describe('MonitoringService', () => {
     expect(callsTo(queries[0]!, 'select')[0]![0]).toContain('assignee:company_users!monitoring_events_assigned_to_fk')
   })
 
+  it('filters by one payment arrangement on the server', async () => {
+    const ARRANGEMENT = '6f1d2c1e-0000-4000-8000-0000000000a7'
+    const { client, queries } = fakeDb(() => ({ data: [], error: null, count: 0 }))
+    await service.list(client, COMPANY, monitoringEventListQuerySchema.parse({ type: 'arrangement_attention', arrangementId: ARRANGEMENT }))
+    expect(callsTo(queries[0]!, 'eq')).toEqual([
+      ['company_id', COMPANY],
+      ['type', 'arrangement_attention'],
+      ['arrangement_id', ARRANGEMENT],
+    ])
+    expect(monitoringEventListQuerySchema.safeParse({ arrangementId: 'ARR-1' }).success).toBe(false)
+  })
+
   it('filters by unit, tenant and one assignee or the unassigned', async () => {
     const { client, queries } = fakeDb(() => ({ data: [], error: null, count: 0 }))
     await service.list(client, COMPANY, monitoringEventListQuerySchema.parse({ unitId: UNIT, tenantId: TENANT, assignee: USER }))
@@ -205,72 +217,73 @@ describe('MonitoringService', () => {
     await expect(service.get(client, COMPANY, EVENT)).rejects.toBeInstanceOf(NotFoundException)
   })
 
-  /** First query reads the current event, the second is the update. */
-  function updateDb(current: Partial<MonitoringEventRow>, updated: Partial<MonitoringEventRow> | null) {
-    return fakeDb((query) =>
-      query.calls.some(([method]) => method === 'update')
-        ? { data: updated === null ? null : eventRow(updated), error: null }
-        : { data: eventRow(current), error: null },
-    )
+  const STATUS_RPC = 'rpc:update_monitoring_event_status'
+
+  /** The status change is the database function; the event is then read back as the detail screen shows it. */
+  function statusDb(after: Partial<MonitoringEventRow> | null, refusal?: { code: string; message: string }) {
+    return fakeDb((query) => {
+      if (query.table === STATUS_RPC) return refusal ? { data: null, error: refusal } : { data: EVENT, error: null }
+      return {
+        data: after === null ? null : { ...eventRow(after), property: { name: 'Mall of the South' }, unit: null, tenant: { trading_name: 'Bean There' }, assignee: null },
+        error: null,
+      }
+    })
   }
 
-  it('records a dismissal reason from the checked status; the database stamps who and when', async () => {
-    const { client, queries } = updateDb(
-      { status: 'under_review' },
-      { status: 'dismissed', dismissal_reason: 'Duplicate', dismissed_by_user_id: 'u1', dismissed_at: '2026-11-02T08:00:00+00:00' },
-    )
+  it('dismisses through the database function with the reason; the database stamps who and when', async () => {
+    const { client, queries } = statusDb({
+      status: 'dismissed',
+      dismissal_reason: 'Duplicate',
+      dismissed_by_user_id: 'u1',
+      dismissed_at: '2026-11-02T08:00:00+00:00',
+    })
     const body = updateMonitoringEventStatusBodySchema.parse({ status: 'dismissed', note: ' Duplicate ' })
 
     const event = await service.updateStatus(client, COMPANY, EVENT, body)
 
     expect(event.status).toBe('dismissed')
     expect(event.dismissal).toEqual({ reason: 'Duplicate', dismissedByUserId: 'u1', dismissedAt: '2026-11-02T08:00:00+00:00' })
-    expect(callsTo(queries[1]!, 'update')).toEqual([[{ status: 'dismissed', dismissal_reason: 'Duplicate' }]])
-    // The updated event comes back as the detail screen shows it, with its names.
-    expect(callsTo(queries[1]!, 'select')[0]![0]).toContain('tenant:tenants!monitoring_events_tenant_fk(trading_name)')
+    expect(queries.map((query) => query.table)).toEqual([STATUS_RPC, 'monitoring_events'])
+    expect(rpcArgs(queries[0]!)).toEqual({ p_company_id: COMPANY, p_event_id: EVENT, p_status: 'dismissed', p_note: 'Duplicate' })
+    // The table itself is never updated by the API (signed-in users hold no UPDATE on it).
+    expect(queries.some((query) => callsTo(query, 'update').length > 0)).toBe(false)
+    // The changed event comes back as the detail screen shows it, with its names.
+    expect(event.tenantName).toBe('Bean There')
     expect(callsTo(queries[1]!, 'eq')).toEqual([
       ['company_id', COMPANY],
       ['id', EVENT],
-      ['status', 'under_review'],
     ])
   })
 
-  it('stores a note on other statuses as resolution notes, and sends nothing extra without one', async () => {
-    const resolve = updateDb({ status: 'in_progress' }, { status: 'resolved', resolved_at: '2026-11-02T08:00:00+00:00' })
+  it('sends a note on other statuses (the resolution notes), and no note without one', async () => {
+    const resolve = statusDb({ status: 'resolved', resolved_at: '2026-11-02T08:00:00+00:00', resolution_notes: 'Corrected' })
     await service.updateStatus(resolve.client, COMPANY, EVENT, updateMonitoringEventStatusBodySchema.parse({ status: 'resolved', note: 'Corrected' }))
-    expect(callsTo(resolve.queries[1]!, 'update')).toEqual([[{ status: 'resolved', resolution_notes: 'Corrected' }]])
+    expect(rpcArgs(resolve.queries[0]!)).toEqual({ p_company_id: COMPANY, p_event_id: EVENT, p_status: 'resolved', p_note: 'Corrected' })
 
-    const review = updateDb({ status: 'new' }, { status: 'under_review' })
+    const review = statusDb({ status: 'under_review' })
     await service.updateStatus(review.client, COMPANY, EVENT, updateMonitoringEventStatusBodySchema.parse({ status: 'under_review' }))
-    expect(callsTo(review.queries[1]!, 'update')).toEqual([[{ status: 'under_review' }]])
+    expect(rpcArgs(review.queries[0]!)).toEqual({ p_company_id: COMPANY, p_event_id: EVENT, p_status: 'under_review' })
   })
 
-  it('refuses moves the workflow does not allow, without writing', async () => {
-    for (const [from, to] of [
-      ['dismissed', 'resolved'],
-      ['resolved', 'in_progress'],
-      ['new', 'resolved'],
-    ] as const) {
-      const { client, queries } = updateDb({ status: from }, { status: to })
-      await expect(
-        service.updateStatus(client, COMPANY, EVENT, updateMonitoringEventStatusBodySchema.parse({ status: to, note: 'x' })),
-      ).rejects.toBeInstanceOf(ConflictException)
-      expect(queries).toHaveLength(1)
-    }
-  })
-
-  it('returns 409 when someone else changed the status in between', async () => {
-    const { client } = updateDb({ status: 'new' }, null)
+  it('answers 409 with the database message for a move the workflow does not allow, without reading the event', async () => {
+    const { client, queries } = statusDb(null, { code: 'P0001', message: 'An event cannot move from "dismissed" to "under review".' })
     await expect(
       service.updateStatus(client, COMPANY, EVENT, updateMonitoringEventStatusBodySchema.parse({ status: 'under_review' })),
-    ).rejects.toBeInstanceOf(ConflictException)
+    ).rejects.toMatchObject({ status: 409, message: 'An event cannot move from "dismissed" to "under review".' })
+    expect(queries).toHaveLength(1)
   })
 
-  it('returns 404 when the event to update is not visible', async () => {
-    const { client } = fakeDb(() => ({ data: null, error: null }))
-    await expect(
-      service.updateStatus(client, COMPANY, EVENT, updateMonitoringEventStatusBodySchema.parse({ status: 'in_progress' })),
-    ).rejects.toBeInstanceOf(NotFoundException)
+  it('answers 404 for an event that is not in the company, 403 for a caller who cannot write and 422 for a bad note', async () => {
+    for (const [code, status] of [
+      ['P0002', 404],
+      ['42501', 403],
+      ['22023', 422],
+    ] as const) {
+      const { client } = statusDb(null, { code, message: 'refused' })
+      await expect(
+        service.updateStatus(client, COMPANY, EVENT, updateMonitoringEventStatusBodySchema.parse({ status: 'in_progress' })),
+      ).rejects.toMatchObject({ status })
+    }
   })
 })
 

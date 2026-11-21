@@ -79,7 +79,7 @@ describe('DashboardFigures', () => {
 
     expect(figure('Outstanding balances')).toHaveAttribute('href', '/statements')
     expect(figure('Tenants in arrears')).toHaveAttribute('href', '/statements')
-    expect(figure('Active payment arrangements')).toHaveAttribute('href', '/arrangements')
+    expect(figure('Active payment arrangements')).toHaveAttribute('href', '/arrangements?status=active')
     expect(figure('Rental escalation discrepancies')).toHaveAttribute('href', '/monitoring?type=rental_escalation_discrepancy&status=open')
     expect(figure('Upcoming lease expiries')).toHaveAttribute('href', '/monitoring?type=lease_expiry&status=open')
     expect(figure('Upcoming renewal deadlines')).toHaveAttribute('href', '/monitoring?type=renewal_notice_deadline&status=open')

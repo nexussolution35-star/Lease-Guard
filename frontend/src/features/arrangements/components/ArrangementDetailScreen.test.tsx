@@ -63,7 +63,7 @@ beforeEach(() => {
   openWorkspace(NEXUS_ID)
   viewer.writer = true
   for (const fn of [...Object.values(fakeSource), ...Object.values(others)]) fn.mockReset()
-  others.events.mockResolvedValue(page([flag, { ...flag, id: 'e0000000-0000-4000-8000-000000000002', arrangementId: 'other', title: 'Another arrangement' }]))
+  others.events.mockResolvedValue(page([flag]))
   others.members.mockResolvedValue(page([member]))
 })
 
@@ -76,6 +76,11 @@ describe('ArrangementDetailScreen', () => {
     await renderScreen()
     expect(screen.getByRole('note')).toHaveTextContent('it never takes, processes or verifies a payment')
     expect(screen.getByRole('note')).toHaveTextContent('normal arrears reminders to the tenant are paused')
+    // A verified statement never confirms an instalment: it flags one for the property manager to confirm.
+    expect(screen.getByRole('note')).toHaveTextContent(
+      'Instalments are confirmed by a property manager; a verified statement only flags an instalment for the manager to confirm.',
+    )
+    expect(screen.getByRole('note')).not.toHaveTextContent('confirmed from verified statements')
 
     const schedule = screen.getByRole('table', { name: 'Instalment schedule of the arrangement with Dlamini Cellular' })
     const rows = within(schedule).getAllByRole('row').slice(1)
@@ -94,8 +99,9 @@ describe('ArrangementDetailScreen', () => {
 
     const flagged = screen.getByRole('region', { name: 'Flagged by monitoring' })
     expect(await within(flagged).findByText('Instalment 2 not covered on the October statement')).toBeInTheDocument()
-    expect(within(flagged).queryByText('Another arrangement')).not.toBeInTheDocument()
-    expect(others.events).toHaveBeenCalledWith(NEXUS_ID, expect.objectContaining({ type: 'arrangement_attention', leaseId: LEASE_ID }))
+    // The findings are asked for this arrangement on the server, not every finding on the lease filtered here.
+    expect(others.events).toHaveBeenCalledWith(NEXUS_ID, expect.objectContaining({ type: 'arrangement_attention', arrangementId: ARRANGEMENT_ID }))
+    expect(others.events.mock.calls[0]?.[1]).not.toHaveProperty('leaseId')
   })
 
   it('offers an active arrangement edit, cancel and close, with close as the one primary action last', async () => {

@@ -108,6 +108,9 @@ export class MonitoringEventListQueryDto extends PageQueryDto {
   @ApiPropertyOptional({ format: 'uuid' })
   leaseId?: string
 
+  @ApiPropertyOptional({ format: 'uuid', description: 'Events about one payment arrangement' })
+  arrangementId?: string
+
   @ApiPropertyOptional({
     description: "One member's user id (uuid), or `unassigned` for events nobody is assigned to",
     example: 'unassigned',

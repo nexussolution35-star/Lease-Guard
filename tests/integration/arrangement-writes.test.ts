@@ -206,6 +206,38 @@ describe('payment arrangements (M7-03)', () => {
     expect(await messages()).toBe(before)
   })
 
+  it("lists the arrangement's findings filtered by arrangement on the server, not every finding on its lease", async () => {
+    const id = arrangementId as string
+    // A finding on the same lease that is not about this arrangement (removed with the tenant's events in afterAll).
+    expectOk(
+      await serviceRole().from('monitoring_events').insert({
+        company_id: world().companies.a.id,
+        type: 'arrangement_attention',
+        property_id: lease.propertyId,
+        unit_id: lease.unitId,
+        tenant_id: lease.tenantId,
+        lease_id: lease.id,
+        lease_reference: lease.reference,
+        title: `Integration ${integration().runId}: another arrangement's finding`,
+        description: 'Not about the arrangement under test.',
+        identified_on: today(),
+        priority: 'medium',
+        recommended_action: 'Check the other arrangement.',
+      }),
+      'Insert a finding of the lease without the arrangement',
+    )
+    const list = (query: { arrangementId?: string; leaseId?: string }) =>
+      unwrap(apiAs('readOnly', 'a').GET('/api/v1/monitoring/events', { params: { query: { type: 'arrangement_attention', pageSize: 100, ...query } } }))
+
+    const byArrangement = await list({ arrangementId: id })
+    expect(byArrangement.items.length).toBeGreaterThan(0)
+    expect(byArrangement.items.every((event) => event.arrangementId === id)).toBe(true)
+    expect(byArrangement.total).toBe(byArrangement.items.length)
+    const byLease = await list({ leaseId: lease.id })
+    expect(byLease.total).toBeGreaterThan(byArrangement.total)
+    expect((await apiErrorOf(list({ arrangementId: 'ARR-1' }))).status).toBe(400)
+  })
+
   it('records the manager confirming a missed instalment, then fixes the schedule; audited', async () => {
     const id = arrangementId as string
     const current = await unwrap(writer().GET('/api/v1/arrangements/{arrangementId}', { params: { path: { arrangementId: id } } }))

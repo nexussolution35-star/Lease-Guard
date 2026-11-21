@@ -3,7 +3,6 @@ import {
   daysBetween,
   daysUntilExpiry,
   daysUntilRenewalDeadline,
-  formatSADate,
   isOpenEventStatus,
   isoToday,
   nextEventStatuses,
@@ -48,6 +47,7 @@ import { cn } from '@/lib/utils'
 
 import { calculationLabels, EXPECTED_SOURCE, historyEntryFrom, orderedActions, STATUS_ACTIONS } from '../eventPresentation'
 import { StatusChangeDialog } from './StatusChangeDialog'
+import { useDateFormatter } from '@/lib/dateFormat'
 
 export interface MonitoringEventDetailScreenProps {
   event: MonitoringEventListItem
@@ -223,8 +223,9 @@ export function MonitoringEventDetailScreen({ event }: MonitoringEventDetailScre
 
 /** The figures and steps the rule stored, or for a date finding the dates of its verified lease. */
 function Calculation({ event, lease, today }: { event: MonitoringEventListItem; lease: Lease | null; today: string }) {
+  const { date: formatDate } = useDateFormatter()
   if (event.calculation) return <StoredCalculation event={event} calculation={event.calculation} />
-  const rows = lease ? dateTrace(event, lease, today) : null
+  const rows = lease ? dateTrace(event, lease, today, formatDate) : null
   if (rows && rows.length > 0) {
     return (
       <InformationGrid columns={2} className="gap-y-3 border-y border-border py-3">
@@ -284,10 +285,10 @@ function daysText(days: number): string {
 }
 
 /** Expiry, renewal-deadline and guarantee-expiry findings: the lease dates they were raised from, via the domain rules. */
-function dateTrace(event: MonitoringEventListItem, lease: Lease, today: string): { label: string; value: ReactNode }[] | null {
+function dateTrace(event: MonitoringEventListItem, lease: Lease, today: string, formatDate: (iso: string) => string): { label: string; value: ReactNode }[] | null {
   const dated = (date: string, days: number) => (
     <span className="tabular-nums">
-      {formatSADate(date)}
+      {formatDate(date)}
       <span className="text-muted-foreground"> · {daysText(days)}</span>
     </span>
   )
@@ -295,13 +296,13 @@ function dateTrace(event: MonitoringEventListItem, lease: Lease, today: string):
     case 'lease_expiry':
       return [
         { label: 'Lease expires', value: dated(lease.expiryDate, daysUntilExpiry(lease, today)) },
-        { label: 'Commenced', value: <span className="tabular-nums">{formatSADate(lease.commencementDate)}</span> },
+        { label: 'Commenced', value: <span className="tabular-nums">{formatDate(lease.commencementDate)}</span> },
       ]
     case 'renewal_notice_deadline': {
       const deadline = renewalNoticeDeadline(lease)
       const days = daysUntilRenewalDeadline(lease, today)
       return [
-        { label: 'Lease expires', value: <span className="tabular-nums">{formatSADate(lease.expiryDate)}</span> },
+        { label: 'Lease expires', value: <span className="tabular-nums">{formatDate(lease.expiryDate)}</span> },
         {
           label: 'Notice period',
           value: lease.renewalOption.noticePeriodMonths === undefined ? 'Not recorded' : `${lease.renewalOption.noticePeriodMonths} months before expiry`,
@@ -346,6 +347,7 @@ function Sources({
   arrangement: Loaded<PaymentArrangement> | null
   signerOf: (userId: string | undefined) => string | undefined
 }) {
+  const { date: formatDate } = useDateFormatter()
   if (!lease && !statement && !arrangement) {
     return <p className="border-y border-border py-3 text-sm text-muted-foreground">This event names no lease, statement or arrangement.</p>
   }
@@ -374,7 +376,7 @@ function Sources({
             `/statements/${encodeURIComponent(event.statementId)}`,
             statement.data
               ? statement.data.periodStart && statement.data.periodEnd
-                ? `${formatSADate(statement.data.periodStart)} – ${formatSADate(statement.data.periodEnd)}`
+                ? `${formatDate(statement.data.periodStart)} – ${formatDate(statement.data.periodEnd)}`
                 : statement.data.file.fileName
               : missing(statement, 'Statement'),
           )}
@@ -394,7 +396,7 @@ function Sources({
           kind="Payment arrangement"
           link={recordLink(
             `/arrangements/${encodeURIComponent(event.arrangementId)}`,
-            arrangement.data ? <>Agreed {formatSADate(arrangement.data.agreedOn)}</> : missing(arrangement, 'Arrangement'),
+            arrangement.data ? <>Agreed {formatDate(arrangement.data.agreedOn)}</> : missing(arrangement, 'Arrangement'),
           )}
           state={arrangement.data ? <StatusBadge status={arrangement.data.status} /> : null}
         />

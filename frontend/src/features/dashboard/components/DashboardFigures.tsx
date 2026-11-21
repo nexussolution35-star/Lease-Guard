@@ -1,4 +1,4 @@
-import { DASHBOARD_EVENT_FIGURES, formatCount, formatSADate, type DashboardEventFigure, type DashboardSummary } from '@leaseguard/domain'
+import { DASHBOARD_EVENT_FIGURES, formatCount, type DashboardEventFigure, type DashboardSummary } from '@leaseguard/domain'
 import type { ReactNode } from 'react'
 
 import { CurrencyDisplay, ErrorState, MetricCard, MetricGrid, SectionHeader } from '@/components/shared'
@@ -9,6 +9,7 @@ import type { Tone } from '@/lib/labels'
 import { cn } from '@/lib/utils'
 
 import { useDashboardSummary } from '../api/queries'
+import { useDateFormatter } from '@/lib/dateFormat'
 
 /** The monitoring list filtered to the open events behind a figure: the same filter the API counted with. */
 const openEventsOf = (figure: DashboardEventFigure) => `/monitoring?type=${DASHBOARD_EVENT_FIGURES[figure]}&status=open`
@@ -28,7 +29,7 @@ interface Figure {
 interface Strip {
   id: string
   title: string
-  description?: (summary: DashboardSummary) => string
+  description?: (summary: DashboardSummary, formatDate: (iso: string) => string) => string
   figures: readonly Figure[]
 }
 
@@ -39,8 +40,8 @@ const STRIPS: readonly Strip[] = [
   {
     id: 'dashboard-arrears',
     title: 'Arrears',
-    description: (summary) =>
-      `From the latest verified statement of each unit, as of ${formatSADate(summary.asOf)}. Monitoring figures: LeaseGuard takes no payments.`,
+    description: (summary, formatDate) =>
+      `From the latest verified statement of each unit, as of ${formatDate(summary.asOf)}. Monitoring figures: LeaseGuard takes no payments.`,
     figures: [
       {
         label: 'Outstanding balances',
@@ -56,7 +57,7 @@ const STRIPS: readonly Strip[] = [
       },
       {
         label: 'Active payment arrangements',
-        href: '/arrangements',
+        href: '/arrangements?status=active',
         value: count((summary) => summary.activeArrangements),
         description: () => 'Normal arrears reminders are paused for these tenants',
       },
@@ -140,6 +141,7 @@ export interface DashboardFiguresProps {
  */
 export function DashboardFigures({ className }: DashboardFiguresProps) {
   const query = useDashboardSummary()
+  const { date: formatDate } = useDateFormatter()
   if (isAwaitingWorkspace(query)) return null
 
   if (query.isError) {
@@ -167,7 +169,7 @@ export function DashboardFigures({ className }: DashboardFiguresProps) {
       )}
       {STRIPS.map((strip) => (
         <section key={strip.id} aria-label={strip.title} className="space-y-3">
-          <SectionHeader title={strip.title} {...(summary && strip.description ? { description: strip.description(summary) } : {})} />
+          <SectionHeader title={strip.title} {...(summary && strip.description ? { description: strip.description(summary, formatDate) } : {})} />
           <MetricGrid columns={strip.figures.length === 3 ? 3 : strip.figures.length === 2 ? 2 : 4}>
             {strip.figures.map((figure) => {
               const description = summary ? figure.description?.(summary) : undefined

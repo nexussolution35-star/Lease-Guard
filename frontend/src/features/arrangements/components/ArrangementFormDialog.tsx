@@ -3,7 +3,6 @@ import {
   arrangementTermsProblems,
   arrearsForArrangementLease,
   finalInstallmentDate,
-  formatSADate,
   formatZAR,
   INSTALLMENT_FREQUENCIES,
   isoToday,
@@ -48,6 +47,7 @@ import {
   type ArrangementFormInput,
   type ArrangementFormValues,
 } from '../arrangementFormSchema'
+import { useDateFormatter } from '@/lib/dateFormat'
 
 export interface ArrangementFormDialogProps {
   open: boolean
@@ -124,6 +124,7 @@ function LeaseField({
   setValue: UseFormSetValue<ArrangementFormInput>
   tenantId: string
 }) {
+  const { date: formatDate } = useDateFormatter()
   const leaseId = useWatch({ control, name: 'leaseId' })
   const balance = useWatch({ control, name: 'outstandingBalance' })
   const leases = useLeaseList({ ...listAll, sort: 'reference', direction: 'asc', tenantId })
@@ -151,7 +152,7 @@ function LeaseField({
       label="Lease"
       description={
         owed
-          ? `The latest verified statement (${formatSADate(owed.statementDate)}) shows ${formatZAR(owed.outstanding)} outstanding on this lease.`
+          ? `The latest verified statement (${formatDate(owed.statementDate)}) shows ${formatZAR(owed.outstanding)} outstanding on this lease.`
           : 'The lease the arrears are under.'
       }
       options={leaseOptions}
@@ -164,6 +165,7 @@ function LeaseField({
 
 /** The schedule the terms give (the database generates the same one on saving), and every reason they cannot be saved. */
 function SchedulePreview({ control, today }: { control: ArrangementControl; today: ISODate }) {
+  const { date: formatDate } = useDateFormatter()
   const values = useWatch({ control })
   const terms = termsFromForm(values)
   if (!terms) {
@@ -190,7 +192,7 @@ function SchedulePreview({ control, today }: { control: ArrangementControl; toda
             <span className="tabular-nums">{schedule.length}</span> {schedule.length === 1 ? 'instalment' : 'instalments'}
             {last ? (
               <>
-                , the last due <span className="tabular-nums">{formatSADate(last)}</span>
+                , the last due <span className="tabular-nums">{formatDate(last)}</span>
               </>
             ) : null}
             .
@@ -214,7 +216,7 @@ function SchedulePreview({ control, today }: { control: ArrangementControl; toda
               {schedule.slice(0, PREVIEW_ROWS).map((installment) => (
                 <tr key={installment.sequence}>
                   <td className="py-1.5 pr-3">{installment.sequence}</td>
-                  <td className="py-1.5 pr-3">{formatSADate(installment.dueDate)}</td>
+                  <td className="py-1.5 pr-3">{formatDate(installment.dueDate)}</td>
                   <td className="py-1.5 text-right">{formatZAR(installment.amount)}</td>
                 </tr>
               ))}

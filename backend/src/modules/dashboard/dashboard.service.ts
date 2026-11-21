@@ -7,9 +7,9 @@ import {
   type EntityId,
 } from '@leaseguard/domain'
 
-import { httpErrorFromDatabase } from '../../common/http/database-errors'
+import { httpErrorFromDatabase, unwrapDatabase } from '../../common/http/database-errors'
+import { saToday } from '../../common/sa-today'
 import type { DbClient } from '../../infrastructure/database/rls-client.factory'
-import { StatementArrearsService } from '../statements/statement-arrears.service'
 
 interface CountResult {
   count: number | null
@@ -25,23 +25,28 @@ async function countOf(what: string, request: PromiseLike<CountResult>): Promise
 
 const HEAD_COUNT = { count: 'exact', head: true } as const
 
+interface ArrearsTotals {
+  totalOutstanding: number
+  tenantsInArrears: number
+  pendingReview: number
+}
+
 /**
  * The dashboard figures (PRD §7.1) of one company, in one request. Every read runs through the caller's RLS-bound client
  * and filters by company; the queries run in parallel and the counts are head-only (`count=exact`, no rows), each over
- * an indexed column. The balances and the statements waiting for review are the statements arrears summary's own
- * figures (the latest verified statement per unit, calculated by the domain `arrearsOverview`), so the dashboard and
- * the Statements screen never disagree. A monitoring summary, never a transaction.
+ * an indexed column. The balances and the statements waiting for review come from one database query,
+ * `dashboard_arrears_totals`, with the rules of the statements arrears summary (the latest verified statement per unit,
+ * the domain `ageArrears`; an arrangement never takes a balance out), so the dashboard and the Statements screen never
+ * disagree without the dashboard loading every statement. A monitoring summary, never a transaction.
  */
 @Injectable()
 export class DashboardService {
-  constructor(private readonly arrears: StatementArrearsService) {}
-
   async summary(db: DbClient, companyId: EntityId, now: Date = new Date()): Promise<DashboardSummary> {
     const eventFigures = Object.entries(DASHBOARD_EVENT_FIGURES) as [DashboardEventFigure, string][]
 
     const [arrears, properties, units, occupiedUnits, activeLeases, activeArrangements, pendingApprovals, ...eventCounts] =
       await Promise.all([
-        this.arrears.summary(db, companyId, now),
+        this.arrearsTotals(db, companyId),
         countOf(
           'Count properties',
           db.from('properties').select('id', HEAD_COUNT).eq('company_id', companyId).neq('status', 'archived'),
@@ -92,7 +97,7 @@ export class DashboardService {
     >
 
     return {
-      asOf: arrears.asOf,
+      asOf: saToday(now),
       properties,
       units,
       occupiedUnits,
@@ -103,6 +108,19 @@ export class DashboardService {
       pendingStatementReviews: arrears.pendingReview,
       pendingApprovals,
       ...events,
+    }
+  }
+
+  /** Outstanding balances, tenants in arrears and statements waiting for review, from one database query. */
+  private async arrearsTotals(db: DbClient, companyId: EntityId): Promise<ArrearsTotals> {
+    const row = unwrapDatabase(
+      await db.rpc('dashboard_arrears_totals', { p_company_id: companyId }).single(),
+      'Total the outstanding balances',
+    )
+    return {
+      totalOutstanding: Number(row.total_outstanding),
+      tenantsInArrears: Number(row.tenants_in_arrears),
+      pendingReview: Number(row.pending_review),
     }
   }
 }

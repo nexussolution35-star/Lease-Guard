@@ -1,38 +1,53 @@
-import { isoToday } from '@leaseguard/domain'
+import { DATE_DISPLAY_FORMATS, formatDisplayDate, isDateDisplayFormat, isoToday, type DateDisplayFormat } from '@leaseguard/domain'
 import { useId, useState } from 'react'
 
 import { SETTINGS_SECTIONS } from '@/components/forms'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { setSidebarCollapsed, useSidebarCollapsed } from '@/components/layout/useSidebarCollapsed'
-import { DateDisplay, StatusDot } from '@/components/shared'
+import { StatusDot } from '@/components/shared'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Switch } from '@/components/ui/switch'
 import { SettingsRow } from '@/features/company/components/SettingsRow'
 import { canRememberBrowserPreferences } from '@/lib/browserStorage'
+import { setDateFormatPreference, useDateFormatPreference } from '@/lib/dateFormat'
+import { isMotionPreference, MOTION_PREFERENCES, setMotionPreference, useMotionPreference, useSystemReducedMotion, type MotionPreference } from '@/lib/motion'
 import { isThemePreference, setThemePreference, useSystemColorScheme, useThemePreference, type ThemePreference } from '@/lib/theme'
-import { useMediaQuery } from '@/lib/useMediaQuery'
 
 const THEME_LABELS: Record<ThemePreference, string> = { light: 'Light', dark: 'Dark', system: 'System' }
-/** A read-only fact: a short label, then its value beside it from `sm`. */
-const FACT_ROW = 'grid gap-x-6 gap-y-1 py-3 first:pt-0 sm:grid-cols-[8rem_minmax(0,1fr)]'
 const THEME_ORDER: readonly ThemePreference[] = ['system', 'light', 'dark']
+const DATE_FORMAT_HINTS: Record<DateDisplayFormat, string> = {
+  'dd-mmm-yyyy': 'Day, short month, year. The South African default.',
+  'd-mmmm-yyyy': 'Day, month in full, year.',
+  'dd/mm/yyyy': 'Day, month and year in figures.',
+  'yyyy/mm/dd': 'Year, month and day in figures.',
+  'mmm-d-yyyy': 'Short month, day, year.',
+  'yyyy-mm-dd': 'Year, month and day, ISO 8601.',
+}
+const MOTION_LABELS: Record<MotionPreference, string> = { system: 'System', reduce: 'Reduce motion', full: 'Full motion' }
+/** One radio option: its label, then a muted hint the radio is described by. */
+const OPTION_LABEL = 'items-start gap-3 font-normal'
 
 /**
- * Settings → Preferences: display preferences for this browser (theme, sidebar start state). Viewer conveniences,
- * not business data: they apply at once, are remembered in this browser only, and still apply for the session
- * when the browser will not store them. Motion and date format are not choices: they follow the system and en-ZA.
+ * Settings → Preferences: display preferences for this browser (theme, sidebar start state, date format, motion).
+ * Viewer conveniences, not business data: they apply at once, are remembered in this browser only, and still
+ * apply for the session when the browser will not store them. The date format changes how dates read on screen
+ * only: records, messages to tenants and audit text keep their dates as they are.
  */
 export function PreferencesScreen() {
   const theme = useThemePreference()
   const systemScheme = useSystemColorScheme()
   const [collapsed] = useSidebarCollapsed()
-  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+  const dateFormat = useDateFormatPreference()
+  const motion = useMotionPreference()
+  const systemReducedMotion = useSystemReducedMotion()
   // Checked once: whether storage works does not change while the page is open.
   const [remembered] = useState(canRememberBrowserPreferences)
   const [today] = useState(() => isoToday(new Date()))
   const themeId = useId()
   const sidebarId = useId()
+  const dateFormatId = useId()
+  const motionId = useId()
 
   return (
     <section>
@@ -58,7 +73,7 @@ export function PreferencesScreen() {
             {THEME_ORDER.map((option) => {
               const itemId = `${themeId}-${option}`
               return (
-                <Label key={option} htmlFor={itemId} className="items-start gap-3 font-normal">
+                <Label key={option} htmlFor={itemId} className={OPTION_LABEL}>
                   <RadioGroupItem id={itemId} value={option} aria-describedby={`${itemId}-hint`} className="mt-0.5" />
                   <span className="grid gap-1">
                     <span>{THEME_LABELS[option]}</span>
@@ -90,21 +105,61 @@ export function PreferencesScreen() {
           </div>
         </SettingsRow>
 
-        <SettingsRow title="Set by the system" description="These are not choices in LeaseGuard.">
-          <dl className="divide-y divide-border text-sm">
-            <div className={FACT_ROW}>
-              <dt className="font-medium text-foreground">Motion</dt>
-              <dd className="text-foreground">
-                {reducedMotion ? 'Reduced, as this device asks.' : 'Full. Turn on reduce motion on this device to calm animations.'}
-              </dd>
-            </div>
-            <div className={FACT_ROW}>
-              <dt className="font-medium text-foreground">Dates</dt>
-              <dd className="text-foreground">
-                South African format, for example <DateDisplay value={today} className="tabular-nums" />.
-              </dd>
-            </div>
-          </dl>
+        <SettingsRow
+          title="Date format"
+          description="How dates read on screen in this browser. Records keep their dates, and messages to tenants use the South African format."
+        >
+          <RadioGroup
+            aria-label="Date format"
+            value={dateFormat}
+            onValueChange={(value) => {
+              if (isDateDisplayFormat(value)) setDateFormatPreference(value)
+            }}
+          >
+            {DATE_DISPLAY_FORMATS.map((option) => {
+              const itemId = `${dateFormatId}-${option}`
+              return (
+                <Label key={option} htmlFor={itemId} className={OPTION_LABEL}>
+                  <RadioGroupItem id={itemId} value={option} aria-describedby={`${itemId}-hint`} className="mt-0.5" />
+                  <span className="grid gap-1">
+                    <span className="tabular-nums">{formatDisplayDate(today, option)}</span>
+                    <span id={`${itemId}-hint`} className="text-xs text-muted-foreground">
+                      {DATE_FORMAT_HINTS[option]}
+                    </span>
+                  </span>
+                </Label>
+              )
+            })}
+          </RadioGroup>
+        </SettingsRow>
+
+        <SettingsRow title="Motion" description="Transitions and animations, such as the sidebar sliding open and menus fading in.">
+          <RadioGroup
+            aria-label="Motion"
+            value={motion}
+            onValueChange={(value) => {
+              if (isMotionPreference(value)) setMotionPreference(value)
+            }}
+          >
+            {MOTION_PREFERENCES.map((option) => {
+              const itemId = `${motionId}-${option}`
+              return (
+                <Label key={option} htmlFor={itemId} className={OPTION_LABEL}>
+                  <RadioGroupItem id={itemId} value={option} aria-describedby={`${itemId}-hint`} className="mt-0.5" />
+                  <span className="grid gap-1">
+                    <span>{MOTION_LABELS[option]}</span>
+                    <span id={`${itemId}-hint`} className="text-xs text-muted-foreground">
+                      {option === 'system'
+                        ? `Follows this device's setting, currently ${systemReducedMotion ? 'reduced' : 'full'} motion.`
+                        : option === 'reduce'
+                          ? 'Turns off transitions and animations, the sidebar slide included.'
+                          : 'Shows transitions and animations even when this device asks for less.'}
+                    </span>
+                  </span>
+                </Label>
+              )
+            })}
+          </RadioGroup>
         </SettingsRow>
       </div>
     </section>

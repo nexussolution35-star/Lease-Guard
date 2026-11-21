@@ -1737,6 +1737,11 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"dashboard_arrears_totals":
+{ Args: { "p_company_id": string }; Returns: {
+              "pending_review": number,"tenants_in_arrears": number,"total_outstanding": number
+            }[]
+                           },
 "deactivate_company_whatsapp":
 { Args: { "p_company_id": string }; Returns: boolean
                            },
@@ -1943,6 +1948,9 @@ isOneToOne: false
                            },
 "tenant_search_text":
 { Args: { "lease": Omit<Database["public"]['Tables']["leases"]['Row'], Database["public"]['Tables']["leases"]['ComputedFields']> }; Returns: string
+                           },
+"update_monitoring_event_status":
+{ Args: { "p_company_id": string,"p_event_id": string,"p_note"?: string,"p_status": Database["public"]['Enums']["monitoring_event_status"] }; Returns: string
                            },
 "update_payment_arrangement":
 { Args: { "p_agreed_on"?: string,"p_arrangement_id": string,"p_company_id": string,"p_final_installment_date"?: string,"p_first_installment_date"?: string,"p_frequency"?: Database["public"]['Enums']["installment_frequency"],"p_installment_amount"?: number,"p_notes"?: string,"p_outstanding_balance"?: number,"p_status"?: Database["public"]['Enums']["arrangement_status"] }; Returns: string

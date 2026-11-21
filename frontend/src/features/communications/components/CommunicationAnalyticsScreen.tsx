@@ -2,7 +2,6 @@ import {
   addDaysISO,
   communicationAnalyticsRangeProblem,
   formatCount,
-  formatSADate,
   isoToday,
   shareOf,
   type CommunicationAnalytics,
@@ -24,6 +23,7 @@ import { describeApiError } from '@/lib/data/apiErrors'
 import { isAwaitingWorkspace } from '@/lib/data/queries'
 
 import { useCommunicationAnalytics } from '../api/queries'
+import { useDateFormatter } from '@/lib/dateFormat'
 
 export interface CommunicationAnalyticsScreenProps {
   /** First South African day included (from the address); without it the API's default range. */
@@ -56,6 +56,7 @@ type RangeFormValues = z.input<typeof rangeFormSchema>
  * this workspace's records only.
  */
 export function CommunicationAnalyticsScreen({ from, to, onRangeChange }: CommunicationAnalyticsScreenProps) {
+  const { date: formatDate } = useDateFormatter()
   const requested = useMemo(() => ({ ...(from ? { from } : {}), ...(to ? { to } : {}) }), [from, to])
   // A range in the address that the API would refuse is explained here instead of asked for.
   const problem = from && to ? communicationAnalyticsRangeProblem({ from, to }) : undefined
@@ -106,7 +107,7 @@ export function CommunicationAnalyticsScreen({ from, to, onRangeChange }: Commun
           <div aria-live="polite" className="space-y-1">
             {shown ? (
               <p className="text-sm text-muted-foreground">
-                Figures for <span className="font-medium text-foreground">{`${formatSADate(shown.from)} to ${formatSADate(shown.to)}`}</span>
+                Figures for <span className="font-medium text-foreground">{`${formatDate(shown.from)} to ${formatDate(shown.to)}`}</span>
               </p>
             ) : null}
             {quiet ? <p className="text-sm text-foreground">No WhatsApp activity in this period.</p> : null}

@@ -4,7 +4,6 @@ import {
   extractionFieldKind,
   fieldReviewAction,
   fieldReviewReasons,
-  formatSADate,
   formatZAR,
   isFinancialExtractionField,
   type DocumentExtractionIssue,
@@ -23,6 +22,7 @@ import { labelFor } from '@/lib/labels'
 
 import { useConfirmStatementField, useConfirmStatementFieldNotOnStatement } from '../../api/queries'
 import { CorrectFieldDialog } from './CorrectFieldDialog'
+import { useDateFormatter } from '@/lib/dateFormat'
 
 const REASON_LABELS: Readonly<Record<FieldReviewReasonKind, string>> = {
   missing: 'Missing',
@@ -32,11 +32,11 @@ const REASON_LABELS: Readonly<Record<FieldReviewReasonKind, string>> = {
   other: 'Check',
 }
 
-/** A field's value as the reviewer reads it: rands, a South African date, or the text as printed. */
-function formatFieldValue(name: ExtractionFieldName, value: string | number): string {
+/** A field's value as the reviewer reads it: rands, a date in the chosen display format, or the text as printed. */
+function formatFieldValue(name: ExtractionFieldName, value: string | number, formatDate: (iso: string) => string): string {
   const kind = extractionFieldKind(name)
   if (kind === 'amount' && typeof value === 'number') return formatZAR(value)
-  if (kind === 'date' && typeof value === 'string') return formatSADate(value)
+  if (kind === 'date' && typeof value === 'string') return formatDate(value)
   return String(value)
 }
 
@@ -129,6 +129,7 @@ interface FieldRowProps {
 }
 
 function FieldRow({ field, issues, canReview, signerOf, confirming, confirmingAbsent, onConfirm, onConfirmNotOnStatement, onCorrect }: FieldRowProps) {
+  const { date: formatDate } = useDateFormatter()
   const label = labelFor(field.name)
   const reasons = fieldReviewReasons(field, issues)
   const action = fieldReviewAction(field)
@@ -146,13 +147,13 @@ function FieldRow({ field, issues, canReview, signerOf, confirming, confirmingAb
           {shown === null ? (
             <span className="font-normal text-muted-foreground">{confirmedNotOnStatement(field) ? 'Not on the statement' : 'Not found'}</span>
           ) : (
-            formatFieldValue(field.name, shown)
+            formatFieldValue(field.name, shown, formatDate)
           )}
         </p>
         {printed !== '' && (field.correctedValue !== undefined || field.value === null || action !== 'none') ? (
           <p className="text-xs text-muted-foreground break-words">
             On the statement: <span className="text-foreground">“{printed}”</span>
-            {field.correctedValue !== undefined && field.value !== null ? <> · read as {formatFieldValue(field.name, field.value)}</> : null}
+            {field.correctedValue !== undefined && field.value !== null ? <> · read as {formatFieldValue(field.name, field.value, formatDate)}</> : null}
           </p>
         ) : null}
         {reasons.length > 0 ? (

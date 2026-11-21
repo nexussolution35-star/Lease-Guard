@@ -2,11 +2,13 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import { ConfigErrorScreen } from '@/app/ConfigErrorScreen'
+import { initMotion } from '@/lib/motion'
 import { initTheme } from '@/lib/theme'
 import { appConfigResult } from '@/services/api/config'
 import '@/styles/globals.css'
 
 initTheme()
+initMotion()
 
 const container = document.getElementById('root')
 if (!container) throw new Error('index.html is missing the #root element')

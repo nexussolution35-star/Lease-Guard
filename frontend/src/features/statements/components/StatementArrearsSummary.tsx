@@ -1,6 +1,6 @@
 import { useNavigate } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
-import { formatSADate, type AgeingBucketLabel, type StatementArrearsEntry } from '@leaseguard/domain'
+import { type AgeingBucketLabel, type StatementArrearsEntry } from '@leaseguard/domain'
 
 import {
   AppLink,
@@ -21,6 +21,8 @@ import { MAX_LIST_PAGE_SIZE } from '@/lib/data/listParams'
 import { cn } from '@/lib/utils'
 
 import { useStatementArrears } from '../api/arrearsQueries'
+import { useDateFormatter } from '@/lib/dateFormat'
+import { isMotionReduced } from '@/lib/motion'
 
 /** "Current", "30 days", "120+ days": the bucket's name as the page shows it. */
 function bucketName(bucket: AgeingBucketLabel): string {
@@ -100,6 +102,7 @@ function columns(verifierName: (entry: StatementArrearsEntry) => string | undefi
  * the review figure opens the statements waiting for review.
  */
 export function StatementArrearsSummary() {
+  const { date: formatDate } = useDateFormatter()
   const navigate = useNavigate()
   const query = useStatementArrears()
   const members = useMemberList({ page: 1, pageSize: MAX_LIST_PAGE_SIZE, sort: 'fullName', direction: 'asc' })
@@ -113,8 +116,8 @@ export function StatementArrearsSummary() {
   const isLoading = query.isPending
   const showTenants = (next: AgeingBucketLabel | null) => {
     setBucket(next)
-    // A smooth scroll is motion: it jumps instead for people who asked for reduced motion.
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    // A smooth scroll is motion: it jumps instead when motion is reduced (Preferences, or the device).
+    const reduceMotion = isMotionReduced()
     tableRef.current?.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' })
   }
   const rows = (summary?.entries ?? []).filter((entry) => bucket === null || entry.bucket === bucket)
@@ -158,7 +161,7 @@ export function StatementArrearsSummary() {
             title="Arrears ageing"
             description={
               summary
-                ? `Each tenant's latest verified statement, aged from its statement date to ${formatSADate(summary.asOf)}.`
+                ? `Each tenant's latest verified statement, aged from its statement date to ${formatDate(summary.asOf)}.`
                 : "Each tenant's latest verified statement, aged from its statement date."
             }
             actions={

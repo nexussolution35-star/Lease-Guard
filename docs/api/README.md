@@ -388,7 +388,9 @@ Behaviour worth knowing:
   request, as the domain `DashboardSummary`: `properties` (not archived), `units` and `occupiedUnits` (units of those
   properties; occupied is the unit's `occupancy_status`, which a current lease or an assigned tenant keeps occupied),
   `activeLeases` (status `active`), `totalOutstanding`, `tenantsInArrears` and `pendingStatementReviews` (the statement
-  arrears figures above, so the dashboard and the Statements page never disagree; `asOf` is their day),
+  arrears figures above, worked out in one database query, `dashboard_arrears_totals`, with the same rules: the latest
+  verified statement per unit, an arrangement never taking a balance out; the dashboard never loads the statements, and
+  it and the Statements page never disagree; `asOf` is the South African day),
   `activeArrangements` (status `active`), `pendingApprovals` (approval requests with decision `pending`) and the OPEN
   monitoring events (`OPEN_EVENT_STATUSES`) of one type each (`DASHBOARD_EVENT_FIGURES`): `escalationDiscrepancies`,
   `upcomingExpiries`, `renewalDeadlines`, `expiringGuarantees`. The counts are head-only parallel queries on indexed
@@ -476,7 +478,7 @@ Behaviour worth knowing:
   sent. `createTenant` / `updateTenant` take `accountReference` (unique per company, 409 on a duplicate).
 - **Monitoring list** (`listMonitoringEvents`, ticket M7-01): filters `status` or `open` (true: new, under review,
   action required, in progress; false: resolved or dismissed), `priority`, `type`, `propertyId`, `unitId`,
-  `tenantId`, `leaseId`, `assignee` (a member's user id, or `unassigned`) and `due` (`overdue`: due before today;
+  `tenantId`, `leaseId`, `arrangementId` (events about one payment arrangement), `assignee` (a member's user id, or `unassigned`) and `due` (`overdue`: due before today;
   `next_7_days` / `next_30_days` / `next_90_days`: due from today to n days from today, inclusive; judged on the
   South African date by `dueWindowRange` in `@leaseguard/domain`); search on title, description and lease reference;
   sort by `identifiedOn`, `dueDate` (events without one last), `priority` or `createdAt`. Each item is a
@@ -490,8 +492,12 @@ Behaviour worth knowing:
   from, and money findings the `calculation` (expected, actual, difference and each step). Arrears events record the
   lease reference since ticket M7-06, so the list's lease-reference search finds them too (`tests/README.md`,
   "Monitoring accuracy acceptance").
-- **Monitoring status changes** follow the transitions in `@leaseguard/domain` (`nextEventStatuses`, `canTransition`);
-  a disallowed move, or one from a status someone else changed meanwhile, is 409 and dismissing requires a `note`
+- **Monitoring status changes** follow the transitions in `@leaseguard/domain` (`nextEventStatuses`, `canTransition`),
+  enforced by the database: the API calls `update_monitoring_event_status` (migration
+  `20261122010000_monitoring_event_status_workflow.sql`), which locks the event and checks the move from its current
+  status, and signed-in users cannot update `monitoring_events` through the Data API at all. A disallowed move
+  (including one from a status someone else changed meanwhile, or any move of a resolved or dismissed event) is 409 with
+  the database's words, and dismissing requires a `note`
   (the dismissal reason, `statusChangeRequiresNote`); on other moves the note is stored as the resolution notes. An
   event's history is its audit log: `listAuditLogs` with `entityType=monitoring_event&entityId=…` (audit readers;
   property owners 403). Each entry carries the status change and, when the same move changed them, the

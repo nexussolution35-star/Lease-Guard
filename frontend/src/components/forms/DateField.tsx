@@ -13,7 +13,8 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { formatSADate, isValidISODate, parseISODate, toISODate } from '@leaseguard/domain'
+import { isValidISODate, parseISODate, toISODate } from '@leaseguard/domain'
+import { useDateFormatter } from '@/lib/dateFormat'
 import { cn } from '@/lib/utils'
 import type { ISODate } from '@leaseguard/domain'
 import { fieldIdFor } from './fieldId'
@@ -74,6 +75,7 @@ function DatePicker({
 }: DatePickerProps) {
   const [open, setOpen] = useState(false)
   const valueId = useId()
+  const { date: formatDate } = useDateFormatter()
   const iso = typeof value === 'string' && isValidISODate(value) ? value : undefined
   const selected = iso ? parseISODate(iso) : undefined
   const minDate = min && isValidISODate(min) ? parseISODate(min) : undefined
@@ -111,7 +113,7 @@ function DatePicker({
             )}
           >
             <span id={valueId} className="truncate">
-              {iso ? formatSADate(iso, 'short') : placeholder}
+              {iso ? formatDate(iso) : placeholder}
             </span>
             {/* The clear button below takes the icon's place, so the field never changes width. */}
             {showClear ? null : (

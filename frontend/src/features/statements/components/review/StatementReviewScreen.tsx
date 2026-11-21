@@ -313,7 +313,9 @@ function Outcome({ statement, signerOf, isWriter, problems, remainingId, ready }
             </span>
           )}
         </div>
-        <MetricGrid className="sm:grid-cols-3">
+        {/* The panel sits beside the PDF, so the strip picks its column count from its own width (cells at least
+            11rem) rather than forcing three narrow columns. */}
+        <MetricGrid columns={2} className="grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))]">
           <MetricCard lead label="Outstanding balance" value={<CurrencyDisplay amount={statement.closingBalance} />} tone={(statement.closingBalance ?? 0) > 0 ? 'danger' : 'neutral'} />
           <MetricCard label="Total due" value={<CurrencyDisplay amount={statement.totalDue} tone="none" />} />
           <MetricCard label="Opening balance" value={<CurrencyDisplay amount={statement.openingBalance} tone="none" />} />

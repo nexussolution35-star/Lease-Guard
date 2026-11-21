@@ -1,4 +1,4 @@
-import { formatSADate, type Statement, type StatementListItem } from '@leaseguard/domain'
+import { type Statement, type StatementListItem } from '@leaseguard/domain'
 import { AlertCircle } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -12,16 +12,17 @@ import { describeApiError } from '@/lib/data/apiErrors'
 import { MAX_LIST_PAGE_SIZE } from '@/lib/data/listParams'
 
 import { useMarkStatementDuplicate, useStatementList } from '../../api/queries'
+import { useDateFormatter } from '@/lib/dateFormat'
 
 const schema = z.object({ duplicateOfStatementId: z.string({ error: 'Choose the statement this one repeats' }).min(1, 'Choose the statement this one repeats') })
 type Values = z.infer<typeof schema>
 
 /** How a statement reads in the list of candidates: file, number, tenant and period. */
-function describe(statement: StatementListItem): string {
+function describe(statement: StatementListItem, formatDate: (iso: string) => string): string {
   const parts = [statement.file.fileName]
   if (statement.statementNumber) parts.push(`No. ${statement.statementNumber}`)
   if (statement.tenantName) parts.push(statement.tenantName)
-  if (statement.periodStart && statement.periodEnd) parts.push(`${formatSADate(statement.periodStart)} – ${formatSADate(statement.periodEnd)}`)
+  if (statement.periodStart && statement.periodEnd) parts.push(`${formatDate(statement.periodStart)} – ${formatDate(statement.periodEnd)}`)
   return parts.join(' · ')
 }
 
@@ -35,11 +36,12 @@ export interface MarkDuplicateDialogProps {
  * duplicates are not offered (the API refuses them too). A duplicate never counts for monitoring. Mounted only while open.
  */
 export function MarkDuplicateDialog({ statement, onClose }: MarkDuplicateDialogProps) {
+  const { date: formatDate } = useDateFormatter()
   const mark = useMarkStatementDuplicate(statement.id)
   const others = useStatementList({ page: 1, pageSize: MAX_LIST_PAGE_SIZE, propertyId: statement.propertyId, sort: 'uploadedAt', direction: 'desc' })
   const options = (others.data?.items ?? [])
     .filter((other) => other.id !== statement.id && other.status !== 'rejected' && other.status !== 'duplicate')
-    .map((other) => ({ value: other.id, label: describe(other) }))
+    .map((other) => ({ value: other.id, label: describe(other, formatDate) }))
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { duplicateOfStatementId: '' } })
 
   const submit = form.handleSubmit(async ({ duplicateOfStatementId }) => {

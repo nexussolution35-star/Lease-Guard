@@ -156,7 +156,7 @@ imports, no I/O and no clock reads; date-sensitive functions take `today` explic
 
 | Module (`packages/domain/src/rules/`) | Rule |
 | --- | --- |
-| `money.ts`, `dates.ts` | ZAR rounding and formatting (`formatZAR`), South African date formatting (`formatSADate`) |
+| `money.ts`, `dates.ts` | ZAR rounding and formatting (`formatZAR`), South African date formatting (`formatSADate`, for what the backend writes) and the web app's six display formats (`formatDisplayDate`, `formatDisplayDateTime`) |
 | `escalation.ts` | Expected escalated rental and discrepancies |
 | `leaseExpiry.ts`, `renewalNotice.ts` | Expiry thresholds and renewal notice deadlines |
 | `guarantee.ts` | Guarantee expiry and coverage shortfalls |
@@ -167,7 +167,7 @@ imports, no I/O and no clock reads; date-sensitive functions take `today` explic
 | `tenantNameMatch.ts` | Whether two tenant names are alike enough to suggest the same tenant (`areSimilarTenantNames`, `tenantNameKey`): entity words such as (Pty) Ltd and CC ignored, one-word-set inside the other, or a one- or two-letter slip. Only ever a suggestion for a person to confirm (portfolio import, ticket I-05) |
 | `googleSheetsLink.ts` | Google Sheets links for portfolio imports: `parseGoogleSheetsLink` (spreadsheet and tab ids, or null for anything else), the CSV export address the API fetches, and the sheet's own link |
 | `extractionReview.ts` | Assessment of an extraction proposal for review |
-| `monitoringWorkflow.ts` | Allowed monitoring event status transitions |
+| `monitoringWorkflow.ts` | Allowed monitoring event status transitions (enforced in the database by `update_monitoring_event_status`, the same moves) |
 | `communicationEligibility.ts`, `messageContent.ts` | Who may receive which message type; banking details and forbidden tenant topics in message text |
 
 Who executes them:

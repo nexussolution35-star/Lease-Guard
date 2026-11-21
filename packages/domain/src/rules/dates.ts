@@ -114,6 +114,44 @@ export function formatSADateTime(isoDateTime: ISODateTime, style: SADateStyle = 
   return `${formatSADate(datePart, style)}, ${hh}:${mm}`
 }
 
+/**
+ * Web-app display formats a user may choose in Settings → Preferences. Display only: stored values are ISO,
+ * and tenant messages, audit summaries and anything the backend writes keep `formatSADate` (en-ZA).
+ */
+export type DateDisplayFormat = 'dd-mmm-yyyy' | 'd-mmmm-yyyy' | 'dd/mm/yyyy' | 'yyyy/mm/dd' | 'mmm-d-yyyy' | 'yyyy-mm-dd'
+
+/** The default: the South African short format, the same as `formatSADate`. */
+export const DEFAULT_DATE_DISPLAY_FORMAT: DateDisplayFormat = 'dd-mmm-yyyy'
+
+const DATE_DISPLAY_PATTERNS: Record<DateDisplayFormat, string> = {
+  'dd-mmm-yyyy': SA_DATE_PATTERNS.short, // 06 Nov 2026
+  'd-mmmm-yyyy': SA_DATE_PATTERNS.long, // 6 November 2026
+  'dd/mm/yyyy': SA_DATE_PATTERNS.numeric, // 06/11/2026
+  'yyyy/mm/dd': 'yyyy/MM/dd', // 2026/11/06
+  'mmm-d-yyyy': 'MMM d, yyyy', // Nov 6, 2026
+  'yyyy-mm-dd': 'yyyy-MM-dd', // 2026-11-06
+}
+
+/** In the order Preferences lists them, the default first. */
+export const DATE_DISPLAY_FORMATS = Object.keys(DATE_DISPLAY_PATTERNS) as readonly DateDisplayFormat[]
+
+export function isDateDisplayFormat(value: unknown): value is DateDisplayFormat {
+  return typeof value === 'string' && (DATE_DISPLAY_FORMATS as readonly string[]).includes(value)
+}
+
+/** A calendar date in the chosen display format. Throws on a malformed ISODate. */
+export function formatDisplayDate(iso: ISODate, displayFormat: DateDisplayFormat = DEFAULT_DATE_DISPLAY_FORMAT): string {
+  return format(parseISODate(iso), DATE_DISPLAY_PATTERNS[displayFormat])
+}
+
+/** A timestamp as `<date>, 08:30`, the wall-clock time as written (see `formatSADateTime`). */
+export function formatDisplayDateTime(isoDateTime: ISODateTime, displayFormat: DateDisplayFormat = DEFAULT_DATE_DISPLAY_FORMAT): string {
+  const m = ISO_DATETIME_RE.exec(isoDateTime)
+  if (!m) throw new Error(`Invalid ISODateTime: ${isoDateTime}`)
+  const [, datePart, hh, mm] = m
+  return `${formatDisplayDate(datePart, displayFormat)}, ${hh}:${mm}`
+}
+
 /** `today` falls within [start, end] inclusive. */
 export function isWithinISO(today: ISODate, start: ISODate, end: ISODate): boolean {
   return compareISODate(today, start) >= 0 && compareISODate(today, end) <= 0
