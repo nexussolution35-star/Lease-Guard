@@ -1,0 +1,65 @@
+# LeaseGuard gateway (ADR 0003): one origin for the web app, routing by path to each service.
+#
+#   /api/v1/reports, /api/v1/reports/...   the reports service (services/reports)
+#   everything else                        the core service (backend/: API, health, Swagger UI, webhook)
+#
+# The same table as infrastructure/gateway/routes.json, which the Vite dev proxy uses in development. Add a service
+# to both. Rendered by the nginx image's envsubst step (/etc/nginx/templates/*.template -> /etc/nginx/conf.d/):
+#   CORE_UPSTREAM      host:port of the core API, e.g. api:3000
+#   REPORTS_UPSTREAM   host:port of the reports service, e.g. reports:3100
+# Only variables set in the environment are substituted, so nginx's own $variables stay as written.
+#
+# TLS terminates in front of this gateway. It never caches: every response is per user and per company and the
+# services send Cache-Control: no-store (see "Load balancing and caching" in infrastructure/deployment/README.md).
+# Check a change with `pnpm docker:nginx-check`.
+
+upstream core {
+    server ${CORE_UPSTREAM};
+    # Idle connections to a service are reused. nginx closes them after 60 s, before the services' 65 s keep-alive
+    # (KEEP_ALIVE_TIMEOUT_MS in packages/service-kit), so it never reuses one a service is closing.
+    keepalive 32;
+}
+
+upstream reports {
+    server ${REPORTS_UPSTREAM};
+    keepalive 32;
+}
+
+server {
+    listen 8080;
+    listen [::]:8080;
+    server_name _;
+    server_tokens off;
+
+    # The largest request any service accepts: the core's WhatsApp webhook (3 MB raw body). Statement and lease
+    # files go straight to Supabase Storage, never through the gateway.
+    client_max_body_size 4m;
+
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 60s;
+    # Responses are never stored here (no proxy_cache is configured); the services' no-store header passes through.
+
+    # Liveness of the gateway itself. Each service's own /health and /health/ready stay on the service.
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # Reports service: exactly /api/v1/reports and everything below it (not /api/v1/reportsx).
+    location = /api/v1/reports {
+        proxy_pass http://reports;
+    }
+    location ^~ /api/v1/reports/ {
+        proxy_pass http://reports;
+    }
+
+    # Core service: every other path.
+    location / {
+        proxy_pass http://core;
+    }
+}

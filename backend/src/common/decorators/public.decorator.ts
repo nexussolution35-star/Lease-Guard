@@ -1,9 +1,2 @@
-import { SetMetadata } from '@nestjs/common'
-
-export const IS_PUBLIC_KEY = 'leaseguard:isPublic'
-
-/**
- * Exempts a route or controller from the global SupabaseAuthGuard: health checks, and Meta's WhatsApp webhook,
- * which authenticates Meta itself (verify token, app-secret signature).
- */
-export const Public = (): MethodDecorator & ClassDecorator => SetMetadata(IS_PUBLIC_KEY, true)
+/** Moved to the shared service kit (ADR 0003); re-exported so existing imports keep working. New code imports @leaseguard/service-kit. */
+export { IS_PUBLIC_KEY, Public } from '@leaseguard/service-kit'

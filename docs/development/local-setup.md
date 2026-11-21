@@ -26,9 +26,37 @@ worker and the web app connect: `SUPABASE_URL` (backend) and `VITE_SUPABASE_URL`
 If the web app signs in but shows no data, or the API reports `/health/ready` as 503, check that the
 URL and the keys come from the same project and that the stack is running (`pnpm db:status`).
 
+## Services and the gateway in development
+
+`pnpm dev` starts the web app, the core API, the worker and the reports service (`services/reports`, ADR 0003) in
+parallel. Start one on its own with `pnpm dev:frontend`, `dev:backend`, `dev:worker` or `dev:reports`.
+
+| Process | Address | Configuration |
+| --- | --- | --- |
+| Web app and gateway | `http://localhost:5173` | `frontend/.env` |
+| Core API | `http://127.0.0.1:3000` (Swagger UI `/api/docs`) | `backend/.env` |
+| Reports service | `http://127.0.0.1:3100` (Swagger UI `/api/docs`) | `services/reports/.env` (optional) |
+
+The web app has one base URL. The Vite dev server is the development gateway: it forwards `/api/v1/reports` to the
+reports service and every other `/api` and `/health` path to the core API, as `infrastructure/gateway/routes.json`
+says. So **`VITE_API_URL` must be the dev server's own origin**, `http://localhost:5173` (the value in
+`frontend/.env.example`). With the older value `http://localhost:3000` the core still answers, but report paths are
+not found (404), and the dev server prints a `[gateway]` warning at start. Set `GATEWAY_CORE_URL` or
+`GATEWAY_REPORTS_URL` in `frontend/.env` (or the shell) when a service listens elsewhere.
+
+The reports service reads `services/reports/.env` when it exists (`cp services/reports/.env.example
+services/reports/.env`). A variable missing there and in the environment is read from `backend/.env`, for the shared
+settings only (`NODE_ENV`, `LOG_LEVEL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `REDIS_URL`), so it reaches the same
+Supabase project and Redis as the core without copying the key. Its own settings default for development
+(`REPORTS_PORT` 3100, `REPORTS_CORS_ORIGINS` `http://localhost:5173`), so `pnpm dev` runs it without a
+`services/reports/.env`. It never reads the service-role key. Like the API, it starts while Supabase or Redis is down and answers `/health/ready` with 503.
+
+Both services' dev runners compile `@leaseguard/domain` and `@leaseguard/service-kit` first when their output is stale
+(`packages/service-kit/scripts/workspace-build.mjs`, one lock for every runner), and restart when either changes.
+
 ## Redis for `pnpm dev`
 
-The API and the worker started by `pnpm dev` use `REDIS_URL` (default `redis://127.0.0.1:6379`). The
+The API, the worker and the reports service started by `pnpm dev` use `REDIS_URL` (default `redis://127.0.0.1:6379`). The
 `redis` service in `docker-compose.yml` does **not** publish a host port, so it serves only the
 containers. For host processes, run a separate Redis, for example:
 
@@ -58,14 +86,16 @@ The LeaseGuard Dockerfiles avoid BuildKit-only syntax, so the legacy builder wor
 DOCKER_BUILDKIT=0 docker build -f backend/Dockerfile -t leaseguard-backend:local .
 ```
 
-Build the backend and frontend images from the repository root; the document-processing image from
-`python-services/document-processing`.
+Build the backend, reports (`services/reports/Dockerfile`) and frontend images from the repository root; the
+document-processing image from `python-services/document-processing`; the gateway image from `infrastructure/gateway`.
 
 ## Ports already in use
 
 The containers publish the same host ports `pnpm dev` uses (API 3000, document processing 8000,
-frontend container 8080). Stop one before starting the other, or move the containers with
-`API_HOST_PORT`, `DOCUMENT_PROCESSING_HOST_PORT` and `FRONTEND_HOST_PORT` in `backend/.env`.
+frontend container 8080) plus the gateway (8081). Stop one before starting the other, or move the containers with
+`API_HOST_PORT`, `DOCUMENT_PROCESSING_HOST_PORT`, `GATEWAY_HOST_PORT` and `FRONTEND_HOST_PORT` in `backend/.env`. The
+reports container is not published; it is reached through the gateway. `pnpm dev:reports` uses 3100
+(`REPORTS_PORT`).
 
 ## Sign-in is rejected or rate-limited locally
 
@@ -78,9 +108,10 @@ frontend container 8080). Stop one before starting the other, or move the contai
 - A signed-in user with no company membership, or without a LeaseGuard profile, sees
   "No workspace access".
 
-## The API or worker refuses to start
+## The API, worker or reports service refuses to start
 
-Each process lists every missing or invalid variable and the file it reads (`backend/src/config/env.ts`).
+Each process lists every missing or invalid variable and the file it reads (`backend/src/config/env.ts`;
+`services/reports/src/config/env.ts` for the reports service).
 Two variables may be empty while the local stack is not started yet:
 
 - `SUPABASE_ANON_KEY` (API): the API starts, but `/health/ready` is 503 and authenticated requests

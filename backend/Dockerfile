@@ -2,7 +2,8 @@
 #   API:    node dist/main.js     (default command; serves HTTP on API_PORT, health at /health)
 #   Worker: node dist/worker.js   (override the command; no HTTP server, so disable the health check)
 #
-# Build from the repository root (the backend depends on the @leaseguard/domain workspace package):
+# Build from the repository root (the backend depends on the @leaseguard/domain and @leaseguard/service-kit
+# workspace packages):
 #   docker build -f backend/Dockerfile -t leaseguard-backend .
 #
 # Configuration is read from the environment at run time (see backend/.env.example and
@@ -25,7 +26,9 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY backend/package.json backend/
 COPY packages/domain/package.json packages/domain/
+COPY packages/service-kit/package.json packages/service-kit/
 COPY packages/api-client/package.json packages/api-client/
+COPY services/reports/package.json services/reports/
 COPY frontend/package.json frontend/
 COPY tests/package.json tests/
 
@@ -34,10 +37,14 @@ FROM pnpm AS build
 RUN pnpm install --frozen-lockfile --filter "@leaseguard/backend..."
 COPY packages/domain/tsconfig.json packages/domain/tsconfig.build.json packages/domain/
 COPY packages/domain/src packages/domain/src
+COPY packages/service-kit/tsconfig.json packages/service-kit/tsconfig.build.json packages/service-kit/
+COPY packages/service-kit/scripts packages/service-kit/scripts
+COPY packages/service-kit/src packages/service-kit/src
 COPY backend/tsconfig.json backend/tsconfig.build.json backend/
 COPY backend/scripts backend/scripts
 COPY backend/src backend/src
-# The backend `build` script builds @leaseguard/domain first, then compiles the backend into dist/.
+# The backend `build` script builds @leaseguard/domain and @leaseguard/service-kit first, then compiles the backend
+# into dist/.
 RUN pnpm --filter "@leaseguard/backend" build
 
 # ----------------------------------------------------------------------------- production dependencies
@@ -50,12 +57,15 @@ ENV NODE_ENV=production \
     API_PORT=3000
 WORKDIR /app
 # The same workspace layout as the repository, so pnpm's relative symlinks (including the
-# backend -> packages/domain workspace link) resolve unchanged.
+# backend -> packages/domain and packages/service-kit workspace links) resolve unchanged.
 COPY --from=prod-deps /app/package.json /app/pnpm-workspace.yaml ./
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=prod-deps /app/packages/domain/package.json packages/domain/
 COPY --from=prod-deps /app/packages/domain/node_modules packages/domain/node_modules
 COPY --from=build /app/packages/domain/dist packages/domain/dist
+COPY --from=prod-deps /app/packages/service-kit/package.json packages/service-kit/
+COPY --from=prod-deps /app/packages/service-kit/node_modules packages/service-kit/node_modules
+COPY --from=build /app/packages/service-kit/dist packages/service-kit/dist
 COPY --from=prod-deps /app/backend/package.json backend/
 COPY --from=prod-deps /app/backend/node_modules backend/node_modules
 COPY --from=build /app/backend/dist backend/dist

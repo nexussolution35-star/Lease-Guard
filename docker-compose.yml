@@ -18,8 +18,9 @@
 # variables it needs is not fixed here.
 #
 # Published ports bind to 127.0.0.1 only. They default to the ports `pnpm dev` uses, so stop one
-# before starting the other, or move these with API_HOST_PORT, DOCUMENT_PROCESSING_HOST_PORT and
-# FRONTEND_HOST_PORT in backend/.env. Redis is not published: the containers use it on the compose network,
+# before starting the other, or move these with API_HOST_PORT, DOCUMENT_PROCESSING_HOST_PORT,
+# GATEWAY_HOST_PORT (default 8081) and FRONTEND_HOST_PORT in backend/.env. The reports service is not published:
+# it is reached through the gateway. Redis is not published: the containers use it on the compose network,
 # and the host keeps its own Redis on 6379 for `pnpm dev`.
 
 name: leaseguard
@@ -121,23 +122,67 @@ services:
     stop_grace_period: 30s
     restart: unless-stopped
 
+  # The reports service (ADR 0003). Not published: the browser reaches it through the gateway at /api/v1/reports.
+  reports:
+    build:
+      context: .
+      dockerfile: services/reports/Dockerfile
+    image: leaseguard-reports:local
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SUPABASE_URL: ${DOCKER_SUPABASE_URL:-http://host.docker.internal:54321}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
+      REDIS_URL: redis://redis:6379
+      REPORTS_PORT: "3100"
+      REPORTS_CORS_ORIGINS: ${API_CORS_ORIGINS:-http://localhost:5173},http://localhost:${FRONTEND_HOST_PORT:-8080},http://127.0.0.1:${FRONTEND_HOST_PORT:-8080}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3100/health', { signal: AbortSignal.timeout(4000) }).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+    restart: unless-stopped
+
+  # One origin for the web app (infrastructure/gateway): /api/v1/reports to the reports service, the rest to the API.
+  gateway:
+    build:
+      context: infrastructure/gateway
+    image: leaseguard-gateway:local
+    environment:
+      CORE_UPSTREAM: api:3000
+      REPORTS_UPSTREAM: reports:3100
+    ports:
+      - "127.0.0.1:${GATEWAY_HOST_PORT:-8081}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+      reports:
+        condition: service_healthy
+    restart: unless-stopped
+
   frontend:
     profiles: ["frontend"]
     build:
       context: .
       dockerfile: frontend/Dockerfile
       # Public values compiled into the bundle (never secrets). The browser runs on the host, so it
-      # reaches the API and Supabase through their published host ports.
+      # reaches the gateway (every service) and Supabase through their published host ports.
       args:
-        VITE_API_URL: http://127.0.0.1:${API_HOST_PORT:-3000}
+        VITE_API_URL: http://127.0.0.1:${GATEWAY_HOST_PORT:-8081}
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-http://127.0.0.1:54321}
         VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
     image: leaseguard-frontend:local
     ports:
       - "127.0.0.1:${FRONTEND_HOST_PORT:-8080}:8080"
     depends_on:
-      api:
-        condition: service_healthy
+      gateway:
+        condition: service_started
     restart: unless-stopped
 
 volumes:

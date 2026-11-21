@@ -285,7 +285,7 @@ sequenceDiagram
   (`backend/src/common/decorators/public.decorator.ts`). The handshake answers only `hub.mode=subscribe` with the
   right `WHATSAPP_WEBHOOK_VERIFY_TOKEN` (403 otherwise, 503 when unset) and echoes only a challenge of safe
   characters, as plain text. The token arrives in the query string, so the request log replaces it with
-  `[Redacted]` in the logged url and query (`backend/src/common/logging/redact-url.ts`). Every POST must carry `X-Hub-Signature-256: sha256=<hex>`, the HMAC-SHA256 of the
+  `[Redacted]` in the logged url and query (`packages/service-kit/src/logging/redact-url.ts`). Every POST must carry `X-Hub-Signature-256: sha256=<hex>`, the HMAC-SHA256 of the
   exact request bytes keyed with `WHATSAPP_APP_SECRET`: the route reads its body raw (`rawWebhookBody`, registered
   in `main.ts` before Nest's JSON parser, so the global JSON limit of other routes is unchanged), compares in
   constant time, and only then parses. Unsigned, tampered or wrongly signed requests get 401 and queue nothing; a

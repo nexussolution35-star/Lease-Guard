@@ -3,7 +3,7 @@ import { GUARDS_METADATA, METHOD_METADATA, PATH_METADATA } from '@nestjs/common/
 import { RequestMethod } from '@nestjs/common'
 import { describe, expect, it } from 'vitest'
 
-import { COMPANY_ROLES_KEY } from '../../common/guards/company-role.guard'
+import { COMPANY_ROLES_KEY } from '@leaseguard/service-kit'
 import { MyInvitationsController } from './my-invitations.controller'
 
 /** @nestjs/swagger metadata keys (DECORATORS.API_SECURITY / API_OPERATION; not exported). */

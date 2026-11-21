@@ -55,6 +55,9 @@ coverage/
 .dev/
 backend/.dev/
 backend/.dev-*/
+# The same for every extracted service (services/<name>/scripts/dev.mjs writes .dev-<name>/)
+services/*/.dev/
+services/*/.dev-*/
 
 # Browser end-to-end test output (Playwright)
 playwright-report/

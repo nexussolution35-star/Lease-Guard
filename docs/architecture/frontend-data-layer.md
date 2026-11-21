@@ -21,7 +21,9 @@ date format changes display only: stored values and API payloads stay ISO, and t
 domain validation messages keep the en-ZA default.
 
 `services/api/config.ts` validates `VITE_API_URL`, `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (all
-required) once at startup. Unit tests use fixed, unreachable values (`test.env` in
+required) once at startup. `VITE_API_URL` is the gateway origin (ADR 0003), the one base URL for every service: in
+development the Vite dev server itself, which proxies `/api/v1/reports` to the reports service and every other `/api`
+and `/health` path to the core (`services/api/devGateway.ts`, from `infrastructure/gateway/routes.json`). Unit tests use fixed, unreachable values (`test.env` in
 `frontend/vite.config.ts`) and fake the API client or the source under test.
 
 ## Layers

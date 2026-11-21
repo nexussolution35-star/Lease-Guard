@@ -1,10 +1,2 @@
-import { createParamDecorator, type ExecutionContext } from '@nestjs/common'
-
-import type { CompanyContext, LeaseGuardRequest } from '../request-context'
-
-/** The company named by X-Company-Id, after CompanyAccessGuard verified the caller's membership. */
-export const CurrentCompany = createParamDecorator((_data: unknown, ctx: ExecutionContext): CompanyContext => {
-  const company = ctx.switchToHttp().getRequest<LeaseGuardRequest>().company
-  if (!company) throw new Error('@CurrentCompany() used on a route without CompanyAccessGuard')
-  return company
-})
+/** Moved to the shared service kit (ADR 0003); re-exported so existing imports keep working. New code imports @leaseguard/service-kit. */
+export { CurrentCompany } from '@leaseguard/service-kit'

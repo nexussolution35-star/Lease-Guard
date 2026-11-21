@@ -9,8 +9,8 @@ import {
 } from '@nestjs/common'
 import { describe, expect, it, vi } from 'vitest'
 
-import { CompanyAccessGuard } from '../../common/guards/company-access.guard'
-import { fakeClients, httpContext } from '../../common/guards/guards.test-helpers'
+import { CompanyAccessGuard } from '@leaseguard/service-kit'
+import { fakeClients, httpContext } from '@leaseguard/service-kit/testing'
 import type { LeaseGuardRequest } from '../../common/request-context'
 import { callsTo, fakeDb, rpcArgs, type FakeResult, type RecordedQuery } from '../../common/testing/fake-db.test-helpers'
 import type { DbClient } from '../../infrastructure/database/rls-client.factory'

@@ -1,6 +1,6 @@
 import type { DuplicateMatch, EntityId, Statement, StatementStatus } from '@leaseguard/domain'
 
-import type { ApiErrorBody } from '../../common/filters/all-exceptions.filter'
+import type { ApiErrorBody } from '@leaseguard/service-kit'
 import type { EnqueueOutcome } from '../../infrastructure/queues/queue-producer'
 import type { PROCESSABLE_STATEMENT_STATUSES } from './statements.schemas'
 

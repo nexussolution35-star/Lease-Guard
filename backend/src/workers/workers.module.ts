@@ -1,6 +1,6 @@
 import { type DynamicModule, Module, type Provider } from '@nestjs/common'
 
-import { loggingModule } from '../common/logging/logging.module'
+import { loggingModule } from '@leaseguard/service-kit'
 import { ConfigModule } from '../config/config.module'
 import type { WorkerEnv } from '../config/env'
 import { WORKER_ENV } from '../config/tokens'

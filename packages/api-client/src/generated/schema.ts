@@ -4,38 +4,6 @@
  */
 
 export interface paths {
-    "/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["HealthController_liveness"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/health/ready": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["HealthController_readiness"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -2289,33 +2257,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["HealthController_liveness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["HealthController_readiness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        LivenessResponse: {
-            /** @enum {string} */
-            status: "ok";
-            /** @description Seconds since the API process started. */
-            uptimeSeconds: number;
-        };
-        DependencyCheck: {
-            /** @enum {string} */
-            status: "up" | "down" | "not_configured";
-            /** @description Round-trip time of the check, when the dependency answered. */
-            latencyMs?: number;
-            /** @description Short reason when the dependency is not up. Details are in the server log. */
-            reason?: string;
-        };
-        ReadinessChecks: {
-            redis: components["schemas"]["DependencyCheck"];
-            supabase: components["schemas"]["DependencyCheck"];
-        };
-        ReadinessResponse: {
-            /** @enum {string} */
-            status: "ready" | "not_ready";
-            checks: components["schemas"]["ReadinessChecks"];
-        };
         ApiErrorDto: {
             /** @example 403 */
             statusCode: number;
@@ -5848,6 +5825,29 @@ export interface components {
             province?: components["schemas"]["SAProvince"];
             postalCode?: string;
         };
+        LivenessResponse: {
+            /** @enum {string} */
+            status: "ok";
+            /** @description Seconds since the API process started. */
+            uptimeSeconds: number;
+        };
+        DependencyCheck: {
+            /** @enum {string} */
+            status: "up" | "down" | "not_configured";
+            /** @description Round-trip time of the check, when the dependency answered. */
+            latencyMs?: number;
+            /** @description Short reason when the dependency is not up. Details are in the server log. */
+            reason?: string;
+        };
+        ReadinessChecks: {
+            redis: components["schemas"]["DependencyCheck"];
+            supabase: components["schemas"]["DependencyCheck"];
+        };
+        ReadinessResponse: {
+            /** @enum {string} */
+            status: "ready" | "not_ready";
+            checks: components["schemas"]["ReadinessChecks"];
+        };
     };
     responses: never;
     parameters: never;
@@ -5855,10 +5855,6 @@ export interface components {
     headers: never;
     pathItems: never;
 }
-export type LivenessResponse = components['schemas']['LivenessResponse'];
-export type DependencyCheck = components['schemas']['DependencyCheck'];
-export type ReadinessChecks = components['schemas']['ReadinessChecks'];
-export type ReadinessResponse = components['schemas']['ReadinessResponse'];
 export type ApiErrorDto = components['schemas']['ApiErrorDto'];
 export type UserStatus = components['schemas']['UserStatus'];
 export type UserRole = components['schemas']['UserRole'];
@@ -6178,54 +6174,12 @@ export type AddressSuggestionDto = components['schemas']['AddressSuggestionDto']
 export type AddressSuggestionListDto = components['schemas']['AddressSuggestionListDto'];
 export type AddressResolveDto = components['schemas']['AddressResolveDto'];
 export type SuggestedAddressDto = components['schemas']['SuggestedAddressDto'];
+export type LivenessResponse = components['schemas']['LivenessResponse'];
+export type DependencyCheck = components['schemas']['DependencyCheck'];
+export type ReadinessChecks = components['schemas']['ReadinessChecks'];
+export type ReadinessResponse = components['schemas']['ReadinessResponse'];
 export type $defs = Record<string, never>;
 export interface operations {
-    HealthController_liveness: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LivenessResponse"];
-                };
-            };
-        };
-    };
-    HealthController_readiness: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReadinessResponse"];
-                };
-            };
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReadinessResponse"];
-                };
-            };
-        };
-    };
     getMe: {
         parameters: {
             query?: never;
@@ -15881,6 +15835,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    HealthController_liveness: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LivenessResponse"];
+                };
+            };
+        };
+    };
+    HealthController_readiness: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessResponse"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessResponse"];
                 };
             };
         };

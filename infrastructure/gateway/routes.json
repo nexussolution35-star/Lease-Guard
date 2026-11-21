@@ -1,0 +1,5 @@
+{
+  "$comment": "Gateway routing table (ADR 0003): a request whose path starts with a route's prefix goes to that service; every other request goes to defaultService. Read by the Vite dev proxy (frontend/vite.config.ts) and the integration tests' gateway; gateway.conf.template must route the same prefixes (checked by pnpm docker:nginx-check).",
+  "defaultService": "core",
+  "routes": [{ "prefix": "/api/v1/reports", "service": "reports" }]
+}

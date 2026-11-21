@@ -1,58 +1,6 @@
 {
   "openapi": "3.0.0",
   "paths": {
-    "/health": {
-      "get": {
-        "operationId": "HealthController_liveness",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LivenessResponse"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "health"
-        ]
-      }
-    },
-    "/health/ready": {
-      "get": {
-        "operationId": "HealthController_readiness",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReadinessResponse"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReadinessResponse"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "health"
-        ]
-      }
-    },
     "/api/v1/me": {
       "get": {
         "operationId": "getMe",
@@ -13780,6 +13728,58 @@
           "address-suggestions"
         ]
       }
+    },
+    "/health": {
+      "get": {
+        "operationId": "HealthController_liveness",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LivenessResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "HealthController_readiness",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "health"
+        ]
+      }
     }
   },
   "info": {
@@ -13806,83 +13806,6 @@
       }
     },
     "schemas": {
-      "LivenessResponse": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "ok"
-            ]
-          },
-          "uptimeSeconds": {
-            "type": "number",
-            "description": "Seconds since the API process started."
-          }
-        },
-        "required": [
-          "status",
-          "uptimeSeconds"
-        ]
-      },
-      "DependencyCheck": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "up",
-              "down",
-              "not_configured"
-            ]
-          },
-          "latencyMs": {
-            "type": "number",
-            "description": "Round-trip time of the check, when the dependency answered."
-          },
-          "reason": {
-            "type": "string",
-            "description": "Short reason when the dependency is not up. Details are in the server log."
-          }
-        },
-        "required": [
-          "status"
-        ]
-      },
-      "ReadinessChecks": {
-        "type": "object",
-        "properties": {
-          "redis": {
-            "$ref": "#/components/schemas/DependencyCheck"
-          },
-          "supabase": {
-            "$ref": "#/components/schemas/DependencyCheck"
-          }
-        },
-        "required": [
-          "redis",
-          "supabase"
-        ]
-      },
-      "ReadinessResponse": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "ready",
-              "not_ready"
-            ]
-          },
-          "checks": {
-            "$ref": "#/components/schemas/ReadinessChecks"
-          }
-        },
-        "required": [
-          "status",
-          "checks"
-        ]
-      },
       "ApiErrorDto": {
         "type": "object",
         "properties": {
@@ -24249,6 +24172,83 @@
         },
         "required": [
           "line1"
+        ]
+      },
+      "LivenessResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          },
+          "uptimeSeconds": {
+            "type": "number",
+            "description": "Seconds since the API process started."
+          }
+        },
+        "required": [
+          "status",
+          "uptimeSeconds"
+        ]
+      },
+      "DependencyCheck": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down",
+              "not_configured"
+            ]
+          },
+          "latencyMs": {
+            "type": "number",
+            "description": "Round-trip time of the check, when the dependency answered."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Short reason when the dependency is not up. Details are in the server log."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "ReadinessChecks": {
+        "type": "object",
+        "properties": {
+          "redis": {
+            "$ref": "#/components/schemas/DependencyCheck"
+          },
+          "supabase": {
+            "$ref": "#/components/schemas/DependencyCheck"
+          }
+        },
+        "required": [
+          "redis",
+          "supabase"
+        ]
+      },
+      "ReadinessResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "not_ready"
+            ]
+          },
+          "checks": {
+            "$ref": "#/components/schemas/ReadinessChecks"
+          }
+        },
+        "required": [
+          "status",
+          "checks"
         ]
       }
     }

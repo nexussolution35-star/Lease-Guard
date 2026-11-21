@@ -1,14 +1,2 @@
-import { HttpException, HttpStatus } from '@nestjs/common'
-
-/**
- * 429 with the number of seconds to wait; AllExceptionsFilter sends it as the Retry-After header (exposed to the
- * browser through CORS).
- */
-export class TooManyRequestsException extends HttpException {
-  constructor(
-    message: string,
-    readonly retryAfterSeconds: number,
-  ) {
-    super(message, HttpStatus.TOO_MANY_REQUESTS)
-  }
-}
+/** Moved to the shared service kit (ADR 0003); re-exported so existing imports keep working. New code imports @leaseguard/service-kit. */
+export { TooManyRequestsException } from '@leaseguard/service-kit'

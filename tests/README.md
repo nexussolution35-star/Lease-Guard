@@ -46,10 +46,19 @@ hosted project):
   `backend/src/config/env.ts`) is set, using the local Supabase URL and anon key, `REDIS_URL`, a unique
   `QUEUE_PREFIX` (`lg-it-<pid>`) and `.env.example` defaults for the rest. Process variables win over
   `.env`, so `backend/.env` is never read. The API never receives the service-role key.
+- It then builds the reports service (ADR 0003) into `services/reports/.dev-integration`
+  (`fixtures/reports-server.ts`; `@leaseguard/domain` and `@leaseguard/service-kit` first when stale) and starts it on
+  a free port with an explicit environment (its `REPORTS_ENV_KEYS`: the same local Supabase URL, anon key and Redis,
+  `.env.example` for the rest; never the service-role key), then a gateway in the test process
+  (`fixtures/gateway.ts`: a streaming HTTP proxy routing with `infrastructure/gateway/routes.json` and the same
+  matching as the Vite dev proxy). Tests call every service through it with `gatewayAs(user, company)`
+  (`support/clients.ts`), as the web app does; `apiAs` still calls the API directly. Reports output goes to
+  `tests/test-results/integration/reports.log`.
 - The setup creates this run's world (below), waits for `GET /health/ready`, signs in the world's users
   once through local Supabase Auth (local Auth rate-limits sign-ins) and hands URLs, tokens and the
   world to the tests with Vitest `provide`/`inject`.
-- Teardown stops the API, deletes `backend/.dev-integration` and every Redis key under the run's queue
+- Teardown stops the gateway and the reports service (deleting `services/reports/.dev-integration`), stops the API,
+  deletes `backend/.dev-integration` and every Redis key under the run's queue
   prefix (registered statements and approvals enqueue BullMQ jobs; no worker consumes that prefix), then
   destroys the world and asserts nothing of it is left.
 
@@ -81,6 +90,7 @@ API output goes to `tests/test-results/integration/api.log`.
 | File | Behaviour |
 | --- | --- |
 | `auth.test.ts` | readiness; 401 without or with a malformed token; `GET /me` memberships |
+| `reports-service.test.ts` | The reports service (ticket R-00) through the gateway: its own liveness and readiness (Redis and Supabase up); `GET /api/v1/reports` returns the domain `REPORT_CATALOGUE` to every member role of company A, and is not served by the core API (404 there); 401 without or with a forged token, 400 without `X-Company-Id`, 403 for company B (the admin is not a member); `/api/v1/me`, `/health` and the look-alike `/api/v1/reportsx` still reach the core; `no-store` through the gateway |
 | `company-isolation.test.ts` | 403 for a company the caller is not a member of; 400 without/with a bad `X-Company-Id`; another company's ids are 404 even under the caller's own company (RLS plus company filter); a member of both companies only sees the active one |
 | `lists.test.ts` | `GET /leases`: paging with stable order, filters, search, sort, 400 for invalid parameters |
 | `tenant-list.test.ts` | `GET /tenants` (ticket M4-02): each world tenant with its current lease (domain `currentLease` over the database's leases), unit number, property name and lease count; the property filter keeps only tenants with a lease there and narrows the embedded leases; combined with search and paging; another company's tenants never listed, even filtered by its property; a non-UUID property is 400 |

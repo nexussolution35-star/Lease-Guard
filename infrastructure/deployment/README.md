@@ -11,20 +11,24 @@ and none needs payment or banking credentials.
 
 | Process | Image (Dockerfile) | Command | Port | Health |
 | --- | --- | --- | --- | --- |
-| API (NestJS, HTTP) | `backend/Dockerfile` | `node dist/main.js` (default) | `API_PORT` (3000) | `GET /health` liveness, `GET /health/ready` readiness |
+| Gateway (nginx, HTTP) | `infrastructure/gateway/Dockerfile` | default | 8080 | `GET /healthz` |
+| API, the core service (NestJS, HTTP) | `backend/Dockerfile` | `node dist/main.js` (default) | `API_PORT` (3000) | `GET /health` liveness, `GET /health/ready` readiness |
+| Reports service (NestJS, HTTP) | `services/reports/Dockerfile` | `node dist/main.js` (default) | `REPORTS_PORT` (3100) | `GET /health` liveness, `GET /health/ready` readiness |
 | Worker (NestJS, BullMQ) | `backend/Dockerfile` (same image) | `node dist/worker.js` | none | no HTTP; process liveness only |
 | Document processing (FastAPI) | `python-services/document-processing/Dockerfile` | default (uvicorn on 8000) | 8000 | `GET /health` liveness, `GET /health/ready` readiness |
 | Frontend (static SPA on nginx) | `frontend/Dockerfile` | default | 8080 | `GET /healthz` |
 | Database, Auth, Storage | Supabase (managed project) | n/a | n/a | n/a |
 | Queues | Redis 7.4 | n/a | 6379 | `redis-cli ping` |
 
-Build the Node images from the repository root (they depend on the `@leaseguard/domain` workspace
-package); the Python image builds from its own directory:
+Build the Node images from the repository root (they depend on the `@leaseguard/domain` and
+`@leaseguard/service-kit` workspace packages); the Python and gateway images build from their own directories:
 
 ```sh
 docker build -f backend/Dockerfile -t leaseguard-backend:<version> .
+docker build -f services/reports/Dockerfile -t leaseguard-reports:<version> .
+docker build -t leaseguard-gateway:<version> infrastructure/gateway
 docker build -f frontend/Dockerfile -t leaseguard-frontend:<version> \
-  --build-arg VITE_API_URL=https://<api origin> \
+  --build-arg VITE_API_URL=https://<gateway origin> \
   --build-arg VITE_SUPABASE_URL=https://<project>.supabase.co \
   --build-arg VITE_SUPABASE_ANON_KEY=<public anon key> .
 docker build -t leaseguard-document-processing:<version> python-services/document-processing
@@ -34,6 +38,30 @@ All base images are pinned to patch releases (`node:24.22.2-trixie-slim`, `nginx
 `python:3.14.10-slim-trixie`). Every image runs as a non-root user and contains no `.env` file or
 secret (see the root `.dockerignore`). Tag images with an immutable version (for example the git
 commit), never only `latest`.
+
+## Services and the gateway
+
+LeaseGuard is moving to independently deployable services (ADR 0003, `docs/adr/0003-microservices-by-incremental-extraction.md`).
+The core service is the API and worker above; each extracted service (today: reports, `services/reports`) is its own
+image and deployment, scaled on its own, with its own health and readiness and its own OpenAPI document (Swagger UI
+at `/api/docs` on the service).
+
+- **One public origin.** Browsers reach every service through the gateway. It routes by path, with the table in
+  `infrastructure/gateway/routes.json`: `/api/v1/reports` and below it to the reports service, every other path to the
+  core API. Build the frontend with `VITE_API_URL` set to the gateway's public origin. A service can move behind the
+  gateway without a frontend rebuild.
+- **The gateway image** is nginx with `infrastructure/gateway/gateway.conf.template`. Set `CORE_UPSTREAM` and
+  `REPORTS_UPSTREAM` to each service's internal `host:port` (defaults `api:3000` and `reports:3100`); nginx resolves
+  them when it starts, so start it after the services are resolvable. It never caches, allows 4 MB bodies (the core's
+  WhatsApp webhook needs 3 MB), keeps idle upstream connections for 60 s (under the services' 65 s) and passes
+  `X-Request-Id`, `Authorization`, `X-Company-Id` and the webhook's signature header through unchanged. On a platform
+  with its own path-routing load balancer, configure the same two rules there instead and leave this image out.
+  `pnpm docker:gateway-check` builds it and checks every route against the table.
+- **Each service verifies the caller itself** (the shared service kit, `packages/service-kit`): the Supabase JWT and
+  the `X-Company-Id` membership. The gateway is routing only, never the security boundary.
+- **Between services: queues only** (Redis/BullMQ). A service never writes another service's tables; the reports
+  service hands anything it sends to the core messaging pipeline, and only the core worker calls Meta.
+- Set CORS on each service to the frontend origin (`API_CORS_ORIGINS`, `REPORTS_CORS_ORIGINS`).
 
 ## API and worker are separate processes
 
@@ -54,7 +82,7 @@ document-processing service with statement-processing throughput.
 
 ## Configuration per process
 
-The variables are validated at start-up by each process (`backend/src/config/env.ts`,
+The variables are validated at start-up by each process (`backend/src/config/env.ts`, `services/reports/src/config/env.ts`,
 `python-services/document-processing/app/core/config.py`, `frontend/src/services/api/config.ts`);
 an invalid or missing value stops the process with a message naming every problem. `.env.example`
 documents each variable. Give each process only its own variables.
@@ -64,6 +92,7 @@ documents each variable. Give each process only its own variables.
 | `NODE_ENV` | yes | yes | | `production` |
 | `LOG_LEVEL` | yes | yes | yes | `fatal` … `trace`, `silent` |
 | `API_PORT` | yes | | | |
+| `REPORTS_PORT`, `REPORTS_CORS_ORIGINS` | | | | reports service only (with `NODE_ENV`, `LOG_LEVEL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `REDIS_URL`, as for the API; see `services/reports/.env.example`). Never the service-role key |
 | `API_CORS_ORIGINS` | yes | | | the frontend's origin(s), comma separated |
 | `SUPABASE_URL` | yes | yes | | |
 | `SUPABASE_ANON_KEY` | yes | | | public key; requests run under Row Level Security |
@@ -149,6 +178,9 @@ After a schema change, regenerate `backend/src/infrastructure/database/database.
 
 ## Health and readiness
 
+- Reports service: the same as the API (`GET /health/ready`, 503 until Redis and Supabase answer; `GET /health`
+  liveness, used by the image's `HEALTHCHECK`).
+- Gateway: `GET /healthz` (the gateway itself; each service's health stays on the service).
 - API: route traffic on `GET /health/ready` (503 until Redis answers and Supabase is reachable;
   per-dependency status in the body). Use `GET /health` for liveness only; the image's `HEALTHCHECK`
   uses it.
@@ -161,9 +193,9 @@ After a schema change, regenerate `backend/src/infrastructure/database/database.
 
 ## Load balancing and caching
 
-nginx in this repository is the static file server for the frontend only
-(`infrastructure/docker/nginx/frontend.conf`). It does not proxy, load-balance or cache the API. Do
-not add an nginx tier in front of the API on a platform that already balances replicas.
+nginx in this repository serves the frontend's static files (`infrastructure/docker/nginx/frontend.conf`) and, as
+the gateway (`infrastructure/gateway`), routes API paths to their service. Neither caches the API. On a platform
+that already balances replicas and routes by path, do the gateway's routing there and do not add another nginx tier.
 
 ### Load balancing the API
 
@@ -179,7 +211,7 @@ load balancer and hold it to these rules:
   WhatsApp messages and invitations, remove members and change WhatsApp settings, and none of them
   takes an idempotency key.
 - **Idle connections.** The API keeps an idle connection open for 65 s (`KEEP_ALIVE_TIMEOUT_MS` in
-  `backend/src/main.ts`). The balancer's idle timeout towards the API must be shorter (60 s is the
+  `packages/service-kit/src/http-app.ts`, the same for every service). The balancer's idle timeout towards the API must be shorter (60 s is the
   common default). Otherwise it reuses a connection the API is closing and callers see occasional
   502s.
 - **Timeouts.** Allow at least 30 s for a response. The slowest call, the Meta code exchange, is
@@ -214,7 +246,7 @@ connection error unless `proxy_next_upstream off` is set for everything except `
 | `/assets/*` (content-hashed by Vite) | `public, max-age=31536000, immutable` | frontend nginx |
 | `index.html` and client-side route fallbacks | `no-cache` (revalidated; 304 when unchanged) | frontend nginx |
 | `/favicon.svg` (the only unhashed file) | `public, max-age=86400` | frontend nginx |
-| Every API response, including health and errors | `no-store` | `backend/src/common/http/no-store.ts` |
+| Every API response, including health and errors, from every service | `no-store` | `packages/service-kit/src/http/no-store.ts` |
 
 Never cache `/api/` or `/health` at a proxy or CDN. The company is carried in the `Authorization` and
 `X-Company-Id` headers, not in the URL, so a cache keyed on the URL would serve one company's data to
@@ -230,7 +262,8 @@ the headers above; `tests/integration/cache-headers.test.ts` asserts `no-store` 
 
 ## Network exposure
 
-- Public: the frontend and the API (both behind TLS). Set `API_CORS_ORIGINS` to the frontend origin.
+- Public: the frontend and the gateway (both behind TLS). Set `API_CORS_ORIGINS` and `REPORTS_CORS_ORIGINS` to the
+  frontend origin. The API and the reports service need only be reachable from the gateway.
 - Internal only: the document-processing service (reachable by the worker alone) and Redis.
 - The API serves its OpenAPI document at `/api/docs`; restrict it at the edge if it should not be
   public.

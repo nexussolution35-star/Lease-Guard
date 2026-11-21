@@ -11,7 +11,7 @@ import { exposedSecretsMessage, findExposedSecrets } from './exposedSecrets'
  * developer's `.env` never prevents startup.
  */
 export interface AppConfig {
-  /** Backend origin, e.g. `http://127.0.0.1:3000`. API paths already include `/api/v1`. */
+  /** Gateway origin (ADR 0003), e.g. the Vite dev server `http://localhost:5173`. API paths already include `/api/v1`. */
   apiUrl: string
   supabaseUrl: string
   /** Public anon key (browser-safe; RLS applies). */

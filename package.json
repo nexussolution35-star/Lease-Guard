@@ -9,10 +9,11 @@
     "pnpm": ">=12"
   },
   "scripts": {
-    "dev": "pnpm run \"/^dev:(frontend|backend|worker)$/\"",
+    "dev": "pnpm run \"/^dev:(frontend|backend|worker|reports)$/\"",
     "dev:frontend": "pnpm --filter @leaseguard/frontend dev",
     "dev:backend": "pnpm --filter @leaseguard/backend dev",
     "dev:worker": "pnpm --filter @leaseguard/backend dev:worker",
+    "dev:reports": "pnpm --filter @leaseguard/reports dev",
     "dev:python": "bash infrastructure/scripts/python.sh dev",
     "build": "pnpm -r --workspace-concurrency=1 build",
     "typecheck": "pnpm -r typecheck",
@@ -21,6 +22,8 @@
     "test:domain": "pnpm --filter @leaseguard/domain test",
     "test:api-client": "pnpm --filter @leaseguard/api-client test",
     "test:backend": "pnpm --filter @leaseguard/backend test",
+    "test:reports": "pnpm --filter @leaseguard/reports test",
+    "test:service-kit": "pnpm --filter @leaseguard/service-kit test",
     "test:frontend": "pnpm --filter @leaseguard/frontend test",
     "test:integration": "pnpm --filter @leaseguard/tests test:integration",
     "test:e2e": "pnpm --filter @leaseguard/tests test:e2e",
@@ -35,14 +38,15 @@
     "whatsapp:import-test-number": "node infrastructure/scripts/whatsapp-import-test-number.mjs",
     "db:types": "node infrastructure/scripts/generate-db-types.mjs",
     "db:types:check": "node infrastructure/scripts/generate-db-types.mjs --check",
-    "api:generate": "pnpm --filter @leaseguard/backend openapi:generate && pnpm --filter @leaseguard/api-client generate",
+    "api:generate": "pnpm --filter @leaseguard/backend openapi:generate && pnpm --filter @leaseguard/reports openapi:generate && pnpm --filter @leaseguard/api-client generate",
     "python:setup": "bash infrastructure/scripts/python.sh setup",
     "python:test": "bash infrastructure/scripts/python.sh test",
     "python:lint": "bash infrastructure/scripts/python.sh lint",
     "docker:config": "bash infrastructure/scripts/compose.sh config --quiet",
     "docker:up": "bash infrastructure/scripts/compose.sh up -d --build",
     "docker:down": "bash infrastructure/scripts/compose.sh down",
-    "docker:nginx-check": "bash infrastructure/scripts/nginx-check.sh"
+    "docker:nginx-check": "bash infrastructure/scripts/nginx-check.sh",
+    "docker:gateway-check": "bash infrastructure/scripts/gateway-check.sh"
   },
   "devDependencies": {
     "openapi-typescript": "7.13.0",

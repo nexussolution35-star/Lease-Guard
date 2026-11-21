@@ -8,6 +8,8 @@
 | `document-processing` | built from `python-services/document-processing` | `127.0.0.1:8000` | |
 | `api` | built from `backend/Dockerfile` | `127.0.0.1:3000` | |
 | `worker` | same image as `api`, `node dist/worker.js` | none | |
+| `reports` | built from `services/reports/Dockerfile` | not published | the reports service (ADR 0003), reached through the gateway |
+| `gateway` | built from `infrastructure/gateway` | `127.0.0.1:8081` | nginx: `/api/v1/reports` to `reports`, everything else to `api` |
 | `frontend` (profile `frontend`) | built from `frontend/Dockerfile` | `127.0.0.1:8080` | nginx, config in `nginx/frontend.conf` |
 
 Supabase is not in the compose file. It runs through the Supabase CLI (`pnpm db:start`), and the
@@ -19,6 +21,7 @@ cp frontend/.env.example frontend/.env    # once; the web app's public values
 pnpm db:start                   # Supabase
 pnpm docker:config              # validate docker-compose.yml
 pnpm docker:nginx-check         # nginx -t and cache/compression headers for nginx/frontend.conf
+pnpm docker:gateway-check       # the gateway image routes every path as infrastructure/gateway/routes.json says
 pnpm docker:up                  # build and start redis, document-processing, api, worker
 bash infrastructure/scripts/compose.sh --profile frontend up -d --build   # also the SPA
 bash infrastructure/scripts/compose.sh logs -f api worker
@@ -27,7 +30,7 @@ bash infrastructure/scripts/compose.sh down -v                            # also
 ```
 
 The host ports are the ones `pnpm dev` uses, so run either the containers or `pnpm dev`, or move the
-containers with `API_HOST_PORT`, `DOCUMENT_PROCESSING_HOST_PORT` and `FRONTEND_HOST_PORT` (in `backend/.env`
+containers with `API_HOST_PORT`, `DOCUMENT_PROCESSING_HOST_PORT`, `GATEWAY_HOST_PORT` and `FRONTEND_HOST_PORT` (in `backend/.env`
 or the shell).
 
 Configuration comes from `backend/.env` and, for the frontend image's build arguments, `frontend/.env`. Inside containers the host names differ, so the compose
@@ -41,7 +44,9 @@ name-based variables are not accepted. Tokens kept in Supabase Vault (`secret://
 variable.
 
 The frontend image compiles `VITE_API_URL`, `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in at
-build time (they are public, never secrets).
+build time (they are public, never secrets). The compose file sets `VITE_API_URL` to the gateway's host port, so the
+containerised web app reaches every service through one origin. The reports container receives only its own
+variables (the shared Supabase URL, anon key, Redis and log settings plus `REPORTS_PORT` and `REPORTS_CORS_ORIGINS`).
 
 ## `compose.sh`
 

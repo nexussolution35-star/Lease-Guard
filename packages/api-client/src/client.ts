@@ -1,12 +1,22 @@
 import createClient, { type Middleware } from 'openapi-fetch'
 
 import { ApiError, apiErrorFromResponse, NETWORK_ERROR_STATUS } from './errors.js'
-import type { paths } from './generated/schema.js'
+import type { paths as reportsPaths } from './generated/reports-schema.js'
+import type { paths as corePaths } from './generated/schema.js'
 
 export const COMPANY_ID_HEADER = 'x-company-id'
 
+/** Routes the gateway answers itself for every service (they reach the core service): never part of a service's paths. */
+type GatewayOwnedPaths = '/health' | '/health/ready'
+
+/**
+ * Every path behind the gateway (ADR 0003): the core service's and each extracted service's, which the gateway routes
+ * by prefix (`/api/v1/reports` to the reports service). One base URL serves them all.
+ */
+export type paths = corePaths & Omit<reportsPaths, GatewayOwnedPaths>
+
 export interface ApiClientOptions {
-  /** API origin, e.g. `http://127.0.0.1:3000`. Paths already include `/api/v1`. */
+  /** Gateway origin, e.g. the Vite dev server `http://localhost:5173`. Paths already include `/api/v1`. */
   baseUrl: string
   /** Current Supabase access token, or null when signed out. Called before every request. */
   getAccessToken: () => string | null | Promise<string | null>
@@ -18,8 +28,9 @@ export interface ApiClientOptions {
 }
 
 /**
- * Typed LeaseGuard API client. Request and response types come from the backend's OpenAPI document,
- * so a backend change that breaks the frontend fails type checking after `pnpm api:generate`.
+ * Typed LeaseGuard API client for every service behind the gateway. Request and response types come from each
+ * service's OpenAPI document, so a service change that breaks the frontend fails type checking after
+ * `pnpm api:generate`.
  *
  * Use with `unwrap`: `const page = await unwrap(api.GET('/api/v1/properties', { params: { query } }))`.
  */

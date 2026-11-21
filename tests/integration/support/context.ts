@@ -4,6 +4,10 @@ import type { World, WorldUserKey } from '../../fixtures/world.ts'
 export interface IntegrationContext {
   /** Origin of the API process started for this run. */
   apiBaseUrl: string
+  /** Origin of the reports service process started for this run (services/reports). */
+  reportsBaseUrl: string
+  /** Origin of this run's gateway: /api/v1/reports to the reports service, every other path to the API. */
+  gatewayBaseUrl: string
   supabaseUrl: string
   anonKey: string
   /** Setup and cleanup only (bypasses RLS). Never used to call the API. */

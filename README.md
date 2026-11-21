@@ -231,8 +231,9 @@ docker run -d --name leaseguard-redis-dev -p 127.0.0.1:6379:6379 redis:7.4.12
 pnpm python:setup             # creates python-services/document-processing/.venv
 pnpm dev:python               # http://127.0.0.1:8000
 
-# 4. Web app, API and worker (in parallel)
-pnpm dev                      # web http://localhost:5173 · API http://127.0.0.1:3000 · docs /api/docs
+# 4. Web app (also the development gateway), API, worker and reports service (in parallel)
+pnpm dev                      # web http://localhost:5173 · API http://127.0.0.1:3000 · reports http://127.0.0.1:3100
+                              # (docs at /api/docs on each); the web app calls both through http://localhost:5173
 ```
 
 The local database starts **empty**: the database is the only source of truth and the repository ships
@@ -241,8 +242,8 @@ Supabase Studio (`pnpm db:status` prints its URL): an Auth user with a confirmed
 `company_users` membership with a role. The integration and end-to-end suites create (and remove) all the
 data they need themselves, so they also run against an empty database.
 
-The whole backend can also run in containers with `pnpm docker:up` (API, worker, document processing and
-Redis; Supabase still runs through its CLI).
+The whole backend can also run in containers with `pnpm docker:up` (API, worker, reports service, gateway,
+document processing and Redis; Supabase still runs through its CLI).
 
 ---
 
@@ -252,12 +253,12 @@ All commands run from the repository root.
 
 | Command | Purpose |
 | --- | --- |
-| `pnpm dev` | Web app, API and worker together, with reload |
-| `pnpm dev:frontend` · `dev:backend` · `dev:worker` · `dev:python` | Run one process |
+| `pnpm dev` | Web app (the development gateway), API, worker and reports service together, with reload |
+| `pnpm dev:frontend` · `dev:backend` · `dev:worker` · `dev:reports` · `dev:python` | Run one process |
 | `pnpm build` | Build every package in dependency order |
 | `pnpm typecheck` · `pnpm lint` | Type-check and lint every package |
 | `pnpm test` | Unit tests for domain, API client, backend and frontend |
-| `pnpm test:domain` · `test:api-client` · `test:backend` · `test:frontend` | Unit tests for one package |
+| `pnpm test:domain` · `test:api-client` · `test:service-kit` · `test:backend` · `test:reports` · `test:frontend` | Unit tests for one package |
 | `pnpm test:integration` | API integration tests against local Supabase and Redis |
 | `pnpm test:e2e` | Playwright end-to-end tests |
 | `pnpm db:start` · `db:stop` · `db:status` | Local Supabase stack |
@@ -267,9 +268,10 @@ All commands run from the repository root.
 | `pnpm auth:configure:remote` | Dry-run the hosted project's Auth settings (SMTP from `noreply@leaseguard.com`, email templates, 3-minute links, invite-only); `-- --apply` applies them (needs `SUPABASE_ACCESS_TOKEN` and `SMTP_*`) |
 | `pnpm whatsapp:import-test-number -- --company <id or initials>` | Nexus operators: connect Nexus Solution's own WhatsApp test number (`WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_MESSAGING_ACCOUNT_ID`) to one company before Meta approves LeaseGuard's app. Dry run by default; `--apply` asks, `--apply --yes` applies without asking; `--hosted` for a hosted project. The token goes to Vault for that company only and the number is Connected only after LeaseGuard verified it with Meta. See `docs/integrations/whatsapp.md` |
 | `pnpm db:types` · `db:types:check` | Regenerate the backend's typed database definitions, or check they are current |
-| `pnpm api:generate` | Regenerate `backend/openapi.json` and the typed API client |
+| `pnpm api:generate` | Regenerate `backend/openapi.json`, `services/reports/openapi.json` and the typed API client |
 | `pnpm python:setup` · `python:test` · `python:lint` | Document-processing service |
 | `pnpm docker:config` · `docker:up` · `docker:down` | Docker Compose for local development |
+| `pnpm docker:nginx-check` · `docker:gateway-check` | Check the frontend nginx config, and that the gateway image routes as `infrastructure/gateway/routes.json` says |
 
 ---
 

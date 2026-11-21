@@ -1,21 +1,25 @@
 # API conventions
 
-The LeaseGuard HTTP API is the NestJS process started by `backend/src/main.ts`. This page describes
-the conventions it implements. The authoritative contract is the generated OpenAPI document,
-`backend/openapi.json`; while the API runs, Swagger UI is served at `/api/docs` and the JSON document at
-`/api/docs-json`.
+The LeaseGuard HTTP API is served by the core service (the NestJS process started by `backend/src/main.ts`) and,
+for `/api/v1/reports`, by the reports service (`services/reports`, ADR 0003), both behind one gateway origin. This
+page describes the conventions they share: every service implements them through `@leaseguard/service-kit`. The
+authoritative contracts are the generated OpenAPI documents, `backend/openapi.json` and
+`services/reports/openapi.json`; while a service runs, its Swagger UI is served at `/api/docs` and the JSON document
+at `/api/docs-json` on that service.
 
 The API never collects, processes or facilitates payments. Statement balances and payment
 arrangements are monitoring records.
 
 ## Base path and versioning
 
-- Business routes are under `/api/v1` (`API_PREFIX` in `backend/src/openapi.ts`).
+- Business routes are under `/api/v1` (`API_PREFIX` in `packages/service-kit/src/openapi.ts`, re-exported by
+  `backend/src/openapi.ts`). The gateway routes `/api/v1/reports` and below it to the reports service and every
+  other path to the core (`infrastructure/gateway/routes.json`).
 - Health probes stay at the root: `GET /health` (liveness) and `GET /health/ready` (readiness: 503
   until Redis answers and Supabase is reachable). They are the only `@Public()` routes.
 - Every response carries an `X-Request-Id` header. A caller-supplied `X-Request-Id` (8–128 word
   characters or `-`) is reused; otherwise a UUID is generated.
-- CORS allows only the origins in `API_CORS_ORIGINS` and the headers `Authorization`, `Content-Type`,
+- CORS allows only the origins in `API_CORS_ORIGINS` (`REPORTS_CORS_ORIGINS` on the reports service) and the headers `Authorization`, `Content-Type`,
   `X-Company-Id` and `X-Request-Id`.
 
 ## Authentication
@@ -69,7 +73,7 @@ database.
 
 ## Error body
 
-Every failing request returns `ApiErrorBody` (`backend/src/common/filters/all-exceptions.filter.ts`,
+Every failing request returns `ApiErrorBody` (`packages/service-kit/src/http/all-exceptions.filter.ts`,
 documented as `ApiErrorDto`):
 
 ```json
@@ -118,7 +122,20 @@ real `total`**, not an error, so the client can step back.
 
 ## Endpoints
 
-From `backend/openapi.json`. "Writers" means `WRITER_ROLES`.
+From `backend/openapi.json` and, for the reports service, `services/reports/openapi.json`. "Writers" means
+`WRITER_ROLES`.
+
+### Reports service (`/api/v1/reports`)
+
+| Method and path | operationId | Scope | Roles |
+| --- | --- | --- | --- |
+| `GET /api/v1/reports` | `listReports` | company | members |
+
+`GET /api/v1/reports` returns `{ reports: ReportDefinitionDto[] }`: the report catalogue (`REPORT_CATALOGUE` in
+`packages/domain/src/rules/reportCatalogue.ts`, the same list the web app shows), in display order. The service also
+answers `GET /health` and `GET /health/ready` on its own port; through the gateway those paths reach the core.
+
+### Core service
 
 | Method and path | operationId | Scope | Roles |
 | --- | --- | --- | --- |
@@ -535,20 +552,22 @@ After changing a controller, DTO or schema:
 pnpm api:generate
 ```
 
-This builds the backend, writes `backend/openapi.json` (`backend/src/generate-openapi.ts`, run with
-`.env.example` values so no services are needed) and regenerates
-`packages/api-client/src/generated/schema.ts` with openapi-typescript. Commit both files.
+This builds each service and writes its document (`backend/openapi.json` from `backend/src/generate-openapi.ts`,
+`services/reports/openapi.json` from `services/reports/src/generate-openapi.ts`, each run with its `.env.example`
+values so no services are needed), then regenerates `packages/api-client/src/generated/schema.ts` and
+`packages/api-client/src/generated/reports-schema.ts` with openapi-typescript. Commit all four files.
 
 ## Using the typed client
 
-`@leaseguard/api-client` (`packages/api-client/src`) wraps openapi-fetch with the generated `paths`
-types:
+`@leaseguard/api-client` (`packages/api-client/src`) wraps openapi-fetch with `GatewayPaths`: the core's generated
+`paths` and the reports service's (without its health routes, which the gateway sends to the core), so one client
+with one base URL calls every service:
 
 ```ts
 import { createApiClient, unwrap, isApiError, COMPANY_ID_HEADER } from '@leaseguard/api-client'
 
 const api = createApiClient({
-  baseUrl: 'http://127.0.0.1:3000',          // paths already include /api/v1
+  baseUrl: 'http://localhost:5173',          // the gateway (the Vite dev server in development); paths include /api/v1
   getAccessToken: () => session?.access_token ?? null,
   getCompanyId: () => activeCompanyId,        // sent as X-Company-Id when set
   onUnauthorized: () => signOut(),            // called on every 401
@@ -568,7 +587,7 @@ const page = await unwrap(
   `isRetryable` (network, 429, 5xx).
 - `compactQuery` drops empty query values; `pageCount` computes the number of pages from a `Page`.
 - Generated schema types (for example `PropertyDto`, `PropertySortField`) are re-exported from the
-  package root.
+  package root; the reports service's are under the `Reports` namespace (for example `Reports.ReportCatalogueDto`).
 
 In the frontend, the single client instance is `getApiClient()` in `frontend/src/services/api/client.ts`.
 

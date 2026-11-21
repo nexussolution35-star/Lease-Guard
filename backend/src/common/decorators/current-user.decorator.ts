@@ -1,10 +1,2 @@
-import { createParamDecorator, type ExecutionContext } from '@nestjs/common'
-
-import type { AuthenticatedUser, LeaseGuardRequest } from '../request-context'
-
-/** The verified caller. Only valid on routes protected by SupabaseAuthGuard (the global default). */
-export const CurrentUser = createParamDecorator((_data: unknown, ctx: ExecutionContext): AuthenticatedUser => {
-  const user = ctx.switchToHttp().getRequest<LeaseGuardRequest>().user
-  if (!user) throw new Error('@CurrentUser() used on a route without SupabaseAuthGuard')
-  return user
-})
+/** Moved to the shared service kit (ADR 0003); re-exported so existing imports keep working. New code imports @leaseguard/service-kit. */
+export { CurrentUser } from '@leaseguard/service-kit'

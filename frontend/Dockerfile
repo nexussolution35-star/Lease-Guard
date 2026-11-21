@@ -34,7 +34,9 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY frontend/package.json frontend/
 COPY packages/domain/package.json packages/domain/
 COPY packages/api-client/package.json packages/api-client/
+COPY packages/service-kit/package.json packages/service-kit/
 COPY backend/package.json backend/
+COPY services/reports/package.json services/reports/
 COPY tests/package.json tests/
 RUN pnpm install --frozen-lockfile --filter "@leaseguard/frontend..."
 

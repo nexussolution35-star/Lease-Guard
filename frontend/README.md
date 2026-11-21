@@ -113,7 +113,7 @@ frontend setting: the API calls Google with its own server-only key.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `VITE_API_URL` | yes | Backend origin, e.g. `http://127.0.0.1:3000` |
+| `VITE_API_URL` | yes | Gateway origin, the one base URL for every service (ADR 0003): in development the Vite dev server itself, `http://localhost:5173`, which proxies `/api/v1/reports` to the reports service and the rest to the core API (`infrastructure/gateway/routes.json`) |
 | `VITE_SUPABASE_URL` | yes | Supabase URL, e.g. `http://127.0.0.1:54321` |
 | `VITE_SUPABASE_ANON_KEY` | yes | Public anon key (RLS applies) |
 

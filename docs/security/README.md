@@ -242,7 +242,7 @@ and `read_only` members, not by property owners. See [Database](../database/READ
 - The API logs JSON (pino). `Authorization`, `Cookie` and `apikey` request headers are redacted.
   Secret query parameters are replaced with `[Redacted]` in the logged url and query, and in the url of
   an unhandled-error log: Meta's webhook handshake sends `hub.verify_token` in the query string
-  (`backend/src/common/logging/redact-url.ts`).
+  (`packages/service-kit/src/logging/redact-url.ts`).
 - Every response has an `X-Request-Id`; error bodies include the same id.
 - Unexpected errors return a generic 500; database errors are mapped to generic messages, so
   constraint and policy names are not returned to clients.

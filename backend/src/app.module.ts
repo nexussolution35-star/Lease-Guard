@@ -1,13 +1,8 @@
 import { type DynamicModule, Module } from '@nestjs/common'
-import { APP_FILTER, APP_GUARD } from '@nestjs/core'
+import { ServiceKitModule } from '@leaseguard/service-kit'
 
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter'
-import { SupabaseAuthGuard } from './common/guards/supabase-auth.guard'
-import { loggingModule } from './common/logging/logging.module'
 import { ConfigModule } from './config/config.module'
-import type { ApiEnv } from './config/env'
-import { DatabaseModule } from './infrastructure/database/database.module'
-import { HealthModule } from './infrastructure/health/health.module'
+import { apiServiceSettings, type ApiEnv } from './config/env'
 import { QueuesModule } from './infrastructure/queues/queues.module'
 import { RateLimitModule } from './infrastructure/rate-limit/rate-limit.module'
 import { AddressSuggestionsModule } from './modules/address-suggestions/address-suggestions.module'
@@ -34,7 +29,11 @@ import { WhatsAppConversationsModule } from './modules/whatsapp-conversations/wh
 import { WhatsAppIntegrationModule } from './modules/whatsapp-integration/whatsapp-integration.module'
 import { WhatsAppWebhookModule } from './modules/whatsapp-webhook/whatsapp-webhook.module'
 
-/** Root module of the HTTP API process. */
+/**
+ * Root module of the core service's HTTP API process. The shared service kit (ADR 0003) supplies logging, the
+ * RLS-bound database client, health and readiness, the global Supabase JWT guard (every route requires a verified
+ * user unless marked @Public()) and the error filter.
+ */
 @Module({})
 export class AppModule {
   static register(env: ApiEnv): DynamicModule {
@@ -42,11 +41,9 @@ export class AppModule {
       module: AppModule,
       imports: [
         ConfigModule.forApi(env),
-        loggingModule(env.LOG_LEVEL),
-        DatabaseModule,
+        ServiceKitModule.forRoot(apiServiceSettings(env)),
         QueuesModule,
         RateLimitModule,
-        HealthModule,
         // Business modules
         AuthModule,
         UsersModule,
@@ -71,11 +68,6 @@ export class AppModule {
         AuditModule,
         DashboardModule,
         AddressSuggestionsModule,
-      ],
-      providers: [
-        // Every route requires a verified Supabase user unless marked @Public().
-        { provide: APP_GUARD, useClass: SupabaseAuthGuard },
-        { provide: APP_FILTER, useClass: AllExceptionsFilter },
       ],
     }
   }

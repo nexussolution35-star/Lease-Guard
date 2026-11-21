@@ -25,6 +25,14 @@ export function apiAs(user: WorldUserKey | null, company?: WorldCompanyKey | str
   return createApiClient({ baseUrl: ctx.apiBaseUrl, getAccessToken: () => token, getCompanyId: () => companyId })
 }
 
+/** Like `apiAs`, through this run's gateway (as the web app calls every service, the reports service included). */
+export function gatewayAs(user: WorldUserKey | null, company?: WorldCompanyKey | string): ApiClient {
+  const ctx = integration()
+  const token = user ? ctx.accessTokens[user] : null
+  const companyId = company === undefined ? null : company === 'a' || company === 'b' ? ctx.world.companies[company].id : company
+  return createApiClient({ baseUrl: ctx.gatewayBaseUrl, getAccessToken: () => token, getCompanyId: () => companyId })
+}
+
 let serviceClient: SupabaseClient | undefined
 
 /** Service-role Supabase client for test SETUP AND CLEANUP ONLY (bypasses RLS). Never an API caller. */

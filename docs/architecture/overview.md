@@ -11,8 +11,10 @@ Related: [API conventions](../api/README.md) · [Database](../database/README.md
 
 | Process | Code | Port (local) | Talks to |
 | --- | --- | --- | --- |
-| Web app | `frontend/` (Vite SPA) | 5173 (`pnpm dev:frontend`) | Supabase Auth (sign-in), the API. Nothing else in API mode; nothing at all in demo mode. |
-| API | `backend/src/main.ts` | `API_PORT` (3000) | Supabase with the anon key plus the caller's JWT; Redis (enqueue only). |
+| Web app | `frontend/` (Vite SPA) | 5173 (`pnpm dev:frontend`) | Supabase Auth (sign-in), and every service through the gateway (one base URL, `VITE_API_URL`). Nothing at all in demo mode. |
+| Gateway | Vite dev proxy in development (`frontend/vite.config.ts`); nginx in deployment (`infrastructure/gateway`) | 5173 in development (the dev server itself); 8081 in `docker-compose.yml` | Routes by path (`infrastructure/gateway/routes.json`): `/api/v1/reports` to the reports service, everything else to the API. |
+| API (core service) | `backend/src/main.ts` | `API_PORT` (3000) | Supabase with the anon key plus the caller's JWT; Redis (enqueue only). |
+| Reports service | `services/reports/src/main.ts` | `REPORTS_PORT` (3100, `pnpm dev:reports`) | Supabase with the anon key plus the caller's JWT (read-only `reports_*` functions and its own `reports_*` tables); Redis (readiness; queues to the core messaging pipeline). |
 | Worker | `backend/src/worker.ts` | none (no HTTP) | Supabase with the service-role key; Redis; document processing; WhatsApp Cloud API. |
 | Document processing | `python-services/document-processing/` (FastAPI) | 8000 | Nothing. Stateless; called only by the worker. |
 | Supabase | `supabase/` (local stack via the Supabase CLI) | 54321 (API), 54322 (Postgres) | Postgres with RLS, Auth, Storage. |
@@ -22,6 +24,42 @@ Related: [API conventions](../api/README.md) · [Database](../database/README.md
 The API and the worker are built from one NestJS codebase and one image (`backend/Dockerfile`) but run
 as separate processes: the API never consumes jobs and never holds the service-role key; the worker
 serves no HTTP. Deployment details are in `infrastructure/deployment/README.md`.
+
+## Services and the gateway (ADR 0003)
+
+LeaseGuard moves to independently deployable services one capability at a time
+([ADR 0003](../adr/0003-microservices-by-incremental-extraction.md)). `backend/` is the **core service** (API and
+worker); new capabilities ship as their own service under `services/<name>`. The first is **reports**
+(`services/reports`, `@leaseguard/reports`): its own package, Dockerfile, `.env.example`, health and readiness,
+OpenAPI document (`services/reports/openapi.json`) and dev script. Report logic is never added to the core.
+
+- **Service kit.** `packages/service-kit` (`@leaseguard/service-kit`) is the one implementation every HTTP service
+  uses: `ServiceKitModule.forRoot(settings)` (pino logging with request ids, the RLS-bound `RlsClientFactory`,
+  `/health` and `/health/ready`, the global `SupabaseAuthGuard` and `AllExceptionsFilter`), `@CompanyScoped()`
+  with `CompanyAccessGuard` and `CompanyRoleGuard`, `@CurrentCompany()`, `@UserDb()`, `@Public()`, config validation
+  (`parseServiceEnv`, `loadEnvFileKeys`), database error mapping (`httpErrorFromDatabase`), `configureServiceApp`
+  (no-store, security headers, CORS, the `/api/v1` prefix, Swagger UI, keep-alive) and the OpenAPI setup
+  (`createServiceOpenApiDocument`). The core's old paths under `backend/src/common` and
+  `backend/src/infrastructure/database` re-export it, so there is no second copy. Its dev and build scripts
+  (`packages/service-kit/scripts/dev-runner.mjs`, `workspace-build.mjs`) build `@leaseguard/domain` and the kit when
+  stale, under one lock, for every service.
+- **Each service checks the caller itself.** The reports service verifies the Supabase JWT and the `X-Company-Id`
+  membership with the same kit guards as the core, and queries only with the caller's token (anon key), so RLS
+  applies. It never holds the service-role key.
+- **Gateway.** The web app has one base URL. The gateway routes by path with one table,
+  `infrastructure/gateway/routes.json`: `/api/v1/reports` (and below it) to the reports service, every other path to
+  the core. In development the Vite dev server is the gateway (`frontend/src/services/api/devGateway.ts` builds its
+  proxy rules from the table); in deployment nginx is (`infrastructure/gateway/gateway.conf.template`, checked
+  against the table by `pnpm docker:gateway-check`). The generated client types every path behind it
+  (`@leaseguard/api-client` `GatewayPaths`: the core's paths and the reports service's).
+- **Data.** Supabase Postgres stays the one system of record. The reports service reads company data only through
+  read-only `public.reports_*` functions or views (SECURITY INVOKER, `authenticated` only, each starting with
+  `private.reports_require_member`), and writes only its own `reports_*` tables from its own `*_reports_*`
+  migrations (`20261122020000_reports_service_access.sql`; the conventions are checked by
+  `supabase/tests/reports_service_access.test.sql`).
+- **Between services: queues only.** A service asks another to act through Redis/BullMQ; it never writes another
+  service's tables or calls another service's HTTP API. Anything the reports service sends (the weekly owner
+  summary) goes to the core messaging pipeline by queue; only the core worker calls Meta.
 
 The web app runs in one of two modes, fixed per build by `VITE_DATA_SOURCE`:
 
@@ -47,8 +85,8 @@ sequenceDiagram
   API-->>B: 200 Page of PropertyDto
 ```
 
-1. **Authentication.** `SupabaseAuthGuard` (`backend/src/common/guards/supabase-auth.guard.ts`) is a
-   global guard. It requires `Authorization: Bearer <token>`, verifies it with supabase-js
+1. **Authentication.** `SupabaseAuthGuard` (`packages/service-kit/src/auth/supabase-auth.guard.ts`, the same in
+   every service) is a global guard. It requires `Authorization: Bearer <token>`, verifies it with supabase-js
    `auth.getClaims`, and accepts only tokens with `role = authenticated` and a subject, so the anon and
    service-role keys are refused. It then creates one database client per request from the anon key
    plus the caller's token (`RlsClientFactory.forAccessToken`). Routes opt out only with `@Public()`
@@ -61,7 +99,7 @@ sequenceDiagram
 4. **Query.** Handlers receive the caller's client with `@UserDb()` and also filter by `company_id`.
    Row Level Security is the enforcing layer; the guards give early, clear errors.
 5. **Errors.** `AllExceptionsFilter` returns `{ statusCode, error, message, requestId }`. Database
-   errors are translated by `httpErrorFromDatabase` (`backend/src/common/http/database-errors.ts`)
+   errors are translated by `httpErrorFromDatabase` (`packages/service-kit/src/database/database-errors.ts`)
    without leaking constraint or policy names.
 
 The generated client (`@leaseguard/api-client`) adds the bearer token and `X-Company-Id` on every
@@ -188,8 +226,9 @@ company setting). The database mirrors both (`private.is_tenant_message_type`, t
 type list is compared with the SQL predicate through `supabase/tests/tenant_message_rules.test.sql`
 and `backend/src/infrastructure/database/enum-parity.test.ts`.
 
-The backend loads the domain package from its compiled `dist` (built automatically by
-`backend/scripts/domain-build.mjs`); the frontend and tests compile its TypeScript source through the
+The backend and the reports service load the domain package and the service kit from their compiled `dist` (built
+automatically by `packages/service-kit/scripts/workspace-build.mjs`, which `backend/scripts/domain-build.mjs` and the
+services' `build` and `dev` scripts run); the frontend and tests compile their TypeScript source through the
 `@leaseguard/source` export condition.
 
 ## Extraction contract

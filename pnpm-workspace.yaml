@@ -2,6 +2,7 @@ packages:
   - frontend
   - backend
   - packages/*
+  - services/*
   - tests
 minimumReleaseAgeExclude:
   - bullmq@6.7.2

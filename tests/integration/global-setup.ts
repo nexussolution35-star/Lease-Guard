@@ -5,9 +5,12 @@ import { assertLocal, resolveLocalSupabase } from '../fixtures/local-supabase.ts
 import { createWorld, destroyWorld, type World, type WorldUserKey } from '../fixtures/world.ts'
 import { apiBuild, apiEnvironment, buildApi, freePort, removeApiBuild, startApi, type RunningApi } from '../fixtures/api-server.ts'
 import { assertRedisReachable, deleteKeysWithPrefix } from '../fixtures/redis.ts'
+import { startGateway, type RunningGateway } from '../fixtures/gateway.ts'
+import { buildReports, removeReportsBuild, reportsBuild, reportsEnvironment, startReports, type RunningReports } from '../fixtures/reports-server.ts'
 import './support/context.ts'
 
 const API_BUILD = apiBuild('integration')
+const REPORTS_BUILD = reportsBuild('integration')
 
 const log = (message: string) => console.log(`[integration] ${message}`)
 
@@ -38,7 +41,12 @@ export default async function setup(project: TestProject): Promise<() => Promise
   log(`created world ${world.runId}: companies ${world.companies.a.id} (A) and ${world.companies.b.id} (B), ${Object.keys(world.users).length} users`)
 
   let api: RunningApi | undefined
+  let reports: RunningReports | undefined
+  let gateway: RunningGateway | undefined
   const teardown = async () => {
+    await gateway?.stop()
+    await reports?.stop()
+    removeReportsBuild(REPORTS_BUILD)
     await api?.stop()
     removeApiBuild(API_BUILD)
     const deleted = await deleteKeysWithPrefix(REDIS_URL, queuePrefix)
@@ -76,6 +84,22 @@ export default async function setup(project: TestProject): Promise<() => Promise
     })
     api = await startApi(API_BUILD, env)
     log(`API ready at ${api.baseUrl} (pid ${api.pid}); log: tests/test-results/integration/api.log`)
+
+    // 4. The reports service (ADR 0003) on the same Supabase and Redis, and the gateway in front of both services.
+    log('building the reports service into services/reports/.dev-integration …')
+    await buildReports(REPORTS_BUILD)
+    const reportsPort = await freePort()
+    reports = await startReports(
+      REPORTS_BUILD,
+      reportsEnvironment(REPORTS_BUILD, {
+        REPORTS_PORT: String(reportsPort),
+        SUPABASE_URL: supabase.url,
+        SUPABASE_ANON_KEY: supabase.anonKey,
+        REDIS_URL,
+      }),
+    )
+    gateway = await startGateway({ core: api.baseUrl, reports: reports.baseUrl })
+    log(`reports service ready at ${reports.baseUrl} (pid ${reports.pid}); gateway at ${gateway.baseUrl}`)
   } catch (error) {
     await teardown().catch((cleanupError: unknown) => console.error('[integration] teardown after a failed setup failed:', cleanupError))
     throw error
@@ -83,6 +107,8 @@ export default async function setup(project: TestProject): Promise<() => Promise
 
   project.provide('integration', {
     apiBaseUrl: api.baseUrl,
+    reportsBaseUrl: reports.baseUrl,
+    gatewayBaseUrl: gateway.baseUrl,
     supabaseUrl: supabase.url,
     anonKey: supabase.anonKey,
     serviceRoleKey: supabase.serviceRoleKey,

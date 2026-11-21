@@ -1,0 +1,1055 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/reports": {
+      "get": {
+        "operationId": "listReports",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportCatalogueDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "List the reports available to the active company",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/portfolio_overview": {
+      "get": {
+        "description": "Counted as the dashboard counts: properties and units of properties that are not archived, occupied units by occupancy status, leases with status active, the outstanding balance on the latest verified statement of each account and open monitoring events. Filters: propertyId, status (property status). A monitoring report, never a transaction.",
+        "operationId": "getPortfolioOverviewReport",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "description": "Only these properties (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive start of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive end of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Only records with these statuses (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioOverviewResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Portfolio overview: per property, units, occupancy, active leases, rental roll, outstanding and open events",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/occupancy": {
+      "get": {
+        "description": "Units of properties that are not archived (as the dashboard), by occupancy status, with floor areas. A unit's current tenant is its current lease's tenant, else the tenant assigned to it. Filters: propertyId, status (occupancy status).",
+        "operationId": "getOccupancyReport",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": false,
+            "in": "query",
+            "description": "Only these properties (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive start of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive end of the date range on the report's primary date.",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Only records with these statuses (repeat the parameter for several).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OccupancyResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing X-Company-Id header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of the company, or role not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication or database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [],
+            "company": []
+          }
+        ],
+        "summary": "Occupancy by property and unit type, each unit with its current tenant",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "HealthController_liveness",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LivenessResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "HealthController_readiness",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "health"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "LeaseGuard Reports API",
+    "description": "Company-scoped reports computed from verified records, served at /api/v1/reports through the gateway. Read-only: LeaseGuard never collects, processes or facilitates payments. Every report requires the x-company-id header.",
+    "version": "0.1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http",
+        "description": "Supabase access token"
+      },
+      "company": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-company-id",
+        "description": "Active company (workspace) id; the caller must be a member"
+      }
+    },
+    "schemas": {
+      "ApiErrorDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 403
+          },
+          "error": {
+            "type": "string",
+            "example": "Forbidden",
+            "description": "HTTP reason phrase"
+          },
+          "message": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ],
+            "description": "Human-readable message, or one message per validation problem"
+          },
+          "requestId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Matches the X-Request-Id response header"
+          }
+        },
+        "required": [
+          "statusCode",
+          "error",
+          "message",
+          "requestId"
+        ]
+      },
+      "ReportId": {
+        "type": "string",
+        "enum": [
+          "portfolio_overview",
+          "occupancy",
+          "lease_monitoring",
+          "rental_discrepancies",
+          "lease_expiry",
+          "renewal_deadlines",
+          "deposits_guarantees",
+          "arrears",
+          "payment_arrangements",
+          "statement_processing",
+          "communication_activity"
+        ]
+      },
+      "ReportDefinitionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReportId"
+              }
+            ]
+          },
+          "title": {
+            "type": "string",
+            "example": "Portfolio overview"
+          },
+          "description": {
+            "type": "string",
+            "example": "Properties, occupancy, rental roll and outstanding balances per property."
+          },
+          "icon": {
+            "type": "string",
+            "description": "Lucide icon name, resolved by the web app.",
+            "example": "building-2"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "icon"
+        ]
+      },
+      "ReportCatalogueDto": {
+        "type": "object",
+        "properties": {
+          "reports": {
+            "description": "Every report, in display order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportDefinitionDto"
+            }
+          }
+        },
+        "required": [
+          "reports"
+        ]
+      },
+      "ReportFiltersDto": {
+        "type": "object",
+        "properties": {
+          "propertyIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "statuses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "PropertyStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "under_development",
+          "archived"
+        ],
+        "description": "An archived property is listed only while it carries a balance or open events (or when asked for); its units are not in the totals."
+      },
+      "PortfolioPropertyRowDto": {
+        "type": "object",
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string",
+            "example": "Maponya Square"
+          },
+          "code": {
+            "type": "string",
+            "example": "MSQ"
+          },
+          "status": {
+            "description": "An archived property is listed only while it carries a balance or open events (or when asked for); its units are not in the totals.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PropertyStatus"
+              }
+            ]
+          },
+          "unitCount": {
+            "type": "number"
+          },
+          "occupiedUnits": {
+            "type": "number"
+          },
+          "vacantUnits": {
+            "type": "number"
+          },
+          "occupancyRate": {
+            "type": "number",
+            "description": "Occupied units over units (0–1).",
+            "example": 0.75
+          },
+          "activeLeases": {
+            "type": "number"
+          },
+          "monthlyRentalRoll": {
+            "type": "number",
+            "description": "Current monthly rental of the active leases whose terms are verified (ZAR, excl. VAT)."
+          },
+          "outstanding": {
+            "type": "number",
+            "description": "Outstanding on the latest verified statement of each account at the property (ZAR)."
+          },
+          "tenantsInArrears": {
+            "type": "number",
+            "description": "Tenants with an outstanding balance at the property."
+          },
+          "openEvents": {
+            "type": "number",
+            "description": "Monitoring events still open (new, under review, action required, in progress)."
+          }
+        },
+        "required": [
+          "propertyId",
+          "propertyName",
+          "code",
+          "status",
+          "unitCount",
+          "occupiedUnits",
+          "vacantUnits",
+          "occupancyRate",
+          "activeLeases",
+          "monthlyRentalRoll",
+          "outstanding",
+          "tenantsInArrears",
+          "openEvents"
+        ]
+      },
+      "PortfolioOverviewReportDto": {
+        "type": "object",
+        "properties": {
+          "propertyCount": {
+            "type": "number",
+            "description": "Listed properties that are not archived."
+          },
+          "unitCount": {
+            "type": "number"
+          },
+          "occupiedUnits": {
+            "type": "number"
+          },
+          "vacantUnits": {
+            "type": "number"
+          },
+          "occupancyRate": {
+            "type": "number",
+            "description": "0–1"
+          },
+          "activeLeases": {
+            "type": "number"
+          },
+          "unverifiedLeases": {
+            "type": "number",
+            "description": "Leases that have not ended whose terms are not verified yet."
+          },
+          "monthlyRentalRoll": {
+            "type": "number"
+          },
+          "totalOutstanding": {
+            "type": "number"
+          },
+          "tenantsInArrears": {
+            "type": "number",
+            "description": "Distinct tenants with an outstanding balance."
+          },
+          "openEvents": {
+            "type": "number"
+          },
+          "properties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortfolioPropertyRowDto"
+            }
+          }
+        },
+        "required": [
+          "propertyCount",
+          "unitCount",
+          "occupiedUnits",
+          "vacantUnits",
+          "occupancyRate",
+          "activeLeases",
+          "unverifiedLeases",
+          "monthlyRentalRoll",
+          "totalOutstanding",
+          "tenantsInArrears",
+          "openEvents",
+          "properties"
+        ]
+      },
+      "PortfolioOverviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date",
+            "description": "The South African date the figures are as at.",
+            "example": "2026-11-21"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/ReportFiltersDto"
+          },
+          "reportId": {
+            "type": "string",
+            "enum": [
+              "portfolio_overview"
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/PortfolioOverviewReportDto"
+          }
+        },
+        "required": [
+          "asOf",
+          "filters",
+          "reportId",
+          "data"
+        ]
+      },
+      "OccupancyFiguresDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "occupied": {
+            "type": "number"
+          },
+          "vacant": {
+            "type": "number"
+          },
+          "underOffer": {
+            "type": "number"
+          },
+          "unavailable": {
+            "type": "number"
+          },
+          "occupancyRate": {
+            "type": "number",
+            "description": "0–1"
+          },
+          "floorAreaSqm": {
+            "type": "number"
+          },
+          "occupiedAreaSqm": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "total",
+          "occupied",
+          "vacant",
+          "underOffer",
+          "unavailable",
+          "occupancyRate",
+          "floorAreaSqm",
+          "occupiedAreaSqm"
+        ]
+      },
+      "OccupancyByPropertyDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "occupied": {
+            "type": "number"
+          },
+          "vacant": {
+            "type": "number"
+          },
+          "underOffer": {
+            "type": "number"
+          },
+          "unavailable": {
+            "type": "number"
+          },
+          "occupancyRate": {
+            "type": "number",
+            "description": "0–1"
+          },
+          "floorAreaSqm": {
+            "type": "number"
+          },
+          "occupiedAreaSqm": {
+            "type": "number"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "total",
+          "occupied",
+          "vacant",
+          "underOffer",
+          "unavailable",
+          "occupancyRate",
+          "floorAreaSqm",
+          "occupiedAreaSqm",
+          "propertyId",
+          "propertyName"
+        ]
+      },
+      "UnitType": {
+        "type": "string",
+        "enum": [
+          "anchor_retail",
+          "line_shop",
+          "kiosk",
+          "restaurant",
+          "office_suite",
+          "warehouse",
+          "yard",
+          "storage",
+          "parking"
+        ]
+      },
+      "OccupancyByUnitTypeDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "occupied": {
+            "type": "number"
+          },
+          "vacant": {
+            "type": "number"
+          },
+          "underOffer": {
+            "type": "number"
+          },
+          "unavailable": {
+            "type": "number"
+          },
+          "occupancyRate": {
+            "type": "number",
+            "description": "0–1"
+          },
+          "floorAreaSqm": {
+            "type": "number"
+          },
+          "occupiedAreaSqm": {
+            "type": "number"
+          },
+          "unitType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnitType"
+              }
+            ]
+          }
+        },
+        "required": [
+          "total",
+          "occupied",
+          "vacant",
+          "underOffer",
+          "unavailable",
+          "occupancyRate",
+          "floorAreaSqm",
+          "occupiedAreaSqm",
+          "unitType"
+        ]
+      },
+      "OccupancyStatus": {
+        "type": "string",
+        "enum": [
+          "occupied",
+          "vacant",
+          "under_offer",
+          "unavailable"
+        ]
+      },
+      "UnitTenantSource": {
+        "type": "string",
+        "enum": [
+          "lease",
+          "assignment"
+        ]
+      },
+      "OccupancyUnitRowDto": {
+        "type": "object",
+        "properties": {
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitNumber": {
+            "type": "string",
+            "example": "S01"
+          },
+          "unitType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnitType"
+              }
+            ]
+          },
+          "floorAreaSqm": {
+            "type": "number"
+          },
+          "occupancyStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OccupancyStatus"
+              }
+            ]
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The unit's current tenant: its current lease's tenant, else its assigned tenant."
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "tenantSource": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnitTenantSource"
+              }
+            ]
+          },
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leaseReference": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "unitId",
+          "unitNumber",
+          "unitType",
+          "floorAreaSqm",
+          "occupancyStatus",
+          "propertyId",
+          "propertyName"
+        ]
+      },
+      "OccupancyReportDto": {
+        "type": "object",
+        "properties": {
+          "totals": {
+            "$ref": "#/components/schemas/OccupancyFiguresDto"
+          },
+          "byProperty": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OccupancyByPropertyDto"
+            }
+          },
+          "byUnitType": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OccupancyByUnitTypeDto"
+            }
+          },
+          "units": {
+            "description": "Every unit counted, of the properties that are not archived.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OccupancyUnitRowDto"
+            }
+          }
+        },
+        "required": [
+          "totals",
+          "byProperty",
+          "byUnitType",
+          "units"
+        ]
+      },
+      "OccupancyResponseDto": {
+        "type": "object",
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date",
+            "description": "The South African date the figures are as at.",
+            "example": "2026-11-21"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/ReportFiltersDto"
+          },
+          "reportId": {
+            "type": "string",
+            "enum": [
+              "occupancy"
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/OccupancyReportDto"
+          }
+        },
+        "required": [
+          "asOf",
+          "filters",
+          "reportId",
+          "data"
+        ]
+      },
+      "LivenessResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          },
+          "uptimeSeconds": {
+            "type": "number",
+            "description": "Seconds since the API process started."
+          }
+        },
+        "required": [
+          "status",
+          "uptimeSeconds"
+        ]
+      },
+      "DependencyCheck": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down",
+              "not_configured"
+            ]
+          },
+          "latencyMs": {
+            "type": "number",
+            "description": "Round-trip time of the check, when the dependency answered."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Short reason when the dependency is not up. Details are in the server log."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "ReadinessChecks": {
+        "type": "object",
+        "properties": {
+          "redis": {
+            "$ref": "#/components/schemas/DependencyCheck"
+          },
+          "supabase": {
+            "$ref": "#/components/schemas/DependencyCheck"
+          }
+        },
+        "required": [
+          "redis",
+          "supabase"
+        ]
+      },
+      "ReadinessResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "not_ready"
+            ]
+          },
+          "checks": {
+            "$ref": "#/components/schemas/ReadinessChecks"
+          }
+        },
+        "required": [
+          "status",
+          "checks"
+        ]
+      }
+    }
+  }
+}

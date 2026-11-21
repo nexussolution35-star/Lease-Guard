@@ -1,6 +1,14 @@
-import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { parseEnv as parseEnvFile } from 'node:util'
+import {
+  corsOriginsSetting,
+  InvalidEnvironmentError,
+  loadEnvFileKeys,
+  LOG_LEVELS,
+  optionalSetting,
+  parseServiceEnv,
+  portSetting,
+  type ServiceSettings,
+} from '@leaseguard/service-kit'
 import { z } from 'zod'
 
 import { WHATSAPP_ACCESS_TOKEN_KEY } from '../infrastructure/whatsapp/access-token-reference'
@@ -11,17 +19,16 @@ import { WHATSAPP_ACCESS_TOKEN_KEY } from '../infrastructure/whatsapp/access-tok
  */
 export const BACKEND_ENV_FILE = resolve(__dirname, '../../.env')
 
-/** pino levels. The Python service maps these to its own logging levels, so one value serves both. */
-export const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'] as const
+/** pino levels, shared by every service (the Python service maps these to its own logging levels). */
+export { LOG_LEVELS }
+/** Validation helpers shared by every service (@leaseguard/service-kit). */
+export { InvalidEnvironmentError, loadEnvFileKeys }
 
 // BullMQ separates key segments with ':', so the prefix must not contain one.
 const queuePrefix = z.string().regex(/^[a-z0-9_-]+$/i, 'letters, digits, "-" and "_" only')
 // Storage bucket ids as created by supabase/migrations/*_storage.sql.
 const bucketId = z.string().regex(/^[a-z0-9][a-z0-9-]{1,62}$/, 'lowercase letters, digits and "-"')
 
-/** An optional setting: unset, empty and blank all mean "not configured" (.env.example ships them empty). */
-const optionalSetting = <T extends z.ZodType<string | undefined>>(schema: T) =>
-  z.preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), schema.optional())
 const optionalText = optionalSetting(z.string())
 /** Meta object ids (app, configuration) are numeric. */
 const optionalMetaId = optionalSetting(z.string().trim().regex(/^[0-9]{1,32}$/, 'a numeric Meta id'))
@@ -39,11 +46,8 @@ const sharedSchema = z.object({
 })
 
 const apiEnvObject = sharedSchema.extend({
-  API_PORT: z.coerce.number().int().min(1).max(65535),
-  API_CORS_ORIGINS: z
-    .string()
-    .transform((value) => value.split(',').map((origin) => origin.trim()).filter(Boolean))
-    .pipe(z.array(z.url()).min(1)),
+  API_PORT: portSetting,
+  API_CORS_ORIGINS: corsOriginsSetting,
   /** May be empty until the local Supabase stack is started; the API then reports itself not ready. */
   SUPABASE_ANON_KEY: z.string(),
   /**
@@ -170,52 +174,10 @@ export type ApiEnv = z.infer<typeof apiEnvSchema>
 export type WorkerEnv = z.infer<typeof workerEnvSchema>
 export type NumberImportEnv = z.infer<typeof numberImportEnvSchema>
 
-export class InvalidEnvironmentError extends Error {
-  constructor(processName: string, missing: string[], invalid: string[]) {
-    const lines = [
-      ...missing.map((name) => `  ${name}: missing`),
-      ...invalid,
-    ]
-    super(
-      `Invalid LeaseGuard ${processName} configuration (set these in ${BACKEND_ENV_FILE} or the process environment; see backend/.env.example):\n${lines.join('\n')}`,
-    )
-    this.name = 'InvalidEnvironmentError'
-  }
-}
+const ENV_SOURCE = `set these in ${BACKEND_ENV_FILE} or the process environment; see backend/.env.example`
 
 function parseEnv<S extends z.ZodType>(processName: string, schema: S, source: NodeJS.ProcessEnv): z.infer<S> {
-  const parsed = schema.safeParse(source)
-  if (parsed.success) return parsed.data
-  const missing = new Set<string>()
-  const invalid: string[] = []
-  for (const issue of parsed.error.issues) {
-    const name = issue.path.join('.')
-    if (source[name] === undefined) missing.add(name)
-    else invalid.push(`  ${name}: ${issue.message}`)
-  }
-  throw new InvalidEnvironmentError(processName, [...missing], invalid)
-}
-
-/**
- * Copies only `keys` from an env file into `target`, never overriding values already set.
- *
- * Least privilege: the shared `backend/.env` also holds secrets other processes need (for example the
- * service-role key, which only the worker may hold). Each process imports just the variables its own
- * schema declares, so the API process never has the service-role key in its environment.
- */
-export function loadEnvFileKeys(
-  file: string,
-  keys: readonly string[],
-  target: NodeJS.ProcessEnv = process.env,
-  keyPattern?: RegExp,
-): void {
-  if (!existsSync(file)) return
-  const values = parseEnvFile(readFileSync(file, 'utf8'))
-  const wanted = new Set(keys)
-  for (const [key, value] of Object.entries(values)) {
-    if (!wanted.has(key) && !keyPattern?.test(key)) continue
-    if (target[key] === undefined && value !== undefined) target[key] = value
-  }
+  return parseServiceEnv(processName, schema, source, ENV_SOURCE)
 }
 
 /**
@@ -251,4 +213,15 @@ export function loadNumberImportEnv({ env = process.env, file = BACKEND_ENV_FILE
   const source: NodeJS.ProcessEnv = Object.fromEntries(NUMBER_IMPORT_ENV_KEYS.filter((key) => env[key]?.trim()).map((key) => [key, env[key]]))
   if (NUMBER_IMPORT_ENV_KEYS.some((key) => source[key] === undefined)) loadEnvFileKeys(file, NUMBER_IMPORT_ENV_KEYS, source)
   return parseEnv('number import', numberImportEnvSchema, source)
+}
+
+/** What the shared service kit needs from the API's configuration. */
+export function apiServiceSettings(env: ApiEnv): ServiceSettings {
+  return {
+    serviceName: 'core',
+    logLevel: env.LOG_LEVEL,
+    supabaseUrl: env.SUPABASE_URL,
+    supabaseAnonKey: env.SUPABASE_ANON_KEY,
+    redisUrl: env.REDIS_URL,
+  }
 }
