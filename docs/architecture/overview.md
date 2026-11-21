@@ -145,7 +145,8 @@ Processors live under `backend/src/workers/` (`statements/`, `messaging/`, `moni
   `company_id` explicitly. `monitoring-dispatch` is the only payload without a company.
 
 Lease monitoring reads only verified leases (`verified = true`); lease and arrears monitoring use only
-verified statements (`status = 'verified'`).
+verified statements (`status = 'verified'`). A change to a verified lease's terms (or its bank guarantee) turns `verified` off
+in the database (`20261121003917_lease_management.sql`), so edited terms leave monitoring until verified again.
 
 ## Where business rules live
 
@@ -160,6 +161,10 @@ imports, no I/O and no clock reads; date-sensitive functions take `today` explic
 | `guarantee.ts` | Guarantee expiry and coverage shortfalls |
 | `arrears.ts`, `arrangements.ts` | Arrears ageing; arrangement suppression of arrears reminders |
 | `statementDuplicates.ts` | Identical-file and likely-duplicate statement detection |
+| `portfolioImportTemplate.ts` | The columns a portfolio import reads (`PORTFOLIO_IMPORT_FIELDS`) and the downloadable CSV template; the file and row limits are in `types/portfolioImport.ts` |
+| `portfolioImportMapping.ts` | Portfolio import column mapping: `suggestPortfolioImportMapping` (deterministic, from the headings only: template, MRI, MDA, PropSys and Sage headings), the heading signature a saved mapping is found by, mapping checks, and the cell readers (enum labels, provinces, South African number notation, postal codes, tenant business types and the business type a CIPC registration number states, South African tenant phone numbers, tenant identifiers); the row checks against the database are in the API (`portfolio-imports/preview/check-rows.ts`) |
+| `tenantNameMatch.ts` | Whether two tenant names are alike enough to suggest the same tenant (`areSimilarTenantNames`, `tenantNameKey`): entity words such as (Pty) Ltd and CC ignored, one-word-set inside the other, or a one- or two-letter slip. Only ever a suggestion for a person to confirm (portfolio import, ticket I-05) |
+| `googleSheetsLink.ts` | Google Sheets links for portfolio imports: `parseGoogleSheetsLink` (spreadsheet and tab ids, or null for anything else), the CSV export address the API fetches, and the sheet's own link |
 | `extractionReview.ts` | Assessment of an extraction proposal for review |
 | `monitoringWorkflow.ts` | Allowed monitoring event status transitions |
 | `communicationEligibility.ts`, `messageContent.ts` | Who may receive which message type; banking details and forbidden tenant topics in message text |

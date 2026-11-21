@@ -88,6 +88,9 @@ select lives_ok(
       '40000000-0000-4000-8000-000000000001', '50000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000001',
       'x', 'x', '2026-11-09', 'low', 'x')$$,
   'an event naming the lease''s own tenant and unit is accepted');
+-- The current tenant and lease are derived from the lease (not writable by signed-in users,
+-- 20261120151342_unit_management.sql), so these constraint checks run as the database owner.
+reset role;
 select throws_ok(
   $$update public.units set current_tenant_id = '50000000-0000-4000-8000-000000000002'
     where id = '40000000-0000-4000-8000-000000000001'$$,
@@ -98,6 +101,7 @@ select throws_ok(
 select lives_ok(
   $$update public.units set current_lease_id = null, current_tenant_id = null where id = '40000000-0000-4000-8000-000000000001'$$,
   'a unit can clear its current lease and tenant together');
+set local role authenticated;
 
 -- ------------------------------------------------------------------ communication links match the tenant
 select throws_ok(
@@ -167,10 +171,13 @@ select lives_ok(
   $$update public.statements set storage_path = '20000000-0000-4000-8000-000000000001/70000000-0000-4000-8000-000000000002/MSQ_2026-10.v2.pdf'
     where id = '70000000-0000-4000-8000-000000000002'$$,
   'a path in the API''s shape is accepted');
+-- Signed-in users never update a recorded lease document (M5-02), so the path rule is checked as the database owner.
+reset role;
 select throws_ok(
   $$update public.lease_documents set storage_path = '20000000-0000-4000-8000-000000000001/61000000-0000-4000-8000-000000000001/.hidden'
     where id = '61000000-0000-4000-8000-000000000001'$$,
   '23514', null, 'a lease document file name cannot start with a dot');
+set local role authenticated;
 select throws_ok(
   $$insert into public.communications (company_id, channel, direction, message_type, recipient_type, owner_user_id,
       counterparty_number, company_number, body, attachment_file_name, attachment_storage_path, attachment_mime_type)

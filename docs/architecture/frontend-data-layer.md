@@ -75,9 +75,12 @@ Each feature has the same files under `features/<feature>/api/`:
 | Feature | Hooks |
 | --- | --- |
 | properties | `usePropertyList`, `usePropertyQuery`, `useCreateProperty`, `useUpdateProperty`, `useArchiveProperty`, `useRestoreProperty` |
-| units | `useUnitList`, `useUnitQuery` |
-| tenants | `useTenantList`, `useTenantQuery` |
-| leases | `useLeaseList`, `useLeaseQuery` |
+| portfolio-imports | `usePortfolioImportQuery`, `useUploadPortfolioFile` (signed upload to storage, then `createPortfolioImport`), `useSelectPortfolioImportSheet`, `useImportGoogleSheet` (`createPortfolioImportFromGoogleSheet`: the API reads the linked sheet); `usePortfolioImportMappingQuery`, `useSavePortfolioImportMapping`, `usePortfolioImportPreviewQuery` (ticket I-02, keyed by the batch's `updatedAt` so another sheet never shows the previous sheet's mapping or rows); `useChangePortfolioImportRow` (ticket I-03: correct, skip or link a row; invalidates the batch, its mapping and preview, and the history) and `usePortfolioImportList` (the import history); `usePortfolioImportSummaryQuery` and `useApprovePortfolioImport` (ticket I-04: `getPortfolioImportSummary` / `approvePortfolioImport`; the summary sits under the batch's preview key so a row fix reads it again, and approving invalidates the batch, the history and the property, unit and tenant lists); ticket I-05: `useChangePortfolioImportRow` also confirms or rejects a row's suggested tenants (`tenantMatch`) |
+| units | `useUnitList` (items are `UnitListItem`: property, current tenant and lease embedded), `useUnitQuery`, `useCreateUnit`, `useUpdateUnit` |
+| tenants | `useTenantList` (items are `TenantListItem`: current lease with unit and property, lease count), `useTenantQuery`, `useCreateTenant`, `useUpdateTenant`, `useValidateTenantWhatsApp` (`POST /tenants/{id}/whatsapp-validation`; 409 when the number changed meanwhile) |
+| leases | `useLeaseList` (items are `LeaseListItem`: tenant, property and unit names; `expiresWithinDays` filter), `useLeaseQuery`, `useLeaseDocuments`, `useUploadLeaseDocument` (signed upload, the PDF straight to storage, then
+`registerLeaseDocument`; `LeaseDocumentUploadError` when storage refuses the file), `useLeaseDocumentLink` (five-minute
+download link), `useVerifyLease`, `useCreateLease`, `useUpdateLease` |
 | statements | `useStatementList`, `useStatementQuery` |
 | monitoring | `useMonitoringEventList` (`open`: still needing attention), `useMonitoringEventQuery` |
 | arrangements | `useArrangementList`, `useArrangementQuery` |

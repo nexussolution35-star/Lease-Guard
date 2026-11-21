@@ -322,9 +322,9 @@ isOneToOne: false
                   ]
                 },"leases": {
                   Row: {
-                    "commencement_date": string,"company_id": string,"created_at": string,"current_monthly_rental": number,"deposit_amount": number | null,"deposit_basis_months": number | null,"deposit_held_by": Database["public"]['Enums']["deposit_holder"] | null,"deposit_interest_bearing": boolean | null,"deposit_notes": string | null,"deposit_received_on": string | null,"escalation_cpi_assumed_percentage": number | null,"escalation_cpi_margin_percentage": number | null,"escalation_fixed_amount": number | null,"escalation_frequency": Database["public"]['Enums']["escalation_frequency"],"escalation_percentage": number | null,"escalation_type": Database["public"]['Enums']["escalation_type"],"expiry_date": string,"first_escalation_date": string,"id": string,"initial_monthly_rental": number,"notes": string | null,"payment_due_day": number,"previous_lease_id": string | null,"property_id": string,"reference": string,"renewal_exercised": boolean,"renewal_exercised_on": string | null,"renewal_notes": string | null,"renewal_notice_period_months": number | null,"renewal_option_exists": boolean,"renewal_term_months": number | null,"status": Database["public"]['Enums']["lease_status"],"tenant_id": string,"unit_id": string,"updated_at": string,"verified": boolean,"verified_at": string | null,"verified_by_user_id": string | null
+                    "commencement_date": string,"company_id": string,"created_at": string,"current_monthly_rental": number,"deposit_amount": number | null,"deposit_basis_months": number | null,"deposit_held_by": Database["public"]['Enums']["deposit_holder"] | null,"deposit_interest_bearing": boolean | null,"deposit_notes": string | null,"deposit_received_on": string | null,"escalation_cpi_assumed_percentage": number | null,"escalation_cpi_margin_percentage": number | null,"escalation_fixed_amount": number | null,"escalation_frequency": Database["public"]['Enums']["escalation_frequency"],"escalation_percentage": number | null,"escalation_type": Database["public"]['Enums']["escalation_type"],"expiry_date": string,"first_escalation_date": string,"id": string,"initial_monthly_rental": number,"notes": string | null,"payment_due_day": number,"previous_lease_id": string | null,"property_id": string,"reference": string,"renewal_exercised": boolean,"renewal_exercised_on": string | null,"renewal_notes": string | null,"renewal_notice_period_months": number | null,"renewal_option_exists": boolean,"renewal_term_months": number | null,"status": Database["public"]['Enums']["lease_status"],"tenant_id": string,"unit_id": string,"updated_at": string,"verified": boolean,"verified_at": string | null,"verified_by_user_id": string | null,"tenant_search_text": string | null
                   }
-                  ComputedFields: never
+                  ComputedFields: "tenant_search_text"
                   Insert: {
                     "commencement_date": string,"company_id": string,"created_at"?: string,"current_monthly_rental": number,"deposit_amount"?: number | null,"deposit_basis_months"?: number | null,"deposit_held_by"?: Database["public"]['Enums']["deposit_holder"] | null,"deposit_interest_bearing"?: boolean | null,"deposit_notes"?: string | null,"deposit_received_on"?: string | null,"escalation_cpi_assumed_percentage"?: number | null,"escalation_cpi_margin_percentage"?: number | null,"escalation_fixed_amount"?: number | null,"escalation_frequency": Database["public"]['Enums']["escalation_frequency"],"escalation_percentage"?: number | null,"escalation_type": Database["public"]['Enums']["escalation_type"],"expiry_date": string,"first_escalation_date": string,"id"?: string,"initial_monthly_rental": number,"notes"?: string | null,"payment_due_day": number,"previous_lease_id"?: string | null,"property_id": string,"reference": string,"renewal_exercised"?: boolean,"renewal_exercised_on"?: string | null,"renewal_notes"?: string | null,"renewal_notice_period_months"?: number | null,"renewal_option_exists"?: boolean,"renewal_term_months"?: number | null,"status"?: Database["public"]['Enums']["lease_status"],"tenant_id": string,"unit_id": string,"updated_at"?: string,"verified"?: boolean,"verified_at"?: string | null,"verified_by_user_id"?: string | null
                   }
@@ -616,6 +616,164 @@ isOneToOne: false
       referencedColumns: ["company_id","property_id","id"]
     }
                   ]
+                },"portfolio_import_mappings": {
+                  Row: {
+                    "column_mapping": NonNullable<Json>,"columns": (string)[],"company_id": string,"created_at": string,"header_signature": string,"id": string,"saved_at": string,"saved_by_user_id": string | null,"scope": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "column_mapping": NonNullable<Json>,"columns": (string)[],"company_id": string,"created_at"?: string,"header_signature": string,"id"?: string,"saved_at"?: string,"saved_by_user_id"?: string | null,"scope": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "column_mapping"?: NonNullable<Json>,"columns"?: (string)[],"company_id"?: string,"created_at"?: string,"header_signature"?: string,"id"?: string,"saved_at"?: string,"saved_by_user_id"?: string | null,"scope"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "portfolio_import_mappings_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "portfolio_import_mappings_saved_by_fk"
+      columns: ["company_id","saved_by_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    }
+                  ]
+                },"portfolio_import_records": {
+                  Row: {
+                    "company_id": string,"created_at": string,"id": string,"import_id": string,"property_id": string,"record_type": string,"row_number": number,"tenant_id": string | null,"unit_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "company_id": string,"created_at"?: string,"id"?: string,"import_id": string,"property_id": string,"record_type": string,"row_number": number,"tenant_id"?: string | null,"unit_id"?: string | null
+                  }
+                  Update: {
+                    "company_id"?: string,"created_at"?: string,"id"?: string,"import_id"?: string,"property_id"?: string,"record_type"?: string,"row_number"?: number,"tenant_id"?: string | null,"unit_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "portfolio_import_records_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "portfolio_import_records_import_fk"
+      columns: ["company_id","import_id"]
+isOneToOne: false
+      referencedRelation: "portfolio_imports"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "portfolio_import_records_property_fk"
+      columns: ["company_id","property_id"]
+isOneToOne: false
+      referencedRelation: "properties"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "portfolio_import_records_tenant_fk"
+      columns: ["company_id","tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "portfolio_import_records_unit_fk"
+      columns: ["company_id","unit_id"]
+isOneToOne: false
+      referencedRelation: "units"
+      referencedColumns: ["company_id","id"]
+    }
+                  ]
+                },"portfolio_import_rows": {
+                  Row: {
+                    "cells": NonNullable<Json>,"changed_at": string | null,"changed_by_user_id": string | null,"company_id": string,"corrections": NonNullable<Json>,"created_at": string,"id": string,"import_id": string,"linked_property_id": string | null,"linked_tenant_id": string | null,"linked_unit_id": string | null,"row_number": number,"skipped": boolean,"tenant_suggestions_rejected": boolean
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cells": NonNullable<Json>,"changed_at"?: string | null,"changed_by_user_id"?: string | null,"company_id": string,"corrections"?: NonNullable<Json>,"created_at"?: string,"id"?: string,"import_id": string,"linked_property_id"?: string | null,"linked_tenant_id"?: string | null,"linked_unit_id"?: string | null,"row_number": number,"skipped"?: boolean,"tenant_suggestions_rejected"?: boolean
+                  }
+                  Update: {
+                    "cells"?: NonNullable<Json>,"changed_at"?: string | null,"changed_by_user_id"?: string | null,"company_id"?: string,"corrections"?: NonNullable<Json>,"created_at"?: string,"id"?: string,"import_id"?: string,"linked_property_id"?: string | null,"linked_tenant_id"?: string | null,"linked_unit_id"?: string | null,"row_number"?: number,"skipped"?: boolean,"tenant_suggestions_rejected"?: boolean
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "portfolio_import_rows_changed_by_fk"
+      columns: ["company_id","changed_by_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    },{
+      foreignKeyName: "portfolio_import_rows_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "portfolio_import_rows_import_fk"
+      columns: ["company_id","import_id"]
+isOneToOne: false
+      referencedRelation: "portfolio_imports"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "portfolio_import_rows_linked_property_fk"
+      columns: ["company_id","linked_property_id"]
+isOneToOne: false
+      referencedRelation: "properties"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "portfolio_import_rows_linked_tenant_fk"
+      columns: ["company_id","linked_tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "portfolio_import_rows_linked_unit_fk"
+      columns: ["company_id","linked_unit_id"]
+isOneToOne: false
+      referencedRelation: "units"
+      referencedColumns: ["company_id","id"]
+    }
+                  ]
+                },"portfolio_imports": {
+                  Row: {
+                    "approved_at": string | null,"approved_by_user_id": string | null,"column_mapping": Json | null,"columns": (string)[],"company_id": string,"created_at": string,"delimiter": string | null,"file_format": string,"file_name": string,"file_sha256": string,"google_sheet_gid": string | null,"google_spreadsheet_id": string | null,"id": string,"property_id": string | null,"row_count": number,"scope": string,"sheet_name": string | null,"sheet_names": (string)[],"size_bytes": number,"storage_path": string,"updated_at": string,"uploaded_at": string,"uploaded_by_user_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "approved_at"?: string | null,"approved_by_user_id"?: string | null,"column_mapping"?: Json | null,"columns": (string)[],"company_id": string,"created_at"?: string,"delimiter"?: string | null,"file_format": string,"file_name": string,"file_sha256": string,"google_sheet_gid"?: string | null,"google_spreadsheet_id"?: string | null,"id"?: string,"property_id"?: string | null,"row_count": number,"scope": string,"sheet_name"?: string | null,"sheet_names"?: (string)[],"size_bytes": number,"storage_path": string,"updated_at"?: string,"uploaded_at"?: string,"uploaded_by_user_id"?: string | null
+                  }
+                  Update: {
+                    "approved_at"?: string | null,"approved_by_user_id"?: string | null,"column_mapping"?: Json | null,"columns"?: (string)[],"company_id"?: string,"created_at"?: string,"delimiter"?: string | null,"file_format"?: string,"file_name"?: string,"file_sha256"?: string,"google_sheet_gid"?: string | null,"google_spreadsheet_id"?: string | null,"id"?: string,"property_id"?: string | null,"row_count"?: number,"scope"?: string,"sheet_name"?: string | null,"sheet_names"?: (string)[],"size_bytes"?: number,"storage_path"?: string,"updated_at"?: string,"uploaded_at"?: string,"uploaded_by_user_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "portfolio_imports_approved_by_fk"
+      columns: ["company_id","approved_by_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    },{
+      foreignKeyName: "portfolio_imports_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "portfolio_imports_property_fk"
+      columns: ["company_id","property_id"]
+isOneToOne: false
+      referencedRelation: "properties"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "portfolio_imports_uploaded_by_fk"
+      columns: ["company_id","uploaded_by_user_id"]
+isOneToOne: false
+      referencedRelation: "company_users"
+      referencedColumns: ["company_id","user_id"]
+    }
+                  ]
                 },"profiles": {
                   Row: {
                     "created_at": string,"email": string,"full_name": string,"id": string,"job_title": string | null,"last_login_at": string | null,"phone": string | null,"status": Database["public"]['Enums']["user_status"],"updated_at": string,"whatsapp_number": string | null
@@ -840,14 +998,14 @@ isOneToOne: false
                   ]
                 },"tenants": {
                   Row: {
-                    "business_type": Database["public"]['Enums']["business_type"],"company_id": string,"contact_email": string | null,"contact_full_name": string,"contact_phone": string,"contact_role": string,"created_at": string,"email": string | null,"id": string,"industry": string,"legal_name": string,"notes": string | null,"registration_number": string | null,"status": Database["public"]['Enums']["tenant_status"],"trading_name": string,"updated_at": string,"vat_number": string | null,"whatsapp_number": string,"whatsapp_opted_out": boolean,"whatsapp_verified": boolean
+                    "account_reference": string | null,"business_type": Database["public"]['Enums']["business_type"],"company_id": string,"contact_email": string | null,"contact_full_name": string,"contact_phone": string,"contact_role": string,"created_at": string,"email": string | null,"id": string,"industry": string,"legal_name": string,"notes": string | null,"registration_number": string | null,"status": Database["public"]['Enums']["tenant_status"],"trading_name": string,"updated_at": string,"vat_number": string | null,"whatsapp_number": string,"whatsapp_opted_out": boolean,"whatsapp_validated_at": string | null,"whatsapp_validated_by_user_id": string | null,"whatsapp_verified": boolean
                   }
                   ComputedFields: never
                   Insert: {
-                    "business_type": Database["public"]['Enums']["business_type"],"company_id": string,"contact_email"?: string | null,"contact_full_name": string,"contact_phone": string,"contact_role": string,"created_at"?: string,"email"?: string | null,"id"?: string,"industry": string,"legal_name": string,"notes"?: string | null,"registration_number"?: string | null,"status"?: Database["public"]['Enums']["tenant_status"],"trading_name": string,"updated_at"?: string,"vat_number"?: string | null,"whatsapp_number": string,"whatsapp_opted_out"?: boolean,"whatsapp_verified"?: boolean
+                    "account_reference"?: string | null,"business_type": Database["public"]['Enums']["business_type"],"company_id": string,"contact_email"?: string | null,"contact_full_name": string,"contact_phone": string,"contact_role": string,"created_at"?: string,"email"?: string | null,"id"?: string,"industry": string,"legal_name": string,"notes"?: string | null,"registration_number"?: string | null,"status"?: Database["public"]['Enums']["tenant_status"],"trading_name": string,"updated_at"?: string,"vat_number"?: string | null,"whatsapp_number": string,"whatsapp_opted_out"?: boolean,"whatsapp_validated_at"?: string | null,"whatsapp_validated_by_user_id"?: string | null,"whatsapp_verified"?: boolean
                   }
                   Update: {
-                    "business_type"?: Database["public"]['Enums']["business_type"],"company_id"?: string,"contact_email"?: string | null,"contact_full_name"?: string,"contact_phone"?: string,"contact_role"?: string,"created_at"?: string,"email"?: string | null,"id"?: string,"industry"?: string,"legal_name"?: string,"notes"?: string | null,"registration_number"?: string | null,"status"?: Database["public"]['Enums']["tenant_status"],"trading_name"?: string,"updated_at"?: string,"vat_number"?: string | null,"whatsapp_number"?: string,"whatsapp_opted_out"?: boolean,"whatsapp_verified"?: boolean
+                    "account_reference"?: string | null,"business_type"?: Database["public"]['Enums']["business_type"],"company_id"?: string,"contact_email"?: string | null,"contact_full_name"?: string,"contact_phone"?: string,"contact_role"?: string,"created_at"?: string,"email"?: string | null,"id"?: string,"industry"?: string,"legal_name"?: string,"notes"?: string | null,"registration_number"?: string | null,"status"?: Database["public"]['Enums']["tenant_status"],"trading_name"?: string,"updated_at"?: string,"vat_number"?: string | null,"whatsapp_number"?: string,"whatsapp_opted_out"?: boolean,"whatsapp_validated_at"?: string | null,"whatsapp_validated_by_user_id"?: string | null,"whatsapp_verified"?: boolean
                   }
                   Relationships: [
                     {
@@ -855,6 +1013,12 @@ isOneToOne: false
       columns: ["company_id"]
 isOneToOne: false
       referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "tenants_whatsapp_validated_by_user_id_fkey"
+      columns: ["whatsapp_validated_by_user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
       referencedColumns: ["id"]
     }
                   ]
@@ -1386,6 +1550,38 @@ isOneToOne: false
 "activate_company_whatsapp":
 { Args: { "p_company_id": string }; Returns: string
                            },
+"apply_portfolio_import":
+{ Args: { "p_company_id": string,"p_import_id": string,"p_properties": Json,"p_tenants"?: Json,"p_units": Json }; Returns: {
+              "approved_at": string | null,
+"approved_by_user_id": string | null,
+"column_mapping": Json | null,
+"columns": (string)[],
+"company_id": string,
+"created_at": string,
+"delimiter": string | null,
+"file_format": string,
+"file_name": string,
+"file_sha256": string,
+"google_sheet_gid": string | null,
+"google_spreadsheet_id": string | null,
+"id": string,
+"property_id": string | null,
+"row_count": number,
+"scope": string,
+"sheet_name": string | null,
+"sheet_names": (string)[],
+"size_bytes": number,
+"storage_path": string,
+"updated_at": string,
+"uploaded_at": string,
+"uploaded_by_user_id": string | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "portfolio_imports"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "apply_whatsapp_template_status":
 { Args: { "p_business_account_id": string,"p_category": string,"p_language": string,"p_meta_template_id": string,"p_name": string,"p_occurred_at"?: string,"p_reason": string,"p_status": string }; Returns: {
               "company_id": string,"outcome": string
@@ -1409,6 +1605,38 @@ isOneToOne: false
               "handover_id": string,"notified": number,"outcome": string,"reply_communication_id": string,"run_outcome": string
             }[]
                            },
+"create_portfolio_import":
+{ Args: { "p_columns": (string)[],"p_company_id": string,"p_delimiter": string,"p_file_format": string,"p_file_name": string,"p_file_sha256": string,"p_google_sheet_gid"?: string,"p_google_spreadsheet_id"?: string,"p_id": string,"p_property_id": string,"p_rows": Json,"p_scope": string,"p_sheet_name": string,"p_sheet_names": (string)[],"p_size_bytes": number,"p_storage_path": string }; Returns: {
+              "approved_at": string | null,
+"approved_by_user_id": string | null,
+"column_mapping": Json | null,
+"columns": (string)[],
+"company_id": string,
+"created_at": string,
+"delimiter": string | null,
+"file_format": string,
+"file_name": string,
+"file_sha256": string,
+"google_sheet_gid": string | null,
+"google_spreadsheet_id": string | null,
+"id": string,
+"property_id": string | null,
+"row_count": number,
+"scope": string,
+"sheet_name": string | null,
+"sheet_names": (string)[],
+"size_bytes": number,
+"storage_path": string,
+"updated_at": string,
+"uploaded_at": string,
+"uploaded_by_user_id": string | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "portfolio_imports"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "deactivate_company_whatsapp":
 { Args: { "p_company_id": string }; Returns: boolean
                            },
@@ -1467,6 +1695,38 @@ isOneToOne: false
               "admins_notified": number,"company_id": string,"numbers_disconnected": number,"token_removed": boolean
             }[]
                            },
+"replace_portfolio_import_sheet":
+{ Args: { "p_columns": (string)[],"p_company_id": string,"p_import_id": string,"p_rows": Json,"p_sheet_name": string }; Returns: {
+              "approved_at": string | null,
+"approved_by_user_id": string | null,
+"column_mapping": Json | null,
+"columns": (string)[],
+"company_id": string,
+"created_at": string,
+"delimiter": string | null,
+"file_format": string,
+"file_name": string,
+"file_sha256": string,
+"google_sheet_gid": string | null,
+"google_spreadsheet_id": string | null,
+"id": string,
+"property_id": string | null,
+"row_count": number,
+"scope": string,
+"sheet_name": string | null,
+"sheet_names": (string)[],
+"size_bytes": number,
+"storage_path": string,
+"updated_at": string,
+"uploaded_at": string,
+"uploaded_by_user_id": string | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "portfolio_imports"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "reply_to_whatsapp_contact":
 { Args: { "p_body": string,"p_company_id": string,"p_conversation_id": string }; Returns: {
               "communication_id": string,"outcome": string
@@ -1482,6 +1742,41 @@ isOneToOne: false
               "handover_id": string,"outcome": string
             }[]
                            },
+"save_lease":
+{ Args: { "p_company_id": string,"p_guarantee"?: Json,"p_lease": Json,"p_lease_id"?: string,"p_set_guarantee"?: boolean }; Returns: string
+                           },
+"save_portfolio_import_mapping":
+{ Args: { "p_company_id": string,"p_header_signature": string,"p_import_id": string,"p_mapping": Json }; Returns: {
+              "approved_at": string | null,
+"approved_by_user_id": string | null,
+"column_mapping": Json | null,
+"columns": (string)[],
+"company_id": string,
+"created_at": string,
+"delimiter": string | null,
+"file_format": string,
+"file_name": string,
+"file_sha256": string,
+"google_sheet_gid": string | null,
+"google_spreadsheet_id": string | null,
+"id": string,
+"property_id": string | null,
+"row_count": number,
+"scope": string,
+"sheet_name": string | null,
+"sheet_names": (string)[],
+"size_bytes": number,
+"storage_path": string,
+"updated_at": string,
+"uploaded_at": string,
+"uploaded_by_user_id": string | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "portfolio_imports"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "save_whatsapp_agent_config":
 { Args: { "p_company_id": string,"p_config": Json,"p_handover_user_ids": (string)[] }; Returns: {
               "agent_name": string,
@@ -1525,6 +1820,14 @@ isOneToOne: false
 "sync_whatsapp_message_templates":
 { Args: { "p_business_account_id": string,"p_company_id": string,"p_templates": Json }; Returns: number
                            },
+"tenant_search_text":
+{ Args: { "lease": Omit<Database["public"]['Tables']["leases"]['Row'], Database["public"]['Tables']["leases"]['ComputedFields']> }; Returns: string
+                           },
+"validate_tenant_whatsapp_number":
+{ Args: { "p_company_id": string,"p_tenant_id": string,"p_whatsapp_number": string }; Returns: {
+              "outcome": string
+            }[]
+                           },
 "whatsapp_account_access_token":
 { Args: { "p_account_id": string }; Returns: string
                            },
@@ -1543,7 +1846,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "approval_decision": "pending"|"approved"|"rejected","arrangement_status": "proposed"|"active"|"completed"|"defaulted"|"cancelled","audit_action": "create"|"update"|"archive"|"delete"|"verify"|"approve"|"reject"|"upload"|"send"|"resolve"|"dismiss"|"login"|"logout"|"workspace_switch"|"reset_demo_data","business_type": "pty_ltd"|"close_corporation"|"sole_proprietor"|"partnership"|"npc"|"franchise","channel": "whatsapp"|"email"|"system","company_status": "active"|"suspended"|"archived","delivery_status": "draft"|"pending_approval"|"approved"|"queued"|"sent"|"delivered"|"read"|"failed"|"rejected"|"received","deposit_holder": "landlord"|"managing_agent"|"attorney_trust","entity_type": "company"|"user"|"property"|"unit"|"tenant"|"lease"|"lease_document"|"statement"|"statement_extraction"|"monitoring_event"|"monitoring_rule"|"payment_arrangement"|"communication"|"message_template"|"message_approval"|"notification"|"audit_log","escalation_frequency": "annual"|"biennial","escalation_type": "percentage"|"fixed_amount"|"cpi_linked"|"none","event_priority": "low"|"medium"|"high"|"critical","extraction_field_name": "tenant_name"|"unit_number"|"statement_date"|"period_start"|"period_end"|"rental_charged"|"additional_charges"|"payments_received"|"outstanding_balance"|"total_due","extraction_status": "pending_review"|"confirmed"|"corrected"|"rejected","guarantee_status": "active"|"expiring"|"expired"|"released"|"called","installment_frequency": "weekly"|"fortnightly"|"monthly","installment_status": "scheduled"|"reminder_sent"|"confirmed_paid"|"missed"|"waived","lease_document_type": "signed_lease"|"addendum"|"renewal_agreement"|"bank_guarantee"|"deposit_receipt"|"fica"|"other","lease_status": "draft"|"pending_verification"|"active"|"expiring"|"expired"|"renewed"|"terminated","line_item_category": "rental"|"operating_costs"|"rates_and_taxes"|"utilities"|"parking"|"marketing_levy"|"interest"|"other_charge"|"payment"|"credit","line_item_kind": "charge"|"payment"|"credit","message_direction": "outbound"|"inbound","message_type": "monthly_statement"|"initial_payment_reminder"|"overdue_payment_reminder"|"follow_up_payment_reminder"|"arrangement_installment_reminder"|"owner_weekly_summary"|"owner_query_response"|"inbound_reply"|"manual","monitoring_event_status": "new"|"under_review"|"action_required"|"in_progress"|"resolved"|"dismissed","monitoring_event_type": "rental_escalation_discrepancy"|"lease_expiry"|"renewal_notice_deadline"|"guarantee_expiry"|"guarantee_shortfall"|"deposit_shortfall"|"arrears"|"arrangement_attention"|"statement_review_required","notification_severity": "info"|"warning"|"critical","notification_type": "monitoring_event"|"statement_review"|"approval_request"|"arrangement"|"message_failed"|"system","occupancy_status": "occupied"|"vacant"|"under_offer"|"unavailable","property_status": "active"|"under_development"|"archived","property_type": "shopping_centre"|"retail"|"office"|"industrial_warehouse"|"mixed_use","recipient_type": "tenant"|"property_owner"|"contact","sa_province": "Eastern Cape"|"Free State"|"Gauteng"|"KwaZulu-Natal"|"Limpopo"|"Mpumalanga"|"North West"|"Northern Cape"|"Western Cape","statement_source": "MRI"|"MDA"|"PropSys"|"Sage"|"other","statement_status": "uploaded"|"processing"|"review_required"|"verified"|"rejected"|"duplicate","template_approval_status": "draft"|"submitted"|"approved"|"rejected","tenant_status": "active"|"in_arrears"|"notice_given"|"vacated"|"prospective","unit_type": "anchor_retail"|"line_shop"|"kiosk"|"restaurant"|"office_suite"|"warehouse"|"yard"|"storage"|"parking","user_role": "company_admin"|"property_manager"|"property_owner"|"read_only","user_status": "active"|"invited"|"suspended"|"deactivated","weekday": "monday"|"tuesday"|"wednesday"|"thursday"|"friday"|"saturday"|"sunday","whatsapp_connection_status": "not_configured"|"pending_verification"|"connected"|"disconnected"|"error","whatsapp_onboarding_status": "started"|"code_received"|"exchanged"|"completed"|"cancelled"|"failed"|"expired","whatsapp_verification_step": "token_scopes"|"phone_number"|"webhook_subscription"|"registration"|"message_templates","whatsapp_verification_step_status": "pending"|"passed"|"failed"|"action_needed"|"not_required"
+            "approval_decision": "pending"|"approved"|"rejected","arrangement_status": "proposed"|"active"|"completed"|"defaulted"|"cancelled","audit_action": "create"|"update"|"archive"|"delete"|"verify"|"approve"|"reject"|"upload"|"send"|"resolve"|"dismiss"|"login"|"logout"|"workspace_switch"|"reset_demo_data","business_type": "pty_ltd"|"close_corporation"|"sole_proprietor"|"partnership"|"npc"|"franchise","channel": "whatsapp"|"email"|"system","company_status": "active"|"suspended"|"archived","delivery_status": "draft"|"pending_approval"|"approved"|"queued"|"sent"|"delivered"|"read"|"failed"|"rejected"|"received","deposit_holder": "landlord"|"managing_agent"|"attorney_trust","entity_type": "company"|"user"|"property"|"unit"|"tenant"|"lease"|"lease_document"|"statement"|"statement_extraction"|"monitoring_event"|"monitoring_rule"|"payment_arrangement"|"communication"|"message_template"|"message_approval"|"notification"|"audit_log"|"portfolio_import","escalation_frequency": "annual"|"biennial","escalation_type": "percentage"|"fixed_amount"|"cpi_linked"|"none","event_priority": "low"|"medium"|"high"|"critical","extraction_field_name": "tenant_name"|"unit_number"|"statement_date"|"period_start"|"period_end"|"rental_charged"|"additional_charges"|"payments_received"|"outstanding_balance"|"total_due","extraction_status": "pending_review"|"confirmed"|"corrected"|"rejected","guarantee_status": "active"|"expiring"|"expired"|"released"|"called","installment_frequency": "weekly"|"fortnightly"|"monthly","installment_status": "scheduled"|"reminder_sent"|"confirmed_paid"|"missed"|"waived","lease_document_type": "signed_lease"|"addendum"|"renewal_agreement"|"bank_guarantee"|"deposit_receipt"|"fica"|"other","lease_status": "draft"|"pending_verification"|"active"|"expiring"|"expired"|"renewed"|"terminated","line_item_category": "rental"|"operating_costs"|"rates_and_taxes"|"utilities"|"parking"|"marketing_levy"|"interest"|"other_charge"|"payment"|"credit","line_item_kind": "charge"|"payment"|"credit","message_direction": "outbound"|"inbound","message_type": "monthly_statement"|"initial_payment_reminder"|"overdue_payment_reminder"|"follow_up_payment_reminder"|"arrangement_installment_reminder"|"owner_weekly_summary"|"owner_query_response"|"inbound_reply"|"manual","monitoring_event_status": "new"|"under_review"|"action_required"|"in_progress"|"resolved"|"dismissed","monitoring_event_type": "rental_escalation_discrepancy"|"lease_expiry"|"renewal_notice_deadline"|"guarantee_expiry"|"guarantee_shortfall"|"deposit_shortfall"|"arrears"|"arrangement_attention"|"statement_review_required","notification_severity": "info"|"warning"|"critical","notification_type": "monitoring_event"|"statement_review"|"approval_request"|"arrangement"|"message_failed"|"system","occupancy_status": "occupied"|"vacant"|"under_offer"|"unavailable","property_status": "active"|"under_development"|"archived","property_type": "shopping_centre"|"retail"|"office"|"industrial_warehouse"|"mixed_use","recipient_type": "tenant"|"property_owner"|"contact","sa_province": "Eastern Cape"|"Free State"|"Gauteng"|"KwaZulu-Natal"|"Limpopo"|"Mpumalanga"|"North West"|"Northern Cape"|"Western Cape","statement_source": "MRI"|"MDA"|"PropSys"|"Sage"|"other","statement_status": "uploaded"|"processing"|"review_required"|"verified"|"rejected"|"duplicate","template_approval_status": "draft"|"submitted"|"approved"|"rejected","tenant_status": "active"|"in_arrears"|"notice_given"|"vacated"|"prospective","unit_type": "anchor_retail"|"line_shop"|"kiosk"|"restaurant"|"office_suite"|"warehouse"|"yard"|"storage"|"parking","user_role": "company_admin"|"property_manager"|"property_owner"|"read_only","user_status": "active"|"invited"|"suspended"|"deactivated","weekday": "monday"|"tuesday"|"wednesday"|"thursday"|"friday"|"saturday"|"sunday","whatsapp_connection_status": "not_configured"|"pending_verification"|"connected"|"disconnected"|"error","whatsapp_onboarding_status": "started"|"code_received"|"exchanged"|"completed"|"cancelled"|"failed"|"expired","whatsapp_verification_step": "token_scopes"|"phone_number"|"webhook_subscription"|"registration"|"message_templates","whatsapp_verification_step_status": "pending"|"passed"|"failed"|"action_needed"|"not_required"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -1659,7 +1962,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "approval_decision": ["pending", "approved", "rejected"],"arrangement_status": ["proposed", "active", "completed", "defaulted", "cancelled"],"audit_action": ["create", "update", "archive", "delete", "verify", "approve", "reject", "upload", "send", "resolve", "dismiss", "login", "logout", "workspace_switch", "reset_demo_data"],"business_type": ["pty_ltd", "close_corporation", "sole_proprietor", "partnership", "npc", "franchise"],"channel": ["whatsapp", "email", "system"],"company_status": ["active", "suspended", "archived"],"delivery_status": ["draft", "pending_approval", "approved", "queued", "sent", "delivered", "read", "failed", "rejected", "received"],"deposit_holder": ["landlord", "managing_agent", "attorney_trust"],"entity_type": ["company", "user", "property", "unit", "tenant", "lease", "lease_document", "statement", "statement_extraction", "monitoring_event", "monitoring_rule", "payment_arrangement", "communication", "message_template", "message_approval", "notification", "audit_log"],"escalation_frequency": ["annual", "biennial"],"escalation_type": ["percentage", "fixed_amount", "cpi_linked", "none"],"event_priority": ["low", "medium", "high", "critical"],"extraction_field_name": ["tenant_name", "unit_number", "statement_date", "period_start", "period_end", "rental_charged", "additional_charges", "payments_received", "outstanding_balance", "total_due"],"extraction_status": ["pending_review", "confirmed", "corrected", "rejected"],"guarantee_status": ["active", "expiring", "expired", "released", "called"],"installment_frequency": ["weekly", "fortnightly", "monthly"],"installment_status": ["scheduled", "reminder_sent", "confirmed_paid", "missed", "waived"],"lease_document_type": ["signed_lease", "addendum", "renewal_agreement", "bank_guarantee", "deposit_receipt", "fica", "other"],"lease_status": ["draft", "pending_verification", "active", "expiring", "expired", "renewed", "terminated"],"line_item_category": ["rental", "operating_costs", "rates_and_taxes", "utilities", "parking", "marketing_levy", "interest", "other_charge", "payment", "credit"],"line_item_kind": ["charge", "payment", "credit"],"message_direction": ["outbound", "inbound"],"message_type": ["monthly_statement", "initial_payment_reminder", "overdue_payment_reminder", "follow_up_payment_reminder", "arrangement_installment_reminder", "owner_weekly_summary", "owner_query_response", "inbound_reply", "manual"],"monitoring_event_status": ["new", "under_review", "action_required", "in_progress", "resolved", "dismissed"],"monitoring_event_type": ["rental_escalation_discrepancy", "lease_expiry", "renewal_notice_deadline", "guarantee_expiry", "guarantee_shortfall", "deposit_shortfall", "arrears", "arrangement_attention", "statement_review_required"],"notification_severity": ["info", "warning", "critical"],"notification_type": ["monitoring_event", "statement_review", "approval_request", "arrangement", "message_failed", "system"],"occupancy_status": ["occupied", "vacant", "under_offer", "unavailable"],"property_status": ["active", "under_development", "archived"],"property_type": ["shopping_centre", "retail", "office", "industrial_warehouse", "mixed_use"],"recipient_type": ["tenant", "property_owner", "contact"],"sa_province": ["Eastern Cape", "Free State", "Gauteng", "KwaZulu-Natal", "Limpopo", "Mpumalanga", "North West", "Northern Cape", "Western Cape"],"statement_source": ["MRI", "MDA", "PropSys", "Sage", "other"],"statement_status": ["uploaded", "processing", "review_required", "verified", "rejected", "duplicate"],"template_approval_status": ["draft", "submitted", "approved", "rejected"],"tenant_status": ["active", "in_arrears", "notice_given", "vacated", "prospective"],"unit_type": ["anchor_retail", "line_shop", "kiosk", "restaurant", "office_suite", "warehouse", "yard", "storage", "parking"],"user_role": ["company_admin", "property_manager", "property_owner", "read_only"],"user_status": ["active", "invited", "suspended", "deactivated"],"weekday": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],"whatsapp_connection_status": ["not_configured", "pending_verification", "connected", "disconnected", "error"],"whatsapp_onboarding_status": ["started", "code_received", "exchanged", "completed", "cancelled", "failed", "expired"],"whatsapp_verification_step": ["token_scopes", "phone_number", "webhook_subscription", "registration", "message_templates"],"whatsapp_verification_step_status": ["pending", "passed", "failed", "action_needed", "not_required"]
+            "approval_decision": ["pending", "approved", "rejected"],"arrangement_status": ["proposed", "active", "completed", "defaulted", "cancelled"],"audit_action": ["create", "update", "archive", "delete", "verify", "approve", "reject", "upload", "send", "resolve", "dismiss", "login", "logout", "workspace_switch", "reset_demo_data"],"business_type": ["pty_ltd", "close_corporation", "sole_proprietor", "partnership", "npc", "franchise"],"channel": ["whatsapp", "email", "system"],"company_status": ["active", "suspended", "archived"],"delivery_status": ["draft", "pending_approval", "approved", "queued", "sent", "delivered", "read", "failed", "rejected", "received"],"deposit_holder": ["landlord", "managing_agent", "attorney_trust"],"entity_type": ["company", "user", "property", "unit", "tenant", "lease", "lease_document", "statement", "statement_extraction", "monitoring_event", "monitoring_rule", "payment_arrangement", "communication", "message_template", "message_approval", "notification", "audit_log", "portfolio_import"],"escalation_frequency": ["annual", "biennial"],"escalation_type": ["percentage", "fixed_amount", "cpi_linked", "none"],"event_priority": ["low", "medium", "high", "critical"],"extraction_field_name": ["tenant_name", "unit_number", "statement_date", "period_start", "period_end", "rental_charged", "additional_charges", "payments_received", "outstanding_balance", "total_due"],"extraction_status": ["pending_review", "confirmed", "corrected", "rejected"],"guarantee_status": ["active", "expiring", "expired", "released", "called"],"installment_frequency": ["weekly", "fortnightly", "monthly"],"installment_status": ["scheduled", "reminder_sent", "confirmed_paid", "missed", "waived"],"lease_document_type": ["signed_lease", "addendum", "renewal_agreement", "bank_guarantee", "deposit_receipt", "fica", "other"],"lease_status": ["draft", "pending_verification", "active", "expiring", "expired", "renewed", "terminated"],"line_item_category": ["rental", "operating_costs", "rates_and_taxes", "utilities", "parking", "marketing_levy", "interest", "other_charge", "payment", "credit"],"line_item_kind": ["charge", "payment", "credit"],"message_direction": ["outbound", "inbound"],"message_type": ["monthly_statement", "initial_payment_reminder", "overdue_payment_reminder", "follow_up_payment_reminder", "arrangement_installment_reminder", "owner_weekly_summary", "owner_query_response", "inbound_reply", "manual"],"monitoring_event_status": ["new", "under_review", "action_required", "in_progress", "resolved", "dismissed"],"monitoring_event_type": ["rental_escalation_discrepancy", "lease_expiry", "renewal_notice_deadline", "guarantee_expiry", "guarantee_shortfall", "deposit_shortfall", "arrears", "arrangement_attention", "statement_review_required"],"notification_severity": ["info", "warning", "critical"],"notification_type": ["monitoring_event", "statement_review", "approval_request", "arrangement", "message_failed", "system"],"occupancy_status": ["occupied", "vacant", "under_offer", "unavailable"],"property_status": ["active", "under_development", "archived"],"property_type": ["shopping_centre", "retail", "office", "industrial_warehouse", "mixed_use"],"recipient_type": ["tenant", "property_owner", "contact"],"sa_province": ["Eastern Cape", "Free State", "Gauteng", "KwaZulu-Natal", "Limpopo", "Mpumalanga", "North West", "Northern Cape", "Western Cape"],"statement_source": ["MRI", "MDA", "PropSys", "Sage", "other"],"statement_status": ["uploaded", "processing", "review_required", "verified", "rejected", "duplicate"],"template_approval_status": ["draft", "submitted", "approved", "rejected"],"tenant_status": ["active", "in_arrears", "notice_given", "vacated", "prospective"],"unit_type": ["anchor_retail", "line_shop", "kiosk", "restaurant", "office_suite", "warehouse", "yard", "storage", "parking"],"user_role": ["company_admin", "property_manager", "property_owner", "read_only"],"user_status": ["active", "invited", "suspended", "deactivated"],"weekday": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],"whatsapp_connection_status": ["not_configured", "pending_verification", "connected", "disconnected", "error"],"whatsapp_onboarding_status": ["started", "code_received", "exchanged", "completed", "cancelled", "failed", "expired"],"whatsapp_verification_step": ["token_scopes", "phone_number", "webhook_subscription", "registration", "message_templates"],"whatsapp_verification_step_status": ["pending", "passed", "failed", "action_needed", "not_required"]
           }
         }
 } as const

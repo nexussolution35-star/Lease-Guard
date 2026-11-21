@@ -64,6 +64,10 @@ export class StorageService {
     return this.env.SUPABASE_STATEMENTS_BUCKET
   }
 
+  get leaseDocumentsBucket(): string {
+    return this.env.SUPABASE_LEASE_DOCUMENTS_BUCKET
+  }
+
   /** Largest accepted statement file (DOCUMENT_PROCESSING_MAX_FILE_MB) in bytes. */
   get maxStatementBytes(): number {
     return this.env.DOCUMENT_PROCESSING_MAX_FILE_MB * BYTES_PER_MIB
@@ -129,6 +133,15 @@ export class StorageService {
       throw httpErrorFromStorage(error, 'Download object', this.logger)
     }
     return data
+  }
+
+  /**
+   * Stores bytes the API produced itself (for example a sheet it fetched) as a new object. Never overwrites an
+   * existing object; storage policies decide whether the caller may write `path`.
+   */
+  async upload(db: DbClient, bucket: string, path: string, bytes: Uint8Array, contentType: string): Promise<void> {
+    const { error } = await db.storage.from(bucket).upload(path, bytes, { contentType, upsert: false })
+    if (error) throw httpErrorFromStorage(error, 'Upload object', this.logger)
   }
 }
 

@@ -389,6 +389,211 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portfolio-imports/upload-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get a signed URL to upload one portfolio file (CSV or XLSX)
+         * @description Upload the file to signedUrl with the returned contentType, then call createPortfolioImport with the returned storagePath.
+         */
+        post: operations["createPortfolioImportUploadUrl"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolio-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the portfolio import batches of the active company, newest first
+         * @description The import history: a batch left with rows to fix is resumed from here.
+         */
+        get: operations["listPortfolioImports"];
+        put?: never;
+        /**
+         * Read an uploaded portfolio file and record it as an import batch (company admins and property managers)
+         * @description The file is read on the server: CSV (comma or semicolon separated, UTF-8 with or without a byte-order mark) or XLSX (the first visible sheet unless sheetName names another). Empty rows are ignored; the first non-empty row holds the column headings. At most 5 MB, 5000 rows and 100 columns. Nothing is written to properties or units. The database records who uploaded the file and the audit entry.
+         */
+        post: operations["createPortfolioImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolio-imports/google-sheets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read a Google Sheet from its link and record it as an import batch (company admins and property managers)
+         * @description Only Google Sheets links are accepted. The API reads the tab named in the link (or the first tab) as CSV, only from the docs.google.com export address it builds from the link's ids, following redirects to Google download hosts only, within a time and the 5 MB size limit. What it read is kept as the batch's file, so the batch does not change when the sheet does; it is then read as an uploaded CSV file is. The sheet must be shared with "Anyone with the link"; otherwise the answer says how to share it.
+         */
+        post: operations["createPortfolioImportFromGoogleSheet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolio-imports/{importId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one portfolio import batch */
+        get: operations["getPortfolioImport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolio-imports/{importId}/sheet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read a portfolio workbook from another of its sheets (company admins and property managers)
+         * @description The batch's columns, row count and rows are replaced by those of the chosen sheet. Choosing the current sheet changes nothing.
+         */
+        post: operations["selectPortfolioImportSheet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolio-imports/{importId}/mapping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get how a portfolio import's columns map to LeaseGuard fields
+         * @description The mapping applied to the batch; else the one the company last applied to a file with the same headings (source saved); else the one suggested from the headings, including the usual MRI, MDA, PropSys and Sage headings (source suggested). Suggestions look only at the headings, never at the values.
+         */
+        get: operations["getPortfolioImportMapping"];
+        /**
+         * Apply a column mapping to a portfolio import (company admins and property managers)
+         * @description The mapping replaces the batch's and is saved for the next file with the same headings in this company. Nothing is written to properties or units. The database records the audit entry.
+         */
+        put: operations["savePortfolioImportMapping"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolio-imports/{importId}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check a portfolio import's rows against the database
+         * @description Each row is read with the batch's mapping, validated with the property and unit rules, and matched: a property by its code, then by its name with its street address and postal code; a unit by its number within its property. Results: new, match (exists with the same values), conflict (exists with other values; both values given), invalid, duplicate (an earlier row names the same records). Counts cover the whole batch; the page holds the rows with the result asked for. Nothing is written.
+         */
+        get: operations["previewPortfolioImport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolio-imports/{importId}/rows/{rowNumber}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Correct, skip or link one row of a portfolio import (company admins and property managers)
+         * @description Corrections are merged by field (a value is read instead of the file's cell, an empty string clears it, null reads the file's cell again); skipped leaves the row out; link makes the row stand for an existing property and unit, so nothing new is created for them and the file's values for them are not used. Kept on the batch row: nothing is written to properties or units. A batch still read with a saved or suggested mapping has it applied first. The answer is the row checked again; other rows may change too (e.g. a duplicate of a skipped row). The database stamps who made the change and audits each previous and new value.
+         */
+        patch: operations["changePortfolioImportRow"];
+        trace?: never;
+    };
+    "/api/v1/portfolio-imports/{importId}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get what approving a portfolio import creates
+         * @description From the rows checked against the live records, as the preview checks them: the properties and units approving creates now, the rows linked to records that exist (match), the rows skipped and the rows still blocked (invalid, conflict, duplicate; left out until fixed); with the last approval and every record the import created.
+         */
+        get: operations["getPortfolioImportSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolio-imports/{importId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a portfolio import and create its new properties and units (company admins and property managers)
+         * @description Creates the properties and units of the rows that are new, with the same validation and write path as the property and unit forms, in one transaction: all of them land or none do. Rows still blocked stay out until they are fixed; the import can be approved again later for them. The approver is the new properties' manager. When nothing is left to create, the summary is returned unchanged, so approving twice or importing the same file again never creates duplicates. Each created record is audited as created by import with the batch reference. Importing never enables or sends tenant messaging.
+         */
+        post: operations["approvePortfolioImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/units": {
         parameters: {
             query?: never;
@@ -399,7 +604,11 @@ export interface paths {
         /** List units in the active company */
         get: operations["listUnits"];
         put?: never;
-        post?: never;
+        /**
+         * Create a unit (company admins and property managers)
+         * @description The property must be in the company and not archived; the unit number is unique within the property. The current tenant and lease are derived from the active lease and cannot be sent. The database records the audit entry.
+         */
+        post: operations["createUnit"];
         delete?: never;
         options?: never;
         head?: never;
@@ -420,7 +629,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Change a unit (company admins and property managers)
+         * @description Omitted fields are unchanged; the property cannot change. A unit with a current lease stays occupied, and the units of an archived property are read-only (422). Occupancy status changes are audited.
+         */
+        patch: operations["updateUnit"];
         trace?: never;
     };
     "/api/v1/tenants": {
@@ -430,10 +643,17 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List tenants in the active company */
+        /**
+         * List tenants in the active company
+         * @description Each tenant carries its current lease (reference, unit and property) and its lease count. `propertyId` keeps tenants with a lease in that property.
+         */
         get: operations["listTenants"];
         put?: never;
-        post?: never;
+        /**
+         * Create a tenant (company admins and property managers)
+         * @description The WhatsApp number is stored in E.164 and starts unvalidated: automated communication stays off until it is validated. An invalid number is 400 with the format to use. The database records the audit entry.
+         */
+        post: operations["createTenant"];
         delete?: never;
         options?: never;
         head?: never;
@@ -454,6 +674,30 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /**
+         * Change a tenant (company admins and property managers)
+         * @description Omitted fields are unchanged; empty or null clears an optional field. A different WhatsApp number is unvalidated again, which turns automated communication off until it is validated; the audit entry records it.
+         */
+        patch: operations["updateTenant"];
+        trace?: never;
+    };
+    "/api/v1/tenants/{tenantId}/whatsapp-validation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate a tenant's WhatsApp number (company admins and property managers)
+         * @description Records that a member confirmed the number with the tenant (PRD §5.4: numbers must be validated before automated communication is enabled). `whatsappNumber` is the number the member checked and must still be the number on record: 409 when it changed in the meantime. Stamps who validated it and when, and records a verify audit entry. Validating a validated number returns the tenant unchanged. Changing the number later makes it unvalidated again.
+         */
+        post: operations["validateTenantWhatsAppNumber"];
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -464,10 +708,17 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List leases in the active company */
+        /**
+         * List leases in the active company
+         * @description Search matches the lease reference or the tenant trading or legal name. Each item carries the tenant, property and unit names.
+         */
         get: operations["listLeases"];
         put?: never;
-        post?: never;
+        /**
+         * Create a lease (company admins and property managers)
+         * @description The lease starts unverified (pending verification unless draft) and is not used for financial monitoring until its terms are verified. The reference is upper-cased and unique in the company; the tenant, property and unit must belong to the company and the unit to the property, which must not be archived. The lease and its bank guarantee are written together and the database records the audit entries.
+         */
+        post: operations["createLease"];
         delete?: never;
         options?: never;
         head?: never;
@@ -488,7 +739,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Change a lease (company admins and property managers)
+         * @description Omitted fields are unchanged; escalation, renewal option, deposit and bank guarantee each replace the whole group, and null removes the deposit or the guarantee. A change to a term (parties, dates, rentals, due day, escalation, renewal option, deposit or guarantee) of a verified lease returns it to pending verification, audited, so unverified terms never drive monitoring. The parties cannot change once statements, arrangements, monitoring events or messages name the lease (422).
+         */
+        patch: operations["updateLease"];
         trace?: never;
     };
     "/api/v1/leases/{leaseId}/verify": {
@@ -505,6 +760,67 @@ export interface paths {
          * @description Verified terms may drive financial monitoring. The database records the verifier and time and writes the audit log. Verifying an already verified lease returns it unchanged.
          */
         post: operations["verifyLease"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leases/{leaseId}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the documents recorded on a lease
+         * @description Newest first, at most 200. Each names its type and the member who uploaded it.
+         */
+        get: operations["listLeaseDocuments"];
+        put?: never;
+        /**
+         * Record an uploaded PDF as a document of the lease (company admins and property managers)
+         * @description The stored file must be there, match sizeBytes and be a PDF; its SHA-256 is computed from the stored file. The database records the signed-in user as the uploader and writes the audit entry. A recorded document and its file are kept: they are not replaced or deleted.
+         */
+        post: operations["registerLeaseDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leases/{leaseId}/documents/upload-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get a signed URL to upload one lease document PDF (company admins and property managers)
+         * @description PDF only, at most 20 MB. The file is stored privately under the active company. Upload it to signedUrl with Content-Type application/pdf, then call registerLeaseDocument with the returned storagePath.
+         */
+        post: operations["createLeaseDocumentUploadUrl"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leases/{leaseId}/documents/{documentId}/download-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A 5-minute link to a lease document's file */
+        get: operations["getLeaseDocumentDownloadUrl"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2082,12 +2398,527 @@ export interface components {
             ownerUserId?: string | null;
             accountingSystem?: components["schemas"]["StatementSource"];
         };
+        CreatePortfolioImportUploadUrlDto: {
+            /**
+             * @description Must end in .csv or .xlsx
+             * @example portfolio.xlsx
+             */
+            fileName: string;
+            /** @description File size in bytes; at most 5 MB */
+            sizeBytes: number;
+        };
+        /**
+         * @description Send the file with this Content-Type
+         * @enum {string}
+         */
+        PortfolioImportMimeType: "text/csv" | "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        PortfolioImportUploadUrlDto: {
+            /**
+             * Format: uuid
+             * @description Id the import will have once created
+             */
+            importId: string;
+            /** @description Pass unchanged to createPortfolioImport: <companyId>/<importId>/<file> */
+            storagePath: string;
+            /** @description Upload the file here with PUT, or with supabase-js uploadToSignedUrl(storagePath, token, file) */
+            signedUrl: string;
+            /** @description Upload token embedded in signedUrl */
+            token: string;
+            /** @description Send the file with this Content-Type */
+            contentType: components["schemas"]["PortfolioImportMimeType"];
+            /** @description Largest accepted file in bytes */
+            maxSizeBytes: number;
+        };
+        /** @enum {string} */
+        PortfolioImportScope: "properties" | "units";
+        CreatePortfolioImportDto: {
+            scope: components["schemas"]["PortfolioImportScope"];
+            /**
+             * Format: uuid
+             * @description Required to import units, and only then; the property must not be archived
+             */
+            propertyId?: string;
+            /** @description storagePath returned by createPortfolioImportUploadUrl, after the file was uploaded */
+            storagePath: string;
+            fileName: string;
+            sizeBytes: number;
+            /** @description XLSX only: the sheet to read; the first visible sheet when omitted */
+            sheetName?: string;
+        };
+        /**
+         * @description Detected from the content
+         * @enum {string}
+         */
+        PortfolioImportFileFormat: "csv" | "xlsx";
+        /**
+         * @description The field separator detected (CSV only)
+         * @enum {string}
+         */
+        PortfolioImportDelimiter: "," | ";";
+        GoogleSheetSourceDto: {
+            /** @description The spreadsheet id from the link */
+            spreadsheetId: string;
+            /** @description The tab (Google's gid); absent when the link named none and the first tab was read */
+            gid?: string;
+        };
+        PortfolioImportDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            companyId: string;
+            /** @description properties: properties with their units; units: units of propertyId */
+            scope: components["schemas"]["PortfolioImportScope"];
+            /**
+             * Format: uuid
+             * @description Present exactly when scope is units
+             */
+            propertyId?: string;
+            fileName: string;
+            /** @description Detected from the content */
+            fileFormat: components["schemas"]["PortfolioImportFileFormat"];
+            sizeBytes: number;
+            /** @description The worksheet the rows were read from (XLSX only) */
+            sheetName?: string;
+            /** @description Every worksheet, in workbook order (empty for CSV) */
+            sheetNames: string[];
+            /** @description The field separator detected (CSV only) */
+            delimiter?: components["schemas"]["PortfolioImportDelimiter"];
+            /** @description Present when the batch was read from a Google Sheets link; the CSV read is the batch file, so the batch does not change with the sheet */
+            googleSheet?: components["schemas"]["GoogleSheetSourceDto"];
+            /** @description Column headings from the first non-empty row, in file order */
+            columns: string[];
+            /** @description Data rows stored; empty rows are ignored */
+            rowCount: number;
+            /**
+             * Format: uuid
+             * @description Absent when the uploader has left the company
+             */
+            uploadedByUserId?: string;
+            /** Format: date-time */
+            uploadedAt: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreatePortfolioImportFromGoogleSheetDto: {
+            scope: components["schemas"]["PortfolioImportScope"];
+            /**
+             * Format: uuid
+             * @description Required to import units, and only then; the property must not be archived
+             */
+            propertyId?: string;
+            /**
+             * @description A Google Sheets link; the tab in it (gid) is read, or the first tab. The sheet must be shared with "Anyone with the link"
+             * @example https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit#gid=0
+             */
+            url: string;
+        };
+        PortfolioImportPage: {
+            items: components["schemas"]["PortfolioImportDto"][];
+            total: number;
+            page: number;
+            pageSize: number;
+        };
+        SelectPortfolioImportSheetDto: {
+            sheetName: string;
+        };
+        /**
+         * @description applied: applied to this batch; saved: reused from the last file with the same headings; suggested: from the headings
+         * @enum {string}
+         */
+        PortfolioImportMappingSource: "applied" | "saved" | "suggested";
+        /** @enum {string} */
+        PortfolioImportFieldKey: "propertyCode" | "propertyName" | "propertyType" | "addressLine1" | "addressLine2" | "suburb" | "city" | "province" | "postalCode" | "grossLettableAreaSqm" | "unitNumber" | "unitType" | "floorAreaSqm" | "occupancyStatus" | "tenantTradingName" | "tenantLegalName" | "tenantRegistrationNumber" | "tenantAccountReference" | "tenantBusinessType" | "tenantContactPerson" | "tenantEmail" | "tenantPhone";
+        PortfolioImportFieldMappingDto: {
+            field: components["schemas"]["PortfolioImportFieldKey"];
+            /** @description The file column read for the field; absent when it is not read */
+            column?: string;
+            /** @description The column suggested from the headings; absent when none fits */
+            suggestedColumn?: string;
+        };
+        PortfolioImportMappingDto: {
+            /** Format: uuid */
+            importId: string;
+            /** @description applied: applied to this batch; saved: reused from the last file with the same headings; suggested: from the headings */
+            source: components["schemas"]["PortfolioImportMappingSource"];
+            /** @description Every field of the batch's scope, in template order */
+            fields: components["schemas"]["PortfolioImportFieldMappingDto"][];
+            /**
+             * Format: date-time
+             * @description When the reused mapping was saved (source saved)
+             */
+            savedAt?: string;
+        };
+        PortfolioImportColumnMappingDto: {
+            propertyCode?: string;
+            propertyName?: string;
+            propertyType?: string;
+            addressLine1?: string;
+            addressLine2?: string;
+            suburb?: string;
+            city?: string;
+            province?: string;
+            postalCode?: string;
+            grossLettableAreaSqm?: string;
+            unitNumber?: string;
+            unitType?: string;
+            floorAreaSqm?: string;
+            occupancyStatus?: string;
+            tenantTradingName?: string;
+            tenantLegalName?: string;
+            tenantRegistrationNumber?: string;
+            tenantAccountReference?: string;
+            tenantBusinessType?: string;
+            tenantContactPerson?: string;
+            tenantEmail?: string;
+            tenantPhone?: string;
+        };
+        SavePortfolioImportMappingDto: {
+            /** @description Every field to read, with its column; the columns must be the batch's, each used once */
+            mapping: components["schemas"]["PortfolioImportColumnMappingDto"];
+        };
+        /** @enum {string} */
+        PortfolioImportRowResult: "new" | "match" | "suggested" | "conflict" | "invalid" | "duplicate" | "skipped";
+        PortfolioImportResultCountsDto: {
+            new: number;
+            match: number;
+            suggested: number;
+            conflict: number;
+            invalid: number;
+            duplicate: number;
+            skipped: number;
+        };
+        PortfolioImportRowValuesDto: {
+            propertyCode?: string;
+            propertyName?: string;
+            propertyType?: string;
+            addressLine1?: string;
+            addressLine2?: string;
+            suburb?: string;
+            city?: string;
+            province?: string;
+            postalCode?: string;
+            grossLettableAreaSqm?: string;
+            unitNumber?: string;
+            unitType?: string;
+            floorAreaSqm?: string;
+            occupancyStatus?: string;
+            tenantTradingName?: string;
+            tenantLegalName?: string;
+            tenantRegistrationNumber?: string;
+            tenantAccountReference?: string;
+            tenantBusinessType?: string;
+            tenantContactPerson?: string;
+            tenantEmail?: string;
+            tenantPhone?: string;
+        };
+        PortfolioImportConflictDto: {
+            field: components["schemas"]["PortfolioImportFieldKey"];
+            /** @description The row's value: an enum value, a number in plain notation, or text */
+            value: string;
+            /** @description The existing record's value, or the earlier row's, in the same form */
+            existingValue: string;
+            /** @description The earlier row the other value comes from; absent for the existing record */
+            otherRowNumber?: number;
+        };
+        PortfolioImportMatchedRecordDto: {
+            /** Format: uuid */
+            id: string;
+            /** @description The property's name, the unit's number, or the tenant's trading name */
+            label: string;
+        };
+        /**
+         * @description new: approving creates it; match: same registration number or account reference, or confirmed; suggested: similar names wait on the manager; conflict; invalid
+         * @enum {string}
+         */
+        PortfolioImportTenantResult: "new" | "match" | "suggested" | "conflict" | "invalid";
+        /** @enum {string} */
+        PortfolioImportTenantMatchSource: "registrationNumber" | "accountReference" | "confirmed" | "createdByImport";
+        PortfolioImportTenantSuggestionDto: {
+            /** Format: uuid */
+            id: string;
+            tradingName: string;
+            legalName: string;
+            registrationNumber?: string;
+            accountReference?: string;
+        };
+        PortfolioImportTenantCheckDto: {
+            /** @description new: approving creates it; match: same registration number or account reference, or confirmed; suggested: similar names wait on the manager; conflict; invalid */
+            result: components["schemas"]["PortfolioImportTenantResult"];
+            /** @description Why the tenant has its result, in words for people */
+            reasons: string[];
+            /** @description The tenant's name as the row gives it */
+            name: string;
+            /** @description The tenant in LeaseGuard the row stands for (result match) */
+            tenant?: components["schemas"]["PortfolioImportMatchedRecordDto"];
+            matchedBy?: components["schemas"]["PortfolioImportTenantMatchSource"];
+            /** @description Tenants with a similar name, for the manager to confirm or reject */
+            suggestions: components["schemas"]["PortfolioImportTenantSuggestionDto"][];
+            /** @description The earlier row naming the same new tenant by its identifier; it is created once, from that row */
+            sameAsRowNumber?: number;
+            /** @description Contact details the row leaves empty */
+            missingContactDetails: ("contactPerson" | "email" | "phone")[];
+        };
+        PortfolioImportCorrectionDto: {
+            field: components["schemas"]["PortfolioImportFieldKey"];
+            /** @description The manager's value, read instead of the file's cell; empty when they cleared it */
+            value: string;
+            /** @description The file's cell under the batch's mapping; absent when empty or not mapped */
+            fileValue?: string;
+        };
+        PortfolioImportRowResolutionDto: {
+            corrections: components["schemas"]["PortfolioImportCorrectionDto"][];
+            /** @description The row is left out of the import */
+            skipped: boolean;
+            /** @description The existing property the row stands for; nothing new is created for it */
+            linkedProperty?: components["schemas"]["PortfolioImportMatchedRecordDto"];
+            /** @description The existing unit the row stands for; nothing new is created for it */
+            linkedUnit?: components["schemas"]["PortfolioImportMatchedRecordDto"];
+            /** @description The existing tenant the manager confirmed the row's tenant is */
+            linkedTenant?: components["schemas"]["PortfolioImportMatchedRecordDto"];
+            /** @description The manager rejected the suggested tenants: the row's tenant is created as a new tenant */
+            tenantSuggestionsRejected: boolean;
+            /**
+             * Format: uuid
+             * @description Who made the last change; absent when they have left the company
+             */
+            changedByUserId?: string;
+            /** Format: date-time */
+            changedAt: string;
+        };
+        PortfolioImportRowCheckDto: {
+            /** @description The row number in the file */
+            rowNumber: number;
+            result: components["schemas"]["PortfolioImportRowResult"];
+            /** @description Why the row has its result, in words for people */
+            reasons: string[];
+            /** @description The cells read for each mapped field, as written (empty cells left out) */
+            values: components["schemas"]["PortfolioImportRowValuesDto"];
+            conflicts: components["schemas"]["PortfolioImportConflictDto"][];
+            /** @description The existing property the row names */
+            property?: components["schemas"]["PortfolioImportMatchedRecordDto"];
+            /** @description The existing unit the row names */
+            unit?: components["schemas"]["PortfolioImportMatchedRecordDto"];
+            /** @description The earlier row naming the same records (result duplicate) */
+            duplicateOfRowNumber?: number;
+            /** @description The row's tenant, when the row has tenant values */
+            tenant?: components["schemas"]["PortfolioImportTenantCheckDto"];
+            /** @description What the manager changed on the row; absent while nobody has */
+            resolution?: components["schemas"]["PortfolioImportRowResolutionDto"];
+        };
+        PortfolioImportPreviewDto: {
+            /** Format: uuid */
+            importId: string;
+            /** @description Rows of the whole batch per result */
+            counts: components["schemas"]["PortfolioImportResultCountsDto"];
+            items: components["schemas"]["PortfolioImportRowCheckDto"][];
+            /** @description Rows matching the filter */
+            total: number;
+            page: number;
+            pageSize: number;
+        };
+        PortfolioImportRowCorrectionsDto: {
+            propertyCode?: string | null;
+            propertyName?: string | null;
+            propertyType?: string | null;
+            addressLine1?: string | null;
+            addressLine2?: string | null;
+            suburb?: string | null;
+            city?: string | null;
+            province?: string | null;
+            postalCode?: string | null;
+            grossLettableAreaSqm?: string | null;
+            unitNumber?: string | null;
+            unitType?: string | null;
+            floorAreaSqm?: string | null;
+            occupancyStatus?: string | null;
+            tenantTradingName?: string | null;
+            tenantLegalName?: string | null;
+            tenantRegistrationNumber?: string | null;
+            tenantAccountReference?: string | null;
+            tenantBusinessType?: string | null;
+            tenantContactPerson?: string | null;
+            tenantEmail?: string | null;
+            tenantPhone?: string | null;
+        };
+        PortfolioImportRowLinkDto: {
+            /**
+             * Format: uuid
+             * @description An existing property of the workspace (properties imports only)
+             */
+            propertyId?: string;
+            /**
+             * Format: uuid
+             * @description An existing unit: of propertyId when given, of the import's property for a units import
+             */
+            unitId?: string;
+        };
+        /** @enum {string} */
+        PortfolioImportTenantDecision: "confirmed" | "rejected";
+        PortfolioImportTenantMatchDto: {
+            decision: components["schemas"]["PortfolioImportTenantDecision"];
+            /**
+             * Format: uuid
+             * @description The existing tenant the row's tenant is; required with confirmed
+             */
+            tenantId?: string;
+        };
+        ChangePortfolioImportRowDto: {
+            /** @description Merged by field into the row's corrections */
+            corrections?: components["schemas"]["PortfolioImportRowCorrectionsDto"];
+            /** @description Leave the row out of the import (true) or include it again (false) */
+            skipped?: boolean;
+            /** @description The existing records the row stands for; null removes the link */
+            link?: components["schemas"]["PortfolioImportRowLinkDto"] | null;
+            /** @description The manager's decision on the row's suggested tenants: confirmed (with the tenant) or rejected; null withdraws it */
+            tenantMatch?: components["schemas"]["PortfolioImportTenantMatchDto"] | null;
+        };
+        PortfolioImportMissingContactDetailsDto: {
+            rowNumber: number;
+            /** @description The tenant's name as the row gives it */
+            tenantName: string;
+            missing: ("contactPerson" | "email" | "phone")[];
+            /** @description A new tenant cannot be created without its contact person and phone: the row stays blocked */
+            blocksCreation: boolean;
+        };
+        PortfolioImportApprovalDto: {
+            /**
+             * Format: uuid
+             * @description Who approved; absent when they have left the company
+             */
+            approvedByUserId?: string;
+            /** Format: date-time */
+            approvedAt: string;
+        };
+        /** @enum {string} */
+        PortfolioImportRecordType: "property" | "unit" | "tenant";
+        PortfolioImportCreatedRecordDto: {
+            recordType: components["schemas"]["PortfolioImportRecordType"];
+            /**
+             * Format: uuid
+             * @description The property's id, the unit's, or the tenant's
+             */
+            id: string;
+            /** @description The property's name and code, the unit's number, or the tenant's trading name */
+            label: string;
+            /**
+             * Format: uuid
+             * @description The property created, or the property of the unit created (or of the tenant's unit)
+             */
+            propertyId: string;
+            propertyName: string;
+            /**
+             * Format: uuid
+             * @description The unit a created tenant is the tenant of (record type tenant)
+             */
+            unitId?: string;
+            /** @description The number of that unit */
+            unitNumber?: string;
+            /** @description The batch row the record was created from */
+            rowNumber: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PortfolioImportSummaryDto: {
+            /** Format: uuid */
+            importId: string;
+            propertiesToCreate: number;
+            unitsToCreate: number;
+            /** @description New tenants approving creates (a tenant several rows name counts once) */
+            tenantsToCreate: number;
+            /** @description Rows whose tenant is a tenant in LeaseGuard (identifier in common, or confirmed) */
+            tenantsLinked: number;
+            /** @description Rows whose tenant's suggested match waits on the manager (among the blocked rows) */
+            tenantSuggestionsToReview: number;
+            /** @description Rows with a new tenant that leave contact details empty */
+            missingContactDetails: components["schemas"]["PortfolioImportMissingContactDetailsDto"][];
+            /** @description Rows whose records all exist (result match): nothing is created for them */
+            linkedRows: number;
+            skippedRows: number;
+            /** @description Rows left out until they are fixed (invalid, conflict, duplicate, suggested) */
+            blockedRows: number;
+            /** @description Whether approving now would create anything */
+            canApprove: boolean;
+            /** @description Whether approving needs accountingSystem (the import creates properties) */
+            needsAccountingSystem: boolean;
+            /** @description The last approval; absent until the import is approved */
+            approval?: components["schemas"]["PortfolioImportApprovalDto"];
+            /** @description Every record the import created, in row order */
+            created: components["schemas"]["PortfolioImportCreatedRecordDto"][];
+        };
+        ApprovePortfolioImportDto: {
+            /** @description The accounting system the new properties' statements come from; required when the import creates properties */
+            accountingSystem?: components["schemas"]["StatementSource"];
+        };
         /** @enum {string} */
         UnitSortField: "unitNumber" | "floorAreaSqm" | "occupancyStatus" | "createdAt";
         /** @enum {string} */
         OccupancyStatus: "occupied" | "vacant" | "under_offer" | "unavailable";
         /** @enum {string} */
         UnitType: "anchor_retail" | "line_shop" | "kiosk" | "restaurant" | "office_suite" | "warehouse" | "yard" | "storage" | "parking";
+        UnitPropertySummaryDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @example MSQ */
+            code: string;
+        };
+        UnitTenantSummaryDto: {
+            /** Format: uuid */
+            id: string;
+            tradingName: string;
+        };
+        UnitLeaseSummaryDto: {
+            /** Format: uuid */
+            id: string;
+            reference: string;
+            /** Format: date */
+            commencementDate: string;
+            /** Format: date */
+            expiryDate: string;
+        };
+        UnitListItemDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            companyId: string;
+            /** Format: uuid */
+            propertyId: string;
+            /** @example G12 */
+            unitNumber: string;
+            type: components["schemas"]["UnitType"];
+            /** @description Floor area in square metres */
+            floorAreaSqm: number;
+            floor?: string;
+            occupancyStatus: components["schemas"]["OccupancyStatus"];
+            /**
+             * Format: uuid
+             * @description Tenant of the active lease (denormalised)
+             */
+            currentTenantId?: string;
+            /**
+             * Format: uuid
+             * @description Active lease (denormalised)
+             */
+            currentLeaseId?: string;
+            description?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            property: components["schemas"]["UnitPropertySummaryDto"];
+            /** @description Tenant of the active lease */
+            currentTenant?: components["schemas"]["UnitTenantSummaryDto"];
+            /** @description The active lease */
+            currentLease?: components["schemas"]["UnitLeaseSummaryDto"];
+        };
+        UnitPage: {
+            items: components["schemas"]["UnitListItemDto"][];
+            total: number;
+            page: number;
+            pageSize: number;
+        };
         UnitDto: {
             /** Format: uuid */
             id: string;
@@ -2118,11 +2949,36 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        UnitPage: {
-            items: components["schemas"]["UnitDto"][];
-            total: number;
-            page: number;
-            pageSize: number;
+        CreateUnitDto: {
+            /**
+             * Format: uuid
+             * @description A property of the company; fixed once the unit exists
+             */
+            propertyId: string;
+            /**
+             * @description Unique within the property
+             * @example G12
+             */
+            unitNumber: string;
+            type: components["schemas"]["UnitType"];
+            /** @description Floor area in square metres, at most two decimals */
+            floorAreaSqm: number;
+            /** @description Empty or null leaves it unset */
+            floor?: string | null;
+            /** @description vacant when omitted */
+            occupancyStatus?: components["schemas"]["OccupancyStatus"];
+            description?: string | null;
+        };
+        UpdateUnitDto: {
+            unitNumber?: string;
+            type?: components["schemas"]["UnitType"];
+            floorAreaSqm?: number;
+            /** @description Empty or null clears it */
+            floor?: string | null;
+            /** @description A unit with a current lease stays occupied (422) */
+            occupancyStatus?: components["schemas"]["OccupancyStatus"];
+            /** @description Empty or null clears it */
+            description?: string | null;
         };
         /** @enum {string} */
         TenantSortField: "tradingName" | "legalName" | "status" | "createdAt";
@@ -2138,6 +2994,71 @@ export interface components {
             /** Format: email */
             email?: string;
         };
+        /** @enum {string} */
+        LeaseStatus: "draft" | "pending_verification" | "active" | "expiring" | "expired" | "renewed" | "terminated";
+        TenantLeaseSummaryDto: {
+            /** Format: uuid */
+            leaseId: string;
+            /** @example ACP-001 */
+            reference: string;
+            status: components["schemas"]["LeaseStatus"];
+            verified: boolean;
+            /** Format: uuid */
+            unitId: string;
+            /** @example 001 */
+            unitNumber: string;
+            /** Format: uuid */
+            propertyId: string;
+            propertyName: string;
+        };
+        TenantListItemDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            companyId: string;
+            legalName: string;
+            tradingName: string;
+            businessType: components["schemas"]["BusinessType"];
+            registrationNumber?: string;
+            /** @description The tenant's account reference in the company's own system (tenant or debtor code) */
+            accountReference?: string;
+            vatNumber?: string;
+            primaryContact: components["schemas"]["TenantContactDto"];
+            /** @description E.164 number used for WhatsApp */
+            whatsappNumber: string;
+            /** @description Numbers must be validated before automated communication is enabled */
+            whatsappVerified: boolean;
+            /**
+             * Format: date-time
+             * @description When a member validated the current number; absent while it is not validated
+             */
+            whatsappValidatedAt?: string;
+            /**
+             * Format: uuid
+             * @description Who validated the current number; absent for a background job or while not validated
+             */
+            whatsappValidatedByUserId?: string;
+            whatsappOptedOut: boolean;
+            /** Format: email */
+            email?: string;
+            status: components["schemas"]["TenantStatus"];
+            industry: string;
+            notes?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @description The tenant's current lease: in force first, then being set up, then ended; the latest commencement among equals. With a property filter, the current lease in that property. Absent when the tenant has no lease. */
+            currentLease?: components["schemas"]["TenantLeaseSummaryDto"];
+            /** @description Leases of the tenant (in the filtered property, when filtered) */
+            leaseCount: number;
+        };
+        TenantPage: {
+            items: components["schemas"]["TenantListItemDto"][];
+            total: number;
+            page: number;
+            pageSize: number;
+        };
         TenantDto: {
             /** Format: uuid */
             id: string;
@@ -2147,12 +3068,24 @@ export interface components {
             tradingName: string;
             businessType: components["schemas"]["BusinessType"];
             registrationNumber?: string;
+            /** @description The tenant's account reference in the company's own system (tenant or debtor code) */
+            accountReference?: string;
             vatNumber?: string;
             primaryContact: components["schemas"]["TenantContactDto"];
             /** @description E.164 number used for WhatsApp */
             whatsappNumber: string;
-            /** @description Numbers must be verified before automated communication is enabled */
+            /** @description Numbers must be validated before automated communication is enabled */
             whatsappVerified: boolean;
+            /**
+             * Format: date-time
+             * @description When a member validated the current number; absent while it is not validated
+             */
+            whatsappValidatedAt?: string;
+            /**
+             * Format: uuid
+             * @description Who validated the current number; absent for a background job or while not validated
+             */
+            whatsappValidatedByUserId?: string;
             whatsappOptedOut: boolean;
             /** Format: email */
             email?: string;
@@ -2164,16 +3097,81 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        TenantPage: {
-            items: components["schemas"]["TenantDto"][];
-            total: number;
-            page: number;
-            pageSize: number;
+        TenantContactInputDto: {
+            fullName: string;
+            /** @description Empty when omitted */
+            role?: string;
+            /** @description The WhatsApp number when omitted */
+            phone?: string;
+            /**
+             * Format: email
+             * @description Empty or null clears it
+             */
+            email?: string | null;
+        };
+        CreateTenantDto: {
+            /** @description Registered business name */
+            legalName: string;
+            /** @description The registered name when omitted */
+            tradingName?: string;
+            businessType: components["schemas"]["BusinessType"];
+            registrationNumber?: string | null;
+            /** @description Unique per company, case ignored */
+            accountReference?: string | null;
+            vatNumber?: string | null;
+            primaryContact: components["schemas"]["TenantContactInputDto"];
+            /**
+             * @description Typed as people write it (082 123 4567, +27 82 123 4567); stored in E.164. A South African national number gains +27. Anything else is 400 with the format to use.
+             * @example +27 82 123 4567
+             */
+            whatsappNumber: string;
+            /** Format: email */
+            email?: string | null;
+            /** @description prospective when omitted */
+            status?: components["schemas"]["TenantStatus"];
+            /** @description Empty when omitted */
+            industry?: string;
+            notes?: string | null;
+        };
+        TenantContactChangesDto: {
+            fullName?: string;
+            role?: string;
+            phone?: string;
+            /**
+             * Format: email
+             * @description Empty or null clears it
+             */
+            email?: string | null;
+        };
+        UpdateTenantDto: {
+            legalName?: string;
+            tradingName?: string;
+            businessType?: components["schemas"]["BusinessType"];
+            registrationNumber?: string | null;
+            /** @description Unique per company, case ignored */
+            accountReference?: string | null;
+            vatNumber?: string | null;
+            primaryContact?: components["schemas"]["TenantContactChangesDto"];
+            /**
+             * @description Typed as people write it (082 123 4567, +27 82 123 4567); stored in E.164. A South African national number gains +27. Anything else is 400 with the format to use. A different number is unvalidated again until it is validated.
+             * @example +27 82 123 4567
+             */
+            whatsappNumber?: string;
+            /** Format: email */
+            email?: string | null;
+            status?: components["schemas"]["TenantStatus"];
+            industry?: string;
+            notes?: string | null;
+        };
+        ValidateTenantWhatsAppDto: {
+            /**
+             * @description The number the person checked with the tenant, typed or in E.164. It must still be the number on record (409 otherwise).
+             * @example +27 82 123 4567
+             */
+            whatsappNumber: string;
         };
         /** @enum {string} */
         LeaseSortField: "reference" | "commencementDate" | "expiryDate" | "currentMonthlyRental" | "createdAt";
-        /** @enum {string} */
-        LeaseStatus: "draft" | "pending_verification" | "active" | "expiring" | "expired" | "renewed" | "terminated";
         /** @enum {string} */
         EscalationType: "percentage" | "fixed_amount" | "cpi_linked" | "none";
         /** @enum {string} */
@@ -2232,6 +3230,65 @@ export interface components {
             status: components["schemas"]["GuaranteeStatus"];
             notes?: string;
         };
+        LeaseListItemDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            companyId: string;
+            /** @example MSQ-L012 */
+            reference: string;
+            /** Format: uuid */
+            propertyId: string;
+            /** Format: uuid */
+            unitId: string;
+            /** Format: uuid */
+            tenantId: string;
+            /** Format: date */
+            commencementDate: string;
+            /** Format: date */
+            expiryDate: string;
+            /** @description Rental at commencement (ZAR, excl. VAT) */
+            initialMonthlyRental: number;
+            /** @description Contractual rental after applied escalations (ZAR, excl. VAT) */
+            currentMonthlyRental: number;
+            paymentDueDay: number;
+            escalation: components["schemas"]["LeaseEscalationDto"];
+            renewalOption: components["schemas"]["RenewalOptionDto"];
+            deposit?: components["schemas"]["DepositDto"];
+            bankGuarantee?: components["schemas"]["BankGuaranteeDto"];
+            status: components["schemas"]["LeaseStatus"];
+            /** @description Lease terms must be verified before they drive financial monitoring */
+            verified: boolean;
+            /** Format: uuid */
+            verifiedByUserId?: string;
+            /** Format: date-time */
+            verifiedAt?: string;
+            /**
+             * Format: uuid
+             * @description Lease this one renewed
+             */
+            previousLeaseId?: string;
+            notes?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /**
+             * @description The tenant's trading name
+             * @example Umoya Coffee
+             */
+            tenantName: string;
+            /** @example Acacia Park Shopping Centre */
+            propertyName: string;
+            /** @example ACP-001 */
+            unitNumber: string;
+        };
+        LeasePage: {
+            items: components["schemas"]["LeaseListItemDto"][];
+            total: number;
+            page: number;
+            pageSize: number;
+        };
         LeaseDto: {
             /** Format: uuid */
             id: string;
@@ -2276,18 +3333,183 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        LeasePage: {
-            items: components["schemas"]["LeaseDto"][];
-            total: number;
-            page: number;
-            pageSize: number;
+        RenewalOptionInputDto: {
+            exists: boolean;
+            /** @description Length of the renewal term in months */
+            renewalTermMonths?: number;
+            /** @description Written notice required before expiry, in months */
+            noticePeriodMonths?: number;
+            notes?: string;
+        };
+        BankGuaranteeInputDto: {
+            bank: string;
+            referenceNumber: string;
+            /** @description Amount in ZAR, at most two decimals */
+            amount: number;
+            /** @description Months of rental the guarantee was sized as */
+            basisMonths: number;
+            /** Format: date */
+            issuedOn: string;
+            /**
+             * Format: date
+             * @description After the issue date
+             */
+            expiresOn: string;
+            notes?: string;
+        };
+        /**
+         * @description pending_verification when omitted
+         * @enum {string}
+         */
+        InitialLeaseStatus: "draft" | "pending_verification";
+        CreateLeaseDto: {
+            /**
+             * @description Upper-cased; unique in the company
+             * @example MSQ-L012
+             */
+            reference: string;
+            /**
+             * Format: uuid
+             * @description A tenant of the company
+             */
+            tenantId: string;
+            /**
+             * Format: uuid
+             * @description A property of the company that is not archived
+             */
+            propertyId: string;
+            /**
+             * Format: uuid
+             * @description A unit of that property
+             */
+            unitId: string;
+            /** Format: date */
+            commencementDate: string;
+            /**
+             * Format: date
+             * @description After the commencement date
+             */
+            expiryDate: string;
+            /** @description Rental at commencement (ZAR, excl. VAT) */
+            initialMonthlyRental: number;
+            /** @description The initial rental when omitted */
+            currentMonthlyRental?: number;
+            paymentDueDay: number;
+            /** @description The amount field its type names is required */
+            escalation: components["schemas"]["LeaseEscalationDto"];
+            renewalOption: components["schemas"]["RenewalOptionInputDto"];
+            deposit?: components["schemas"]["DepositDto"] | null;
+            bankGuarantee?: components["schemas"]["BankGuaranteeInputDto"] | null;
+            /** @description pending_verification when omitted */
+            status?: components["schemas"]["InitialLeaseStatus"];
+            notes?: string | null;
+        };
+        UpdateLeaseDto: {
+            reference?: string;
+            /** Format: uuid */
+            tenantId?: string;
+            /**
+             * Format: uuid
+             * @description Send the unit with it
+             */
+            propertyId?: string;
+            /** Format: uuid */
+            unitId?: string;
+            /** Format: date */
+            commencementDate?: string;
+            /** Format: date */
+            expiryDate?: string;
+            initialMonthlyRental?: number;
+            currentMonthlyRental?: number;
+            paymentDueDay?: number;
+            escalation?: components["schemas"]["LeaseEscalationDto"];
+            renewalOption?: components["schemas"]["RenewalOptionInputDto"];
+            /** @description null removes the deposit */
+            deposit?: components["schemas"]["DepositDto"] | null;
+            /** @description null removes the guarantee */
+            bankGuarantee?: components["schemas"]["BankGuaranteeInputDto"] | null;
+            /** @description Empty or null clears it */
+            notes?: string | null;
+        };
+        /** @enum {string} */
+        LeaseDocumentType: "signed_lease" | "addendum" | "renewal_agreement" | "bank_guarantee" | "deposit_receipt" | "fica" | "other";
+        /** @enum {string} */
+        StoredFileMimeType: "application/pdf" | "image/png" | "image/jpeg";
+        LeaseDocumentFileDto: {
+            fileName: string;
+            /** @description Object path in the lease-documents bucket: <companyId>/<documentId>/<file> */
+            storagePath: string;
+            mimeType: components["schemas"]["StoredFileMimeType"];
+            sizeBytes: number;
+            /** @description SHA-256 hex digest of the file */
+            sha256: string;
+        };
+        LeaseDocumentDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            companyId: string;
+            /** Format: uuid */
+            leaseId: string;
+            documentType: components["schemas"]["LeaseDocumentType"];
+            title: string;
+            file: components["schemas"]["LeaseDocumentFileDto"];
+            /**
+             * Format: uuid
+             * @description The member who uploaded it
+             */
+            uploadedByUserId: string;
+            /** Format: date-time */
+            uploadedAt: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /** @enum {string} */
+        LeaseDocumentMimeType: "application/pdf";
+        CreateLeaseDocumentUploadUrlDto: {
+            /** @example MSQ-L012 signed lease.pdf */
+            fileName: string;
+            mimeType: components["schemas"]["LeaseDocumentMimeType"];
+            /** @description File size in bytes; at most 20 MB */
+            sizeBytes: number;
+        };
+        LeaseDocumentUploadUrlDto: {
+            /**
+             * Format: uuid
+             * @description Id the document will have once recorded
+             */
+            documentId: string;
+            /** @description Pass unchanged to registerLeaseDocument: <companyId>/<documentId>/<file> */
+            storagePath: string;
+            /** @description Upload the file here with PUT (Content-Type application/pdf), or with supabase-js uploadToSignedUrl */
+            signedUrl: string;
+            /** @description Upload token embedded in signedUrl */
+            token: string;
+            /** @description Largest accepted file in bytes */
+            maxSizeBytes: number;
+        };
+        RegisterLeaseDocumentDto: {
+            /** @description storagePath returned by createLeaseDocumentUploadUrl, after the file was uploaded */
+            storagePath: string;
+            fileName: string;
+            mimeType: components["schemas"]["LeaseDocumentMimeType"];
+            sizeBytes: number;
+            documentType: components["schemas"]["LeaseDocumentType"];
+            /** @example Signed lease */
+            title: string;
+        };
+        LeaseDocumentDownloadUrlDto: {
+            /** @description Short-lived signed link to the PDF */
+            url: string;
+            /** @example 300 */
+            expiresInSeconds: number;
         };
         /** @enum {string} */
         StatementSortField: "statementDate" | "uploadedAt";
         /** @enum {string} */
         StatementStatus: "uploaded" | "processing" | "review_required" | "verified" | "rejected" | "duplicate";
-        /** @enum {string} */
-        StoredFileMimeType: "application/pdf" | "image/png" | "image/jpeg";
         StoredFileDto: {
             fileName: string;
             /** @description Object path in the statements bucket: <companyId>/<statementId>/<file> */
@@ -3542,7 +4764,7 @@ export interface components {
         /** @enum {string} */
         NotificationSeverity: "info" | "warning" | "critical";
         /** @enum {string} */
-        EntityType: "company" | "user" | "property" | "unit" | "tenant" | "lease" | "lease_document" | "statement" | "statement_extraction" | "monitoring_event" | "monitoring_rule" | "payment_arrangement" | "communication" | "message_template" | "message_approval" | "notification" | "audit_log";
+        EntityType: "company" | "user" | "property" | "unit" | "tenant" | "lease" | "lease_document" | "statement" | "statement_extraction" | "monitoring_event" | "monitoring_rule" | "payment_arrangement" | "communication" | "message_template" | "message_approval" | "notification" | "audit_log" | "portfolio_import";
         NotificationLinkDto: {
             entityType: components["schemas"]["EntityType"];
             /** Format: uuid */
@@ -3714,19 +4936,74 @@ export type EditablePropertyStatus = components['schemas']['EditablePropertyStat
 export type PropertyAddressInputDto = components['schemas']['PropertyAddressInputDto'];
 export type CreatePropertyDto = components['schemas']['CreatePropertyDto'];
 export type UpdatePropertyDto = components['schemas']['UpdatePropertyDto'];
+export type CreatePortfolioImportUploadUrlDto = components['schemas']['CreatePortfolioImportUploadUrlDto'];
+export type PortfolioImportMimeType = components['schemas']['PortfolioImportMimeType'];
+export type PortfolioImportUploadUrlDto = components['schemas']['PortfolioImportUploadUrlDto'];
+export type PortfolioImportScope = components['schemas']['PortfolioImportScope'];
+export type CreatePortfolioImportDto = components['schemas']['CreatePortfolioImportDto'];
+export type PortfolioImportFileFormat = components['schemas']['PortfolioImportFileFormat'];
+export type PortfolioImportDelimiter = components['schemas']['PortfolioImportDelimiter'];
+export type GoogleSheetSourceDto = components['schemas']['GoogleSheetSourceDto'];
+export type PortfolioImportDto = components['schemas']['PortfolioImportDto'];
+export type CreatePortfolioImportFromGoogleSheetDto = components['schemas']['CreatePortfolioImportFromGoogleSheetDto'];
+export type PortfolioImportPage = components['schemas']['PortfolioImportPage'];
+export type SelectPortfolioImportSheetDto = components['schemas']['SelectPortfolioImportSheetDto'];
+export type PortfolioImportMappingSource = components['schemas']['PortfolioImportMappingSource'];
+export type PortfolioImportFieldKey = components['schemas']['PortfolioImportFieldKey'];
+export type PortfolioImportFieldMappingDto = components['schemas']['PortfolioImportFieldMappingDto'];
+export type PortfolioImportMappingDto = components['schemas']['PortfolioImportMappingDto'];
+export type PortfolioImportColumnMappingDto = components['schemas']['PortfolioImportColumnMappingDto'];
+export type SavePortfolioImportMappingDto = components['schemas']['SavePortfolioImportMappingDto'];
+export type PortfolioImportRowResult = components['schemas']['PortfolioImportRowResult'];
+export type PortfolioImportResultCountsDto = components['schemas']['PortfolioImportResultCountsDto'];
+export type PortfolioImportRowValuesDto = components['schemas']['PortfolioImportRowValuesDto'];
+export type PortfolioImportConflictDto = components['schemas']['PortfolioImportConflictDto'];
+export type PortfolioImportMatchedRecordDto = components['schemas']['PortfolioImportMatchedRecordDto'];
+export type PortfolioImportTenantResult = components['schemas']['PortfolioImportTenantResult'];
+export type PortfolioImportTenantMatchSource = components['schemas']['PortfolioImportTenantMatchSource'];
+export type PortfolioImportTenantSuggestionDto = components['schemas']['PortfolioImportTenantSuggestionDto'];
+export type PortfolioImportTenantCheckDto = components['schemas']['PortfolioImportTenantCheckDto'];
+export type PortfolioImportCorrectionDto = components['schemas']['PortfolioImportCorrectionDto'];
+export type PortfolioImportRowResolutionDto = components['schemas']['PortfolioImportRowResolutionDto'];
+export type PortfolioImportRowCheckDto = components['schemas']['PortfolioImportRowCheckDto'];
+export type PortfolioImportPreviewDto = components['schemas']['PortfolioImportPreviewDto'];
+export type PortfolioImportRowCorrectionsDto = components['schemas']['PortfolioImportRowCorrectionsDto'];
+export type PortfolioImportRowLinkDto = components['schemas']['PortfolioImportRowLinkDto'];
+export type PortfolioImportTenantDecision = components['schemas']['PortfolioImportTenantDecision'];
+export type PortfolioImportTenantMatchDto = components['schemas']['PortfolioImportTenantMatchDto'];
+export type ChangePortfolioImportRowDto = components['schemas']['ChangePortfolioImportRowDto'];
+export type PortfolioImportMissingContactDetailsDto = components['schemas']['PortfolioImportMissingContactDetailsDto'];
+export type PortfolioImportApprovalDto = components['schemas']['PortfolioImportApprovalDto'];
+export type PortfolioImportRecordType = components['schemas']['PortfolioImportRecordType'];
+export type PortfolioImportCreatedRecordDto = components['schemas']['PortfolioImportCreatedRecordDto'];
+export type PortfolioImportSummaryDto = components['schemas']['PortfolioImportSummaryDto'];
+export type ApprovePortfolioImportDto = components['schemas']['ApprovePortfolioImportDto'];
 export type UnitSortField = components['schemas']['UnitSortField'];
 export type OccupancyStatus = components['schemas']['OccupancyStatus'];
 export type UnitType = components['schemas']['UnitType'];
-export type UnitDto = components['schemas']['UnitDto'];
+export type UnitPropertySummaryDto = components['schemas']['UnitPropertySummaryDto'];
+export type UnitTenantSummaryDto = components['schemas']['UnitTenantSummaryDto'];
+export type UnitLeaseSummaryDto = components['schemas']['UnitLeaseSummaryDto'];
+export type UnitListItemDto = components['schemas']['UnitListItemDto'];
 export type UnitPage = components['schemas']['UnitPage'];
+export type UnitDto = components['schemas']['UnitDto'];
+export type CreateUnitDto = components['schemas']['CreateUnitDto'];
+export type UpdateUnitDto = components['schemas']['UpdateUnitDto'];
 export type TenantSortField = components['schemas']['TenantSortField'];
 export type TenantStatus = components['schemas']['TenantStatus'];
 export type BusinessType = components['schemas']['BusinessType'];
 export type TenantContactDto = components['schemas']['TenantContactDto'];
-export type TenantDto = components['schemas']['TenantDto'];
-export type TenantPage = components['schemas']['TenantPage'];
-export type LeaseSortField = components['schemas']['LeaseSortField'];
 export type LeaseStatus = components['schemas']['LeaseStatus'];
+export type TenantLeaseSummaryDto = components['schemas']['TenantLeaseSummaryDto'];
+export type TenantListItemDto = components['schemas']['TenantListItemDto'];
+export type TenantPage = components['schemas']['TenantPage'];
+export type TenantDto = components['schemas']['TenantDto'];
+export type TenantContactInputDto = components['schemas']['TenantContactInputDto'];
+export type CreateTenantDto = components['schemas']['CreateTenantDto'];
+export type TenantContactChangesDto = components['schemas']['TenantContactChangesDto'];
+export type UpdateTenantDto = components['schemas']['UpdateTenantDto'];
+export type ValidateTenantWhatsAppDto = components['schemas']['ValidateTenantWhatsAppDto'];
+export type LeaseSortField = components['schemas']['LeaseSortField'];
 export type EscalationType = components['schemas']['EscalationType'];
 export type EscalationFrequency = components['schemas']['EscalationFrequency'];
 export type LeaseEscalationDto = components['schemas']['LeaseEscalationDto'];
@@ -3735,11 +5012,25 @@ export type DepositHolder = components['schemas']['DepositHolder'];
 export type DepositDto = components['schemas']['DepositDto'];
 export type GuaranteeStatus = components['schemas']['GuaranteeStatus'];
 export type BankGuaranteeDto = components['schemas']['BankGuaranteeDto'];
-export type LeaseDto = components['schemas']['LeaseDto'];
+export type LeaseListItemDto = components['schemas']['LeaseListItemDto'];
 export type LeasePage = components['schemas']['LeasePage'];
+export type LeaseDto = components['schemas']['LeaseDto'];
+export type RenewalOptionInputDto = components['schemas']['RenewalOptionInputDto'];
+export type BankGuaranteeInputDto = components['schemas']['BankGuaranteeInputDto'];
+export type InitialLeaseStatus = components['schemas']['InitialLeaseStatus'];
+export type CreateLeaseDto = components['schemas']['CreateLeaseDto'];
+export type UpdateLeaseDto = components['schemas']['UpdateLeaseDto'];
+export type LeaseDocumentType = components['schemas']['LeaseDocumentType'];
+export type StoredFileMimeType = components['schemas']['StoredFileMimeType'];
+export type LeaseDocumentFileDto = components['schemas']['LeaseDocumentFileDto'];
+export type LeaseDocumentDto = components['schemas']['LeaseDocumentDto'];
+export type LeaseDocumentMimeType = components['schemas']['LeaseDocumentMimeType'];
+export type CreateLeaseDocumentUploadUrlDto = components['schemas']['CreateLeaseDocumentUploadUrlDto'];
+export type LeaseDocumentUploadUrlDto = components['schemas']['LeaseDocumentUploadUrlDto'];
+export type RegisterLeaseDocumentDto = components['schemas']['RegisterLeaseDocumentDto'];
+export type LeaseDocumentDownloadUrlDto = components['schemas']['LeaseDocumentDownloadUrlDto'];
 export type StatementSortField = components['schemas']['StatementSortField'];
 export type StatementStatus = components['schemas']['StatementStatus'];
-export type StoredFileMimeType = components['schemas']['StoredFileMimeType'];
 export type StoredFileDto = components['schemas']['StoredFileDto'];
 export type LineItemCategory = components['schemas']['LineItemCategory'];
 export type LineItemKind = components['schemas']['LineItemKind'];
@@ -5360,6 +6651,899 @@ export interface operations {
             };
         };
     };
+    createPortfolioImportUploadUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePortfolioImportUploadUrlDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioImportUploadUrlDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The file is larger than 5 MB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    listPortfolioImports: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                /** @description Only imports adding this */
+                scope?: components["schemas"]["PortfolioImportScope"];
+                /** @description Only imports of units into this property */
+                propertyId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioImportPage"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    createPortfolioImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePortfolioImportDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioImportDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The file is larger than 5 MB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not uploaded, empty, headings only, over the row or column limit, unreadable, no such sheet, or a property that cannot take units */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    createPortfolioImportFromGoogleSheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePortfolioImportFromGoogleSheetDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioImportDto"];
+                };
+            };
+            /**
+             * @description Not a Google Sheets link
+             *
+             *     Invalid request or missing X-Company-Id header
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The sheet is larger than 5 MB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not shared with "Anyone with the link", no such sheet or tab, empty, headings only, over the row or column limit, or a property that cannot take units */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Google Sheets could not be reached */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Google Sheets took too long to send the sheet */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getPortfolioImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioImportDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    selectPortfolioImportSheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelectPortfolioImportSheetDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioImportDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description A CSV file, no such sheet, or the sheet cannot be accepted */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getPortfolioImportMapping: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioImportMappingDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    savePortfolioImportMapping: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavePortfolioImportMappingDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioImportMappingDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description A column the file does not have, a column chosen twice, or a field not imported in this scope */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    previewPortfolioImport: {
+        parameters: {
+            query?: {
+                /** @description Only rows with this result */
+                result?: components["schemas"]["PortfolioImportRowResult"];
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioImportPreviewDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    changePortfolioImportRow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importId: string;
+                rowNumber: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePortfolioImportRowDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioImportRowCheckDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Nothing to change, a field not imported in this scope, or a property or unit that cannot be linked to the row */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getPortfolioImportSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioImportSummaryDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    approvePortfolioImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovePortfolioImportDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioImportSummaryDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Records were added meanwhile: check the rows again */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The accounting system is missing while properties are created, or a record breaks a property or unit rule (e.g. an archived property) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     listUnits: {
         parameters: {
             query?: {
@@ -5407,6 +7591,83 @@ export interface operations {
             };
             /** @description Not a member of the company, or role not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    createUnit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateUnitDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnitDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The unit number is already used in this property */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The property is not in this company, or it is archived */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5490,6 +7751,93 @@ export interface operations {
             };
         };
     };
+    updateUnit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                unitId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUnitDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnitDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The unit number is already used in this property */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The property is archived, or the leased unit must stay occupied */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     listTenants: {
         parameters: {
             query?: {
@@ -5501,6 +7849,8 @@ export interface operations {
                 sort?: components["schemas"]["TenantSortField"];
                 status?: components["schemas"]["TenantStatus"];
                 businessType?: components["schemas"]["BusinessType"];
+                /** @description Only tenants with a lease in this property */
+                propertyId?: string;
             };
             header?: never;
             path?: never;
@@ -5514,6 +7864,65 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TenantPage"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    createTenant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTenantDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantDto"];
                 };
             };
             /** @description Invalid request or missing X-Company-Id header */
@@ -5619,6 +8028,152 @@ export interface operations {
             };
         };
     };
+    updateTenant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTenantDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    validateTenantWhatsAppNumber: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidateTenantWhatsAppDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     listLeases: {
         parameters: {
             query?: {
@@ -5634,6 +8189,8 @@ export interface operations {
                 tenantId?: string;
                 /** @description true for verified leases only, false for unverified only */
                 verified?: boolean;
+                /** @description Leases expiring from today (South African date) to this many days from today, inclusive */
+                expiresWithinDays?: number;
             };
             header?: never;
             path?: never;
@@ -5669,6 +8226,83 @@ export interface operations {
             };
             /** @description Not a member of the company, or role not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    createLease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLeaseDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaseDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The reference is already used in this company */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The tenant, property and unit do not belong together */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5752,6 +8386,93 @@ export interface operations {
             };
         };
     };
+    updateLease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                leaseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLeaseDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaseDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The reference is already used in this company */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The dates, parties or a database rule refuse the change */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     verifyLease: {
         parameters: {
             query?: never;
@@ -5798,6 +8519,323 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorDto"];
                 };
             };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    listLeaseDocuments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                leaseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaseDocumentDto"][];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The lease is not in the active company */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    registerLeaseDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                leaseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterLeaseDocumentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaseDocumentDto"];
+                };
+            };
+            /**
+             * @description storagePath is not a lease document path of the active company
+             *
+             *     Invalid request or missing X-Company-Id header
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The lease is not in the active company */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description This file is already recorded */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The file is larger than 20 MB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description File not uploaded, size mismatch, or not a PDF */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    createLeaseDocumentUploadUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                leaseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLeaseDocumentUploadUrlDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaseDocumentUploadUrlDto"];
+                };
+            };
+            /**
+             * @description Not a PDF, or an invalid body
+             *
+             *     Invalid request or missing X-Company-Id header
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The lease is not in the active company */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The file is larger than 20 MB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Authentication or database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    getLeaseDocumentDownloadUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                leaseId: string;
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaseDocumentDownloadUrlDto"];
+                };
+            };
+            /** @description Invalid request or missing X-Company-Id header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description Not a member of the company, or role not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            /** @description The document is not on this lease of the active company */
             404: {
                 headers: {
                     [name: string]: unknown;

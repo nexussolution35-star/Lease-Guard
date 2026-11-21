@@ -48,7 +48,9 @@ test.describe('Settings → Integrations → WhatsApp → AI agent', () => {
     const item = faqs.getByRole('listitem').filter({ hasText: `Where do visitors park ${marker}?` })
     await expect(item).toContainText('Not available to the agent until approved')
     await item.getByRole('button', { name: `Approve Where do visitors park ${marker}?` }).click()
-    await expect(item).toContainText(`Approved by ${e2eUser('admin').fullName}`)
+    // Approved, with the sign-off mark naming who approved it (the shared SignOff component).
+    await expect(item).toContainText('Approved')
+    await expect(item.locator('[data-slot="sign-off"][data-state="signed"]')).toContainText(e2eUser('admin').fullName)
   })
 
   test('other members see the agent read-only', async ({ page }) => {

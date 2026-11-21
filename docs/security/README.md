@@ -133,9 +133,38 @@ Images contain no `.env` file (root `.dockerignore`) and run as non-root users (
 
 Statement and lease-document files are in private buckets (`statements`, `lease-documents`) under
 `<company_id>/<entity_id>/<file name>`. Policies on `storage.objects` let members of the company in the
-first path segment read, and writers upload, replace and delete. The API issues signed upload URLs
-through the caller's own client, so storage policies apply to uploads as well. Limits: 20 MB; PDF,
-PNG and JPEG only.
+first path segment read, and writers upload; writers replace and delete statement files only. The API issues signed
+upload URLs through the caller's own client, so storage policies apply to uploads as well. Limits: 20 MB; statements
+PDF, PNG and JPEG; lease documents PDF only. A lease document is recorded only after the API has read the stored file
+back (size, stored media type and the `%PDF-` header) and computed its SHA-256; the database stamps the uploader from
+`auth.uid()`, accepts only a file that is in the bucket, and keeps the record and its file (no update or delete by a
+signed-in user). Downloads are five-minute signed links issued through the caller's own client.
+
+Portfolio import files (CSV and XLSX exported from a company's own system) are kept in the private
+`portfolio-imports` bucket under the same path shape: members read; company admins and property managers
+upload; nobody signed in replaces or deletes an original. Limit: 5 MB; `text/csv` and the XLSX media type
+only. The API reads the file through the caller's own client and parses it in process (no external
+service): XLSX parts are inflated with a per-part ceiling, so a small archive cannot expand without bound.
+Row fixes (ticket I-03) follow the same roles: only company admins and property managers correct, skip or
+link a batch row (the API's writer guard and the `writers_update` policy, limited by column grants to the
+four fix columns); who made the change is stamped from `auth.uid()` and every change is audited.
+Approving an import (ticket I-04) is writer-only too: `apply_portfolio_import` is SECURITY INVOKER, so the
+new properties and units are held to the same grants, RLS policies and guards as the property and unit forms;
+the approval is stamped from `auth.uid()` and refused outside that function, the created-records list is
+written only by a trigger, and importing writes no communication, approval request or schedule. Tenants an
+import creates (ticket I-05) go through the same `tenants` column grants, RLS and audit as the tenant form; their
+WhatsApp numbers start unvalidated, so no automated message can reach them until a writer validates the number.
+The decision on a suggested tenant is a writer-only column of the batch row, checked by the API to name a tenant
+of the workspace (and by the composite foreign key), and stamped and audited like the other row fixes.
+
+A Google Sheets import (ticket I-06) is the API's only outbound fetch on a person's behalf, and it is not a
+URL fetch: the link must match `docs.google.com/spreadsheets/d/<id>` (`parseGoogleSheetsLink` in
+`@leaseguard/domain`), and the API requests only the CSV export address it builds from the spreadsheet id and
+tab id. Redirects are followed by hand (`redirect: 'manual'`), only over HTTPS to `docs.google.com` or a
+`*.googleusercontent.com` download host, with no port or credentials, at most three times; a redirect to
+`accounts.google.com` means the sheet is not shared. The whole read is limited to 20 seconds and the body
+to 5 MB, counted while streaming. Only the spreadsheet id and tab id are stored, never the pasted URL
+(`backend/src/modules/portfolio-imports/google-sheets/fetch-google-sheet.ts`).
 
 ## Tenant communication controls
 
@@ -147,6 +176,7 @@ Enforced in several places, from the strictest outwards:
 | Tenant message text must not mention forbidden topics (rental escalation, lease expiry, renewal option, dispute, bank guarantee, deposit) | `checkOutboundMessage` in `@leaseguard/domain` |
 | No banking details in any message text (bank wording, account-number-like digit runs, IBANs) | `findBankDetails` / `checkOutboundMessage` in `@leaseguard/domain` |
 | Active payment arrangements suppress normal arrears reminders | `canSendTenantMessage` |
+| A tenant's WhatsApp number must be validated before automated communication is enabled, and a changed number is unvalidated again (PRD §5.4) | `canSendTenantMessage` (unvalidated number blocks sending); database trigger `reset_whatsapp_validation` on `tenants` (every role) and column grants (signed-in users cannot set `whatsapp_verified` or who validated it); writers validate only through `validate_tenant_whatsapp_number` (`SECURITY DEFINER`, `can_write` checked first, only the number still on record, audited as `verify`); the tenant write API refuses the flag in a body and stores numbers in E.164 (`normalizeWhatsAppNumber`) |
 | Every tenant message needs an approved approval before sending, in every company (a hard constraint, not a setting) | `canSendTenantMessage` in `@leaseguard/domain`, applied by the outbound gate; database trigger `tenant_message_requires_approval` (no company switch) |
 | A message is approved only if delivery would send it | The outbound gate: the approve endpoint refuses (422, every reason) a changed recipient number, a channel that is not connected, a template that is not approved or does not match, or text that cannot be expressed as the template, exactly as delivery would |
 | Any `company_admin` or `property_manager` may approve or reject, including the person who requested the approval (single-manager companies must be able to send); `read_only` and `property_owner` cannot | `@CompanyScoped({ roles: WRITER_ROLES })` on the approve/reject routes (403); write policies (`private.can_write`) in the database |
@@ -168,7 +198,7 @@ the WhatsApp Business account of the company that owns the message.
 ## Audit logging
 
 `audit_logs` is append-only (UPDATE, DELETE and TRUNCATE are rejected by trigger). Database triggers
-record lease verification, statement verification and changes, extraction review and field
+record lease verification, lease creates and edits (a term change resets verification; guarantee changes too), statement verification and changes, extraction review and field
 corrections, monitoring event status changes, message approval decisions, invitations, changes to a
 company's details and monitoring settings, member role changes and member removal, stamping the actor from
 `auth.uid()` so the client cannot forge it. The log is readable by `company_admin`, `property_manager`

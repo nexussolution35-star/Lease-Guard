@@ -152,3 +152,38 @@ export function compareBilledRental(
     calculation: { expectedAmount: expected, actualAmount: billedRounded, difference, steps },
   }
 }
+
+/** One row of a lease's escalation schedule: the rental from `effectiveDate` until the next escalation. */
+export interface EscalationScheduleEntry {
+  /** 0 for the rental at commencement, then 1, 2, … for each escalation. */
+  step: number
+  effectiveDate: ISODate
+  /** Contractual monthly rental from this date (rounded to cents). */
+  monthlyRental: ZAR
+  /** Rand increase over the previous step's rental; 0 for the commencement row. */
+  increase: ZAR
+  /** True when `effectiveDate` is on or before `asOf`: this rental has taken effect. */
+  applied: boolean
+  /** True for the row in force on `asOf` (the latest applied row). */
+  current: boolean
+}
+
+/**
+ * The lease's full escalation schedule over its term: the commencement rental, then one row per escalation
+ * date up to expiry (`escalationDatesBetween`), each with the rental `expectedRental` gives from that date.
+ * `asOf` marks which rows have taken effect and which one is in force. A lease without an escalation clause
+ * has only the commencement row.
+ */
+export function escalationSchedule(lease: EscalationLease, asOf: ISODate): EscalationScheduleEntry[] {
+  const dates = escalationDatesBetween(lease, lease.commencementDate, lease.expiryDate)
+  const rows: Omit<EscalationScheduleEntry, 'current'>[] = []
+  let previous = roundZar(lease.initialMonthlyRental)
+  rows.push({ step: 0, effectiveDate: lease.commencementDate, monthlyRental: previous, increase: 0, applied: compareISODate(lease.commencementDate, asOf) <= 0 })
+  for (const date of dates) {
+    const rental = expectedRental(lease, date)
+    rows.push({ step: rows.length, effectiveDate: date, monthlyRental: rental, increase: roundZar(rental - previous), applied: compareISODate(date, asOf) <= 0 })
+    previous = rental
+  }
+  const currentStep = rows.reduce((found, row) => (row.applied ? row.step : found), -1)
+  return rows.map((row) => ({ ...row, current: row.step === currentStep }))
+}

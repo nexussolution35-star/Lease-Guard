@@ -15,7 +15,7 @@ import { E2E_API_URL, E2E_WEB_PORT, E2E_WEB_URL } from './support/env.ts'
 const supabase = resolveLocalSupabaseSync()
 
 /** Specs that create or archive the world's portfolio records (see the projects below). */
-const WRITES_PORTFOLIO = '**/property-management.spec.ts'
+const WRITES_PORTFOLIO = ['**/property-management.spec.ts', '**/portfolio-import.spec.ts']
 
 export default defineConfig({
   testDir: '.',

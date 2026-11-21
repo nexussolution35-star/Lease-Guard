@@ -10,8 +10,8 @@ and rules come from `@leaseguard/domain`; the API client from `@leaseguard/api-c
 
 | Directory | Contents |
 | --- | --- |
-| `components/ui/` | shadcn/ui primitives (new-york style, Radix). Generated; edit only to fix bugs. Kebab-case file names. |
-| `components/shared/` | App-wide building blocks: data table, badges, displays, states, dialogs, timelines, information grids, `RecordQueryView`. |
+| `components/ui/` | shadcn/ui primitives (new-york style, Radix). Generated, then restyled: they carry the design system (radius, flat surfaces, table and control sizes). Edit them only to fix bugs or to change the design system; after re-generating a primitive, re-apply its overrides. Kebab-case file names. |
+| `components/shared/` | App-wide building blocks: data table, badges, displays, states (shown directly under their section heading or inside a table frame, not in a card), dialogs, timelines, information grids, `RecordQueryView`. |
 | `components/forms/` | Form field components built on react-hook-form + Zod + the shadcn `form.tsx`, and the local `zodResolver`. |
 | `components/layout/` | Application shell: layout, sidebar, topbar, workspace switcher, search, notifications, account menus. |
 | `features/<feature>/api/` | The feature's data source and TanStack Query hooks (see the data layer). |
@@ -78,7 +78,7 @@ dependency).
 - Tailwind with semantic tokens only (`bg-card`, `text-muted-foreground`, `border-border`,
   `text-destructive`, `bg-success/10`, `text-warning`…), defined in `styles/globals.css`. No raw
   palette colours such as `bg-blue-500`.
-- Mobile-first responsive layouts. Tables scroll horizontally inside their card, never the page.
+- Mobile-first responsive layouts. Tables scroll horizontally inside their own frame, never the page. A table is not wrapped in a card.
 - Semantic HTML (`section`, `header`, `nav`, `dl`, `table`, `time`). Every input has a label.
   Icon-only buttons have `aria-label`. Status conveyed by colour also has text.
 - Lucide icons from `lucide-react`, imported individually, `aria-hidden` when decorative.

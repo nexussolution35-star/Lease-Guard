@@ -6,6 +6,17 @@ create extension if not exists pgtap with schema extensions;
 \ir fixtures/two_companies.psql
 select plan(38);
 
+-- Rows for the portfolio-import tables the shared fixture leaves empty (their own suites count them), so
+-- every company-owned table is populated for both companies here.
+insert into public.portfolio_import_mappings (company_id, scope, header_signature, columns, column_mapping)
+values
+  ('20000000-0000-4000-8000-000000000001', 'properties', repeat('e', 64), '{Property code}', '{"propertyCode": "Property code"}'),
+  ('20000000-0000-4000-8000-000000000002', 'properties', repeat('f', 64), '{Property code}', '{"propertyCode": "Property code"}');
+insert into public.portfolio_import_records (company_id, import_id, row_number, record_type, property_id)
+values
+  ('20000000-0000-4000-8000-000000000001', '61000000-0000-4000-8000-000000000001', 2, 'property', '30000000-0000-4000-8000-000000000001'),
+  ('20000000-0000-4000-8000-000000000002', '61000000-0000-4000-8000-000000000002', 2, 'property', '30000000-0000-4000-8000-000000000002');
+
 -- ------------------------------------------------------------------ helpers (rolled back with the test)
 create schema tests;
 grant usage on schema tests to authenticated, anon;
@@ -68,12 +79,12 @@ select is(
   0::bigint,
   'anon has no privileges on any public table'
 );
-select is((select count(*) from tests.company_tables()), 36::bigint, 'all 36 end-user company-owned tables are covered');
+select is((select count(*) from tests.company_tables()), 40::bigint, 'all 40 end-user company-owned tables are covered');
 select is(
   (select count(*) from (select tbl from tests.expected
                          where tbl <> 'companies' and n > 0 and company_id in (tests.company('NS'), tests.company('KP'))
                          group by tbl having count(distinct company_id) = 2) x),
-  36::bigint,
+  40::bigint,
   'the fixtures populate every company-owned table for both companies'
 );
 select is(
@@ -157,7 +168,8 @@ select is(
   null,
   'shared manager sees every row of both companies'
 );
--- Composite foreign keys: a Nexus lease cannot use a Kgalagadi unit, even for a member of both.
+-- A Nexus lease cannot use a Kgalagadi unit, even for a member of both: the lease guard refuses it in words
+-- (20261121003917_lease_management.sql) before the composite foreign keys would.
 select throws_ok(
   $$insert into public.leases (company_id, reference, property_id, unit_id, tenant_id, commencement_date,
       expiry_date, initial_monthly_rental, current_monthly_rental, payment_due_day, escalation_type,
@@ -166,13 +178,14 @@ select throws_ok(
       (select id from public.tenants where company_id = tests.company('NS') limit 1),
       '2027-01-01', '2030-12-31', 1000, 1000, 1, 'percentage', 8, 'annual', '2028-01-01'
     from public.units u where u.company_id = tests.company('KP') limit 1$$,
-  '23503', null, 'a lease cannot reference a unit from another company'
+  'P0001', 'The property is not in this workspace', 'a lease cannot reference a unit from another company'
 );
+-- A unit's or a property's company is not even a writable column for signed-in users (the
+-- prevent_company_change trigger, which binds every role, is checked in unit_management.test.sql).
 select throws_ok(
   $$update public.units set company_id = tests.company('KP') where company_id = tests.company('NS')$$,
-  '23514', null, 'a record cannot be moved to another company'
+  '42501', null, 'a record cannot be moved to another company'
 );
--- A property's company is not even a writable column for signed-in users.
 select throws_ok(
   $$update public.properties set company_id = tests.company('KP') where company_id = tests.company('NS')$$,
   '42501', null, 'a property cannot be moved to another company'

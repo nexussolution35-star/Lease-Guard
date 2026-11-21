@@ -6,6 +6,7 @@ import {
   compareBilledRental,
   escalationDatesBetween,
   escalationRatePercent,
+  escalationSchedule,
   expectedRental,
 } from './escalation.js'
 
@@ -85,5 +86,37 @@ describe('compareBilledRental', () => {
   })
   it('over-billing yields a negative difference', () => {
     expect(compareBilledRental(makeLease(), 40000, '2027-02-01').difference).toBe(-2200)
+  })
+})
+
+describe('escalationSchedule', () => {
+  it('lists the commencement rental and every escalation to expiry, marking the row in force', () => {
+    const schedule = escalationSchedule(makeLease(), '2028-06-30')
+    expect(schedule.map(({ effectiveDate, monthlyRental, increase }) => [effectiveDate, monthlyRental, increase])).toEqual([
+      ['2026-01-01', 35000, 0],
+      ['2027-01-01', 37800, 2800],
+      ['2028-01-01', 40824, 3024],
+      ['2029-01-01', 44089.92, 3265.92],
+      ['2030-01-01', 47617.11, 3527.19],
+    ])
+    expect(schedule.map((row) => row.applied)).toEqual([true, true, true, false, false])
+    expect(schedule.filter((row) => row.current).map((row) => row.step)).toEqual([2])
+  })
+
+  it('agrees with expectedRental on every escalation date', () => {
+    const lease = makeLease({ escalation: { type: 'cpi_linked', cpiAssumedPercentage: 5, cpiMarginPercentage: 1.5, frequency: 'biennial', firstEscalationDate: '2027-03-01' } })
+    for (const row of escalationSchedule(lease, '2026-01-01')) expect(row.monthlyRental).toBe(expectedRental(lease, row.effectiveDate))
+  })
+
+  it('adds the fixed amount per interval', () => {
+    const lease = makeLease({ escalation: { type: 'fixed_amount', fixedAmount: 1500, frequency: 'annual', firstEscalationDate: '2027-01-01' } })
+    expect(escalationSchedule(lease, '2026-01-01').map((row) => row.monthlyRental)).toEqual([35000, 36500, 38000, 39500, 41000])
+  })
+
+  it('has only the commencement row without an escalation clause, and nothing in force before commencement', () => {
+    const lease = makeLease({ escalation: { type: 'none', frequency: 'annual', firstEscalationDate: '2027-01-01' } })
+    expect(escalationSchedule(lease, '2025-12-31')).toEqual([
+      { step: 0, effectiveDate: '2026-01-01', monthlyRental: 35000, increase: 0, applied: false, current: false },
+    ])
   })
 })

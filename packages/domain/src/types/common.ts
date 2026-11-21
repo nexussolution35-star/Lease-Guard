@@ -77,5 +77,6 @@ export const ENTITY_TYPES = [
   'message_approval',
   'notification',
   'audit_log',
+  'portfolio_import',
 ] as const
 export type EntityType = (typeof ENTITY_TYPES)[number]

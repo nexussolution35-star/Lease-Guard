@@ -1,6 +1,6 @@
 import type { Lease } from '@leaseguard/domain'
 
-import type { Tables } from '../infrastructure/database/database.types'
+import type { LeaseRow } from '../infrastructure/database/lease-rows'
 import type { ServiceRoleClientFactory } from '../infrastructure/database/service-role-client.factory'
 import type { DbClient } from '../infrastructure/database/rls-client.factory'
 import { callsTo, type FakeResult, type RecordedQuery } from '../common/testing/fake-db.test-helpers'
@@ -45,7 +45,7 @@ export function makeLease(overrides: Partial<Lease> = {}): Lease {
 }
 
 /** A verified, active lease row expiring 31 Jan 2027, without renewal option, deposit or guarantee. */
-export const leaseRow: Tables<'leases'> = {
+export const leaseRow: LeaseRow = {
   id: LEASE,
   company_id: COMPANY,
   reference: 'TST-L001',

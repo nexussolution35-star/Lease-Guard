@@ -83,6 +83,7 @@ API output goes to `tests/test-results/integration/api.log`.
 | `auth.test.ts` | readiness; 401 without or with a malformed token; `GET /me` memberships |
 | `company-isolation.test.ts` | 403 for a company the caller is not a member of; 400 without/with a bad `X-Company-Id`; another company's ids are 404 even under the caller's own company (RLS plus company filter); a member of both companies only sees the active one |
 | `lists.test.ts` | `GET /leases`: paging with stable order, filters, search, sort, 400 for invalid parameters |
+| `tenant-list.test.ts` | `GET /tenants` (ticket M4-02): each world tenant with its current lease (domain `currentLease` over the database's leases), unit number, property name and lease count; the property filter keeps only tenants with a lease there and narrows the embedded leases; combined with search and paging; another company's tenants never listed, even filtered by its property; a non-UUID property is 400 |
 | `leases.test.ts` | `read_only` cannot verify (403); a property manager verifies an unverified lease (status becomes `active`, verifier and time stamped); idempotent re-verify |
 | `monitoring.test.ts` | `read_only` 403; dismissal needs a reason (400); allowed move `new → under_review` (200); disallowed move `under_review → resolved` (409) |
 | `statements.test.ts` | `read_only` 403; registering before uploading is 422; signed upload URL → upload of a generated PDF with the anon key → register (201, job queued) → same file again 409 with the existing statement in `duplicate` |

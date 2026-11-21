@@ -264,4 +264,18 @@ values
   ('20000000-0000-4000-8000-000000000001', 'new.manager@nexussolution.co.za', 'New Manager', 'property_manager', '10000000-0000-4000-8000-000000000001'),
   ('20000000-0000-4000-8000-000000000002', 'first.admin@kgalagadiproperty.co.za', 'First Admin', 'company_admin', null);
 
+
+-- One uploaded portfolio file per company, with one row each (ticket I-01).
+insert into public.portfolio_imports (id, company_id, scope, file_name, storage_path, file_format, size_bytes, file_sha256, delimiter, columns, row_count, uploaded_by_user_id)
+values
+  ('61000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', 'properties', 'fixture.csv',
+   '20000000-0000-4000-8000-000000000001/61000000-0000-4000-8000-000000000001/fixture.csv', 'csv', 32, repeat('c', 64), ',', '{Property code}', 1,
+   '10000000-0000-4000-8000-000000000003'),
+  ('61000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002', 'properties', 'fixture.csv',
+   '20000000-0000-4000-8000-000000000002/61000000-0000-4000-8000-000000000002/fixture.csv', 'csv', 32, repeat('d', 64), ',', '{Property code}', 1,
+   '10000000-0000-4000-8000-000000000002');
+insert into public.portfolio_import_rows (company_id, import_id, row_number, cells)
+values
+  ('20000000-0000-4000-8000-000000000001', '61000000-0000-4000-8000-000000000001', 2, '["MSQ"]'),
+  ('20000000-0000-4000-8000-000000000002', '61000000-0000-4000-8000-000000000002', 2, '["KGP"]');
 \set QUIET off

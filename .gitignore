@@ -12,7 +12,6 @@ dist
 dist-ssr
 *.local
 .agents
-docs/
 
 # Editor directories and files
 .vscode/*
@@ -64,3 +63,5 @@ blob-report/
 
 .scratch
 GLOSSARY.md
+
+graphify-out/

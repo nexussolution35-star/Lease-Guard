@@ -35,6 +35,26 @@ function addressColumns(address: CreatePropertyBody['address']) {
   }
 }
 
+/**
+ * The columns a new property is inserted with: the one write path of the property form and of an approved portfolio
+ * import (which inserts the same columns inside its own transaction).
+ */
+export function propertyInsertColumns(companyId: EntityId, body: CreatePropertyBody) {
+  return {
+    company_id: companyId,
+    name: body.name,
+    code: body.code,
+    type: body.type,
+    status: body.status ?? 'active',
+    ...addressColumns(body.address),
+    description: body.description ?? '',
+    gross_lettable_area_sqm: body.grossLettableAreaSqm,
+    manager_user_id: body.managerUserId,
+    owner_user_id: body.ownerUserId ?? null,
+    accounting_system: body.accountingSystem,
+  } satisfies Partial<PropertyRow>
+}
+
 function changesFrom(body: UpdatePropertyBody): PropertyChanges {
   return {
     ...(body.name !== undefined ? { name: body.name } : {}),
@@ -91,23 +111,7 @@ export class PropertiesService {
    */
   async create(db: DbClient, companyId: EntityId, body: CreatePropertyBody): Promise<Property> {
     const row = unwrapDatabase(
-      await db
-        .from('properties')
-        .insert({
-          company_id: companyId,
-          name: body.name,
-          code: body.code,
-          type: body.type,
-          status: body.status ?? 'active',
-          ...addressColumns(body.address),
-          description: body.description ?? '',
-          gross_lettable_area_sqm: body.grossLettableAreaSqm,
-          manager_user_id: body.managerUserId,
-          owner_user_id: body.ownerUserId ?? null,
-          accounting_system: body.accountingSystem,
-        })
-        .select('*')
-        .single(),
+      await db.from('properties').insert(propertyInsertColumns(companyId, body)).select('*').single(),
       'Create property',
       { ...WRITE_ERRORS, '23505': () => new ConflictException(`A property with the code ${body.code} already exists in this workspace`) },
     )

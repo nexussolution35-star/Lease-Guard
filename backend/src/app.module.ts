@@ -20,6 +20,7 @@ import { InvitationsModule } from './modules/invitations/invitations.module'
 import { LeasesModule } from './modules/leases/leases.module'
 import { MonitoringModule } from './modules/monitoring/monitoring.module'
 import { NotificationsModule } from './modules/notifications/notifications.module'
+import { PortfolioImportsModule } from './modules/portfolio-imports/portfolio-imports.module'
 import { PropertiesModule } from './modules/properties/properties.module'
 import { StatementsModule } from './modules/statements/statements.module'
 import { TenantsModule } from './modules/tenants/tenants.module'
@@ -49,6 +50,7 @@ export class AppModule {
         InvitationsModule,
         CompaniesModule,
         PropertiesModule,
+        PortfolioImportsModule,
         UnitsModule,
         TenantsModule,
         LeasesModule,
