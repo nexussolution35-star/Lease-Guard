@@ -50,3 +50,19 @@ describe('reportQueryOf', () => {
     expect(reportQueryOf({ from: '2026-01-01' })).toEqual({ from: '2026-01-01' })
   })
 })
+
+describe('the arrears reports (R-05)', () => {
+  it('reads arrears and payment arrangements at their report paths with the shared filters', async () => {
+    const fetch = fakeFetch(200, { reportId: 'arrears', asOf: '2026-11-21', filters: {}, data: {} })
+    await createApiReportsSource(fakeApiClient(fetch)).report(TEST_COMPANY_ID, 'arrears', { statuses: ['under_arrangement'] })
+    expect(urlOf(fetch)).toEqual({ pathname: '/api/v1/reports/arrears', query: { status: 'under_arrangement' } })
+
+    const arrangements = fakeFetch(200, { reportId: 'payment_arrangements', asOf: '2026-11-21', filters: {}, data: {} })
+    await createApiReportsSource(fakeApiClient(arrangements)).report(TEST_COMPANY_ID, 'payment_arrangements', { from: '2026-01-01', statuses: ['active'] })
+    const url = new URL(requestAt(arrangements).url)
+    expect(url.pathname).toBe('/api/v1/reports/payment_arrangements')
+    expect(url.searchParams.get('from')).toBe('2026-01-01')
+    expect(url.searchParams.getAll('status')).toEqual(['active'])
+    expect(requestAt(arrangements).headers.get('x-company-id')).toBe(TEST_COMPANY_ID)
+  })
+})

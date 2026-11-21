@@ -122,7 +122,8 @@ export class ReportDataService {
     return this.rows(db, 'reports_unit_occupancy', companyId, unitOccupancyRow, 'Read the unit occupancy')
   }
 
-  private async rows<S extends z.ZodType>(db: DbClient, fn: string, companyId: EntityId, row: S, operation: string): Promise<z.output<S>[]> {
+  /** The validated rows of one reporting function for the company (used by each report group's own data reader). */
+  async rows<S extends z.ZodType>(db: DbClient, fn: string, companyId: EntityId, row: S, operation: string): Promise<z.output<S>[]> {
     const { data, error } = await db.rpc(fn, { p_company_id: companyId })
     if (error) throw httpErrorFromDatabase(error, operation)
     const parsed = z.array(row).safeParse(data ?? [])

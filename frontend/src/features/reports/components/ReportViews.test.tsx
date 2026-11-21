@@ -1,7 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { REPORT_CATALOGUE, type ReportEnvelope, type ReportFilters } from '@leaseguard/domain'
+import { REPORT_CATALOGUE, REPORT_IDS, type ReportEnvelope, type ReportFilters } from '@leaseguard/domain'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { renderWithRouter } from '@/components/layout/testRouter'
@@ -9,7 +9,7 @@ import { NEXUS_ID, openWorkspace, resetWorkspace } from '@/test/accountFixtures'
 import { sampleRecord } from '@/test/fakeApi'
 import { createTestQueryClient } from '@/test/queryClient'
 
-import type { ReportsSource } from '../api/source'
+import { isAvailableReportId, type ReportsSource } from '../api/source'
 import type { ReportSearch } from '../reportSearch'
 import { ReportCatalogueScreen } from './ReportCatalogueScreen'
 import { ReportScreen } from './ReportScreen'
@@ -219,8 +219,10 @@ describe('Occupancy', () => {
 })
 
 describe('a report not built yet', () => {
-  it('says it is not available yet without asking the API', async () => {
-    await renderReport('arrears')
+  // Any report the reports service does not serve yet; once every report is built there is none left to check.
+  const notBuilt = REPORT_IDS.find((id) => !isAvailableReportId(id))
+  it.skipIf(notBuilt === undefined)('says it is not available yet without asking the API', async () => {
+    await renderReport(notBuilt ?? 'portfolio_overview')
     expect(screen.getByText('This report is not available yet')).toBeInTheDocument()
     expect(fakeSource.report).not.toHaveBeenCalled()
   })

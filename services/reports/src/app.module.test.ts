@@ -2,7 +2,7 @@ import 'reflect-metadata'
 
 import type { INestApplication } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
-import { REPORT_CATALOGUE } from '@leaseguard/domain'
+import { REPORT_CATALOGUE, REPORT_IDS } from '@leaseguard/domain'
 import { COMPANY_ID_HEADER, configureServiceApp, RlsClientFactory } from '@leaseguard/service-kit'
 import { fakeClients } from '@leaseguard/service-kit/testing'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -170,13 +170,15 @@ describe('reports service', () => {
     expect((await get('/reports', { authorization: 'Bearer member.jwt', [COMPANY_ID_HEADER]: COMPANY_ID })).status).toBe(404)
     const document = (await (await get('/api/docs-json')).json()) as { paths: Record<string, unknown>; info: { title: string } }
     expect(document.info.title).toBe('LeaseGuard Reports API')
-    expect(Object.keys(document.paths).sort()).toEqual([
-      '/api/v1/reports',
-      '/api/v1/reports/occupancy',
-      '/api/v1/reports/portfolio_overview',
-      '/health',
-      '/health/ready',
-    ])
+    // The catalogue, health and one path per report built so far, each on the shared pattern /api/v1/reports/{reportId}.
+    const paths = Object.keys(document.paths)
+    expect(paths).toEqual(expect.arrayContaining(['/api/v1/reports', '/health', '/health/ready']))
+    const reportPaths = paths.filter((path) => path.startsWith('/api/v1/reports/'))
+    expect(paths).toHaveLength(reportPaths.length + 3)
+    expect(reportPaths.map((path) => path.slice('/api/v1/reports/'.length)).filter((id) => !(REPORT_IDS as readonly string[]).includes(id))).toEqual([])
+    expect(reportPaths).toEqual(
+      expect.arrayContaining(['/api/v1/reports/portfolio_overview', '/api/v1/reports/occupancy', '/api/v1/reports/arrears', '/api/v1/reports/payment_arrangements']),
+    )
   })
 
   const member = { authorization: 'Bearer member.jwt', [COMPANY_ID_HEADER]: COMPANY_ID }
@@ -234,6 +236,24 @@ describe('reports service', () => {
     for (const path of ['/api/v1/reports/portfolio_overview', '/api/v1/reports/occupancy']) {
       expect((await get(path, { [COMPANY_ID_HEADER]: COMPANY_ID })).status, path).toBe(401)
       expect((await get(path, { authorization: 'Bearer member.jwt' })).status, path).toBe(400)
+      expect((await get(path, { authorization: 'Bearer outsider.jwt', [COMPANY_ID_HEADER]: COMPANY_ID })).status, path).toBe(403)
+    }
+  })
+  it('serves arrears and payment arrangements on the same pattern, with the same checks (R-05)', async () => {
+    rpcCalls.length = 0
+    const arrears = await get('/api/v1/reports/arrears?status=under_arrangement', member)
+    expect(arrears.status).toBe(200)
+    expect(await arrears.json()).toMatchObject({ reportId: 'arrears', filters: { statuses: ['under_arrangement'] }, data: { ageingBuckets: [30, 60, 90, 120], rows: [] } })
+    expect(rpcCalls.map((call) => call.fn).sort()).toEqual(['reports_arrears_detail', 'reports_arrears_settings', 'reports_payment_arrangements'])
+
+    const arrangements = await get('/api/v1/reports/payment_arrangements?status=active&from=2026-01-01', member)
+    expect(arrangements.status).toBe(200)
+    expect(await arrangements.json()).toMatchObject({ reportId: 'payment_arrangements', filters: { from: '2026-01-01', statuses: ['active'] }, data: { graceDays: 0, rows: [] } })
+
+    expect((await get('/api/v1/reports/arrears?status=active', member)).status).toBe(400)
+    expect((await get('/api/v1/reports/payment_arrangements?from=2026-12-31&to=2026-01-01', member)).status).toBe(400)
+    for (const path of ['/api/v1/reports/arrears', '/api/v1/reports/payment_arrangements']) {
+      expect((await get(path, { [COMPANY_ID_HEADER]: COMPANY_ID })).status, path).toBe(401)
       expect((await get(path, { authorization: 'Bearer outsider.jwt', [COMPANY_ID_HEADER]: COMPANY_ID })).status, path).toBe(403)
     }
   })
